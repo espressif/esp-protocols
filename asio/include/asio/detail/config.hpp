@@ -11,6 +11,10 @@
 #ifndef ASIO_DETAIL_CONFIG_HPP
 #define ASIO_DETAIL_CONFIG_HPP
 
+#if defined(ESP_PLATFORM)
+# include "esp_asio_config.h"
+#endif // defined(ESP_PLATFORM)
+
 // boostify: non-boost code starts here
 #if !defined(ASIO_STANDALONE)
 # if !defined(ASIO_ENABLE_BOOST)
@@ -25,6 +29,7 @@
 #endif // !defined(ASIO_STANDALONE)
 
 // boostify: non-boost code ends here
+
 #if defined(ASIO_STANDALONE)
 # define ASIO_DISABLE_BOOST_ARRAY 1
 # define ASIO_DISABLE_BOOST_ASSERT 1

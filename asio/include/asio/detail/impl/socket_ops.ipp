@@ -560,7 +560,8 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
   // get spurious readiness notifications from the reactor.
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(ESP_PLATFORM)
   fd_set write_fds;
   FD_ZERO(&write_fds);
   FD_SET(s, &write_fds);
@@ -574,6 +575,7 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
 #else // defined(ASIO_WINDOWS)
       // || defined(__CYGWIN__)
       // || defined(__SYMBIAN32__)
+      // || defined(ESP_PLATFORM)
   pollfd fds;
   fds.fd = s;
   fds.events = POLLOUT;
@@ -582,6 +584,7 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
 #endif // defined(ASIO_WINDOWS)
        // || defined(__CYGWIN__)
        // || defined(__SYMBIAN32__)
+       // || defined(ESP_PLATFORM)
   if (ready == 0)
   {
     // The asynchronous connect operation is still in progress.
@@ -609,7 +612,7 @@ bool non_blocking_connect(socket_type s, asio::error_code& ec)
 int socketpair(int af, int type, int protocol,
     socket_type sv[2], asio::error_code& ec)
 {
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(ASIO_WINDOWS) || defined(__CYGWIN__) || defined (ESP_PLATFORM)
   (void)(af);
   (void)(type);
   (void)(protocol);

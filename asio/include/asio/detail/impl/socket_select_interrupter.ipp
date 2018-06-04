@@ -21,7 +21,8 @@
 
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(ESP_PLATFORM)
 
 #include <cstdlib>
 #include "asio/detail/socket_holder.hpp"
@@ -170,6 +171,7 @@ bool socket_select_interrupter::reset()
 #endif // defined(ASIO_WINDOWS)
        // || defined(__CYGWIN__)
        // || defined(__SYMBIAN32__)
+       // || defined(ESP_PLATFORM)
 
 #endif // !defined(ASIO_WINDOWS_RUNTIME)
 

@@ -15,6 +15,10 @@
 # pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#if defined(ESP_PLATFORM)
+# include "esp_asio_config.h"
+#endif // defined(ESP_PLATFORM)
+
 #include "asio/associated_allocator.hpp"
 #include "asio/associated_executor.hpp"
 #include "asio/async_result.hpp"

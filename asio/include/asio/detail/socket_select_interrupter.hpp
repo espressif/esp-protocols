@@ -21,7 +21,8 @@
 
 #if defined(ASIO_WINDOWS) \
   || defined(__CYGWIN__) \
-  || defined(__SYMBIAN32__)
+  || defined(__SYMBIAN32__) \
+  || defined(ESP_PLATFORM)
 
 #include "asio/detail/socket_types.hpp"
 
@@ -85,6 +86,7 @@ private:
 #endif // defined(ASIO_WINDOWS)
        // || defined(__CYGWIN__)
        // || defined(__SYMBIAN32__)
+       // || defined(ESP_PLATFORM)
 
 #endif // !defined(ASIO_WINDOWS_RUNTIME)
 
