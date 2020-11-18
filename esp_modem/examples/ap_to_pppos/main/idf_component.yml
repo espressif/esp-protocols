@@ -1,0 +1,7 @@
+version: "0.0.2"
+targets:
+  - esp32
+description: pppos_client to AP
+dependencies:
+  espressif/esp_modem:
+    version: "~0.0.2"
