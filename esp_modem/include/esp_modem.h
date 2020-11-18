@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2015-2020 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@
 extern "C" {
 #endif
 
-#include "esp_modem_dce.h"
-#include "esp_modem_dte.h"
 #include "esp_event.h"
 #include "driver/uart.h"
-#include "esp_modem_compat.h"
+
+/**
+ * @brief Fowrard declare DTE and DCE objects
+ *
+ */
+typedef struct esp_modem_dte esp_modem_dte_t;
+typedef struct esp_modem_dce esp_modem_dce_t;
 
 /**
  * @brief Declare Event Base for ESP Modem
@@ -40,6 +44,25 @@ typedef enum {
 } esp_modem_event_t;
 
 /**
+ * @defgroup ESP_MODEM_DTE_TYPES DTE Types
+ * @brief  Configuration and related types used to init and setup a new DTE object
+ */
+
+/** @addtogroup ESP_MODEM_DTE_TYPES
+ * @{
+ */
+
+/**
+ * @brief Modem flow control type
+ *
+ */
+typedef enum {
+    ESP_MODEM_FLOW_CONTROL_NONE = 0,
+    ESP_MODEM_FLOW_CONTROL_SW,
+    ESP_MODEM_FLOW_CONTROL_HW
+} esp_modem_flow_ctrl_t;
+
+/**
  * @brief ESP Modem DTE Configuration
  *
  */
@@ -48,7 +71,7 @@ typedef struct {
     uart_word_length_t data_bits;   /*!< Data bits of UART */
     uart_stop_bits_t stop_bits;     /*!< Stop bits of UART */
     uart_parity_t parity;           /*!< Parity type */
-    modem_flow_ctrl_t flow_control; /*!< Flow control type */
+    esp_modem_flow_ctrl_t flow_control; /*!< Flow control type */
     uint32_t baud_rate;             /*!< Communication baud rate */
     int tx_io_num;                  /*!< TXD Pin Number */
     int rx_io_num;                  /*!< RXD Pin Number */
@@ -64,12 +87,6 @@ typedef struct {
 } esp_modem_dte_config_t;
 
 /**
- * @brief Type used for reception callback
- *
- */
-typedef esp_err_t (*esp_modem_on_receive)(void *buffer, size_t len, void *context);
-
-/**
  * @brief ESP Modem DTE Default Configuration
  *
  */
@@ -80,7 +97,7 @@ typedef esp_err_t (*esp_modem_on_receive)(void *buffer, size_t len, void *contex
         .stop_bits = UART_STOP_BITS_1,          \
         .parity = UART_PARITY_DISABLE,          \
         .baud_rate = 115200,                    \
-        .flow_control = MODEM_FLOW_CONTROL_NONE,\
+        .flow_control = ESP_MODEM_FLOW_CONTROL_NONE,\
         .tx_io_num = 25,                        \
         .rx_io_num = 26,                        \
         .rts_io_num = 27,                       \
@@ -95,13 +112,122 @@ typedef esp_err_t (*esp_modem_on_receive)(void *buffer, size_t len, void *contex
     }
 
 /**
+ * @}
+ */
+
+
+/**
+ * @defgroup ESP_MODEM_DCE_TYPES DCE Types
+ * @brief  Configuration and related types used to init and setup a new DCE object
+ */
+
+/** @addtogroup ESP_MODEM_DCE_TYPES
+ * @{
+ */
+
+/**
+ * @brief PDP context type used as an input parameter to esp_modem_dce_set_pdp_context
+ * also used as a part of configuration structure
+ */
+typedef struct esp_modem_dce_pdp_ctx_s {
+    size_t cid;             /*!< PDP context identifier */
+    const char *type;       /*!< Protocol type */
+    const char *apn;        /*!< Modem APN (Access Point Name, a logical name to choose data network) */
+} esp_modem_dce_pdp_ctx_t;
+
+/**
+ * @brief Devices that the DCE will act as
+ *
+ */
+typedef enum esp_modem_dce_device_e {
+    ESP_MODEM_DEVICE_UNSPECIFIED,
+    ESP_MODEM_DEVICE_SIM800,
+    ESP_MODEM_DEVICE_SIM7600,
+    ESP_MODEM_DEVICE_BG96,
+} esp_modem_dce_device_t;
+
+/**
+ * @brief DCE's configuration structure
+ */
+typedef struct esp_modem_dce_config_s {
+    esp_modem_dce_pdp_ctx_t pdp_context;    /*!<  modem PDP context including APN */
+    bool populate_command_list;             /*!<  use command list interface: Setting this to true creates
+                                                  a list of supported AT commands enabling sending
+                                                  these commands, but will occupy data memory */
+    esp_modem_dce_device_t device;          /*!<  predefined device enum that the DCE will initialise as */
+} esp_modem_dce_config_t;
+
+/**
+* @brief Default configuration of DCE unit of ESP-MODEM
+*
+*/
+#define ESP_MODEM_DCE_DEFAULT_CONFIG(APN) \
+    {                                  \
+        .pdp_context = {               \
+            .cid = 1,                  \
+            .type = "IP",              \
+            .apn = APN },              \
+        .populate_command_list = false,\
+        .device = ESP_MODEM_DEVICE_UNSPECIFIED   \
+    }
+
+/**
+ * @}
+ */
+
+
+/**
+ * @defgroup ESP_MODEM_DTE_DCE DCE and DCE object init and setup API
+ * @brief  Creating and init objects of DTE and DCE
+ */
+
+/** @addtogroup ESP_MODEM_DTE_DCE
+ * @{
+ */
+
+/**
  * @brief Create and initialize Modem DTE object
  *
  * @param config configuration of ESP Modem DTE object
  * @return modem_dte_t*
  *      - Modem DTE object
  */
-modem_dte_t *esp_modem_dte_init(const esp_modem_dte_config_t *config);
+esp_modem_dte_t *esp_modem_dte_new(const esp_modem_dte_config_t *config);
+
+/**
+ * @brief Create and initialize Modem DCE object
+ *
+ * @param config configuration of ESP Modem DTE object
+ * @return modem_dce_t* Modem DCE object
+ */
+esp_modem_dce_t *esp_modem_dce_new(esp_modem_dce_config_t *config);
+
+/**
+ * @brief Initialize the DCE object that has already been created
+ *
+ * This API is typically used to initialize extended DCE object,
+ * "sub-class" of esp_modem_dce_t
+ *
+ * @param config Configuration for DCE object
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_FAIL on error (init issue, set specific command issue)
+ *      - ESP_ERR_INVALID_ARG on invalid parameters
+ */
+esp_err_t esp_modem_dce_init(esp_modem_dce_t *dce, esp_modem_dce_config_t *config);
+
+/**
+ * @}
+ */
+
+
+/**
+ * @defgroup ESP_MODEM_EVENTS Event handling API
+ */
+
+/** @addtogroup ESP_MODEM_EVENTS
+ * @{
+ */
 
 /**
  * @brief Register event handler for ESP Modem event loop
@@ -114,7 +240,7 @@ modem_dte_t *esp_modem_dte_init(const esp_modem_dte_config_t *config);
  *      - ESP_ERR_NO_MEM on allocating memory for the handler failed
  *      - ESP_ERR_INVALID_ARG on invalid combination of event base and event id
  */
-esp_err_t esp_modem_set_event_handler(modem_dte_t *dte, esp_event_handler_t handler, int32_t event_id, void *handler_args);
+esp_err_t esp_modem_set_event_handler(esp_modem_dte_t *dte, esp_event_handler_t handler, int32_t event_id, void *handler_args);
 
 /**
  * @brief Unregister event handler for ESP Modem event loop
@@ -125,7 +251,21 @@ esp_err_t esp_modem_set_event_handler(modem_dte_t *dte, esp_event_handler_t hand
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_ARG on invalid combination of event base and event id
  */
-esp_err_t esp_modem_remove_event_handler(modem_dte_t *dte, esp_event_handler_t handler);
+esp_err_t esp_modem_remove_event_handler(esp_modem_dte_t *dte, esp_event_handler_t handler);
+
+/**
+ * @}
+ */
+
+
+/**
+ * @defgroup ESP_MODEM_LIFECYCLE Modem lifecycle API
+ * @brief  Basic modem API to start/stop the PPP mode
+ */
+
+/** @addtogroup ESP_MODEM_LIFECYCLE
+ * @{
+ */
 
 /**
  * @brief Setup PPP Session
@@ -135,7 +275,7 @@ esp_err_t esp_modem_remove_event_handler(modem_dte_t *dte, esp_event_handler_t h
  *      - ESP_OK on success
  *      - ESP_FAIL on error
  */
-esp_err_t esp_modem_start_ppp(modem_dte_t *dte);
+esp_err_t esp_modem_start_ppp(esp_modem_dte_t *dte);
 
 /**
  * @brief Exit PPP Session
@@ -145,29 +285,49 @@ esp_err_t esp_modem_start_ppp(modem_dte_t *dte);
  *      - ESP_OK on success
  *      - ESP_FAIL on error
  */
-esp_err_t esp_modem_stop_ppp(modem_dte_t *dte);
+esp_err_t esp_modem_stop_ppp(esp_modem_dte_t *dte);
 
 /**
- * @brief Setup on reception callback
+ * @brief Basic start of the modem. This API performs default dce's start_up() function
  *
- * @param dte ESP Modem DTE object
- * @param receive_cb Function pointer to the reception callback
- * @param receive_cb_ctx Contextual pointer to be passed to the reception callback
- *
- * @return ESP_OK on success
+ * @param dte Modem DTE Object
+ * @return esp_err_t
+ *      - ESP_OK on success
+ *      - ESP_FAIL on error
+ *      - ESP_ERR_INVALID_ARG on invalid arguments
  */
-esp_err_t esp_modem_set_rx_cb(modem_dte_t *dte, esp_modem_on_receive receive_cb, void *receive_cb_ctx);
+esp_err_t esp_modem_default_start(esp_modem_dte_t *dte);
 
 /**
- * @brief Notify the modem, that ppp netif has closed
+ * @brief Basic attach operation of modem sub-elements
  *
- * @note This API should only be used internally by the modem-netif layer
+ * This API binds the supplied DCE and netif to the modem's DTE and initializes the modem
  *
- * @param dte ESP Modem DTE object
- *
- * @return ESP_OK on success
+ * @param dte Modem DTE Object
+ * @return esp_err_t
+ *      - ESP_OK on success
+ *      - ESP_FAIL on error
  */
-esp_err_t esp_modem_notify_ppp_netif_closed(modem_dte_t *dte);
+esp_err_t esp_modem_default_attach(esp_modem_dte_t *dte, esp_modem_dce_t *dce, esp_netif_t* ppp_netif);
+
+/**
+ * @brief Basic destroy operation of the modem DTE and all the sub-elements bound to it
+ *
+ * This API deletes the DCE, modem netif adapter as well as the esp_netif supplied to
+ * esp_modem_default_attach(). Then it deletes the DTE itself.
+ *
+ * @param dte Modem DTE Object
+ * @return esp_err_t
+ *      - ESP_OK on success
+ *      - ESP_FAIL on error
+ *      - ESP_ERR_INVALID_ARG on invalid arguments
+ */
+esp_err_t esp_modem_default_destroy(esp_modem_dte_t *dte);
+
+/**
+ * @}
+ */
+
 
 #ifdef __cplusplus
 }

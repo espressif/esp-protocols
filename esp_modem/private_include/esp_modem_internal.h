@@ -1,4 +1,4 @@
-// Copyright 2015-2018 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2020 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,25 +13,36 @@
 // limitations under the License.
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "esp_log.h"
+#include "esp_modem.h"
+
 /**
- * @brief Macro defined for error checking
- *
- */
-#define DCE_CHECK(a, str, goto_tag, ...)                                              \
+* @brief Macro defined for error checking
+*
+*/
+#define ESP_MODEM_ERR_CHECK(a, str, goto_tag, ...)                                    \
     do                                                                                \
     {                                                                                 \
         if (!(a))                                                                     \
         {                                                                             \
-            ESP_LOGE(DCE_TAG, "%s(%d): " str, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+            ESP_LOGE(TAG, "%s(%d): " str, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
             goto goto_tag;                                                            \
         }                                                                             \
     } while (0)
 
 /**
- * @brief BG96 Modem
- *
- */
-typedef struct {
-    void *priv_resource; /*!< Private resource */
-    modem_dce_t parent;  /*!< DCE parent class */
-} bg96_modem_dce_t;
+* @brief common modem delay function
+*
+*/
+static inline void esp_modem_wait_ms(size_t time)
+{
+    vTaskDelay(pdMS_TO_TICKS(time));
+}
+
+#ifdef __cplusplus
+}
+#endif
