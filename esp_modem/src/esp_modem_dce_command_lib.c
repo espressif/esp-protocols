@@ -200,5 +200,3 @@ esp_err_t esp_modem_command_list_deinit(esp_modem_dce_t *dce)
     free(dce->dce_cmd_list);
     return ESP_OK;
 }
-
-
