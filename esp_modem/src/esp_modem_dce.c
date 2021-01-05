@@ -172,16 +172,6 @@ esp_err_t esp_modem_dce_default_start_up(esp_modem_dce_t *dce)
 {
     ESP_MODEM_ERR_CHECK(dce->sync(dce, NULL, NULL) == ESP_OK, "sending sync failed", err);
     ESP_MODEM_ERR_CHECK(dce->set_echo(dce, (void*)false, NULL) == ESP_OK, "set_echo failed", err);
-    // TODO: remove!
-    bool ready;
-//    ESP_ERROR_CHECK(esp_modem_command_list_run(dce, "read_pin", NULL, &ready));
-    ESP_ERROR_CHECK(esp_modem_dce_read_pin(dce, NULL, &ready));
-    if (!ready) {
-        ESP_LOGE(TAG, "PIN not ready man");
-//        ESP_ERROR_CHECK(esp_modem_command_list_run(dce, "set_pin", "1234", NULL));
-        ESP_ERROR_CHECK(esp_modem_dce_set_pin(dce, "1234", NULL));
-    }
-    // TODO: remove!
     ESP_MODEM_ERR_CHECK(dce->set_flow_ctrl(dce, (void*)ESP_MODEM_FLOW_CONTROL_NONE, NULL) == ESP_OK, "set_flow_ctrl failed", err);
     ESP_MODEM_ERR_CHECK(dce->store_profile(dce, NULL, NULL) == ESP_OK, "store_profile failed", err);
     return ESP_OK;
