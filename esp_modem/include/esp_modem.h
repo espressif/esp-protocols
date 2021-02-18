@@ -21,7 +21,7 @@ extern "C" {
 #include "driver/uart.h"
 
 /**
- * @brief Fowrard declare DTE and DCE objects
+ * @brief Forward declare DTE and DCE objects
  *
  */
 typedef struct esp_modem_dte esp_modem_dte_t;
