@@ -96,8 +96,8 @@ typedef struct {
         .data_bits = UART_DATA_8_BITS,          \
         .stop_bits = UART_STOP_BITS_1,          \
         .parity = UART_PARITY_DISABLE,          \
-        .baud_rate = 115200,                    \
         .flow_control = ESP_MODEM_FLOW_CONTROL_NONE,\
+        .baud_rate = 115200,                    \
         .tx_io_num = 25,                        \
         .rx_io_num = 26,                        \
         .rts_io_num = 27,                       \
