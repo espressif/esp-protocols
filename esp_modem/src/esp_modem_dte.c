@@ -152,6 +152,7 @@ static void esp_handle_uart_data(esp_modem_dte_internal_t *esp_dte)
 {
     size_t length = 0;
     uart_get_buffered_data_len(esp_dte->uart_port, &length);
+    ESP_LOGD(TAG, "esp-modem:esp_handle_uart_data");
 
     if (esp_dte->parent.dce->mode != ESP_MODEM_PPP_MODE && length) {
         // Check if matches the pattern to process the data as pattern
@@ -179,6 +180,7 @@ static void esp_handle_uart_data(esp_modem_dte_internal_t *esp_dte)
             esp_dte->buffer[length] = '\0';
         }
         ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", esp_dte->buffer, length, ESP_LOG_DEBUG);
+        ESP_LOGI(TAG, "%s", esp_dte->buffer);
         if (esp_dte->parent.dce->handle_line) {
             /* Send new line to handle if handler registered */
             esp_dte_handle_line(esp_dte);
@@ -497,8 +499,11 @@ esp_modem_dte_t *esp_modem_dte_new(const esp_modem_dte_config_t *config)
     esp_dte->pattern_queue_size = config->pattern_queue_size;
     res |= uart_pattern_queue_reset(esp_dte->uart_port, config->pattern_queue_size);
     /* Starting in command mode -> explicitly disable RX interrupt */
-    uart_disable_rx_intr(esp_dte->uart_port);
     uart_set_rx_full_threshold(esp_dte->uart_port, 64);
+    uart_enable_rx_intr(esp_dte->uart_port);
+//
+//    uart_disable_rx_intr(esp_dte->uart_port);
+//    uart_set_rx_full_threshold(esp_dte->uart_port, 64);
 
     ESP_MODEM_ERR_CHECK(res == ESP_OK, "config uart pattern failed", err_uart_pattern);
     /* Create Event loop */
