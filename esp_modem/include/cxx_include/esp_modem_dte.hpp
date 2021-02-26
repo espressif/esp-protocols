@@ -9,7 +9,7 @@
 #include <utility>
 #include "esp_err.h"
 #include "terminal_objects.hpp"
-
+#include "ppp_netif.hpp"
 
 
 enum class terminal_error {
@@ -62,10 +62,14 @@ typedef std::function<bool(uint8_t *data, size_t len)> got_line_cb;
 
 class dte {
 public:
- explicit dte(std::unique_ptr<terminal> terminal);
+ explicit dte(std::unique_ptr<terminal> t);
   ~dte() = default;
 //  void set_line_cb(got_line f) { on_line_cb = std::move(f); }
+    int write(uint8_t *data, size_t len)  { return term->write(data, len); }
+    int read(uint8_t *data, size_t len)   { return term->read(data, len); }
 
+    void start() { term->start(); }
+    void data_mode_closed() { term->stop(); }
   void set_mode(dte_mode m) { term->start(); mode = m; }
   bool send_command(const std::string& command, got_line_cb got_line, uint32_t time_ms);
 
@@ -80,6 +84,14 @@ private:
     signal_group signal;
 };
 
+
+class dce {
+public:
+    explicit dce(std::shared_ptr<dte> d, esp_netif_t * netif);
+private:
+    std::shared_ptr<dte> _dte;
+    ppp ppp_netif;
+};
 
 
 

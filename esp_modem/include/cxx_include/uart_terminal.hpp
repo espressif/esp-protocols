@@ -12,6 +12,9 @@ std::unique_ptr<terminal> create_uart_terminal(const struct dte_config *config);
 
 class dte;
 
-std::unique_ptr<dte> create_dte(const struct dte_config *config);
+std::shared_ptr<dte> create_dte(const struct dte_config *config);
+
+std::unique_ptr<dce> create_dce(const std::shared_ptr<dte>& e, esp_netif_t *netif);
+
 
 #endif //SIMPLE_CXX_CLIENT_UART_TERMINAL_HPP
