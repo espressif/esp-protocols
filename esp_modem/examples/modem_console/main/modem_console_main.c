@@ -277,7 +277,9 @@ void app_main(void)
 
     // init the DTE
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    dte_config.pattern_queue_size = 100;
     dte_config.event_task_stack_size = 4096;
+    dte_config.event_task_priority = 15;
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
     dce_config.populate_command_list = true;
     esp_netif_config_t ppp_netif_config = ESP_NETIF_DEFAULT_PPP();

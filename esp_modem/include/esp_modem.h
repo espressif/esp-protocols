@@ -19,6 +19,7 @@ extern "C" {
 
 #include "esp_event.h"
 #include "driver/uart.h"
+#include "esp_modem_dte_config.h"
 
 /**
  * @brief Forward declare DTE and DCE objects
@@ -52,21 +53,15 @@ typedef enum {
  * @{
  */
 
-/**
- * @brief Modem flow control type
- *
- */
-typedef enum {
-    ESP_MODEM_FLOW_CONTROL_NONE = 0,
-    ESP_MODEM_FLOW_CONTROL_SW,
-    ESP_MODEM_FLOW_CONTROL_HW
-} esp_modem_flow_ctrl_t;
+
 
 /**
  * @brief ESP Modem DTE Configuration
  *
  */
-typedef struct {
+typedef struct dte_config
+#if 0
+{
     uart_port_t port_num;           /*!< UART port number */
     uart_word_length_t data_bits;   /*!< Data bits of UART */
     uart_stop_bits_t stop_bits;     /*!< Stop bits of UART */
@@ -84,7 +79,9 @@ typedef struct {
     uint32_t event_task_stack_size; /*!< UART Event Task Stack size */
     int event_task_priority;        /*!< UART Event Task Priority */
     int line_buffer_size;           /*!< Line buffer size for command mode */
-} esp_modem_dte_config_t;
+}
+#endif
+esp_modem_dte_config_t;
 
 /**
  * @brief ESP Modem DTE Default Configuration
