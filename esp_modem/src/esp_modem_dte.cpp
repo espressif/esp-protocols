@@ -219,11 +219,11 @@ std::unique_ptr<terminal> create_uart_terminal(const struct dte_config *config)
 
 }
 
-std::unique_ptr<dte> create_dte(const struct dte_config *config)
+std::shared_ptr<dte> create_dte(const struct dte_config *config)
 {
     try {
-        auto term = std::make_unique<dte>(std::make_unique<uart_terminal>(config));
-//        term->start();
+//        auto term = std::make_unique<dte>(std::make_unique<uart_terminal>(config));
+        auto term = std::make_shared<dte>(std::make_unique<uart_terminal>(config));
         return term;
     } catch (std::bad_alloc& e) {
         ESP_LOGE(TAG, "Out of memory");
@@ -235,6 +235,21 @@ std::unique_ptr<dte> create_dte(const struct dte_config *config)
         return nullptr;
     }
 
+}
+
+std::unique_ptr<dce> create_dce(const std::shared_ptr<dte>& e, esp_netif_t *netif)
+{
+    try {
+        return std::make_unique<dce>(e, netif);
+    } catch (std::bad_alloc& e) {
+        ESP_LOGE(TAG, "Out of memory");
+        return nullptr;
+    } catch (esp_err_exception& e) {
+        esp_err_t err = e.get_err_t();
+        ESP_LOGE(TAG, "Error occurred during UART term init: %d", err);
+        ESP_LOGE(TAG, "%s", e.what());
+        return nullptr;
+    }
 }
 
 
@@ -321,14 +336,18 @@ bool dte::send_command(const std::string& command, got_line_cb got_line, uint32_
         auto actual_len = term->read(data, data_to_read);
         consumed += actual_len;
         if (memchr(data, '\n', actual_len)) {
-            ESP_LOGI("in the lambda", "FOUND");
+            ESP_LOGD("in the lambda", "FOUND");
             if (got_line(buffer.get(), consumed)) {
                 signal.set(GOT_LINE);
             }
         }
-        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)buffer.get());
     });
     auto res = signal.wait(GOT_LINE, time_ms);
     consumed = 0;
     return res;
 }
+
+dce::dce(std::shared_ptr<dte> e, esp_netif_t * netif):
+_dte(std::move(e)), ppp_netif(e, netif)
+{ }
+
