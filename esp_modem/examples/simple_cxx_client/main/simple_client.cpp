@@ -264,12 +264,30 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
     int actual_len = 0;
     auto ddd = create_dte(dte_config);
     ddd->set_mode(dte_mode::UNDEF);
-    ddd->send_command("AT\r", [&](uint8_t *data, size_t len) {
+    ddd->send_command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
         std::cout << response << std::endl;
         return true;
     }, 1000);
+
+//    ddd->send_command("AT+CPIN=1234\r", [&](uint8_t *data, size_t len) {
+//        std::string response((char*)data, len);
+//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+//        std::cout << response << std::endl;
+//        return true;
+//    }, 1000);
+    esp_netif_t *esp_netif = esp_netif_new(ppp_config);
+    assert(esp_netif);
+
+    auto my_dce = create_dce(ddd, esp_netif);
+
+    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {
+        std::string response((char*)data, len);
+        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+        std::cout << response << std::endl;
+        return true;
+    }, 60000);
 
 //    auto uart = create_uart_terminal(dte_config);
 //    uart->set_data_cb([&](size_t len){
@@ -300,7 +318,7 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
     assert(dce != NULL);
 
     /* create netif object */
-    esp_netif_t *esp_netif = esp_netif_new(ppp_config);
+//    esp_netif_t *esp_netif = esp_netif_new(ppp_config);
     assert(esp_netif);
 #if !defined(CONFIG_EXAMPLE_MODEM_PPP_AUTH_NONE) && (defined(CONFIG_LWIP_PPP_PAP_SUPPORT) || defined(CONFIG_LWIP_PPP_CHAP_SUPPORT))
 #if CONFIG_LWIP_PPP_PAP_SUPPORT
