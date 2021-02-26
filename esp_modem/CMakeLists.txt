@@ -7,7 +7,8 @@ set(srcs "src/esp_modem.c"
         "src/esp_modem_recov_helper.c"
         "src/esp_sim800.c"
         "src/esp_sim7600.c"
-        "src/esp_bg96.c")
+        "src/esp_bg96.c"
+        "src/esp_modem_dte.cpp")
 
 set(include_dirs "include")
 
@@ -20,3 +21,5 @@ idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "${include_dirs}"
                     PRIV_INCLUDE_DIRS private_include
                     REQUIRES driver)
+
+target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
