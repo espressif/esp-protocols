@@ -66,11 +66,23 @@ public:
   ~dte() = default;
 //  void set_line_cb(got_line f) { on_line_cb = std::move(f); }
     int write(uint8_t *data, size_t len)  { return term->write(data, len); }
-    int read(uint8_t *data, size_t len)   { return term->read(data, len); }
+    int read(uint8_t **d, size_t len)   {
+        auto data_to_read = std::min(len, buffer_size);
+        auto data = buffer.get();
+        auto actual_len = term->read(data, data_to_read);
+        *d = data;
+        return actual_len;
+    }
+    void set_data_cb(std::function<void(size_t len)> f) { on_data = std::move(f); }
 
     void start() { term->start(); }
     void data_mode_closed() { term->stop(); }
-  void set_mode(dte_mode m) { term->start(); mode = m; }
+  void set_mode(dte_mode m) {
+        term->start(); mode = m;
+        if (m == dte_mode::DATA_MODE) {
+            term->set_data_cb(on_data);
+        }
+    }
   bool send_command(const std::string& command, got_line_cb got_line, uint32_t time_ms);
 
 private:
@@ -82,14 +94,29 @@ private:
     got_line_cb on_line;
     dte_mode mode;
     signal_group signal;
+    std::function<void(size_t len)> on_data;
 };
 
 
 class dce {
 public:
     explicit dce(std::shared_ptr<dte> d, esp_netif_t * netif);
+    void set_data() {
+        command("AT+CGDCONT=1,\"IP\",\"internet\"\r", [&](uint8_t *data, size_t len) {
+            return true;
+        }, 1000);
+        command("ATD*99***1#\r", [&](uint8_t *data, size_t len) {
+            return true;
+        }, 1000);
+
+        dce_dte->set_mode(dte_mode::DATA_MODE);
+        ppp_netif.start();
+    }
+    bool command(const std::string& command, got_line_cb got_line, uint32_t time_ms) {
+        return dce_dte->send_command(command, got_line, time_ms);
+    }
 private:
-    std::shared_ptr<dte> _dte;
+    std::shared_ptr<dte> dce_dte;
     ppp ppp_netif;
 };
 
