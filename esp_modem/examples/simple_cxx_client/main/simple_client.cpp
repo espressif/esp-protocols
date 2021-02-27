@@ -277,17 +277,27 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //        std::cout << response << std::endl;
 //        return true;
 //    }, 1000);
+
+//    return;
     esp_netif_t *esp_netif = esp_netif_new(ppp_config);
     assert(esp_netif);
 
     auto my_dce = create_dce(ddd, esp_netif);
 
-    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {
+    my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
         std::cout << response << std::endl;
         return true;
-    }, 60000);
+    }, 1000);
+
+    my_dce->set_data();
+//    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {
+//        std::string response((char*)data, len);
+//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+//        std::cout << response << std::endl;
+//        return true;
+//    }, 60000);
 
 //    auto uart = create_uart_terminal(dte_config);
 //    uart->set_data_cb([&](size_t len){

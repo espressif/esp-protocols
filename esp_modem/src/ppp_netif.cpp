@@ -18,6 +18,7 @@ static void on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
     dte *e = (dte*)arg;
+    ESP_LOGW("TAG", "PPP state changed event %d", event_id);
     if (event_id < NETIF_PP_PHASE_OFFSET) {
         ESP_LOGI("TAG", "PPP state changed event %d", event_id);
         // only notify the modem on state/error events, ignoring phase transitions
@@ -35,10 +36,9 @@ static esp_err_t esp_modem_dte_transmit(void *h, void *buffer, size_t len)
     return ESP_FAIL;
 }
 
-
 static esp_err_t esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
 {
-    ppp_netif_driver *d = (ppp_netif_driver*)args;
+    auto d = (ppp_netif_driver*)args;
     esp_netif_driver_ifconfig_t driver_ifconfig = { };
     driver_ifconfig.transmit = esp_modem_dte_transmit;
     driver_ifconfig.handle = (void*)d->e;
@@ -58,12 +58,26 @@ static esp_err_t esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
     return ESP_OK;
 }
 
+void ppp::receive(uint8_t *data, size_t len) const
+{
+    esp_netif_receive(driver.base.netif, data, len, nullptr);
+}
 
 ppp::ppp(std::shared_ptr<dte> e, esp_netif_t *ppp_netif):
-    netif(ppp_netif), _dte(std::move(e))
+    ppp_dte(std::move(e)), netif(ppp_netif)
 {
     driver.base.netif = ppp_netif;
-    driver.e = this->_dte.get();
+    driver.e = this->ppp_dte.get();
     driver.base.post_attach = esp_modem_post_attach;
+    ppp_dte->set_data_cb([&](size_t len){
+        uint8_t *data;
+        auto actual_len = ppp_dte->read(&data, len);
+        return receive(data, actual_len);
+    });
     throw_if_esp_fail(esp_netif_attach(ppp_netif, &driver));
+}
+
+void ppp::start()
+{
+    esp_netif_action_start(driver.base.netif, 0, 0, 0);
 }

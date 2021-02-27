@@ -348,6 +348,6 @@ bool dte::send_command(const std::string& command, got_line_cb got_line, uint32_
 }
 
 dce::dce(std::shared_ptr<dte> e, esp_netif_t * netif):
-_dte(std::move(e)), ppp_netif(e, netif)
+dce_dte(e), ppp_netif(e, netif)
 { }
 
