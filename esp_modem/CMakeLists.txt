@@ -9,7 +9,8 @@ set(srcs "src/esp_modem.c"
         "src/esp_sim7600.c"
         "src/esp_bg96.c"
         "src/esp_modem_dte.cpp"
-        "src/ppp_netif.cpp")
+        "src/ppp_netif.cpp"
+        "src/esp_modem_commands.cpp")
 
 set(include_dirs "include")
 
