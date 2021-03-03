@@ -51,19 +51,21 @@ enum class dte_mode {
     DATA_MODE
 };
 
-const int DTE_BUFFER_SIZE = 1024;
-
-struct dte_data {
-    uint8_t *data;
-    size_t len;
+enum class command_result {
+    OK,
+    FAIL,
+    TIMEOUT
 };
 
-typedef std::function<bool(uint8_t *data, size_t len)> got_line_cb;
+const int DTE_BUFFER_SIZE = 1024;
 
-class dte {
+
+typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
+
+class DTE {
 public:
- explicit dte(std::unique_ptr<terminal> t);
-  ~dte() = default;
+ explicit DTE(std::unique_ptr<terminal> t);
+  ~DTE() = default;
 //  void set_line_cb(got_line f) { on_line_cb = std::move(f); }
     int write(uint8_t *data, size_t len)  { return term->write(data, len); }
     int read(uint8_t **d, size_t len)   {
@@ -83,7 +85,7 @@ public:
             term->set_data_cb(on_data);
         }
     }
-  bool send_command(const std::string& command, got_line_cb got_line, uint32_t time_ms);
+    command_result command(const std::string& command, got_line_cb got_line, uint32_t time_ms);
 
 private:
     const size_t GOT_LINE = BIT0;
@@ -98,27 +100,7 @@ private:
 };
 
 
-class dce {
-public:
-    explicit dce(std::shared_ptr<dte> d, esp_netif_t * netif);
-    void set_data() {
-        command("AT+CGDCONT=1,\"IP\",\"internet\"\r", [&](uint8_t *data, size_t len) {
-            return true;
-        }, 1000);
-        command("ATD*99***1#\r", [&](uint8_t *data, size_t len) {
-            return true;
-        }, 1000);
 
-        dce_dte->set_mode(dte_mode::DATA_MODE);
-        ppp_netif.start();
-    }
-    bool command(const std::string& command, got_line_cb got_line, uint32_t time_ms) {
-        return dce_dte->send_command(command, got_line, time_ms);
-    }
-private:
-    std::shared_ptr<dte> dce_dte;
-    ppp ppp_netif;
-};
 
 
 
