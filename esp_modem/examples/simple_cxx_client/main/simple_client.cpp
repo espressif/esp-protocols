@@ -17,8 +17,9 @@
 #include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/uart_terminal.hpp"
+#include "cxx_include/esp_modem_api.hpp"
 
-#define BROKER_URL "mqtt://mqtt.eclipse.org"
+#define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
@@ -135,9 +136,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     int msg_id;
     switch (event->event_id) {
     case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_subscribe(client, "/topic/esp-pppos", 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        ESP_LOGE(TAG, "MQTT_EVENT_CONNECTED");
+        xEventGroupSetBits(event_group, GOT_DATA_BIT);
+//
+//        msg_id = esp_mqtt_client_subscribe(client, "/topic/esp-pppos", 0);
+//        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -262,36 +265,58 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //    dte_config->line_buffer_size = 1000000;
     uint8_t data[32] = {};
     int actual_len = 0;
-    auto ddd = create_dte(dte_config);
-    ddd->set_mode(dte_mode::UNDEF);
-    ddd->send_command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
+    auto uart_dte = create_uart_dte(dte_config);
+    uart_dte->set_mode(dte_mode::UNDEF);
+    uart_dte->command("+++", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
         std::cout << response << std::endl;
-        return true;
+        return command_result::OK;
     }, 1000);
 
-//    ddd->send_command("AT+CPIN=1234\r", [&](uint8_t *data, size_t len) {
+//    uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
 //        std::string response((char*)data, len);
 //        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
 //        std::cout << response << std::endl;
-//        return true;
+//        return command_result::OK;
 //    }, 1000);
 
+//    uart_dte->command("AT+CPIN=1234\r", [&](uint8_t *data, size_t len) {
+//        std::string response((char*)data, len);
+//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+//        std::cout << response << std::endl;
+//        return command_result::OK;
+//    }, 1000);
+//
 //    return;
     esp_netif_t *esp_netif = esp_netif_new(ppp_config);
     assert(esp_netif);
 
-    auto my_dce = create_dce(ddd, esp_netif);
+    std::string apn = "internet";
+    auto device = create_device(uart_dte, apn);
+    auto my_dce = create_dce(uart_dte, device, esp_netif);
 
     my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
         std::cout << response << std::endl;
-        return true;
+        return command_result::OK;
     }, 1000);
 
     my_dce->set_data();
+    /* Config MQTT */
+    xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    esp_mqtt_client_config_t mqtt_config = { };
+    mqtt_config.uri = BROKER_URL;
+    esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_ANY, mqtt_event_handler, NULL);
+    esp_mqtt_client_start(mqtt_client);
+    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    esp_mqtt_client_destroy(mqtt_client);
+
+//    vTaskDelay(pdMS_TO_TICKS(20000));
+    my_dce->exit_data();
+
 //    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {
 //        std::string response((char*)data, len);
 //        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
@@ -312,6 +337,13 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //    vTaskDelay(pdMS_TO_TICKS(1000));
 //    len = uart->read(data, 32);
     ESP_LOGI(TAG, "len=%d data %s", actual_len, (char*)data);
+
+    uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
+        std::string response((char*)data, len);
+        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+        std::cout << response << std::endl;
+        return command_result::OK;
+    }, 1000);
     return;
 
     /* create dce object */
