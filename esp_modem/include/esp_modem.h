@@ -103,7 +103,7 @@ esp_modem_dte_config_t;
         .tx_buffer_size = 512,                  \
         .pattern_queue_size = 20,               \
         .event_queue_size = 30,                 \
-        .event_task_stack_size = 2048,          \
+        .event_task_stack_size = 4096,          \
         .event_task_priority = 5,               \
         .line_buffer_size = 512                 \
     }
