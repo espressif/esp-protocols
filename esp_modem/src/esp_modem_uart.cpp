@@ -37,7 +37,7 @@ struct uart_task {
     explicit uart_task(size_t stack_size, size_t priority, void* task_param, TaskFunction_t task_function):
             task_handle(nullptr)
     {
-        BaseType_t ret = xTaskCreate(task_function, "uart_task", stack_size, task_param, priority, &task_handle);
+        BaseType_t ret = xTaskCreate(task_function, "uart_task", 10000, task_param, priority, &task_handle);
         throw_if_false(ret == pdTRUE, "create uart event task failed");
     }
     ~uart_task()
@@ -117,7 +117,7 @@ uart_resource::uart_resource(const struct dte_config *config):
     port = config->port_num;
 }
 
-class uart_terminal: public terminal {
+class uart_terminal: public Terminal {
 public:
     explicit  uart_terminal(const struct dte_config *config):
             uart(config), event_loop(), signal(),
@@ -135,7 +135,11 @@ public:
 
     int write(uint8_t *data, size_t len) override;
     int read(uint8_t *data, size_t len) override;
-
+    void set_data_cb(std::function<bool(size_t len)> f) override
+    {
+        on_data = std::move(f);
+        signal.set(TASK_PARAMS);
+    }
 private:
     static void s_task(void * task_param)
     {
@@ -145,9 +149,10 @@ private:
     }
     void task();
 
-    const size_t TASK_INIT = BIT0;
-    const size_t TASK_START = BIT1;
-    const size_t TASK_STOP = BIT2;
+    static const size_t TASK_INIT = BIT0;
+    static const size_t TASK_START = BIT1;
+    static const size_t TASK_STOP = BIT2;
+    static const size_t TASK_PARAMS = BIT3;
 
 
     uart_resource uart;
@@ -157,7 +162,7 @@ private:
 
 };
 
-std::unique_ptr<terminal> create_uart_terminal(const dte_config *config)
+std::unique_ptr<Terminal> create_uart_terminal(const dte_config *config)
 {
     try {
         auto term = std::make_unique<uart_terminal>(config);
@@ -179,6 +184,7 @@ std::unique_ptr<terminal> create_uart_terminal(const dte_config *config)
 
 void uart_terminal::task()
 {
+    std::function<bool(size_t len)> on_data_priv = nullptr;
     uart_event_t event;
     size_t len;
     signal.set(TASK_INIT);
@@ -189,14 +195,20 @@ void uart_terminal::task()
     while(signal.is_any(TASK_START)) {
         event_loop.run();
         if (uart.get_event(event, 100)) {
+            if (signal.is_any(TASK_PARAMS)) {
+                on_data_priv = on_data;
+                signal.clear(TASK_PARAMS);
+            }
             switch (event.type) {
                 case UART_DATA:
                     ESP_LOGI(TAG, "UART_DATA");
 //                    ESP_LOG_BUFFER_HEXDUMP("esp-modem-pattern: debug_data", esp_dte->buffer, length, ESP_LOG_DEBUG);
                     uart_get_buffered_data_len(uart.port, &len);
                     ESP_LOGI(TAG, "UART_DATA len=%d, on_data=%d", len, (bool)on_data);
-                    if (len && on_data) {
-                        on_data(len);
+                    if (len && on_data_priv) {
+                        if (on_data_priv(len)) {
+                            on_data_priv = nullptr;
+                        }
                     }
                     break;
                 case UART_FIFO_OVF:

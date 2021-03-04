@@ -16,17 +16,13 @@ public:
         dce_dte->set_mode(dte_mode::DATA_MODE);
         ppp_netif.start();
     }
-    void exit_data() {
-        ppp_netif.stop();
-        device->set_mode(dte_mode::COMMAND_MODE);
-        ppp_netif.wait_until_ppp_exits();
-        dce_dte->set_mode(dte_mode::COMMAND_MODE);
-    }
+    void exit_data();
     command_result command(const std::string& command, got_line_cb got_line, uint32_t time_ms) {
         return dce_dte->command(command, got_line, time_ms);
     }
+    void set_cmux();
 private:
     std::shared_ptr<DTE> dce_dte;
     std::shared_ptr<DeviceIf> device;
-    ppp ppp_netif;
+    PPP ppp_netif;
 };

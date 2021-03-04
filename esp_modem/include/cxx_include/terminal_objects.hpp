@@ -56,6 +56,11 @@ struct signal_group {
         xEventGroupSetBits(event_group, bits);
     }
 
+    void clear(uint32_t bits)
+    {
+        xEventGroupClearBits(event_group, bits);
+    }
+
     bool wait(uint32_t flags, uint32_t time_ms) // waiting for all and clearing if set
     {
         EventBits_t bits = xEventGroupWaitBits(event_group, flags, pdTRUE, pdTRUE, pdMS_TO_TICKS(time_ms));

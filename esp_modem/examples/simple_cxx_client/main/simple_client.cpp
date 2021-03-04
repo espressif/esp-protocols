@@ -272,7 +272,7 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
         std::cout << response << std::endl;
         return command_result::OK;
-    }, 1000);
+    }, 500);
 
 //    uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
 //        std::string response((char*)data, len);
@@ -280,7 +280,7 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //        std::cout << response << std::endl;
 //        return command_result::OK;
 //    }, 1000);
-
+//
 //    uart_dte->command("AT+CPIN=1234\r", [&](uint8_t *data, size_t len) {
 //        std::string response((char*)data, len);
 //        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
@@ -294,7 +294,37 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 
     std::string apn = "internet";
     auto device = create_device(uart_dte, apn);
+//    bool pin_ok = true;
+//    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
+//        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
+//    }
+
+//
+//    std::string number;
+//    std::cout << "----" << std::endl;
+//    device->get_imsi(number);
+//    std::cout << "----" << std::endl;
+//    std::cout << "|" << number << "|" << std::endl;
+//    ESP_LOG_BUFFER_HEXDUMP("TEST", number.c_str(), number.length(), ESP_LOG_INFO);
+//    std::cout << "----" << std::endl;
+//    device->get_imei(number);
+//    std::cout << "|" << number << "|" << std::endl;
+//    device->get_module_name(number);
+//    std::cout << "|" << number << "|" << std::endl;
+//    std::cout << "----" << std::endl;
     auto my_dce = create_dce(uart_dte, device, esp_netif);
+
+//    return;
+    my_dce->set_cmux();
+//    my_dce->set_cmux();
+
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        uart_dte->send_cmux_command(1, "AT+CPIN?\r");
+
+    }
+//    uart_dte->send_cmux_command(2, "AT+CPIN?");
+    return;
 
     my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
@@ -302,6 +332,8 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
         std::cout << response << std::endl;
         return command_result::OK;
     }, 1000);
+
+    while (1) {
 
     my_dce->set_data();
     /* Config MQTT */
@@ -316,6 +348,13 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 
 //    vTaskDelay(pdMS_TO_TICKS(20000));
     my_dce->exit_data();
+    uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
+        std::string response((char*)data, len);
+//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+        std::cout << response << std::endl;
+        return command_result::OK;
+    }, 1000);
+    }
 
 //    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {
 //        std::string response((char*)data, len);

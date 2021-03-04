@@ -10,11 +10,11 @@ set(srcs "src/esp_modem.c"
         "src/esp_bg96.c"
         "src/esp_modem_dte.cpp"
         "src/ppp_netif.cpp"
-        "src/esp_modem_commands.cpp"
         "src/esp_modem_api.cpp"
         "src/esp_modem_dce.cpp"
         "src/esp_modem_device.cpp"
         "src/esp_modem_device_factory.cpp"
+        "src/esp_modem_cmux.cpp"
         "src/esp_modem_uart.cpp")
 
 set(include_dirs "include")
