@@ -320,7 +320,8 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        uart_dte->send_cmux_command(1, "AT+CPIN?\r");
+//        uart_dte->send_cmux_command(1, "AT+CPIN?\r");
+        uart_dte->write((uint8_t*)"AT+CPIN?\r", 9);
 
     }
 //    uart_dte->send_cmux_command(2, "AT+CPIN?");
