@@ -77,7 +77,7 @@ void CMUXedTerminal::start()
     }
 }
 
-void DTE::send_sabm(size_t dlci)
+void CMUXedTerminal::send_sabm(size_t dlci)
 {
     uint8_t frame[6];
     frame[0] = SOF_MARKER;
@@ -86,37 +86,6 @@ void DTE::send_sabm(size_t dlci)
     frame[3] = 1;
     frame[4] = 0xFF - crc8(&frame[1], 3, FCS_POLYNOMIAL, FCS_INIT_VALUE, true);
     frame[5] = SOF_MARKER;
-//    term->set_data_cb([&](size_t len) {
-////        consumed = 0;
-//        auto data_to_read = std::min(len, DTE_BUFFER_SIZE - consumed);
-//        auto data = buffer.get() + consumed;
-//        auto actual_len = term->read(data, data_to_read);
-//        ESP_LOG_BUFFER_HEXDUMP("TEST", data, actual_len, ESP_LOG_INFO);
-//        auto available_len = consumed + actual_len;
-//        if (available_len > 4) {
-//            if (data[0] != SOF_MARKER) {
-//                ESP_LOGE("CMUX", "TODO: Recover!");
-//                return true;
-//            }
-//            auto frame = buffer.get();
-//            uint8_t dlci = frame[1] >> 2;
-//            uint8_t type = frame[2];
-//            uint8_t length = frame[3] >> 1;
-//            ESP_LOGW("CMUX", "CMUX FR: A:%02x T:%02x L:%d consumed:%d", dlci, type, length, consumed);
-//            size_t frame_len = length + 6;
-//            if (available_len >= frame_len) { // we have entire frame
-//                if (frame[frame_len-1] != SOF_MARKER) {
-//                    ESP_LOGE("CMUX", "TODO: Recover!");
-//                    return true;
-//                }
-//                if (type == (FT_UA | PF)) {
-//                    ESP_LOGI("CMUX", "SAMB ok");
-//                }
-//
-//            }
-//        }
-//        return false;
-//    });
     term->write(frame, 6);
 }
 
@@ -125,10 +94,10 @@ bool CMUXedTerminal::process_cmux_recv(size_t len)
     return false;
 }
 
-static DTE * s_dte;
-bool DTE::s_on_cmux(size_t len)
+static CMUXedTerminal * s_cmux;
+bool CMUXedTerminal::s_on_cmux(size_t len)
 {
-    s_dte->on_cmux(len);
+    s_cmux->on_cmux(len);
     return false;
 }
 
@@ -144,7 +113,7 @@ bool output(uint8_t *data, size_t len, std::string message)
     return true;
 }
 
-bool DTE::on_cmux(size_t len)
+bool CMUXedTerminal::on_cmux(size_t len)
 {
     auto data_to_read = std::min(len, buffer_size);
     auto data = buffer.get();
@@ -228,15 +197,9 @@ bool DTE::on_cmux(size_t len)
     }
     return true;
 }
-
-
-void DTE::setup_cmux()
+void CMUXedTerminal::setup_cmux()
 {
-//    if (type == (FT_UA | PF)) {
-//        ESP_LOGI("CMUX", "SAMB ok");
-//    }
-
-    s_dte = this;
+    s_cmux = this;
     frame_header_offset = 0;
     state = cmux_state::INIT;
     term->set_data_cb(s_on_cmux);
@@ -246,6 +209,15 @@ void DTE::setup_cmux()
         send_sabm(i);
         vTaskDelay(100 / portTICK_PERIOD_MS); // Waiting before open next DLC
     }
+}
+
+void DTE::setup_cmux()
+{
+    auto original_term = std::move(term);
+    auto cmux_term = std::make_unique<CMUXedTerminal>(std::move(original_term), std::move(buffer), buffer_size);
+    buffer_size = 0;
+    cmux_term->setup_cmux();
+    term = std::move(cmux_term);
 }
 
 
@@ -268,4 +240,24 @@ void DTE::send_cmux_command(uint8_t i, const std::string& command)
     ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_INFO);
     ESP_LOG_BUFFER_HEXDUMP("Send", (uint8_t *)command.c_str(), command.length(), ESP_LOG_INFO);
     ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_INFO);
+}
+
+int CMUXedTerminal::write(uint8_t *data, size_t len) {
+
+    size_t i = 1;
+    uint8_t frame[6];
+    frame[0] = SOF_MARKER;
+    frame[1] = (i << 2) + 1;
+    frame[2] = FT_UIH;
+    frame[3] = (len << 1) + 1;
+    frame[4] = 0xFF - crc8(&frame[1], 3, FCS_POLYNOMIAL, FCS_INIT_VALUE, true);
+    frame[5] = SOF_MARKER;
+
+    term->write(frame, 4);
+    term->write(data, len);
+    term->write(frame + 4, 2);
+    ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP("Send", data, len, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_INFO);
+    return 0;
 }

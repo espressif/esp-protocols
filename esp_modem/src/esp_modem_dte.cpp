@@ -4,16 +4,8 @@
 
 DTE::DTE(std::unique_ptr<Terminal> terminal):
         buffer_size(DTE_BUFFER_SIZE), consumed(0),
-//        buffer(std::make_shared<std::vector<uint8_t>>(buffer_size)),
-//        buffer(new uint8_t[buffer_size], std::default_delete<uint8_t[]>()),
-//        buffer(new uint8_t[buffer_size], std::default_delete<uint8_t[]>()),
-//        buffer(nullptr),
         buffer(std::make_unique<uint8_t[]>(buffer_size)),
-        term(std::move(terminal)), mode(dte_mode::UNDEF)
-{
-//    buffer = new std::shared_ptr<uint8_t[]>(buffer_size, [](uint8_t p[]){ delete[] p;});
-
-}
+        term(std::move(terminal)), mode(dte_mode::UNDEF) {}
 
 command_result DTE::command(const std::string& command, got_line_cb got_line, uint32_t time_ms)
 {
