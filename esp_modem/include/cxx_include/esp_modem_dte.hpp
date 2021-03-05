@@ -33,16 +33,23 @@ protected:
     std::function<void(terminal_error)> on_error;
 };
 
+
+enum class cmux_state {
+    INIT,
+    HEADER,
+    PAYLOAD,
+    FOOTER,
+
+};
+
 class CMUXedTerminal: public Terminal {
 public:
-    explicit CMUXedTerminal(std::unique_ptr<Terminal> t, std::shared_ptr<uint8_t[]> b):
+    explicit CMUXedTerminal(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
             term(std::move(t)), buffer(std::move(b)) {}
     ~CMUXedTerminal() override = default;
-    void setup_cmux() {
-
-    }
+    void setup_cmux();
     void set_data_cb(std::function<bool(size_t len)> f) override {}
-    int write(uint8_t *data, size_t len) override { return term->write(data, len); }
+    int write(uint8_t *data, size_t len) override;
     int read(uint8_t *data, size_t len)  override { return term->read(data, len); }
     void start() override;
     void stop() override {}
@@ -50,7 +57,18 @@ private:
     static bool process_cmux_recv(size_t len);
     void send_sabm(size_t i);
     std::unique_ptr<Terminal> term;
-    std::shared_ptr<uint8_t[]> buffer;
+    cmux_state state;
+    uint8_t dlci;
+    uint8_t type;
+    size_t payload_len;
+    uint8_t frame_header[6];
+    size_t frame_header_offset;
+    size_t buffer_size;
+    size_t consumed;
+    std::unique_ptr<uint8_t[]> buffer;
+    bool on_cmux(size_t len);
+    static bool s_on_cmux(size_t len);
+
 };
 
 
@@ -74,15 +92,29 @@ struct CMUXHelper {
     void send_sabm(size_t dlci);
 };
 
-enum class cmux_state {
-    INIT,
-    HEADER,
-    PAYLOAD,
-    FOOTER,
 
-};
 
 typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
+
+//class CMUX {
+//public:
+//    void setup_cmux();
+//    void send_sabm(size_t dlci);
+//
+//    bool on_cmux(size_t len);
+//    static bool s_on_cmux(size_t len);
+//    cmux_state state;
+//    uint8_t dlci;
+//    uint8_t type;
+//    size_t payload_len;
+//    uint8_t frame_header[6];
+//    size_t frame_header_offset;
+//    size_t buffer_size;
+//    size_t consumed;
+////    std::shared_ptr<std::vector<uint8_t>> buffer;
+//    std::unique_ptr<uint8_t[]> buffer;
+//
+//};
 
 class DTE {
 public:
@@ -122,9 +154,9 @@ public:
 
     void send_cmux_command(uint8_t i, const std::string& command);
 private:
-
+//    std::unique_ptr<CMUXedTerminal> cmux;
     void setup_cmux();
-    void send_sabm(size_t dlci);
+//    void send_sabm(size_t dlci);
 //    CMUXHelper cmux;
     static const size_t GOT_LINE = BIT0;
     size_t buffer_size;
@@ -132,19 +164,12 @@ private:
 //    std::shared_ptr<std::vector<uint8_t>> buffer;
     std::unique_ptr<uint8_t[]> buffer;
     std::unique_ptr<Terminal> term;
-    got_line_cb on_line;
+//    got_line_cb on_line;
     dte_mode mode;
     signal_group signal;
     std::function<bool(size_t len)> on_data;
 
-    bool on_cmux(size_t len);
-    static bool s_on_cmux(size_t len);
-    cmux_state state;
-    uint8_t dlci;
-    uint8_t type;
-    size_t payload_len;
-    uint8_t frame_header[6];
-    size_t frame_header_offset;
+
 };
 
 
