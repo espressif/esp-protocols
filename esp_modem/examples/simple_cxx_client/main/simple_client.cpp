@@ -294,10 +294,10 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 
     std::string apn = "internet";
     auto device = create_device(uart_dte, apn);
-//    bool pin_ok = true;
-//    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
-//        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
-//    }
+    bool pin_ok = true;
+    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
+        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
+    }
 
 //
 //    std::string number;
@@ -315,17 +315,16 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
     auto my_dce = create_dce(uart_dte, device, esp_netif);
 
 //    return;
-    my_dce->set_cmux();
+//    my_dce->set_cmux();
 //    my_dce->set_cmux();
 
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-//        uart_dte->send_cmux_command(1, "AT+CPIN?\r");
-        uart_dte->write((uint8_t*)"AT+CPIN?\r", 9);
-
-    }
+//    while (1) {
+//        vTaskDelay(pdMS_TO_TICKS(1000));
+//        uart_dte->write((uint8_t*)"AT+CPIN?\r", 9);
+//
+//    }
 //    uart_dte->send_cmux_command(2, "AT+CPIN?");
-    return;
+//    return;
 
     my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);

@@ -6,6 +6,8 @@
 #define SIMPLE_CXX_CLIENT_TERMINAL_OBJECTS_HPP
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
+
 
 
 class esp_err_exception: virtual public std::exception {
@@ -43,6 +45,29 @@ static inline void throw_if_esp_fail(esp_err_t err)
         throw(esp_err_exception(err));
     }
 }
+
+struct Lock {
+    explicit Lock(): lock(nullptr)
+    {
+        lock = xSemaphoreCreateMutex();
+        throw_if_false(lock != nullptr, "create signal event group failed");
+    }
+    ~Lock() { vSemaphoreDelete(lock); }
+    void take() { xSemaphoreTake(lock, portMAX_DELAY); }
+
+    void give() { xSemaphoreGive(lock); }
+    xSemaphoreHandle lock;
+};
+
+template<class T>
+class Scoped {
+public:
+    explicit Scoped(T &l):lock(l) { lock.take(); }
+    ~Scoped() { lock.give(); }
+
+private:
+    T& lock;
+};
 
 struct signal_group {
     explicit signal_group(): event_group(nullptr)

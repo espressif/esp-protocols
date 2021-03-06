@@ -9,6 +9,7 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
 
 command_result DTE::command(const std::string& command, got_line_cb got_line, uint32_t time_ms)
 {
+    Scoped<Lock> l(lock);
     command_result res = command_result::TIMEOUT;
     term->write((uint8_t *)command.c_str(), command.length());
     term->set_data_cb([&](size_t len){
