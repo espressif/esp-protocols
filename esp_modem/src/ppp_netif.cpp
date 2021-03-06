@@ -88,7 +88,7 @@ PPP::PPP(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif):
 
 void PPP::start()
 {
-    ppp_dte->set_data_cb([&](size_t len) -> bool {
+    ppp_dte->set_data_cb([this](size_t len) -> bool {
         uint8_t *data;
         auto actual_len = ppp_dte->read(&data, len);
         receive(data, actual_len);

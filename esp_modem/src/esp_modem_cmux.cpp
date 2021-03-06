@@ -94,13 +94,6 @@ bool CMUXedTerminal::process_cmux_recv(size_t len)
     return false;
 }
 
-static CMUXedTerminal * s_cmux;
-bool CMUXedTerminal::s_on_cmux(size_t len)
-{
-    s_cmux->on_cmux(len);
-    return false;
-}
-
 bool output(uint8_t *data, size_t len, std::string message)
 {
     printf("OUTPUT: %s len=%d \n", message.c_str(), len);
@@ -130,6 +123,9 @@ bool CMUXedTerminal::on_cmux(size_t len)
     size_t footer_offset = 0;
     while (available_len > 0) {
         switch (state) {
+            case cmux_state::RECOVER:
+                // TODO: Implement recovery, looking for SOF_MARKER's
+                break;
             case cmux_state::INIT:
                 if (frame[0] != SOF_MARKER) {
                     ESP_LOGW("CMUX", "TODO: Recover!");
@@ -199,10 +195,12 @@ bool CMUXedTerminal::on_cmux(size_t len)
 }
 void CMUXedTerminal::setup_cmux()
 {
-    s_cmux = this;
     frame_header_offset = 0;
     state = cmux_state::INIT;
-    term->set_data_cb(s_on_cmux);
+    term->set_data_cb([this](size_t len){
+        this->on_cmux(len);
+        return false;
+    });
 
     for (size_t i = 0; i < 3; i++)
     {
