@@ -39,7 +39,7 @@ enum class cmux_state {
     HEADER,
     PAYLOAD,
     FOOTER,
-
+    RECOVER,
 };
 
 class CMUXedTerminal: public Terminal {
@@ -67,7 +67,6 @@ private:
     size_t consumed;
     std::unique_ptr<uint8_t[]> buffer;
     bool on_cmux(size_t len);
-    static bool s_on_cmux(size_t len);
 
 };
 
@@ -95,26 +94,6 @@ struct CMUXHelper {
 
 
 typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
-
-//class CMUX {
-//public:
-//    void setup_cmux();
-//    void send_sabm(size_t dlci);
-//
-//    bool on_cmux(size_t len);
-//    static bool s_on_cmux(size_t len);
-//    cmux_state state;
-//    uint8_t dlci;
-//    uint8_t type;
-//    size_t payload_len;
-//    uint8_t frame_header[6];
-//    size_t frame_header_offset;
-//    size_t buffer_size;
-//    size_t consumed;
-////    std::shared_ptr<std::vector<uint8_t>> buffer;
-//    std::unique_ptr<uint8_t[]> buffer;
-//
-//};
 
 class DTE {
 public:
@@ -154,6 +133,7 @@ public:
 
     void send_cmux_command(uint8_t i, const std::string& command);
 private:
+    Lock lock;
 //    std::unique_ptr<CMUXedTerminal> cmux;
     void setup_cmux();
 //    void send_sabm(size_t dlci);
