@@ -16,7 +16,7 @@
 #include "esp_modem_netif.h"
 #include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
-#include "cxx_include/uart_terminal.hpp"
+
 #include "cxx_include/esp_modem_api.hpp"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
@@ -266,7 +266,7 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
     uint8_t data[32] = {};
     int actual_len = 0;
     auto uart_dte = create_uart_dte(dte_config);
-    uart_dte->set_mode(dte_mode::UNDEF);
+    uart_dte->set_mode(modem_mode::UNDEF);
     uart_dte->command("+++", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
@@ -293,14 +293,15 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
     assert(esp_netif);
 
     std::string apn = "internet";
-    auto device = create_device(uart_dte, apn);
-    bool pin_ok = true;
-    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
-        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
-    }
+//    auto device = create_generic_module(uart_dte, apn);
+    auto device = create_SIM7600_module(uart_dte, apn);
+//    bool pin_ok = true;
+//    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
+//        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
+//    }
 
 //
-//    std::string number;
+    std::string number;
 //    std::cout << "----" << std::endl;
 //    device->get_imsi(number);
 //    std::cout << "----" << std::endl;
@@ -312,7 +313,14 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //    device->get_module_name(number);
 //    std::cout << "|" << number << "|" << std::endl;
 //    std::cout << "----" << std::endl;
-    auto my_dce = create_dce(uart_dte, device, esp_netif);
+//    auto my_dce = create_generic_module_dce(uart_dte, device, esp_netif);
+    auto my_dce = create_SIM7600_dce_from_module(uart_dte, device, esp_netif);
+    my_dce->get_module_name(number);
+    std::cout << "|" << number << "|" << std::endl;
+    bool pin_ok = true;
+    if (my_dce->read_pin(pin_ok) == command_result::OK && !pin_ok) {
+        throw_if_false(my_dce->set_pin("1234") == command_result::OK, "Cannot set PIN!");
+    }
 
 //    return;
 //    my_dce->set_cmux();
@@ -325,6 +333,9 @@ static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_con
 //    }
 //    uart_dte->send_cmux_command(2, "AT+CPIN?");
 //    return;
+
+    my_dce->get_module_name(number);
+    my_dce->set_data_mode();
 
     my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);

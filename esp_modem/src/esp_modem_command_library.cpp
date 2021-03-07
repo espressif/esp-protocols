@@ -1,24 +1,18 @@
 //
-// Created by david on 3/2/21.
+// Created by david on 3/8/21.
 //
 
-#ifndef SIMPLE_CXX_CLIENT_ESP_MODEM_COMMANDS_HPP
-#define SIMPLE_CXX_CLIENT_ESP_MODEM_COMMANDS_HPP
-
-#include "esp_modem_dte.hpp"
-#include "esp_modem_dce_commands.hpp"
+#include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_dce_module.hpp"
+#include "cxx_include/esp_modem_command_library.hpp"
 #include <string.h>
 
-enum class command_result;
-
-
-
+// TODO: Remove iostream
 #include <iostream>
 
-namespace esp_modem {
-namespace dce_commands {
+namespace esp_modem::dce_commands {
 
-template <typename T> static inline command_result generic_command(T t, const std::string& command,
+static inline command_result generic_command(CommandableIf* t, const std::string& command,
                                                                    const std::string& pass_phrase,
                                                                    const std::string& fail_phrase, uint32_t timeout_ms)
 {
@@ -35,16 +29,8 @@ template <typename T> static inline command_result generic_command(T t, const st
         return command_result::TIMEOUT;
     }, timeout_ms);
 }
-static inline void strip_cr_lf_tail(char *str, uint32_t len)
-{
-    if (str[len - 2] == '\r') {
-        str[len - 2] = '\0';
-    } else if (str[len - 1] == '\r') {
-        str[len - 1] = '\0';
-    }
-}
 
-template <typename T> static inline command_result generic_get_string(T t, const std::string& command, std::string& output, uint32_t timeout_ms)
+static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms)
 {
     std::cout << command << std::endl;
     return t->command(command.c_str(), [&](uint8_t *data, size_t len) {
@@ -62,13 +48,7 @@ template <typename T> static inline command_result generic_get_string(T t, const
             } else if (token.find("ERROR") != std::string::npos) {
                 return command_result::FAIL;
             } else if (token.length() > 2) {
-//            response.resize(response.find('\r'));
-//            response.erase(std::find(response.begin(), response.end(), '\r'), response.end());
-//                std::cout << "|" << output << "|" << std::endl;
-//                const std::string& out(response);
-                output = token; //.substr(0,-1);
-                std::cout << "|" << token << "|" << std::endl;
-//                std::cout << output << std::endl;
+                output = token;
             }
             response = response.substr(pos+1);
         }
@@ -76,42 +56,42 @@ template <typename T> static inline command_result generic_get_string(T t, const
     }, timeout_ms);
 }
 
-template <typename T> static inline command_result generic_command_common(T t, std::string command)
+static inline command_result generic_command_common(CommandableIf* t, std::string command)
 {
     return generic_command(t, command, "OK", "ERROR", 500);
 }
 
 
-template <typename T> command_result sync(T t)
+command_result sync(CommandableIf* t)
 {
     return generic_command_common(t, "AT\r");
 }
 
-template <typename T> command_result set_echo(T t, bool on)
+command_result set_echo(CommandableIf* t, bool on)
 {
     if (on)
         return generic_command_common(t, "ATE1\r");
     return generic_command_common(t, "ATE0\r");
 }
 
-template <typename T> command_result set_pdp_context(T t, PdpContext& pdp)
+command_result set_pdp_context(CommandableIf* t, PdpContext& pdp)
 {
     std::string pdp_command = "AT+CGDCONT=" + std::to_string(pdp.context_id) +
                               ",\"" + pdp.protocol_type + "\",\"" + pdp.apn + "\"\r";
     return generic_command_common(t, pdp_command);
 }
 
-template <typename T> command_result set_data_mode(T t)
+command_result set_data_mode(CommandableIf* t)
 {
     return generic_command(t, "ATD*99##\r", "CONNECT", "ERROR", 5000);
 }
 
-template <typename T> command_result resume_data_mode(T t)
+command_result resume_data_mode(CommandableIf* t)
 {
     return generic_command(t, "ATO\r", "CONNECT", "ERROR", 5000);
 }
 
-template <typename T> command_result set_command_mode(T t)
+command_result set_command_mode(CommandableIf* t)
 {
     std::cout << "Sending +++" << std::endl;
     return t->command("+++", [&](uint8_t *data, size_t len) {
@@ -128,27 +108,27 @@ template <typename T> command_result set_command_mode(T t)
     }, 5000);
 }
 
-template <typename T> command_result get_imsi(T t, std::string& imsi_number)
+command_result get_imsi(CommandableIf* t, std::string& imsi_number)
 {
     return generic_get_string(t, "AT+CIMI\r", imsi_number, 5000);
 }
 
-template <typename T> command_result get_imei(T t, std::string& out)
+command_result get_imei(CommandableIf* t, std::string& out)
 {
     return generic_get_string(t, "AT+CGSN\r", out, 5000);
 }
 
-template <typename T> command_result get_module_name(T t, std::string& out)
+command_result get_module_name(CommandableIf* t, std::string& out)
 {
     return generic_get_string(t, "AT+CGMM\r", out, 5000);
 }
 
-template <typename T> command_result set_cmux(T t)
+command_result set_cmux(CommandableIf* t)
 {
     return generic_command_common(t, "AT+CMUX=0\r");
 }
 
-template <typename T> command_result read_pin(T t, bool& pin_ok)
+command_result read_pin(CommandableIf* t, bool& pin_ok)
 {
     std::cout << "Sending read_pin" << std::endl;
     return t->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
@@ -167,15 +147,11 @@ template <typename T> command_result read_pin(T t, bool& pin_ok)
     }, 5000);
 }
 
-template <typename T> command_result set_pin(T t, const std::string& pin)
+command_result set_pin(CommandableIf* t, const std::string& pin)
 {
     std::cout << "Sending set_pin" << std::endl;
     std::string set_pin_command = "AT+CPIN=" + pin + "\r";
     return generic_command_common(t, set_pin_command);
 }
 
-} // dce_commands
-} // esp_modem
-
-
-#endif //SIMPLE_CXX_CLIENT_ESP_MODEM_COMMANDS_HPP
+} // esp_modem::dce_commands
