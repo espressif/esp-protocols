@@ -5,15 +5,12 @@
 #include <utility>
 #include <esp_log.h>
 #include <esp_event.h>
-#include "cxx_include/ppp_netif.hpp"
+#include "cxx_include/esp_modem_netif.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_netif_ppp.h"
 
 #include <iostream>
 
-//struct ppp_netif_driver {
-//    esp_netif_driver_base_t base;
-//};
 
 void PPP::on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)

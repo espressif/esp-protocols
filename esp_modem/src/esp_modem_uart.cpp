@@ -177,10 +177,7 @@ std::unique_ptr<Terminal> create_uart_terminal(const dte_config *config)
         ESP_LOGE(TAG, "%s", e.what());
         return nullptr;
     }
-
 }
-
-
 
 void uart_terminal::task()
 {
