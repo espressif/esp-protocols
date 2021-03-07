@@ -2,11 +2,11 @@
 // Created by david on 2/26/21.
 //
 
-#ifndef SIMPLE_CXX_CLIENT_PPP_NETIF_HPP
-#define SIMPLE_CXX_CLIENT_PPP_NETIF_HPP
+#ifndef SIMPLE_CXX_CLIENT_ESP_MODEM_NETIF_HPP
+#define SIMPLE_CXX_CLIENT_ESP_MODEM_NETIF_HPP
 
 #include "esp_netif.h"
-#include "cxx_include/terminal_objects.hpp"
+#include "cxx_include/esp_modem_primitives.hpp"
 
 class DTE;
 class PPP;
@@ -42,4 +42,4 @@ private:
 };
 
 
-#endif //SIMPLE_CXX_CLIENT_PPP_NETIF_HPP
+#endif //SIMPLE_CXX_CLIENT_ESP_MODEM_NETIF_HPP

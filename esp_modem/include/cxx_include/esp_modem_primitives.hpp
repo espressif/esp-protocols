@@ -2,8 +2,8 @@
 // Created by david on 2/26/21.
 //
 
-#ifndef SIMPLE_CXX_CLIENT_TERMINAL_OBJECTS_HPP
-#define SIMPLE_CXX_CLIENT_TERMINAL_OBJECTS_HPP
+#ifndef SIMPLE_CXX_CLIENT_ESP_MODEM_PRIMITIVES_HPP
+#define SIMPLE_CXX_CLIENT_ESP_MODEM_PRIMITIVES_HPP
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
@@ -49,7 +49,7 @@ static inline void throw_if_esp_fail(esp_err_t err)
 struct Lock {
     explicit Lock(): lock(nullptr)
     {
-        lock = xSemaphoreCreateMutex();
+        lock = xSemaphoreCreateRecursiveMutex();
         throw_if_false(lock != nullptr, "create signal event group failed");
     }
     ~Lock() { vSemaphoreDelete(lock); }
@@ -111,4 +111,4 @@ struct signal_group {
     EventGroupHandle_t event_group;
 };
 
-#endif //SIMPLE_CXX_CLIENT_TERMINAL_OBJECTS_HPP
+#endif //SIMPLE_CXX_CLIENT_ESP_MODEM_PRIMITIVES_HPP

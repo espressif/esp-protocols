@@ -5,10 +5,11 @@
 DTE::DTE(std::unique_ptr<Terminal> terminal):
         buffer_size(DTE_BUFFER_SIZE), consumed(0),
         buffer(std::make_unique<uint8_t[]>(buffer_size)),
-        term(std::move(terminal)), mode(dte_mode::UNDEF) {}
+        term(std::move(terminal)), mode(modem_mode::UNDEF) {}
 
-command_result DTE::command(const std::string& command, got_line_cb got_line, uint32_t time_ms)
+command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms)
 {
+//    assert(term_id < term->max_virtual_terms());
     Scoped<Lock> l(lock);
     command_result res = command_result::TIMEOUT;
     term->write((uint8_t *)command.c_str(), command.length());
