@@ -9,10 +9,10 @@ class GenericModule;
 class SIM7600;
 class SIM800;
 class BG96;
-struct dte_config;
+struct esp_modem_dte_config;
 typedef struct esp_netif_obj esp_netif_t;
 
-std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
+std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config);
 
 
 std::shared_ptr<GenericModule> create_generic_module(const std::shared_ptr<DTE>& dte, std::string &apn);

@@ -16,7 +16,7 @@ namespace dce_commands {
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
         return_type name(CommandableIf *t, ## __VA_ARGS__);
 
-        DECLARE_ALL_COMMAND_APIS(forwards name(...) { device->name(...); } )
+        DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
