@@ -6,14 +6,14 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "driver/uart.h"
-#include "esp_modem_dte_config.h"
+#include "esp_modem_config.h"
 
 #define ESP_MODEM_EVENT_QUEUE_SIZE (16)
 
 static const char *TAG = "uart_terminal";
 
 struct uart_resource {
-    explicit uart_resource(const struct dte_config *config);
+    explicit uart_resource(const esp_modem_dte_config *config);
 
     ~uart_resource();
 
@@ -72,7 +72,7 @@ uart_resource::~uart_resource()
 }
 
 
-uart_resource::uart_resource(const struct dte_config *config):
+uart_resource::uart_resource(const esp_modem_dte_config *config):
         port(-1)
 {
     esp_err_t res;
@@ -119,7 +119,7 @@ uart_resource::uart_resource(const struct dte_config *config):
 
 class uart_terminal: public Terminal {
 public:
-    explicit  uart_terminal(const struct dte_config *config):
+    explicit  uart_terminal(const esp_modem_dte_config *config):
             uart(config), event_loop(), signal(),
             task_handle(config->event_task_stack_size, config->event_task_priority, this, s_task) {}
 
@@ -162,7 +162,7 @@ private:
 
 };
 
-std::unique_ptr<Terminal> create_uart_terminal(const dte_config *config)
+std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config)
 {
     try {
         auto term = std::make_unique<uart_terminal>(config);

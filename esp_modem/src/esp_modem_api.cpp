@@ -6,11 +6,12 @@
 #include "esp_log.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "esp_modem_api.h"
+#include "esp_modem_config.h"
 
 static const char *TAG = "dce_factory";
 struct PdpContext;
 
-std::shared_ptr<DTE> create_uart_dte(const dte_config *config)
+std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config)
 {
     try {
         auto term = create_uart_terminal(config);
@@ -85,7 +86,7 @@ static inline esp_err_t command_response_to_esp_err(command_result res)
     return ESP_ERR_INVALID_ARG;
 }
 
-extern "C" esp_modem_t *esp_modem_new(const dte_config *config, esp_netif_t *netif, const char* apn)
+extern "C" esp_modem_t *esp_modem_new(const esp_modem_dte_config *config, esp_netif_t *netif, const char* apn)
 {
     auto dce_wrap = new (std::nothrow) esp_modem_dce_wrap;
     if (dce_wrap == nullptr)
