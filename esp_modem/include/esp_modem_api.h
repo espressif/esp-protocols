@@ -12,7 +12,7 @@ extern "C" {
 
 typedef struct esp_modem_dce_wrap esp_modem_t;
 
-esp_modem_t *esp_modem_new(const dte_config *config, esp_netif_t *netif, const char* apn);
+esp_modem_t *esp_modem_new(const esp_modem_dte_config *config, esp_netif_t *netif, const char* apn);
 
 void esp_modem_destroy(esp_modem_t * dce);
 

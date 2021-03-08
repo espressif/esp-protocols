@@ -7,10 +7,9 @@
 
 #include "cxx_include/esp_modem_dte.hpp"
 
+struct esp_modem_dte_config;
 
-struct dte_config;
-
-std::unique_ptr<Terminal> create_uart_terminal(const dte_config *config);
+std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config);
 
 
 
