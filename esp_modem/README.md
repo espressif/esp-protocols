@@ -1,74 +1,35 @@
 # ESP MODEM
 
-This component is used to communicate with modems in command and data modes. 
-It abstracts the UART I/O processing into a DTE (data terminal equipment) entity which is configured and setup separately.
-On top of the DTE, the command and data processing is performed in a DCE (data communication equipment) unit.
+This component is used to communicate with modems in the command mode (using AT commands), as well as the data mode
+(over PPPoS protocol). 
+The modem device is modeled with a DCE (Data Communication Equipment) object, which is composed of:
+* DTE (Data Terminal Equipment), which abstracts the terminal (currently only UART implemented).
+* PPP Netif representing a network interface communicating with the DTE using PPP protocol.
+* Module abstracting the specific device model and its commands.
+
 ```
    +-----+   
    | DTE |--+
    +-----+  |   +-------+
-            +-->|       |
-   +-----+      |       |
-   | DTE |----->| modem |---> modem events
-   +-----+      |       |
+            +-->|   DCE |
+   +-------+    |       |o--- set_mode(command/data)
+   | Module|--->|       |
+   +-------+    |       |o--- send_commands
              +->|       |
    +------+  |  +-------+ 
-   | PPP  |--+   |   |
-   | netif|-----------------> network events
-   +------+      |   |
-                 |   |
-    start-ppp----+   |
-    stop-ppp---------+
+   | PPP  |--+ 
+   | netif|------------------> network events
+   +------+ 
 ```
-
-## Start-up sequence
-
-To initialize the modem we typically:
-* create DTE with desired UART parameters
-* create DCE with desired command palette
-* create PPP netif with desired network parameters
-* attach the DTE, DCE and PPP together to start the esp-modem
-* configure event handlers for the modem and the netif
-
-Then we can start and stop PPP mode using esp-modem API, receive events from the `ESP_MODEM` base, as well as from netif (IP events).
-
-### DTE
-
-Responsibilities of the DTE unit are
-* sending/receiving commands to/from UART 
-* sending/receiving data to/from UART 
-* changing data/command mode on physical layer
 
 ### DCE
 
-Responsibilities of the DCE unit are
-* definition of available commands
-* cooperate with DTE on changing data/command mode
+This is the basic operational unit of the esp_modem component, abstracting a specific module in software,
+which is basically configured by 
+* the I/O communication media (UART), defined by the DTE configuration
+* the specific command library supported by the device model, defined with the module type
+* network interface configuration (PPPoS config in lwip)
 
-#### DCE configuration
-
-DCE unit configuration structure contains:
-* device -- sets up predefined commands for this specific modem device
-* pdp context -- used to setup cellular network
-* populate command list -- uses runtime configurable linked list of commands. New commands could be added and/or 
-existing commands could be modified. This might be useful for some applications, which have to (re)define
-and execute multiple AT commands. For other applications, which typically just connect to network, this option
-might be preferably turned off (as the consumes certain amount of data memory)
-
-### PPP-netif
-
-The modem-netif attaches the network interface (which was created outside of esp-modem) to the DTE and
-serves as a glue layer between esp-netif and esp-modem.
-
-### Additional units
-
-ESP-MODEM provides also provides a helper module to define a custom retry/reset strategy using:
-* a very simple GPIO pulse generator, which could be typically used to reset or power up/down the module
-* a command executor abstraction, that helps with retrying sending commands in case of a failure or a timeout
-and run user defined recovery actions.
-
-## Modification of existing DCE
-
-In order to support an arbitrary modem, device or introduce a new command we typically have to either modify the DCE,
-adding a new or altering an existing command or creating a new "subclass" of the existing DCE variants.
-
+After the object is created, the application interaction with the DCE is in
+* issuing specific commands to the modem
+* switching between data and command mode
