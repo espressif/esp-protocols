@@ -7,41 +7,24 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "esp_modem_api.h"
 #include "esp_modem_config.h"
+#include "exception_stub.hpp"
 
-static const char *TAG = "dce_factory";
 struct PdpContext;
 
 std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config)
 {
-    try {
+    TRY_CATCH_RET_NULL(
         auto term = create_uart_terminal(config);
         return std::make_shared<DTE>(std::move(term));
-    } catch (std::bad_alloc& e) {
-        ESP_LOGE(TAG, "Out of memory");
-        return nullptr;
-    } catch (esp_err_exception& e) {
-        esp_err_t err = e.get_err_t();
-        ESP_LOGE(TAG, "Error occurred during UART term init: %d", err);
-        ESP_LOGE(TAG, "%s", e.what());
-        return nullptr;
-    }
-
+    )
 }
 
 template<typename SpecificModule>
 std::unique_ptr<DCE<SpecificModule>> create_dce(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SpecificModule>& dev, esp_netif_t *netif)
 {
-    try {
+    TRY_CATCH_RET_NULL(
         return std::make_unique<DCE<SpecificModule>>(dte, dev, netif);
-    } catch (std::bad_alloc& e) {
-        ESP_LOGE(TAG, "Out of memory");
-        return nullptr;
-    } catch (esp_err_exception& e) {
-        esp_err_t err = e.get_err_t();
-        ESP_LOGE(TAG, "Error occurred during UART term init: %d", err);
-        ESP_LOGE(TAG, "%s", e.what());
-        return nullptr;
-    }
+    )
 }
 
 std::unique_ptr<DCE<GenericModule>> create_generic_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<GenericModule>& dev, esp_netif_t *netif)
@@ -86,7 +69,7 @@ static inline esp_err_t command_response_to_esp_err(command_result res)
     return ESP_ERR_INVALID_ARG;
 }
 
-extern "C" esp_modem_t *esp_modem_new(const esp_modem_dte_config *config, esp_netif_t *netif, const char* apn)
+extern "C" esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *config, esp_netif_t *netif, const char* apn)
 {
     auto dce_wrap = new (std::nothrow) esp_modem_dce_wrap;
     if (dce_wrap == nullptr)
@@ -99,7 +82,7 @@ extern "C" esp_modem_t *esp_modem_new(const esp_modem_dte_config *config, esp_ne
     return dce_wrap;
 }
 
-extern "C" void esp_modem_destroy(esp_modem_t * dce)
+extern "C" void esp_modem_destroy(esp_modem_dce_t * dce)
 {
     assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
     auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
@@ -107,7 +90,21 @@ extern "C" void esp_modem_destroy(esp_modem_t * dce)
     delete dce;
 }
 
-extern "C" esp_err_t esp_modem_read_pin(esp_modem_t * dce, bool &x)
+extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode)
+{
+    assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
+    auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
+    if (mode == ESP_MODEM_MODE_DATA) {
+        dce_sim7600->set_data();
+    } else if (mode == ESP_MODEM_MODE_COMMAND) {
+        dce_sim7600->set_data();
+    } else {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    return ESP_OK;
+}
+
+extern "C" esp_err_t esp_modem_read_pin(esp_modem_dce_t * dce, bool &x)
 {
     assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
     auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
