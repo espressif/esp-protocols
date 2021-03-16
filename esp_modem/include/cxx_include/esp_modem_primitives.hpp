@@ -8,8 +8,8 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-
-
+#ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
+#define THROW(exception) throw(exception)
 class esp_err_exception: virtual public std::exception {
 public:
     explicit esp_err_exception(esp_err_t err): esp_err(err) {}
@@ -24,25 +24,28 @@ private:
     esp_err_t esp_err;
     std::string message;
 };
+#else
+#define THROW(exception) abort()
+#endif
 
 static inline void throw_if_false(bool condition, std::string message)
 {
     if (!condition) {
-        throw(esp_err_exception(std::move(message)));
+        THROW(esp_err_exception(std::move(message)));
     }
 }
 
 static inline void throw_if_esp_fail(esp_err_t err, std::string message)
 {
     if (err != ESP_OK) {
-        throw(esp_err_exception(std::move(message), err));
+        THROW(esp_err_exception(std::move(message), err));
     }
 }
 
 static inline void throw_if_esp_fail(esp_err_t err)
 {
     if (err != ESP_OK) {
-        throw(esp_err_exception(err));
+        THROW(esp_err_exception(err));
     }
 }
 
