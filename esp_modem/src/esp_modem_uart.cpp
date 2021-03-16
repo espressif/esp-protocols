@@ -7,6 +7,7 @@
 #include "esp_event.h"
 #include "driver/uart.h"
 #include "esp_modem_config.h"
+#include "exception_stub.hpp"
 
 #define ESP_MODEM_EVENT_QUEUE_SIZE (16)
 
@@ -164,19 +165,11 @@ private:
 
 std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config)
 {
-    try {
+    TRY_CATCH_RET_NULL(
         auto term = std::make_unique<uart_terminal>(config);
         term->start();
         return term;
-    } catch (std::bad_alloc& e) {
-        ESP_LOGE(TAG, "Out of memory");
-        return nullptr;
-    } catch (esp_err_exception& e) {
-        esp_err_t err = e.get_err_t();
-        ESP_LOGE(TAG, "Error occurred during UART term init: %d", err);
-        ESP_LOGE(TAG, "%s", e.what());
-        return nullptr;
-    }
+    )
 }
 
 void uart_terminal::task()
