@@ -11,6 +11,8 @@
 
 struct PdpContext;
 
+static const char *TAG = "modem_api";
+
 std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config)
 {
     TRY_CATCH_RET_NULL(

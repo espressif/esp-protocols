@@ -7,7 +7,7 @@
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
 #define TRY_CATCH_RET_NULL(block) \
-    try { block }  \
+    try { block                   \
     } catch (std::bad_alloc& e) { \
         ESP_LOGE(TAG, "Out of memory"); \
         return nullptr; \
