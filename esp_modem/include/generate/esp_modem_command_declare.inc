@@ -7,19 +7,19 @@
 
 #ifdef __cplusplus
 #include <string>
-#define STRING_IN const std::string& string_in
-#define STRING_OUT std::string& string_out
-#define BOOL_IN const bool bool_in
-#define BOOL_OUT bool& bool_out
-#define STRUCT_OUT(struct_name)  struct_name& struct_out
+#define STRING_IN(x) const std::string& x
+#define STRING_OUT(x) std::string& x
+#define BOOL_IN(x) const bool x
+#define BOOL_OUT(x) bool& x
+#define STRUCT_OUT(struct_name, x)  struct_name& x
 #else
 struct PdpContext;
 
-#define STRING_IN const char* string_in
-#define STRING_OUT char* string_out
-#define BOOL_IN const bool bool_in
-#define BOOL_OUT bool* bool_out
-#define STRUCT_OUT(struct_name)  struct struct_name* struct_out
+#define STRING_IN(x) const char* x
+#define STRING_OUT(x) char* x
+#define BOOL_IN(x) const bool x
+#define BOOL_OUT(x) bool* x
+#define STRUCT_OUT(struct_name, x)  struct struct_name* x
 #endif
 
 
@@ -33,40 +33,40 @@ struct PdpContext;
  * @param pin Pin
  */ \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, TEMPLATE_ARG, MUX_ARG, STRING_IN) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, 1, MUX_ARG, STRING_IN(x)) \
 /**
  * @brief Checks if the SIM needs a PIN
  *
  * @param[out] pin_ok Pin
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, TEMPLATE_ARG, MUX_ARG, BOOL_OUT)           \
+ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, MUX_ARG, BOOL_OUT(x))           \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, TEMPLATE_ARG, MUX_ARG, BOOL_IN)           \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, MUX_ARG, BOOL_IN(x))           \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, TEMPLATE_ARG, MUX_ARG)           \
+ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, 0, MUX_ARG)           \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, TEMPLATE_ARG, MUX_ARG, STRUCT_OUT(PdpContext)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, 1, MUX_ARG, STRUCT_OUT(PdpContext, x)) \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_command_mode, command_result, TEMPLATE_ARG, MUX_ARG) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_command_mode, command_result, 0, MUX_ARG) \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, TEMPLATE_ARG, MUX_ARG) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, 0, MUX_ARG) \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, TEMPLATE_ARG, MUX_ARG, STRING_OUT) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, MUX_ARG, STRING_OUT(x)) \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, TEMPLATE_ARG, MUX_ARG, STRING_OUT) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, MUX_ARG, STRING_OUT(x)) \
     \
 /**
  * @brief Reads the module name
  *
  * @param[out]  module name
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, TEMPLATE_ARG, MUX_ARG, STRING_OUT) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, MUX_ARG, STRING_OUT(x)) \
 \
 /**
  * @brief Sets the modem to data mode
  *
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, TEMPLATE_ARG, MUX_ARG)
+ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0, MUX_ARG)
 
 //  --- DCE command documentation starts here ---
 #ifdef GENERATE_DOCS
