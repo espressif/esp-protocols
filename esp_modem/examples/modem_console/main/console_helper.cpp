@@ -33,6 +33,9 @@ void ConsoleCommand::RegisterCommand(const char* command, const char* help, std:
             case INT1:
                 common_arg = arg_int1(it.shortopts, it.longopts, it.datatype, it.glossary);
                 break;
+            case LIT0:
+                common_arg = arg_lit0(it.shortopts, it.longopts, it.glossary);
+                break;
         }
         if (common_arg) {
             arg_table.emplace_back(common_arg);
@@ -67,6 +70,13 @@ std::string ConsoleCommand::get_string(int index)
     return std::string();
 }
 
+int ConsoleCommand::get_int(int index)
+{
+    if (get_count(index) > 0) {
+        return *((struct arg_int *)arg_table[index])->ival;
+    }
+    return -1;
+}
 
 
 std::vector<ConsoleCommand*> ConsoleCommand::console_commands;

@@ -323,6 +323,15 @@ static esp_console_repl_t *s_repl = NULL;
 //    return (char*)&((T*)nullptr->*member) - (char*)nullptr;
 //}
 
+#define CHECK_ERR(cmd, success_action)  do { \
+        auto err = cmd; \
+        if (err == command_result::OK) {     \
+            success_action;                  \
+            return 0;                        \
+        } else {    \
+            ESP_LOGE(TAG, "Failed with %s", err == command_result::TIMEOUT ? "TIMEOUT":"ERROR");  \
+        return 1;                            \
+        } } while (0)
 
 extern "C" void app_main(void)
 {
@@ -395,6 +404,7 @@ extern "C" void app_main(void)
         }
         return 0;
     });
+
     std::vector<CommandArgs> no_args;
     ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand *c){
         bool pin_ok;
@@ -409,10 +419,35 @@ extern "C" void app_main(void)
         return 0;
     });
 
+    ConsoleCommand GetModuleName("get_module_name", "reads the module name", no_args, [&](ConsoleCommand *c){
+        std::string module_name;
+        ESP_LOGI(TAG, "Reading module name...");
+        CHECK_ERR(dce->get_module_name(module_name), ESP_LOGI(TAG, "OK. Module name: %s", module_name.c_str()));
+    });
 
+    const struct GenericCommandArgs {
+        GenericCommandArgs():
+            cmd(STR1, nullptr, nullptr, "<command>", "AT command to send to the modem"),
+            timeout(INT1, "t", "timeout", "<timeout>", "command timeout"),
+            pattern(STR0, "p", "pattern", "<pattern>", "command response to wait for"),
+            no_cr(LIT0, "n", "no-cr", "not add trailing CR to the command") {}
+        CommandArgs cmd;
+        CommandArgs timeout;
+        CommandArgs pattern;
+        CommandArgs no_cr;
+    } send_cmd_args;
+
+    ConsoleCommand SendCommand("cmd", "sends generic AT command, no_args", &send_cmd_args, sizeof(send_cmd_args), [&](ConsoleCommand *c){
+        auto cmd = c->get_string_of(&GenericCommandArgs::cmd);
+        auto timeout = c->get_int_of(&GenericCommandArgs::timeout);
+        ESP_LOGI(TAG, "Sending command %s with timeout %d", cmd.c_str(), timeout);
+        CHECK_ERR(dce->command(cmd, nullptr, timeout),
+                  ESP_LOGI(TAG, "OK"));
+    });
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
     ESP_LOGE(TAG, "Exit console!!!");
+    ESP_LOGE(TAG, "Cannot allocate memory (line: %d, free heap: %d bytes)", __LINE__, esp_get_free_heap_size());
     while(1) {
         vTaskDelay(pdMS_TO_TICKS(50000));
         ESP_LOGI(TAG, "working!");

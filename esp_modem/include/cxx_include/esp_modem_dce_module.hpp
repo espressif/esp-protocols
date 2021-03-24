@@ -38,10 +38,9 @@ public:
 
 
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
-    template <typename ...Agrs> \
-    return_type name(Agrs&&... args) { return esp_modem::dce_commands::name(dte.get(), std::forward<Agrs>(args)...); }
+    virtual return_type name(__VA_ARGS__);
 
-    DECLARE_ALL_COMMAND_APIS(return_type name(...); )
+    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...); )
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -55,16 +54,16 @@ protected:
 class SIM7600: public GenericModule {
     using GenericModule::GenericModule;
 public:
-    command_result get_module_name(std::string& name);
+//    command_result get_module_name(std::string& name) override;
 };
 
 class SIM800: public GenericModule {
     using GenericModule::GenericModule;
 public:
-    command_result get_module_name(std::string& name);
+    command_result get_module_name(std::string& name) override;
 };
 
 class BG96: public GenericModule {
 public:
-    command_result get_module_name(std::string& name);
+    command_result get_module_name(std::string& name) override;
 };
