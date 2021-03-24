@@ -19,12 +19,16 @@ enum arg_type {
     STR1,
     INT0,
     INT1,
+    LIT0,
     ARG_END,
 };
 
 struct CommandArgs {
     CommandArgs(arg_type t, const char * shopts, const char * lopts, const char * data, const char * glos):
-    type(t), shortopts(shopts), longopts(lopts), datatype(data), glossary(glos) {}
+        type(t), shortopts(shopts), longopts(lopts), datatype(data), glossary(glos) {}
+    CommandArgs(arg_type t, const char * shopts, const char * lopts, const char * glos):
+            type(t), shortopts(shopts), longopts(lopts), datatype(nullptr), glossary(glos) {}
+
     arg_type type;
     const char *shortopts;
     const char *longopts;
@@ -48,8 +52,10 @@ public:
     int get_count(int index);
     template<typename T> int get_count_of(CommandArgs T::*member) { return get_count(index_arg(member)); }
     template<typename T> std::string get_string_of(CommandArgs T::*member) { return get_string(index_arg(member)); }
+    template<typename T> int get_int_of(CommandArgs T::*member) { return get_int(index_arg(member)); }
 
     std::string get_string(int index);
+    int get_int(int index);
 
 private:
     void RegisterCommand(const char* command, const char* help, std::vector<CommandArgs>& args);

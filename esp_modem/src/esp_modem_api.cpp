@@ -22,29 +22,31 @@ std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config)
 }
 
 template<typename SpecificModule>
-std::unique_ptr<DCE<SpecificModule>> create_dce(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SpecificModule>& dev, esp_netif_t *netif)
+std::unique_ptr<DCE_T<SpecificModule>> create_dce(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SpecificModule>& dev, esp_netif_t *netif)
 {
     TRY_CATCH_RET_NULL(
-        return std::make_unique<DCE<SpecificModule>>(dte, dev, netif);
+        return std::make_unique<DCE_T<SpecificModule>>(dte, dev, netif);
     )
 }
 
-std::unique_ptr<DCE<GenericModule>> create_generic_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<GenericModule>& dev, esp_netif_t *netif)
+std::unique_ptr<DCE> create_generic_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<GenericModule>& dev, esp_netif_t *netif)
 {
-    return create_dce<GenericModule>(dte, dev, netif);
+    TRY_CATCH_RET_NULL(
+            return std::make_unique<DCE>(dte, dev, netif);
+    )
 }
 
-std::unique_ptr<DCE<SIM7600>> create_SIM7600_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SIM7600>& dev, esp_netif_t *netif)
-{
-    return create_dce<SIM7600>(dte, dev, netif);
-}
+//std::unique_ptr<DCE<SIM7600>> create_SIM7600_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SIM7600>& dev, esp_netif_t *netif)
+//{
+//    return create_dce<SIM7600>(dte, dev, netif);
+//}
 
-std::unique_ptr<DCE<SIM7600>> create_SIM7600_dce(const std::shared_ptr<DTE>& dte, esp_netif_t *netif, std::string &apn)
+std::unique_ptr<DCE> create_SIM7600_dce(const std::shared_ptr<DTE>& dte, esp_netif_t *netif, std::string &apn)
 {
     auto pdp = std::make_unique<PdpContext>(apn);
     auto dev = std::make_shared<SIM7600>(dte, std::move(pdp));
 
-    return create_dce<SIM7600>(dte, std::move(dev), netif);
+    return create_generic_dce_from_module(dte, std::move(dev), netif);
 }
 
 
@@ -87,7 +89,7 @@ extern "C" esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *config, 
 extern "C" void esp_modem_destroy(esp_modem_dce_t * dce)
 {
     assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
-    auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
+    auto dce_sim7600 = static_cast<DCE*>(dce->dce_ptr);
     delete dce_sim7600;
     delete dce;
 }
@@ -95,7 +97,7 @@ extern "C" void esp_modem_destroy(esp_modem_dce_t * dce)
 extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode)
 {
     assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
-    auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
+    auto dce_sim7600 = static_cast<DCE*>(dce->dce_ptr);
     if (mode == ESP_MODEM_MODE_DATA) {
         dce_sim7600->set_data();
     } else if (mode == ESP_MODEM_MODE_COMMAND) {
@@ -109,7 +111,7 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mod
 extern "C" esp_err_t esp_modem_read_pin(esp_modem_dce_t * dce, bool &x)
 {
     assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
-    auto dce_sim7600 = static_cast<DCE<SIM7600>*>(dce->dce_ptr);
+    auto dce_sim7600 = static_cast<DCE*>(dce->dce_ptr);
     return command_response_to_esp_err(dce_sim7600->read_pin(x));
 }
 
