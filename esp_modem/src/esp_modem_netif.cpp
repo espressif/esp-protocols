@@ -12,10 +12,10 @@
 #include <iostream>
 
 
-void PPP::on_ppp_changed(void *arg, esp_event_base_t event_base,
+void Netif::on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
-    PPP *ppp = (PPP*)arg;
+    Netif *ppp = (Netif*)arg;
 //    DTE *e = (DTE*)arg;
     std::cout << "on_ppp_changed " << std::endl;
     ESP_LOGW("TAG", "PPP state changed event %d", event_id);
@@ -29,9 +29,9 @@ void PPP::on_ppp_changed(void *arg, esp_event_base_t event_base,
     }
 }
 
-esp_err_t PPP::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
+esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
 {
-    PPP *ppp = (PPP*)h;
+    Netif *ppp = (Netif*)h;
     if (ppp->signal.is_any(PPP_STARTED)) {
         std::cout << "sending data " << len << std::endl;
         if (ppp->ppp_dte->write((uint8_t*)buffer, len) > 0) {
@@ -41,11 +41,11 @@ esp_err_t PPP::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
     return ESP_FAIL;
 }
 
-esp_err_t PPP::esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
+esp_err_t Netif::esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
 {
     auto d = (ppp_netif_driver*)args;
     esp_netif_driver_ifconfig_t driver_ifconfig = { };
-    driver_ifconfig.transmit = PPP::esp_modem_dte_transmit;
+    driver_ifconfig.transmit = Netif::esp_modem_dte_transmit;
     driver_ifconfig.handle = (void*)d->ppp;
     std::cout << "esp_modem_post_attach " << std::endl;
     d->base.netif = esp_netif;
@@ -63,7 +63,7 @@ esp_err_t PPP::esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
     return ESP_OK;
 }
 
-void PPP::receive(uint8_t *data, size_t len)
+void Netif::receive(uint8_t *data, size_t len)
 {
     if (signal.is_any(PPP_STARTED)) {
         std::cout << "received data " << len << std::endl;
@@ -71,7 +71,7 @@ void PPP::receive(uint8_t *data, size_t len)
     }
 }
 
-PPP::PPP(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif):
+Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif):
     ppp_dte(std::move(e)), netif(ppp_netif)
 {
     driver.base.netif = ppp_netif;
@@ -83,7 +83,7 @@ PPP::PPP(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif):
     throw_if_esp_fail(esp_netif_attach(ppp_netif, &driver));
 }
 
-void PPP::start()
+void Netif::start()
 {
     ppp_dte->set_data_cb([this](size_t len) -> bool {
         uint8_t *data;
@@ -95,7 +95,7 @@ void PPP::start()
     signal.set(PPP_STARTED);
 }
 
-void PPP::stop()
+void Netif::stop()
 {
     std::cout << "esp_netif_action_stop "  << std::endl;
     esp_netif_action_stop(driver.base.netif, nullptr, 0, nullptr);

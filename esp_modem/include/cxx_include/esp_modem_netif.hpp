@@ -9,18 +9,18 @@
 #include "cxx_include/esp_modem_primitives.hpp"
 
 class DTE;
-class PPP;
+class Netif;
 
 //struct ppp_netif_driver;
 struct ppp_netif_driver {
     esp_netif_driver_base_t base;
-    PPP *ppp;
+    Netif *ppp;
 };
 
 
-class PPP {
+class Netif {
 public:
-    explicit PPP(std::shared_ptr<DTE> e, esp_netif_t *netif);
+    explicit Netif(std::shared_ptr<DTE> e, esp_netif_t *netif);
 
     void start();
 //    void notify_ppp_exit() { signal.set(PPP_EXIT); }

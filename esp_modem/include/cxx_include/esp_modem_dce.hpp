@@ -11,7 +11,7 @@ class Modes {
 public:
     Modes(): mode(modem_mode::COMMAND_MODE) {}
     ~Modes() = default;
-    bool set(DTE *dte, ModuleIf *module, PPP &netif, modem_mode m);
+    bool set(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
     modem_mode get();
 
 private:
@@ -48,7 +48,7 @@ protected:
 
     std::shared_ptr<DTE> dte;
     std::shared_ptr<SpecificModule> module;
-    PPP netif;
+    Netif netif;
     esp_modem::DCE::Modes mode;
 };
 
