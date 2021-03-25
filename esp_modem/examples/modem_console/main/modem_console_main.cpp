@@ -428,7 +428,7 @@ extern "C" void app_main(void)
     const struct GenericCommandArgs {
         GenericCommandArgs():
             cmd(STR1, nullptr, nullptr, "<command>", "AT command to send to the modem"),
-            timeout(INT1, "t", "timeout", "<timeout>", "command timeout"),
+            timeout(INT0, "t", "timeout", "<timeout>", "command timeout"),
             pattern(STR0, "p", "pattern", "<pattern>", "command response to wait for"),
             no_cr(LIT0, "n", "no-cr", "not add trailing CR to the command") {}
         CommandArgs cmd;
@@ -436,14 +436,26 @@ extern "C" void app_main(void)
         CommandArgs pattern;
         CommandArgs no_cr;
     } send_cmd_args;
-
-    ConsoleCommand SendCommand("cmd", "sends generic AT command, no_args", &send_cmd_args, sizeof(send_cmd_args), [&](ConsoleCommand *c){
+    const ConsoleCommand SendCommand("cmd", "sends generic AT command, no_args", &send_cmd_args, sizeof(send_cmd_args), [&](ConsoleCommand *c) {
         auto cmd = c->get_string_of(&GenericCommandArgs::cmd);
-        auto timeout = c->get_int_of(&GenericCommandArgs::timeout);
+        auto timeout = c->get_count_of(&GenericCommandArgs::timeout) ? c->get_int_of(&GenericCommandArgs::timeout)
+                                                                     : 1000;
+        auto pattern = c->get_string_of(&GenericCommandArgs::pattern);
+        if (c->get_count_of(&GenericCommandArgs::no_cr) == 0) {
+            cmd += '\r';
+        }
         ESP_LOGI(TAG, "Sending command %s with timeout %d", cmd.c_str(), timeout);
-        CHECK_ERR(dce->command(cmd, nullptr, timeout),
-                  ESP_LOGI(TAG, "OK"));
+        CHECK_ERR(dce->command(cmd, [&](uint8_t *data, size_t len) {
+            std::string response((char *) data, len);
+            ESP_LOGI(TAG, "%s", response.c_str());
+            if (pattern.empty() || response.find(pattern) != std::string::npos)
+                return command_result::OK;
+            if (response.find(pattern) != std::string::npos)
+                return command_result::OK;
+            return command_result::TIMEOUT;
+        }, timeout),);
     });
+
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
     ESP_LOGE(TAG, "Exit console!!!");

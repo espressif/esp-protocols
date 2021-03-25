@@ -9,7 +9,7 @@
 namespace esp_modem::DCE {
 
 
-bool Modes::set(DTE *dte, ModuleIf *device, PPP &netif, modem_mode m)
+bool Modes::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
 {
     switch (m) {
         case modem_mode::UNDEF:
