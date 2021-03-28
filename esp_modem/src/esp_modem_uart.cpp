@@ -191,10 +191,10 @@ void uart_terminal::task()
             }
             switch (event.type) {
                 case UART_DATA:
-                    ESP_LOGI(TAG, "UART_DATA");
+//                    ESP_LOGI(TAG, "UART_DATA");
 //                    ESP_LOG_BUFFER_HEXDUMP("esp-modem-pattern: debug_data", esp_dte->buffer, length, ESP_LOG_DEBUG);
                     uart_get_buffered_data_len(uart.port, &len);
-                    ESP_LOGI(TAG, "UART_DATA len=%d, on_data=%d", len, (bool)on_data);
+//                    ESP_LOGI(TAG, "UART_DATA len=%d, on_data=%d", len, (bool)on_data);
                     if (len && on_data_priv) {
                         if (on_data_priv(len)) {
                             on_data_priv = nullptr;
