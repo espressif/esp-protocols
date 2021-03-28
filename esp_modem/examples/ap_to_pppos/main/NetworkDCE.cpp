@@ -15,6 +15,8 @@ class NetModule: public ModuleIf {
 public:
     explicit NetModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
             dte(std::move(dte)) {}
+    explicit NetModule(std::shared_ptr<DTE> dte, esp_modem_dce_config *cfg):
+            dte(std::move(dte)) {}
 
     bool setup_data_mode() override
     {
@@ -60,14 +62,17 @@ public:
 
         // create
         auto uart_dte = create_uart_dte(&dte_config);
-        esp_modem::DCE::Factory f(esp_modem::DCE::Modem::MinModule);
-        NetModule* module;
-        if (!f.build_module_T<NetModule>(module, uart_dte, netif)) {
-            return ESP_OK;
-        }
-        esp_modem::DCE::Factory f2(esp_modem::DCE::Modem::SIM7600);
+//        NetModule* module;
+//        if (!f.build_module_T<NetModule>(module, uart_dte, netif)) {
+//            return ESP_OK;
+//        }
+//        esp_modem::DCE::Factory f2(esp_modem::DCE::Modem::SIM7600);
+        esp_modem::DCE::config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
 //        std::shared_ptr<MinimalModule> dev;
-        auto dev = f2.build_shared_module(uart_dte, netif);
+//        auto dev = f2.build_shared_module(&dce_config, uart_dte, netif);
+//        auto module = esp_modem::DCE::Factory::build_shared_module<NetModule>(&dce_config, uart_dte, netif);
+
+        dce = esp_modem::DCE::Factory::build<NetModule>(&dce_config, uart_dte, netif);
 
         //        esp_modem::DCE::Builder<MinimalModule> factory(uart_dte, netif);
 //        dce = factory.create(apn_name);

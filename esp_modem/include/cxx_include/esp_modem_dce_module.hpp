@@ -4,6 +4,7 @@
 #include "generate/esp_modem_command_declare.inc"
 #include "cxx_include/esp_modem_command_library.hpp"
 #include "cxx_include/esp_modem_types.hpp"
+#include "esp_modem_dce_config.h"
 
 enum class command_result;
 class DTE;
@@ -12,6 +13,7 @@ class GenericModule: public ModuleIf {
 public:
     explicit GenericModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
             dte(std::move(dte)), pdp(std::move(pdp)) {}
+    explicit GenericModule(std::shared_ptr<DTE> dte, esp_modem_dce_config* config);
 
     bool setup_data_mode() override
     {
@@ -64,6 +66,7 @@ public:
 };
 
 class BG96: public GenericModule {
+    using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
 };
