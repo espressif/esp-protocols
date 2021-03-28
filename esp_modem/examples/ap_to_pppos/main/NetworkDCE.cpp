@@ -9,11 +9,11 @@
 #include <utility>
 
 class NetModule;
-typedef DCE_T<MinimalModule> NetDCE;
+typedef DCE_T<NetModule> NetDCE;
 
 class NetModule: public ModuleIf {
 public:
-    explicit NetModule(std::shared_ptr<DTE> dte):
+    explicit NetModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
             dte(std::move(dte)) {}
 
     bool setup_data_mode() override
@@ -61,8 +61,8 @@ public:
         // create
         auto uart_dte = create_uart_dte(&dte_config);
         esp_modem::DCE::Factory f(esp_modem::DCE::Modem::MinModule);
-        MinimalModule* module;
-        if (!f.build_module_T<MinimalModule>(module, uart_dte, netif)) {
+        NetModule* module;
+        if (!f.build_module_T<NetModule>(module, uart_dte, netif)) {
             return ESP_OK;
         }
         esp_modem::DCE::Factory f2(esp_modem::DCE::Modem::SIM7600);
