@@ -6,7 +6,7 @@
 #include "cxx_include/esp_modem_dce.hpp"
 #include "esp_log.h"
 
-namespace esp_modem::DCE {
+namespace esp_modem::dce_factory {
 
 
 bool Modes::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
