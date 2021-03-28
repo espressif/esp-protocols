@@ -3,9 +3,9 @@
 
 #include "cxx_include/esp_modem_netif.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
-#include "generate/esp_modem_command_declare.inc"
+//#include "generate/esp_modem_command_declare.inc"
 
-namespace esp_modem::DCE {
+namespace esp_modem::dce_factory {
 
 class Modes {
 public:
@@ -36,6 +36,8 @@ public:
 
     void set_cmux() { set_mode(modem_mode::CMUX_MODE); }
 
+    ModuleIf* get_module() { return module.get(); }
+
 
     command_result command(const std::string& command, got_line_cb got_line, uint32_t time_ms)
     {
@@ -49,11 +51,13 @@ protected:
     std::shared_ptr<DTE> dte;
     std::shared_ptr<SpecificModule> module;
     Netif netif;
-    esp_modem::DCE::Modes mode;
+    esp_modem::dce_factory::Modes mode;
 };
 
 
-
+//typedef DCE_T<GenericModule> DCE;
+//
+//#if 0
 class DCE: public DCE_T<GenericModule> {
 public:
 
@@ -70,3 +74,4 @@ public:
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 };
+//#endif

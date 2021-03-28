@@ -350,8 +350,10 @@ extern "C" void app_main(void)
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
     auto uart_dte = create_uart_dte(&dte_config);
-    std::string apn = "internet";
-    auto dce = create_SIM7600_dce(uart_dte, esp_netif, apn);
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
+
+    auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
     assert(dce != NULL);
 
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();

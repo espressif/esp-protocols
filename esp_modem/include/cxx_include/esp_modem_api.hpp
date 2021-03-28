@@ -22,4 +22,6 @@ std::unique_ptr<DCE> create_generic_dce_from_module(const std::shared_ptr<DTE>& 
 std::unique_ptr<DCE> create_SIM7600_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SIM7600>& dev, esp_netif_t *netif);
 
 
-std::unique_ptr<DCE> create_SIM7600_dce(const std::shared_ptr<DTE>& dte, esp_netif_t *netif, std::string &apn);
+std::unique_ptr<DCE> create_SIM7600_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+std::unique_ptr<DCE> create_SIM800_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+std::unique_ptr<DCE> create_BG96_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
