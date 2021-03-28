@@ -33,7 +33,7 @@ esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
 {
     Netif *ppp = (Netif*)h;
     if (ppp->signal.is_any(PPP_STARTED)) {
-        std::cout << "sending data " << len << std::endl;
+//        std::cout << "sending data " << len << std::endl;
         if (ppp->ppp_dte->write((uint8_t*)buffer, len) > 0) {
             return ESP_OK;
         }
@@ -66,7 +66,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t * esp_netif, void * args)
 void Netif::receive(uint8_t *data, size_t len)
 {
     if (signal.is_any(PPP_STARTED)) {
-        std::cout << "received data " << len << std::endl;
+//        std::cout << "received data " << len << std::endl;
         esp_netif_receive(driver.base.netif, data, len, nullptr);
     }
 }
