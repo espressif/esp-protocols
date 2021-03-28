@@ -5,7 +5,7 @@
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
 
-GenericModule::GenericModule(std::shared_ptr<DTE> dte, esp_modem_dce_config *config):
+GenericModule::GenericModule(std::shared_ptr<DTE> dte, const esp_modem_dce_config *config):
         dte(std::move(dte)), pdp(std::make_unique<PdpContext>(config->apn)) {}
 
 
@@ -23,11 +23,11 @@ DECLARE_ALL_COMMAND_APIS(return_type name(...) { forwards to esp_modem::dce_comm
 
 
 
-//command_result SIM7600::get_module_name(std::string& name)
-//{
-//    name = "7600";
-//    return command_result::OK;
-//}
+command_result SIM7600::get_module_name(std::string& name)
+{
+    name = "7600";
+    return command_result::OK;
+}
 
 command_result SIM800::get_module_name(std::string& name)
 {

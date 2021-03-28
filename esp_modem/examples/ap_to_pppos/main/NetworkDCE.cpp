@@ -8,15 +8,26 @@
 #include <memory>
 #include <utility>
 
+using namespace esp_modem;
+using namespace esp_modem::dce_factory;
+
 class NetModule;
 typedef DCE_T<NetModule> NetDCE;
 
+class NetDCE_Factory: public Factory {
+public:
+    template <typename T, typename ...Args>
+    static DCE_T<T>* create(const config *cfg, Args&&... args)
+    {
+        return build_generic_DCE< /* Object to create */ DCE_T<T>, /* vanilla pointer */ DCE_T<T> *, /* module */ T>
+                (cfg, std::forward<Args>(args)...);
+    }
+};
+
 class NetModule: public ModuleIf {
 public:
-    explicit NetModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
-            dte(std::move(dte)) {}
-    explicit NetModule(std::shared_ptr<DTE> dte, esp_modem_dce_config *cfg):
-            dte(std::move(dte)) {}
+    explicit NetModule(std::shared_ptr<DTE> dte, const esp_modem_dce_config *cfg):
+            dte(std::move(dte)), apn(std::string(cfg->apn)) {}
 
     bool setup_data_mode() override
     {
@@ -26,10 +37,10 @@ public:
             return false;
         if (!is_pin_ok) {
             if (set_pin(pin) != command_result::OK)
-                return ESP_FAIL;
+                return false;
             vTaskDelay(pdMS_TO_TICKS(1000));
             if (read_pin(is_pin_ok) != command_result::OK || !is_pin_ok)
-                return ESP_FAIL;
+                return false;
         }
 
         PdpContext pdp(apn);
@@ -51,36 +62,20 @@ public:
         return false;
     }
 
-    static esp_err_t init(esp_netif_t *netif, std::string apn_name, std::string pin_number)
+    static esp_err_t init(esp_netif_t *netif, const std::string& apn, std::string pin_number)
     {
-        apn = std::move(apn_name);
+        // configure
         pin = std::move(pin_number);
         esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
         dte_config.event_task_stack_size = 4096;
         dte_config.rx_buffer_size = 16384;
         dte_config.tx_buffer_size = 2048;
+        esp_modem_dce_config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(apn.c_str());
 
-        // create
+        // create DTE and minimal network DCE
         auto uart_dte = create_uart_dte(&dte_config);
-//        NetModule* module;
-//        if (!f.build_module_T<NetModule>(module, uart_dte, netif)) {
-//            return ESP_OK;
-//        }
-//        esp_modem::DCE::Factory f2(esp_modem::DCE::Modem::SIM7600);
-        esp_modem::DCE::config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
-//        std::shared_ptr<MinimalModule> dev;
-//        auto dev = f2.build_shared_module(&dce_config, uart_dte, netif);
-//        auto module = esp_modem::DCE::Factory::build_shared_module<NetModule>(&dce_config, uart_dte, netif);
-
-        dce = esp_modem::DCE::Factory::build<NetModule>(&dce_config, uart_dte, netif);
-
-        //        esp_modem::DCE::Builder<MinimalModule> factory(uart_dte, netif);
-//        dce = factory.create(apn_name);
-//        auto pdp = std::make_unique<PdpContext>(apn);
-//        auto dev = std::make_shared<MinimalModule>(uart_dte, std::move(pdp));
-//        auto dev = std::make_shared<MinimalModule>(uart_dte, nullptr);
-//        dce = new DCE_T<MinimalModule>(uart_dte, module, netif);
-        return ESP_OK;
+        dce = NetDCE_Factory::create<NetModule>(&dce_config, uart_dte, netif);
+        return dce == nullptr ? ESP_FAIL : ESP_OK;
     }
 
     static void deinit()    { delete dce; }
@@ -90,19 +85,18 @@ public:
 private:
     static NetDCE *dce;
     std::shared_ptr<DTE> dte;
-    static std::string apn;
+    std::string apn;
     static std::string pin;
 
-    template <typename ...T> command_result set_pdp_context(T&&... args) { return esp_modem::dce_commands::set_pdp_context(dte.get(),std::forward<T>(args)...); }
-    template <typename ...T> command_result set_pin(T&&... args) { return esp_modem::dce_commands::set_pin(dte.get(),std::forward<T>(args)...); }
-    template <typename ...T> command_result read_pin(T&&... args) { return esp_modem::dce_commands::read_pin(dte.get(),std::forward<T>(args)...); }
-    command_result set_data_mode() { return esp_modem::dce_commands::set_data_mode(dte.get()); }
-    command_result resume_data_mode() { return esp_modem::dce_commands::resume_data_mode(dte.get()); }
-    command_result set_command_mode() { return esp_modem::dce_commands::set_command_mode(dte.get()); }
+    template <typename ...T> command_result set_pdp_context(T&&... args) { return dce_commands::set_pdp_context(dte.get(),std::forward<T>(args)...); }
+    template <typename ...T> command_result set_pin(T&&... args) { return dce_commands::set_pin(dte.get(),std::forward<T>(args)...); }
+    template <typename ...T> command_result read_pin(T&&... args) { return dce_commands::read_pin(dte.get(),std::forward<T>(args)...); }
+    command_result set_data_mode() { return dce_commands::set_data_mode(dte.get()); }
+    command_result resume_data_mode() { return dce_commands::resume_data_mode(dte.get()); }
+    command_result set_command_mode() { return dce_commands::set_command_mode(dte.get()); }
 };
 
 NetDCE *NetModule::dce = nullptr;
-std::string NetModule::apn;
 std::string NetModule::pin;
 
 extern "C" esp_err_t modem_init_network(esp_netif_t *netif)

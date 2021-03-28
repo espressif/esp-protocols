@@ -5,7 +5,7 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
-#include <string.h>
+#include <cstring>
 
 // TODO: Remove iostream
 #include <iostream>
@@ -17,7 +17,7 @@ static inline command_result generic_command(CommandableIf* t, const std::string
                                                                    const std::string& fail_phrase, uint32_t timeout_ms)
 {
     std::cout << command << std::endl;
-    return t->command(command.c_str(), [&](uint8_t *data, size_t len) {
+    return t->command(command, [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);
         std::cout << response << std::endl;
 
@@ -33,7 +33,7 @@ static inline command_result generic_command(CommandableIf* t, const std::string
 static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms)
 {
     std::cout << command << std::endl;
-    return t->command(command.c_str(), [&](uint8_t *data, size_t len) {
+    return t->command(command, [&](uint8_t *data, size_t len) {
         size_t pos = 0;
         std::string response((char*)data, len);
         while ((pos = response.find('\n')) != std::string::npos) {

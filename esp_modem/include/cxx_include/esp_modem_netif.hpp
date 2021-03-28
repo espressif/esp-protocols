@@ -11,7 +11,6 @@
 class DTE;
 class Netif;
 
-//struct ppp_netif_driver;
 struct ppp_netif_driver {
     esp_netif_driver_base_t base;
     Netif *ppp;

@@ -19,7 +19,7 @@ typedef enum esp_modem_dce_mode
     ESP_MODEM_MODE_DATA,
 } esp_modem_dce_mode_t;
 
-esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *config, esp_netif_t *netif, const char* apn);
+esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif);
 
 void esp_modem_destroy(esp_modem_dce_t * dce);
 esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode);
