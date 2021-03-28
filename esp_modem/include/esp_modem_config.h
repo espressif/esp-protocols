@@ -5,6 +5,7 @@
 #ifndef SIMPLE_CXX_CLIENT_ESP_MODEM_CONFIG_H
 #define SIMPLE_CXX_CLIENT_ESP_MODEM_CONFIG_H
 #include "driver/uart.h"
+#include "esp_modem_dce_config.h"
 
 /**
  * @brief Modem flow control type
@@ -61,17 +62,6 @@ struct esp_modem_dte_config {
         .line_buffer_size = 512                 \
     }
 
-struct esp_modem_dce_config {
-    const char* apn;
-};
-
-#define ESP_MODEM_DCE_DEFAULT_CONFIG(APN)       \
-    {                                           \
-        .apn = APN                              \
-    }
-
 typedef struct esp_modem_dte_config esp_modem_dte_config_t;
-
-typedef struct esp_modem_dce_config esp_modem_dce_config_t;
 
 #endif //SIMPLE_CXX_CLIENT_ESP_MODEM_CONFIG_H
