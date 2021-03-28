@@ -19,3 +19,14 @@ std::shared_ptr<SIM7600> create_SIM7600_module(const std::shared_ptr<DTE>& dte, 
 {
     return create_device<SIM7600>(dte, apn);
 }
+
+
+#include "cxx_include/esp_modem_api.hpp"
+#include "cxx_include/esp_modem_dce_factory.hpp"
+
+namespace esp_modem::DCE {
+std::unique_ptr<PdpContext> FactoryHelper::create_pdp_context(std::string &apn) {
+    return std::unique_ptr<PdpContext>();
+}
+
+}

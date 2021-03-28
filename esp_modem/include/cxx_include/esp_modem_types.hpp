@@ -23,11 +23,11 @@ typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
 
 struct PdpContext {
     explicit PdpContext(std::string& apn): context_id(1), protocol_type("IP"), apn(apn) {}
+    explicit PdpContext(const char *apn): context_id(1), protocol_type("IP"), apn(apn) {}
     size_t context_id;
     std::string protocol_type;
     std::string apn;
 };
-
 
 class CommandableIf {
 public:
