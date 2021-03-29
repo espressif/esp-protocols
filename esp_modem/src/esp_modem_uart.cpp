@@ -1,3 +1,16 @@
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "cxx_include/esp_modem_dte.hpp"
 #include "freertos/FreeRTOS.h"
@@ -13,17 +26,18 @@
 
 static const char *TAG = "uart_terminal";
 
+namespace esp_modem {
+
 struct uart_resource {
     explicit uart_resource(const esp_modem_dte_config *config);
 
     ~uart_resource();
 
-    bool get_event(uart_event_t& event, uint32_t time_ms)
-    {
+    bool get_event(uart_event_t &event, uint32_t time_ms) {
         return xQueueReceive(event_queue, &event, pdMS_TO_TICKS(time_ms));
     }
-    void reset_events()
-    {
+
+    void reset_events() {
         uart_flush_input(port);
         xQueueReset(event_queue);
     }
@@ -35,14 +49,13 @@ struct uart_resource {
 };
 
 struct uart_task {
-    explicit uart_task(size_t stack_size, size_t priority, void* task_param, TaskFunction_t task_function):
-            task_handle(nullptr)
-    {
+    explicit uart_task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function) :
+            task_handle(nullptr) {
         BaseType_t ret = xTaskCreate(task_function, "uart_task", 10000, task_param, priority, &task_handle);
         throw_if_false(ret == pdTRUE, "create uart event task failed");
     }
-    ~uart_task()
-    {
+
+    ~uart_task() {
         if (task_handle) vTaskDelete(task_handle);
     }
 
@@ -51,13 +64,13 @@ struct uart_task {
 
 
 struct uart_event_loop {
-    explicit uart_event_loop(): event_loop_hdl(nullptr)
-    {
+    explicit uart_event_loop() : event_loop_hdl(nullptr) {
         esp_event_loop_args_t loop_args = {};
         loop_args.queue_size = ESP_MODEM_EVENT_QUEUE_SIZE;
         loop_args.task_name = nullptr;
         throw_if_esp_fail(esp_event_loop_create(&loop_args, &event_loop_hdl), "create event loop failed");
     }
+
     void run() { esp_event_loop_run(event_loop_hdl, pdMS_TO_TICKS(0)); }
 
     ~uart_event_loop() { if (event_loop_hdl) esp_event_loop_delete(event_loop_hdl); }
@@ -65,17 +78,15 @@ struct uart_event_loop {
     esp_event_loop_handle_t event_loop_hdl;
 };
 
-uart_resource::~uart_resource()
-{
+uart_resource::~uart_resource() {
     if (port >= UART_NUM_0 && port < UART_NUM_MAX) {
         uart_driver_delete(port);
     }
 }
 
 
-uart_resource::uart_resource(const esp_modem_dte_config *config):
-        port(-1)
-{
+uart_resource::uart_resource(const esp_modem_dte_config *config) :
+        port(-1) {
     esp_err_t res;
     line_buffer_size = config->line_buffer_size;
 
@@ -118,36 +129,38 @@ uart_resource::uart_resource(const esp_modem_dte_config *config):
     port = config->port_num;
 }
 
-class uart_terminal: public Terminal {
+class uart_terminal : public Terminal {
 public:
-    explicit  uart_terminal(const esp_modem_dte_config *config):
+    explicit uart_terminal(const esp_modem_dte_config *config) :
             uart(config), event_loop(), signal(),
             task_handle(config->event_task_stack_size, config->event_task_priority, this, s_task) {}
 
     ~uart_terminal() override = default;
-    void start() override
-    {
+
+    void start() override {
         signal.set(TASK_START);
     }
-    void stop() override
-    {
+
+    void stop() override {
         signal.set(TASK_STOP);
     }
 
     int write(uint8_t *data, size_t len) override;
+
     int read(uint8_t *data, size_t len) override;
-    void set_data_cb(std::function<bool(size_t len)> f) override
-    {
+
+    void set_data_cb(std::function<bool(size_t len)> f) override {
         on_data = std::move(f);
         signal.set(TASK_PARAMS);
     }
+
 private:
-    static void s_task(void * task_param)
-    {
-        auto t = static_cast<uart_terminal*>(task_param);
+    static void s_task(void *task_param) {
+        auto t = static_cast<uart_terminal *>(task_param);
         t->task();
         vTaskDelete(NULL);
     }
+
     void task();
 
     static const size_t TASK_INIT = BIT0;
@@ -163,17 +176,15 @@ private:
 
 };
 
-std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config)
-{
+std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config) {
     TRY_CATCH_RET_NULL(
-        auto term = std::make_unique<uart_terminal>(config);
-        term->start();
-        return term;
+            auto term = std::make_unique<uart_terminal>(config);
+            term->start();
+            return term;
     )
 }
 
-void uart_terminal::task()
-{
+void uart_terminal::task() {
     std::function<bool(size_t len)> on_data_priv = nullptr;
     uart_event_t event;
     size_t len;
@@ -182,7 +193,7 @@ void uart_terminal::task()
     if (signal.is_any(TASK_STOP)) {
         return; // exits to the static method where the task gets deleted
     }
-    while(signal.is_any(TASK_START)) {
+    while (signal.is_any(TASK_START)) {
         event_loop.run();
         if (uart.get_event(event, 100)) {
             if (signal.is_any(TASK_PARAMS)) {
@@ -229,8 +240,7 @@ void uart_terminal::task()
     }
 }
 
-int uart_terminal::read(uint8_t *data, size_t len)
-{
+int uart_terminal::read(uint8_t *data, size_t len) {
     size_t length = 0;
     uart_get_buffered_data_len(uart.port, &length);
     if (length > 0) {
@@ -239,10 +249,9 @@ int uart_terminal::read(uint8_t *data, size_t len)
     return 0;
 }
 
-int uart_terminal::write(uint8_t *data, size_t len)
-{
+int uart_terminal::write(uint8_t *data, size_t len) {
     return uart_write_bytes(uart.port, data, len);
 }
 
-
+} // namespace esp_modem
 
