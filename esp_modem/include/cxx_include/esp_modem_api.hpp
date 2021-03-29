@@ -1,27 +1,88 @@
-#pragma once
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef _ESP_MODEM_API_HPP_
+#define _ESP_MODEM_API_HPP_
 
 #include <memory>
 #include "cxx_include/esp_modem_dce.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 
-class DTE;
-class GenericModule;
-class SIM7600;
-class SIM800;
-class BG96;
 struct esp_modem_dte_config;
+struct esp_modem_dce_config;
+
+
+namespace esp_modem {
+
+class DTE;
+using dce_config = ::esp_modem_dce_config;
+using dte_config = ::esp_modem_dte_config;
+
 typedef struct esp_netif_obj esp_netif_t;
 
-std::shared_ptr<DTE> create_uart_dte(const esp_modem_dte_config *config);
 
+/**
+ * @defgroup ESP_MODEM_INIT_DTE ESP_MODEM Initialization API for DTE
+ * @brief Create DTE's
+ */
+/** @addtogroup ESP_MODEM_INIT_DTE
+* @{
+*/
 
-std::shared_ptr<GenericModule> create_generic_module(const std::shared_ptr<DTE>& dte, std::string &apn);
-std::shared_ptr<SIM7600> create_SIM7600_module(const std::shared_ptr<DTE>& dte, std::string &apn);
+/**
+ * @brief Create UART DTE
+ * @param config DTE configuration
+ * @return shared ptr to DTE
+ */
+std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
+/**
+ * @}
+ */
 
-std::unique_ptr<DCE> create_generic_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<GenericModule>& dev, esp_netif_t *netif);
-std::unique_ptr<DCE> create_SIM7600_dce_from_module(const std::shared_ptr<DTE>& dte, const std::shared_ptr<SIM7600>& dev, esp_netif_t *netif);
+/**
+ * @defgroup ESP_MODEM_INIT_DCE ESP_MODEM Initialization API for DCE
+ * @brief Create DCE's
+ */
+/** @addtogroup ESP_MODEM_INIT_DCE
+* @{
+*/
 
+/**
+ * @brief Create DCE based on SIM7600 module
+ * @param config DCE configuration
+ * @param DTE reference to the communicating DTE
+ * @param netif reference to the network interface
+ *
+ * @return unique ptr to the created DCE on success
+ *         nullptr on failure
+ */
+std::unique_ptr<DCE> create_SIM7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
-std::unique_ptr<DCE> create_SIM7600_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
-std::unique_ptr<DCE> create_SIM800_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
-std::unique_ptr<DCE> create_BG96_dce(const esp_modem_dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+/**
+ * @brief Create DCE based on SIM800 module
+ */
+std::unique_ptr<DCE> create_SIM800_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
+ * @brief Create DCE based on BG96 module
+ */
+std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
+ * @}
+ */
+
+} // namespace esp_modem
+
+#endif // _ESP_MODEM_API_HPP_

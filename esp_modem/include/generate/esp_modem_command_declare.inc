@@ -1,9 +1,19 @@
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
 //
-// Created by david on 3/7/21.
-//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 
-#ifndef SIMPLE_CXX_CLIENT_ESP_MODEM_COMMAND_DECLARE_INC
-#define SIMPLE_CXX_CLIENT_ESP_MODEM_COMMAND_DECLARE_INC
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef _ESP_MODEM_COMMAND_DECLARE_INC_
+#define _ESP_MODEM_COMMAND_DECLARE_INC_
 
 #ifdef __cplusplus
 #include <string>
@@ -13,8 +23,6 @@
 #define BOOL_OUT(x) bool& x
 #define STRUCT_OUT(struct_name, x)  struct_name& x
 #else
-struct PdpContext;
-
 #define STRING_IN(x) const char* x
 #define STRING_OUT(x) char* x
 #define BOOL_IN(x) const bool x
@@ -22,7 +30,7 @@ struct PdpContext;
 #define STRUCT_OUT(struct_name, x)  struct struct_name* x
 #endif
 
-
+#define _ESP_MODEM_COMMAND_DECLARE_INC_
 #define ESP_MODEM_DEFINE_DCE_COMMAND(...) ESP_MODEM_DECLARE_DCE_COMMAND(##__VA_ARGS__)
 #define DEFINE_ALL_COMMAND_APIS() DECLARE_ALL_COMMAND_APIS()
 
@@ -79,4 +87,4 @@ DECLARE_ALL_COMMAND_APIS()
 #endif
 
 
-#endif //SIMPLE_CXX_CLIENT_ESP_MODEM_COMMAND_DECLARE_INC
+#endif // _ESP_MODEM_COMMAND_DECLARE_INC_

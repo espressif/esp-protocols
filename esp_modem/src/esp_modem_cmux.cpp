@@ -1,9 +1,23 @@
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
 //
-// Created by david on 3/4/21.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <cstring>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
+
+using namespace esp_modem;
+
 /* CRC8 is the reflected CRC8/ROHC algorithm */
 #define FCS_POLYNOMIAL 0xe0 /* reversed crc8 */
 #define FCS_INIT_VALUE 0xFF

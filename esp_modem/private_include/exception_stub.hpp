@@ -1,9 +1,19 @@
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
 //
-// Created by david on 3/16/21.
-//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 
-#ifndef MODEM_CONSOLE_EXCEPTION_STUB_HPP
-#define MODEM_CONSOLE_EXCEPTION_STUB_HPP
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef _EXCEPTION_STUB_HPP_
+#define _EXCEPTION_STUB_HPP_
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
 #define TRY_CATCH_RET_NULL(block) \
@@ -23,4 +33,4 @@
 #endif
 
 
-#endif //MODEM_CONSOLE_EXCEPTION_STUB_HPP
+#endif // _EXCEPTION_STUB_HPP_

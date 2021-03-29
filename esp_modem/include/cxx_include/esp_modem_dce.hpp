@@ -1,16 +1,30 @@
-#pragma once
-#include <utility>
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef _ESP_MODEM_DCE_HPP_
+#define _ESP_MODEM_DCE_HPP_
+
+#include <utility>
 #include "cxx_include/esp_modem_netif.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
-//#include "generate/esp_modem_command_declare.inc"
 
-namespace esp_modem::dce_factory {
+namespace esp_modem {
 
-class Modes {
+class DCE_Mode {
 public:
-    Modes(): mode(modem_mode::COMMAND_MODE) {}
-    ~Modes() = default;
+    DCE_Mode(): mode(modem_mode::COMMAND_MODE) {}
+    ~DCE_Mode() = default;
     bool set(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
     modem_mode get();
 
@@ -18,7 +32,7 @@ private:
     modem_mode mode;
 
 };
-}
+
 
 template<class SpecificModule>
 class DCE_T {
@@ -51,13 +65,10 @@ protected:
     std::shared_ptr<DTE> dte;
     std::shared_ptr<SpecificModule> module;
     Netif netif;
-    esp_modem::dce_factory::Modes mode;
+    DCE_Mode mode;
 };
 
 
-//typedef DCE_T<GenericModule> DCE;
-//
-//#if 0
 class DCE: public DCE_T<GenericModule> {
 public:
 
@@ -74,4 +85,7 @@ public:
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 };
-//#endif
+
+} // esp_modem
+
+#endif // _ESP_MODEM_DCE_HPP_
