@@ -318,6 +318,8 @@ TEMPLATE(2)
 
 static esp_console_repl_t *s_repl = NULL;
 
+using namespace esp_modem;
+
 //template<typename T, typename U> constexpr size_t offset_of(U T::*member)
 //{
 //    return (char*)&((T*)nullptr->*member) - (char*)nullptr;

@@ -1,4 +1,20 @@
-#pragma once
+// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef _ESP_MODEM_DCE_MODULE_
+#define _ESP_MODEM_DCE_MODULE_
+
 #include <memory>
 #include <utility>
 #include "generate/esp_modem_command_declare.inc"
@@ -6,8 +22,11 @@
 #include "cxx_include/esp_modem_types.hpp"
 #include "esp_modem_dce_config.h"
 
+namespace esp_modem {
+
 enum class command_result;
 class DTE;
+struct PdpContext;
 
 class GenericModule: public ModuleIf {
 public:
@@ -70,3 +89,8 @@ class BG96: public GenericModule {
 public:
     command_result get_module_name(std::string& name) override;
 };
+
+
+} // namespace esp_modem
+
+#endif // _ESP_MODEM_DCE_MODULE_
