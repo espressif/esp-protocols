@@ -12,124 +12,17 @@
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "mqtt_client.h"
-#include "esp_modem.h"
-#include "esp_modem_netif.h"
+#include "esp_modem_api.h"
 #include "esp_log.h"
 
-#if defined(CONFIG_EXAMPLE_MODEM_LEGACY_API)
-#include "sim800.h"
-#include "bg96.h"
-#include "sim7600.h"
-#endif
-
-#define BROKER_URL "mqtt://mqtt.eclipse.org"
+#define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
-static const int STOP_BIT = BIT1;
+//static const int STOP_BIT = BIT1;
 static const int GOT_DATA_BIT = BIT2;
 
-#if CONFIG_EXAMPLE_SEND_MSG
-/**
- * @brief This example will also show how to send short message using the infrastructure provided by esp modem library.
- * @note Not all modem support SMG.
- *
- */
-static esp_err_t example_default_handle(esp_modem_dce_t *dce, const char *line)
-{
-    esp_err_t err = ESP_FAIL;
-    if (strstr(line, MODEM_RESULT_CODE_SUCCESS)) {
-        err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
-    } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
-        err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
-    }
-    return err;
-}
-
-static esp_err_t example_handle_cmgs(esp_modem_dce_t *dce, const char *line)
-{
-    esp_err_t err = ESP_FAIL;
-    if (strstr(line, MODEM_RESULT_CODE_SUCCESS)) {
-        err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
-    } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
-        err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
-    } else if (!strncmp(line, "+CMGS", strlen("+CMGS"))) {
-        err = ESP_OK;
-    }
-    return err;
-}
-
-#define MODEM_SMS_MAX_LENGTH (128)
-#define MODEM_COMMAND_TIMEOUT_SMS_MS (120000)
-#define MODEM_PROMPT_TIMEOUT_MS (10)
-
-static esp_err_t example_send_message_text(modem_dce_t *user_dce, const char *phone_num, const char *text)
-{
-    esp_modem_dce_t *dce = &user_dce->parent;
-    modem_dte_t *dte = dce->dte;
-    dce->handle_line = example_default_handle;
-    /* Set text mode */
-    if (dte->send_cmd(dte, "AT+CMGF=1\r", MODEM_COMMAND_TIMEOUT_DEFAULT) != ESP_OK) {
-        ESP_LOGE(TAG, "send command failed");
-        goto err;
-    }
-    if (dce->state != MODEM_STATE_SUCCESS) {
-        ESP_LOGE(TAG, "set message format failed");
-        goto err;
-    }
-    ESP_LOGD(TAG, "set message format ok");
-    /* Specify character set */
-    dce->handle_line = example_default_handle;
-    if (dte->send_cmd(dte, "AT+CSCS=\"GSM\"\r", MODEM_COMMAND_TIMEOUT_DEFAULT) != ESP_OK) {
-        ESP_LOGE(TAG, "send command failed");
-        goto err;
-    }
-    if (dce->state != MODEM_STATE_SUCCESS) {
-        ESP_LOGE(TAG, "set character set failed");
-        goto err;
-    }
-    ESP_LOGD(TAG, "set character set ok");
-    /* send message */
-    char command[MODEM_SMS_MAX_LENGTH] = {0};
-    int length = snprintf(command, MODEM_SMS_MAX_LENGTH, "AT+CMGS=\"%s\"\r", phone_num);
-    /* set phone number and wait for "> " */
-    dte->send_wait(dte, command, length, "\r\n> ", MODEM_PROMPT_TIMEOUT_MS);
-    /* end with CTRL+Z */
-    snprintf(command, MODEM_SMS_MAX_LENGTH, "%s\x1A", text);
-    dce->handle_line = example_handle_cmgs;
-    if (dte->send_cmd(dte, command, MODEM_COMMAND_TIMEOUT_SMS_MS) != ESP_OK) {
-        ESP_LOGE(TAG, "send command failed");
-        goto err;
-    }
-    if (dce->state != MODEM_STATE_SUCCESS) {
-        ESP_LOGE(TAG, "send message failed");
-        goto err;
-    }
-    ESP_LOGD(TAG, "send message ok");
-    return ESP_OK;
-err:
-    return ESP_FAIL;
-}
-#endif
-
-static void modem_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-    switch (event_id) {
-    case ESP_MODEM_EVENT_PPP_START:
-        ESP_LOGI(TAG, "Modem PPP Started");
-        break;
-    case ESP_MODEM_EVENT_PPP_STOP:
-        ESP_LOGI(TAG, "Modem PPP Stopped");
-        xEventGroupSetBits(event_group, STOP_BIT);
-        break;
-    case ESP_MODEM_EVENT_UNKNOWN:
-        ESP_LOGW(TAG, "Unknow line received: %s", (char *)event_data);
-        break;
-    default:
-        break;
-    }
-}
 
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
@@ -217,8 +110,6 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 }
 
 
-static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_config_t *dce_config, esp_netif_config_t *ppp_config);
-
 void app_main(void)
 {
 
@@ -252,171 +143,47 @@ void app_main(void)
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
 
     /* Run the modem demo app */
-    return modem_test_app(&dte_config, &dce_config,&netif_ppp_config);
-}
-
-#if !defined(CONFIG_EXAMPLE_MODEM_LEGACY_API)
-static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_config_t *dce_config, esp_netif_config_t *ppp_config)
-{
-    /* create dte object */
-    esp_modem_dte_t *dte = esp_modem_dte_new(dte_config);
-    assert(dte != NULL);
-
-    /* create dce object */
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM800
-    dce_config->device = ESP_MODEM_DEVICE_SIM800;
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_BG96
-    dce_config->device = ESP_MODEM_DEVICE_BG96;
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600
-    dce_config->device = ESP_MODEM_DEVICE_SIM7600;
-#else
-#error "Unsupported DCE"
-#endif
-    esp_modem_dce_t *dce = esp_modem_dce_new(dce_config);
-    assert(dce != NULL);
-
-    /* create netif object */
-    esp_netif_t *esp_netif = esp_netif_new(ppp_config);
-    assert(esp_netif);
-#if !defined(CONFIG_EXAMPLE_MODEM_PPP_AUTH_NONE) && (defined(CONFIG_LWIP_PPP_PAP_SUPPORT) || defined(CONFIG_LWIP_PPP_CHAP_SUPPORT))
-#if CONFIG_LWIP_PPP_PAP_SUPPORT
-    esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_PAP;
-#elif CONFIG_LWIP_PPP_CHAP_SUPPORT
-    esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_CHAP;
-#else
-#error "Unsupported AUTH Negotiation"
-#endif
-    esp_netif_ppp_set_auth(esp_netif, auth_type, CONFIG_EXAMPLE_MODEM_PPP_AUTH_USERNAME, CONFIG_EXAMPLE_MODEM_PPP_AUTH_PASSWORD);
-#endif
-    /* Register event handler */
-    ESP_ERROR_CHECK(esp_modem_set_event_handler(dte, modem_event_handler, ESP_EVENT_ANY_ID, NULL));
-
-    /* attach the DCE, DTE, netif to initialize the modem */
-    ESP_ERROR_CHECK(esp_modem_default_attach(dte, dce, esp_netif));
-
-    while (1) {
-        ESP_ERROR_CHECK(esp_modem_default_start(dte));
-        /* Start PPP mode */
-        ESP_ERROR_CHECK(esp_modem_start_ppp(dte));
-        /* Wait for IP address */
-        xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-
-        /* Config MQTT */
-        esp_mqtt_client_config_t mqtt_config = {
-                .uri = BROKER_URL,
-                .event_handle = mqtt_event_handler,
-        };
-        esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-        esp_mqtt_client_start(mqtt_client);
-        xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-        esp_mqtt_client_destroy(mqtt_client);
-
-        /* Exit PPP mode */
-        ESP_ERROR_CHECK(esp_modem_stop_ppp(dte));
-
-        xEventGroupWaitBits(event_group, STOP_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-        ESP_LOGI(TAG, "Restart after 60 seconds");
-        vTaskDelay(pdMS_TO_TICKS(60000));
-    }
-
-    /* Default destroy all modem sub-units attached to it (DTE, DCE, netif) */
-    ESP_ERROR_CHECK(esp_modem_default_destroy(dte));
-}
-#else // defined(CONFIG_EXAMPLE_MODEM_LEGACY_API)
-
-static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_config_t *dce_config, esp_netif_config_t *ppp_config)
-{
-    /* create dte object */
-    modem_dte_t *dte = esp_modem_dte_init(dte_config);
-    /* Register event handler */
-    ESP_ERROR_CHECK(esp_modem_set_event_handler(dte, modem_event_handler, ESP_EVENT_ANY_ID, NULL));
-
     // Init netif object
-    esp_netif_t *esp_netif = esp_netif_new(ppp_config);
+    esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
+    esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
+    int rssi, ber;
+    esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d", err);
+        return;
+    }
+    ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
 
-    void *modem_netif_adapter = esp_modem_netif_setup(dte);
-    esp_modem_netif_set_default_handlers(modem_netif_adapter, esp_netif);
-
-    while (1) {
-        modem_dce_t *dce = NULL;
-        /* create dce object */
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM800
-        dce = sim800_init(dte);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_BG96
-        dce = bg96_init(dte);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600
-        dce = sim7600_init(dte);
-#else
-#error "Unsupported DCE"
-#endif
-        assert(dce != NULL);
-        ESP_ERROR_CHECK(dce->set_flow_ctrl(dce, ESP_MODEM_FLOW_CONTROL_NONE));
-        ESP_ERROR_CHECK(dce->store_profile(dce));
-        /* Print Module ID, Operator, IMEI, IMSI */
-        ESP_LOGI(TAG, "Module: %s", dce->name);
-        ESP_LOGI(TAG, "Operator: %s", dce->oper);
-        ESP_LOGI(TAG, "IMEI: %s", dce->imei);
-        ESP_LOGI(TAG, "IMSI: %s", dce->imsi);
-
-        /* Get signal quality */
-        uint32_t rssi = 0, ber = 0;
-        ESP_ERROR_CHECK(dce->get_signal_quality(dce, &rssi, &ber));
-        ESP_LOGI(TAG, "rssi: %d, ber: %d", rssi, ber);
-        /* Get battery voltage */
-        uint32_t voltage = 0, bcs = 0, bcl = 0;
-        ESP_ERROR_CHECK(dce->get_battery_status(dce, &bcs, &bcl, &voltage));
-        ESP_LOGI(TAG, "Battery voltage: %d mV", voltage);
-        /* setup PPPoS network parameters */
-#if !defined(CONFIG_EXAMPLE_MODEM_PPP_AUTH_NONE) && (defined(CONFIG_LWIP_PPP_PAP_SUPPORT) || defined(CONFIG_LWIP_PPP_CHAP_SUPPORT))
-#if CONFIG_LWIP_PPP_PAP_SUPPORT
-        esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_PAP;
-#elif CONFIG_LWIP_PPP_CHAP_SUPPORT
-        esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_CHAP;
-#else
-#error "Unsupported AUTH Negotiation"
-#endif
-        esp_netif_ppp_set_auth(esp_netif, auth_type, CONFIG_EXAMPLE_MODEM_PPP_AUTH_USERNAME, CONFIG_EXAMPLE_MODEM_PPP_AUTH_PASSWORD);
-#endif
-        /* attach the modem to the network interface */
-        esp_netif_attach(esp_netif, modem_netif_adapter);
-        /* Wait for IP address */
-        xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-
-        /* Config MQTT */
-        esp_mqtt_client_config_t mqtt_config = {
+    err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DATA);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_DATA) failed with %d", err);
+        return;
+    }
+    /* Wait for IP address */
+    xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    /* Config MQTT */
+    esp_mqtt_client_config_t mqtt_config = {
             .uri = BROKER_URL,
             .event_handle = mqtt_event_handler,
-        };
-        esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-        esp_mqtt_client_start(mqtt_client);
-        xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-        esp_mqtt_client_destroy(mqtt_client);
-
-        /* Exit PPP mode */
-        ESP_ERROR_CHECK(esp_modem_stop_ppp(dte));
-
-        xEventGroupWaitBits(event_group, STOP_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-#if CONFIG_EXAMPLE_SEND_MSG
-        const char *message = "Welcome to ESP32!";
-        ESP_ERROR_CHECK(example_send_message_text(dce, CONFIG_EXAMPLE_SEND_MSG_PEER_PHONE_NUMBER, message));
-        ESP_LOGI(TAG, "Send send message [%s] ok", message);
-#endif
-        /* Power down module */
-        ESP_ERROR_CHECK(dce->power_down(dce));
-        ESP_LOGI(TAG, "Power down");
-        ESP_ERROR_CHECK(dce->deinit(dce));
-
-        ESP_LOGI(TAG, "Restart after 60 seconds");
-        vTaskDelay(pdMS_TO_TICKS(60000));
+    };
+    esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
+    esp_mqtt_client_start(mqtt_client);
+    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    esp_mqtt_client_destroy(mqtt_client);
+    err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
+        return;
     }
+    char imsi[32];
+    err = esp_modem_get_imsi(dce, imsi);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_get_imsi failed with %d", err);
+        return;
+    }
+    ESP_LOGI(TAG, "IMSI=%s", imsi);
 
-    /* Unregister events, destroy the netif adapter and destroy its esp-netif instance */
-    esp_modem_netif_clear_default_handlers(modem_netif_adapter);
-    esp_modem_netif_teardown(modem_netif_adapter);
+    esp_modem_destroy(dce);
     esp_netif_destroy(esp_netif);
-
-    ESP_ERROR_CHECK(dte->deinit(dte));
 }
-
-#endif // CONFIG_EXAMPLE_MODEM_LEGACY_API
