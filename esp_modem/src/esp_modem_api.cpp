@@ -17,9 +17,10 @@
 #include "esp_log.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_factory.hpp"
-#include "esp_modem_api.h"
+#include "esp_modem_c_api_types.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "cstring"
 
 
 namespace esp_modem {
@@ -59,7 +60,6 @@ std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<D
 
 //
 // C API definitions
-struct PdpContext;
 using namespace esp_modem;
 
 struct esp_modem_dce_wrap // need to mimic the polymorphic dispatch as CPP uses templated dispatch
@@ -108,7 +108,7 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mod
     if (mode == ESP_MODEM_MODE_DATA) {
         dce_sim7600->set_data();
     } else if (mode == ESP_MODEM_MODE_COMMAND) {
-        dce_sim7600->set_data();
+        dce_sim7600->exit_data();
     } else {
         return ESP_ERR_NOT_SUPPORTED;
     }
@@ -122,3 +122,21 @@ extern "C" esp_err_t esp_modem_read_pin(esp_modem_dce_t * dce, bool &x)
     return command_response_to_esp_err(dce_sim7600->read_pin(x));
 }
 
+extern "C" esp_err_t esp_modem_get_signal_quality(esp_modem_dce_t * dce, int *rssi, int *ber)
+{
+    assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
+    auto dce_sim7600 = static_cast<DCE*>(dce->dce_ptr);
+    return command_response_to_esp_err(dce_sim7600->get_signal_quality(*rssi, *ber));
+}
+
+extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t * dce, char *p_imsi)
+{
+    assert(dce->modem_type == esp_modem_dce_wrap::MODEM_SIM7600);
+    auto dce_sim7600 = static_cast<DCE*>(dce->dce_ptr);
+    std::string imsi;
+    auto ret = command_response_to_esp_err(dce_sim7600->get_imsi(imsi));
+    if (ret == ESP_OK && !imsi.empty()) {
+        strcpy(p_imsi, imsi.c_str());
+    }
+    return ret;
+}

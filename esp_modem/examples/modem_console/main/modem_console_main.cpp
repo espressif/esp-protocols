@@ -460,6 +460,10 @@ extern "C" void app_main(void)
         }, timeout),);
     });
 
+    ConsoleCommand GetSignalQuality("get_signal_quality", "Gets signal quality", no_args, [&](ConsoleCommand *c){
+        int rssi, ber;
+        CHECK_ERR(dce->get_signal_quality(rssi, ber), ESP_LOGI(TAG, "OK. rssi=%d, ber=%d", rssi, ber));
+    });
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
     ESP_LOGE(TAG, "Exit console!!!");

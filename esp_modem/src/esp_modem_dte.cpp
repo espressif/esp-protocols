@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "cxx_include/esp_modem_dte.hpp"
-#include <string.h>
+#include <cstring>
 #include "esp_log.h"
 
 using namespace esp_modem;
@@ -27,7 +27,6 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
 
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms)
 {
-//    assert(term_id < term->max_virtual_terms());
     Scoped<Lock> l(lock);
     command_result res = command_result::TIMEOUT;
     term->write((uint8_t *)command.c_str(), command.length());
@@ -37,7 +36,6 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         auto actual_len = term->read(data, data_to_read);
         consumed += actual_len;
         if (memchr(data, '\n', actual_len)) {
-//            ESP_LOGE("GOT", "LINE");
             res = got_line(buffer.get(), consumed);
             if (res == command_result::OK || res == command_result::FAIL) {
                 signal.set(GOT_LINE);
