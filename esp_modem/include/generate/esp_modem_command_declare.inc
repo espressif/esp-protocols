@@ -21,12 +21,15 @@
 #define STRING_OUT(x) std::string& x
 #define BOOL_IN(x) const bool x
 #define BOOL_OUT(x) bool& x
+#define INT_OUT(x) int& x
+
 #define STRUCT_OUT(struct_name, x)  struct_name& x
 #else
 #define STRING_IN(x) const char* x
 #define STRING_OUT(x) char* x
 #define BOOL_IN(x) const bool x
 #define BOOL_OUT(x) bool* x
+#define INT_OUT(x) int* x
 #define STRUCT_OUT(struct_name, x)  struct struct_name* x
 #endif
 
@@ -74,7 +77,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, MUX_ARG, STRIN
  * @brief Sets the modem to data mode
  *
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0, MUX_ARG)
+ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0, MUX_ARG) \
+\
+/**
+ * @brief Get Signal quality
+ *
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, MUX_ARG, INT_OUT(x), INT_OUT(y))
 
 //  --- DCE command documentation starts here ---
 #ifdef GENERATE_DOCS

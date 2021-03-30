@@ -42,7 +42,6 @@ static inline command_result generic_command(CommandableIf* t, const std::string
 
 static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms)
 {
-    std::cout << command << std::endl;
     return t->command(command, [&](uint8_t *data, size_t len) {
         size_t pos = 0;
         std::string response((char*)data, len);
@@ -51,7 +50,6 @@ static inline command_result generic_get_string(CommandableIf* t, const std::str
             for (auto i = 0; i<2; ++i)  // trip trailing \n\r of last two chars
                 if (pos >= 1 && (token[pos-1] == '\r' || token[pos-1] == '\n'))
                     token.pop_back();
-            std::cout << "###" << token << "#### " << std::endl;
 
             if (token.find("OK") != std::string::npos) {
                 return command_result::OK;
@@ -162,6 +160,31 @@ command_result set_pin(CommandableIf* t, const std::string& pin)
     std::cout << "Sending set_pin" << std::endl;
     std::string set_pin_command = "AT+CPIN=" + pin + "\r";
     return generic_command_common(t, set_pin_command);
+}
+
+command_result get_signal_quality(CommandableIf* t, int &rssi, int &ber)
+{
+    std::cout << "get_signal_quality" << std::endl;
+    return t->command("AT+CSQ\r", [&](uint8_t *data, size_t len) {
+            size_t pos = 0;
+            std::string response((char*)data, len);
+            while ((pos = response.find('\n')) != std::string::npos) {
+                std::string token = response.substr(0, pos);
+                for (auto i = 0; i<2; ++i)  // trip trailing \n\r of last two chars
+                    if (pos >= 1 && (token[pos-1] == '\r' || token[pos-1] == '\n'))
+                        token.pop_back();
+
+                if (token.find("OK") != std::string::npos) {
+                    return command_result::OK;
+                } else if (token.find("ERROR") != std::string::npos) {
+                    return command_result::FAIL;
+                } else if (token.find("+CSQ") != std::string::npos) {
+                    sscanf(token.c_str(), "%*s%d,%d", &rssi, &ber);
+                }
+                response = response.substr(pos+1);
+            }
+            return command_result::TIMEOUT;
+        }, 500);
 }
 
 } // esp_modem::dce_commands

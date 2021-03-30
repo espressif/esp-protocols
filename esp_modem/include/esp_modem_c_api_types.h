@@ -12,28 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_API_H_
-#define _ESP_MODEM_API_H_
+#ifndef _ESP_MODEM_C_API_TYPES_H_
+#define _ESP_MODEM_C_API_TYPES_H_
 
-#include "generate/esp_modem_command_declare.inc"
-#include "esp_modem_c_api_types.h"
+#include "esp_modem_config.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef struct esp_modem_dce_wrap esp_modem_dce_t;
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
-        esp_err_t esp_modem_ ## name(esp_modem_dce_t *dce, ##__VA_ARGS__);
+struct PdpContext;
+typedef enum esp_modem_dce_mode
+{
+    ESP_MODEM_MODE_COMMAND,
+    ESP_MODEM_MODE_DATA,
+} esp_modem_dce_mode_t;
 
-DECLARE_ALL_COMMAND_APIS(declares esp_modem_<API>(esp_modem_t * dce, ...);)
+esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif);
 
-#undef ESP_MODEM_DECLARE_DCE_COMMAND
+void esp_modem_destroy(esp_modem_dce_t * dce);
+esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode);
 
 
 #ifdef __cplusplus
 }
 #endif
 
-
-#endif // _CLIENT_ESP_MODEM_API_H_
+#endif //_ESP_MODEM_C_API_TYPES_H_

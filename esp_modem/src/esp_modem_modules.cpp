@@ -24,6 +24,7 @@ GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config)
 
 #define ARGS0
 #define ARGS1 , x
+#define ARGS2 , x , y
 #define _ARGS(x)  ARGS ## x
 #define ARGS(x)  _ARGS(x)
 #define TEMPLATE_ARG
