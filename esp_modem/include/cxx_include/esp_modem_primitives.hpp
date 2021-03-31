@@ -68,9 +68,9 @@ struct Lock {
         throw_if_false(lock != nullptr, "create signal event group failed");
     }
     ~Lock() { vSemaphoreDelete(lock); }
-    void take() { xSemaphoreTake(lock, portMAX_DELAY); }
+    void take() { xSemaphoreTakeRecursive(lock, portMAX_DELAY); }
 
-    void give() { xSemaphoreGive(lock); }
+    void give() { xSemaphoreGiveRecursive(lock); }
     xSemaphoreHandle lock;
 };
 
