@@ -14,116 +14,73 @@
 
 #ifndef _ESP_MODEM_PRIMITIVES_HPP_
 #define _ESP_MODEM_PRIMITIVES_HPP_
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/semphr.h"
+#include "esp_modem_exception.hpp"
+
+#if defined(CONFIG_IDF_TARGET_LINUX)
+#include <mutex>
+#else
+// forward declarations of FreeRTOS primitives
+struct QueueDefinition;
+typedef void * EventGroupHandle_t;
+#endif
+
 
 namespace esp_modem {
 
-#ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
-#define THROW(exception) throw(exception)
-class esp_err_exception: virtual public std::exception {
-public:
-    explicit esp_err_exception(esp_err_t err): esp_err(err) {}
-    explicit esp_err_exception(std::string msg): esp_err(ESP_FAIL), message(std::move(msg)) {}
-    explicit esp_err_exception(std::string msg, esp_err_t err): esp_err(err), message(std::move(msg)) {}
-    virtual esp_err_t get_err_t() { return esp_err; }
-    ~esp_err_exception() noexcept override = default;
-    virtual const char* what() const noexcept {
-        return message.c_str();
-    }
-private:
-    esp_err_t esp_err;
-    std::string message;
-};
-#else
-#define THROW(exception) abort()
-#endif
-
-static inline void throw_if_false(bool condition, std::string message)
-{
-    if (!condition) {
-        THROW(esp_err_exception(std::move(message)));
-    }
-}
-
-static inline void throw_if_esp_fail(esp_err_t err, std::string message)
-{
-    if (err != ESP_OK) {
-        THROW(esp_err_exception(std::move(message), err));
-    }
-}
-
-static inline void throw_if_esp_fail(esp_err_t err)
-{
-    if (err != ESP_OK) {
-        THROW(esp_err_exception(err));
-    }
-}
-
+#if !defined(CONFIG_IDF_TARGET_LINUX)
 struct Lock {
-    explicit Lock(): lock(nullptr)
-    {
-        lock = xSemaphoreCreateRecursiveMutex();
-        throw_if_false(lock != nullptr, "create signal event group failed");
-    }
-    ~Lock() { vSemaphoreDelete(lock); }
-    void take() { xSemaphoreTakeRecursive(lock, portMAX_DELAY); }
+    using MutexT = QueueDefinition*;
 
-    void give() { xSemaphoreGiveRecursive(lock); }
-    xSemaphoreHandle lock;
+    explicit Lock();
+    ~Lock();
+    void lock();
+    void unlock();
+private:
+    MutexT m{};
 };
+
+using Signal = void*;
+
+#else
+using Lock = std::mutex;
+struct SignalGroup;
+using Signal = std::unique_ptr<SignalGroup>;
+#endif
 
 template<class T>
 class Scoped {
 public:
-    explicit Scoped(T &l):lock(l) { lock.take(); }
-    ~Scoped() { lock.give(); }
+    explicit Scoped(T &l):lock(l) { lock.lock(); }
+    ~Scoped() { lock.unlock(); }
 
 private:
     T& lock;
 };
 
 struct signal_group {
-    explicit signal_group(): event_group(nullptr)
-    {
-        event_group = xEventGroupCreate();
-        throw_if_false(event_group != nullptr, "create signal event group failed");
-    }
+    static constexpr size_t bit0 = 1 << 0;
+    static constexpr size_t bit1 = 1 << 1;
+    static constexpr size_t bit2 = 1 << 2;
+    static constexpr size_t bit3 = 1 << 3;
 
-    void set(uint32_t bits)
-    {
-        xEventGroupSetBits(event_group, bits);
-    }
+    explicit signal_group();
 
-    void clear(uint32_t bits)
-    {
-        xEventGroupClearBits(event_group, bits);
-    }
+    void set(uint32_t bits);
 
-    bool wait(uint32_t flags, uint32_t time_ms) // waiting for all and clearing if set
-    {
-        EventBits_t bits = xEventGroupWaitBits(event_group, flags, pdTRUE, pdTRUE, pdMS_TO_TICKS(time_ms));
-        return bits & flags;
-    }
+    void clear(uint32_t bits);
 
-    bool is_any(uint32_t flags)
-    {
-        return xEventGroupGetBits(event_group) & flags;
-    }
+    // waiting for all and clearing if set
+    bool wait(uint32_t flags, uint32_t time_ms);
 
-    bool wait_any(uint32_t flags, uint32_t time_ms) // waiting for any bit, not clearing them
-    {
-        EventBits_t bits = xEventGroupWaitBits(event_group, flags, pdFALSE, pdFALSE, pdMS_TO_TICKS(time_ms));
-        return bits & flags;
-    }
+    bool is_any(uint32_t flags);
 
-    ~signal_group()
-    {
-        if (event_group) vEventGroupDelete(event_group);
-    }
+    // waiting for any bit, not clearing them
+    bool wait_any(uint32_t flags, uint32_t time_ms);
 
-    EventGroupHandle_t event_group;
+    ~signal_group();
+
+private:
+    Signal event_group;
 };
 
 } // namespace esp_modem

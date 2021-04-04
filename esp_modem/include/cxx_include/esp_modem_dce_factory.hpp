@@ -50,12 +50,12 @@ template<typename Module>
 class Builder {
     static_assert(std::is_base_of<ModuleIf, Module>::value, "Builder must be used only for Module classes");
 public:
-    explicit Builder(std::shared_ptr<DTE> dte): dte(std::move(dte))
-    {
-        esp_netif_config_t netif_config = ESP_NETIF_DEFAULT_PPP();
-        netif = esp_netif_new(&netif_config);
-        throw_if_false(netif != nullptr, "Cannot create default PPP netif");
-    }
+//    explicit Builder(std::shared_ptr<DTE> dte): dte(std::move(dte))
+//    {
+//        esp_netif_config_t netif_config = ESP_NETIF_DEFAULT_PPP();
+//        netif = esp_netif_new(&netif_config);
+//        throw_if_false(netif != nullptr, "Cannot create default PPP netif");
+//    }
 
     Builder(std::shared_ptr<DTE> x, esp_netif_t* esp_netif): dte(std::move(x)), module(nullptr), netif(esp_netif)
     {

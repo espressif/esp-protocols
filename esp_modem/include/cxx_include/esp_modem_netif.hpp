@@ -15,6 +15,8 @@
 #ifndef _ESP_MODEM_NETIF_HPP
 #define _ESP_MODEM_NETIF_HPP
 
+#include <memory>
+#include <cstddef>
 #include "esp_netif.h"
 #include "cxx_include/esp_modem_primitives.hpp"
 
@@ -36,7 +38,7 @@ public:
 
     void start();
 
-    void wait_until_ppp_exits() { signal.wait(PPP_EXIT, 30000); }
+    void wait_until_ppp_exits();
 
     void stop();
 
@@ -53,8 +55,8 @@ private:
     esp_netif_t *netif;
     struct ppp_netif_driver driver{};
     signal_group signal;
-    static const size_t PPP_STARTED = BIT0;
-    static const size_t PPP_EXIT = BIT1;
+    static const size_t PPP_STARTED = signal_group::bit0;
+    static const size_t PPP_EXIT = signal_group::bit1;
 };
 
 } // namespace esp_modem
