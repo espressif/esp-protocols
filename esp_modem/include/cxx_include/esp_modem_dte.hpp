@@ -69,7 +69,7 @@ private:
 
     void setup_cmux();
 
-    static const size_t GOT_LINE = BIT0;
+    static const size_t GOT_LINE = signal_group::bit0;
     size_t buffer_size;
     size_t consumed;
     std::unique_ptr<uint8_t[]> buffer;

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cassert>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"
 #include "esp_log.h"

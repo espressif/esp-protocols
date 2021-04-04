@@ -53,7 +53,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args) {
     // check if PPP error events are enabled, if not, do enable the error occurred/state changed
     // to notify the modem layer when switching modes
     esp_netif_ppp_config_t ppp_config;
-    esp_netif_ppp_get_params(esp_netif, &ppp_config);
+    // esp_netif_ppp_get_params(esp_netif, &ppp_config);
     if (!ppp_config.ppp_error_event_enabled) {
         ppp_config.ppp_error_event_enabled = true;
         esp_netif_ppp_set_params(esp_netif, &ppp_config);
@@ -100,6 +100,10 @@ Netif::~Netif() {
     esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected);
+}
+
+void Netif::wait_until_ppp_exits() {
+    signal.wait(PPP_EXIT, 30000);
 }
 
 } // namespace esp_modem
