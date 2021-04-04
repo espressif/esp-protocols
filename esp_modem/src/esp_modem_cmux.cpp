@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstring>
+#include <unistd.h>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
 
@@ -87,7 +88,7 @@ void CMUXedTerminal::start()
     for (size_t i = 0; i < 3; i++)
     {
         send_sabm(i);
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Waiting before open next DLC
+        usleep(100'000);
     }
 }
 
@@ -110,13 +111,13 @@ bool CMUXedTerminal::process_cmux_recv(size_t len)
 
 bool output(uint8_t *data, size_t len, std::string message)
 {
-    printf("OUTPUT: %s len=%d \n", message.c_str(), len);
+//    printf("OUTPUT: %s len=%ld \n", message.c_str(), len);
     for (int i=0; i< len; ++i) {
         printf("0x%02x, ",data[i]);
     }
     printf("----\n");
 
-    printf("%.*s", len, data);
+    printf("%.*s", (int)len, data);
     return true;
 }
 
@@ -219,7 +220,7 @@ void CMUXedTerminal::setup_cmux()
     for (size_t i = 0; i < 3; i++)
     {
         send_sabm(i);
-        vTaskDelay(100 / portTICK_PERIOD_MS); // Waiting before open next DLC
+        usleep(100'000);
     }
 }
 
@@ -235,8 +236,6 @@ void DTE::setup_cmux()
 
 void DTE::send_cmux_command(uint8_t i, const std::string& command)
 {
-//    send_sabm(i);
-//    vTaskDelay(100 / portTICK_PERIOD_MS); // Waiting before open next DLC
 
     uint8_t frame[6];
     frame[0] = SOF_MARKER;

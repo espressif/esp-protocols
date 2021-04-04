@@ -1,0 +1,78 @@
+//
+// Created by david on 3/25/21.
+//
+#include "cxx_include/esp_modem_dte.hpp"
+#include "esp_modem_config.h"
+#include "cxx_include/esp_modem_api.hpp"
+#include "cxx_include/esp_modem_dce_factory.hpp"
+#include <memory>
+#include <utility>
+
+using namespace esp_modem;
+using namespace esp_modem::dce_factory;
+
+class NetModule;
+typedef DCE_T<NetModule> NetDCE;
+
+class NetDCE_Factory: public Factory {
+public:
+    template <typename T, typename ...Args>
+    static DCE_T<T>* create(const config *cfg, Args&&... args)
+    {
+        return build_generic_DCE< /* Object to create */ DCE_T<T>, /* vanilla pointer */ DCE_T<T> *, /* module */ T>
+                (cfg, std::forward<Args>(args)...);
+    }
+};
+
+class NetModule: public ModuleIf {
+public:
+    explicit NetModule(std::shared_ptr<DTE> dte, const esp_modem_dce_config *cfg):
+            dte(std::move(dte)) {}
+
+    bool setup_data_mode() override
+    {
+        return true;
+    }
+
+    bool set_mode(modem_mode mode) override
+    {
+        return true;
+    }
+
+    static esp_err_t init(esp_netif_t *netif)
+    {
+        // configure
+        esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+        esp_modem_dce_config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("");
+
+        // create DTE and minimal network DCE
+        auto uart_dte = create_uart_dte(&dte_config);
+        dce = NetDCE_Factory::create<NetModule>(&dce_config, uart_dte, netif);
+        return dce == nullptr ? ESP_FAIL : ESP_OK;
+    }
+
+    static void deinit()    { delete dce; }
+    static void start()     { dce->set_data();  }
+    static void stop()      { dce->exit_data(); }
+
+private:
+    static NetDCE *dce;
+    std::shared_ptr<DTE> dte;
+};
+
+NetDCE *NetModule::dce = nullptr;
+
+esp_err_t modem_init_network(esp_netif_t *netif)
+{
+    return NetModule::init(netif);
+}
+
+void modem_start_network()
+{
+    NetModule::start();
+}
+
+void modem_stop_network()
+{
+    NetModule::stop();
+}

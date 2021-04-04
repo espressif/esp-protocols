@@ -58,8 +58,9 @@ public:
         return dte->command(command, std::move(got_line), time_ms);
     }
 
-protected:
     bool set_mode(modem_mode m) { return mode.set(dte.get(), module.get(), netif, m); }
+
+protected:
 
 
     std::shared_ptr<DTE> dte;
