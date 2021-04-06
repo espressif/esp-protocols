@@ -29,14 +29,12 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
                 return false;
             netif.stop();
             device->set_mode(modem_mode::COMMAND_MODE);
-            uint8_t* data;
-            dte->set_data_cb([&](size_t len) -> bool {
-                auto actual_len = dte->read(&data, 64);
-                ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, actual_len, ESP_LOG_INFO);
+            dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
+                ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_INFO);
                 return false;
             });
             netif.wait_until_ppp_exits();
-            dte->set_data_cb(nullptr);
+            dte->set_read_cb(nullptr);
             dte->set_mode(modem_mode::COMMAND_MODE);
             mode = m;
             return true;
@@ -54,6 +52,10 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
                 return false;
             device->set_mode(modem_mode::CMUX_MODE);
             dte->set_mode(modem_mode::CMUX_MODE);
+//            auto dte1 = create_virtual(dte, 1);
+//            auto dte2 = create_virtual(dte, 2);
+//            device->swap_dte(dte1);
+//            netif->swap_dte(dte2;);
             mode = modem_mode::COMMAND_MODE;
             return true;
     }

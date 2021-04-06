@@ -42,8 +42,17 @@ public:
         return actual_len;
     }
 
-    void set_data_cb(std::function<bool(size_t len)> f) {
-        term->set_data_cb(std::move(f));
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f)
+    {
+        on_data = std::move(f);
+        term->set_read_cb([this](uint8_t *data, size_t len) {
+            if (!data) {
+                auto data_to_read = std::min(len, buffer_size - consumed);
+                data = buffer.get();
+                len = term->read(data, data_to_read);
+            }
+            return on_data(data, len);
+        });
     }
 
     void start() { term->start(); }
@@ -54,7 +63,10 @@ public:
         term->start();
         mode = m;
         if (m == modem_mode::DATA_MODE) {
-            term->set_data_cb(on_data);
+            term->set_read_cb(on_data);
+            if (other_term) { // if we have the other terminal, let's use it for commands
+                command_term = other_term.get();
+            }
         } else if (m == modem_mode::CMUX_MODE) {
             setup_cmux();
         }
@@ -62,22 +74,31 @@ public:
 
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) override;
 
-    void send_cmux_command(uint8_t i, const std::string &command);
 
 private:
     Lock lock;
 
     void setup_cmux();
+//    command_result command(Terminal *t, const std::string &command, got_line_cb got_line, uint32_t time_ms);
 
     static const size_t GOT_LINE = signal_group::bit0;
     size_t buffer_size;
     size_t consumed;
     std::unique_ptr<uint8_t[]> buffer;
     std::unique_ptr<Terminal> term;
+    Terminal *command_term;
+    std::unique_ptr<Terminal> other_term;
     modem_mode mode;
     signal_group signal;
-    std::function<bool(size_t len)> on_data;
+    std::function<bool(uint8_t *data, size_t len)> on_data;
 };
+
+//class DTE_inst: public DTE {
+//public:
+//    DTE_inst(std::shared_ptr<DTE> parent) : DTE(t), dte(parent) {}
+//private:
+//    std::shared_ptr<DTE> dte;
+//};
 
 } // namespace esp_modem
 
