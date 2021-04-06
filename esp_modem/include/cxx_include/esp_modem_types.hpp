@@ -15,6 +15,11 @@
 #ifndef _ESP_MODEM_TYPES_HPP_
 #define _ESP_MODEM_TYPES_HPP_
 
+#include <functional>
+#include <string>
+#include <cstddef>
+#include <cstdint>
+
 namespace esp_modem {
 
 enum class modem_mode {
@@ -33,12 +38,9 @@ enum class command_result {
 typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
 
 struct PdpContext {
-    explicit PdpContext(std::string &apn) : context_id(1), protocol_type("IP"), apn(apn) {}
-
-    explicit PdpContext(const char *apn) : context_id(1), protocol_type("IP"), apn(apn) {}
-
-    size_t context_id;
-    std::string protocol_type;
+    explicit PdpContext(std::string apn) : apn(std::move(apn)) {}
+    size_t context_id = 1;
+    std::string protocol_type = "IP";
     std::string apn;
 };
 

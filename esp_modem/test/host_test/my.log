@@ -1,0 +1,31 @@
+-- Found Git: /usr/bin/git (found version "2.30.2") 
+-- Component directory /home/david/esp/idf/components/aws_iot does not contain a CMakeLists.txt file. No component will be added
+-- Component directory /home/david/esp/idf/components/micro-ecc does not contain a CMakeLists.txt file. No component will be added
+-- Component directory /home/david/esp/idf/components/nimble does not contain a CMakeLists.txt file. No component will be added
+-- ccache will be used for faster recompilation
+-- The C compiler identification is GNU 10.2.1
+-- The CXX compiler identification is GNU 10.2.1
+-- The ASM compiler identification is GNU
+-- Found assembler: /usr/lib64/ccache/cc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/lib64/ccache/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/lib64/ccache/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Building ESP-IDF components for target linux
+-- adding linux stuff...
+-- Found Git: /usr/bin/git (found version "2.30.2") 
+-- Configuring incomplete, errors occurred!
+See also "/home/david/repos/esp-idf-contrib/esp_modem/test/host_test/build/CMakeFiles/CMakeOutput.log".
+Adding "set-target"'s dependency "fullclean" to list of commands with default set of options.
+Executing action: fullclean
+Build directory '/home/david/repos/esp-idf-contrib/esp_modem/test/host_test/build' not found. Nothing to clean.
+Executing action: set-target
+Set Target to: linux, new sdkconfig created. Existing sdkconfig renamed to sdkconfig.old.
+Running cmake in directory /home/david/repos/esp-idf-contrib/esp_modem/test/host_test/build
+Executing "cmake -G Ninja -DPYTHON_DEPS_CHECKED=1 -DESP_PLATFORM=1 -DIDF_TARGET=linux -DIDF_TARGET=linux -DCCACHE_ENABLE=1 /home/david/repos/esp-idf-contrib/esp_modem/test/host_test"...

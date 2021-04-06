@@ -24,7 +24,7 @@ public:
     static std::unique_ptr<PdpContext> create_pdp_context(std::string &apn);
 
     template <typename T, typename ...Args>
-    static bool make(T* &t, Args&&... args)
+    static auto make(T* &t, Args&&... args) -> std::remove_reference_t<decltype(t)>
     {
         t = new T(std::forward<Args>(args)...);
         return true;
@@ -46,8 +46,9 @@ public:
 
 };
 
-template<typename T>
+template<typename Module>
 class Builder {
+    static_assert(std::is_base_of<ModuleIf, Module>::value, "Builder must be used only for Module classes");
 public:
     explicit Builder(std::shared_ptr<DTE> dte): dte(std::move(dte))
     {
@@ -61,7 +62,7 @@ public:
         throw_if_false(netif != nullptr, "Null netif");
     }
 
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif, std::shared_ptr<T> dev): dte(std::move(dte)), module(std::move(dev)), netif(esp_netif)
+    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif, std::shared_ptr<Module> dev): dte(std::move(dte)), module(std::move(dev)), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
@@ -75,7 +76,7 @@ public:
     template<typename Ptr>
     bool create_module(Ptr &t, const esp_modem_dce_config *config)
     {
-        return FactoryHelper::make<T>(t, dte, config);
+        return FactoryHelper::make<Module>(t, dte, config);
     }
 
     template<typename DceT, typename Ptr>
@@ -93,7 +94,7 @@ public:
 
 private:
     std::shared_ptr<DTE> dte;
-    std::shared_ptr<T> module;
+    std::shared_ptr<Module> module;
     esp_netif_t *netif;
 };
 
