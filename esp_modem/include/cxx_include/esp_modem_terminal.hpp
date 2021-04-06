@@ -36,9 +36,10 @@ class Terminal {
 public:
     virtual ~Terminal() = default;
 
-    virtual void set_data_cb(std::function<bool(size_t len)> f) { on_data = std::move(f); }
+//    virtual void set_data_cb(std::function<bool(size_t len)> f) { on_data = std::move(f); }
 
     void set_error_cb(std::function<void(terminal_error)> f) { on_error = std::move(f); }
+    virtual void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) { on_data = std::move(f); }
 
     virtual int write(uint8_t *data, size_t len) = 0;
 
@@ -51,7 +52,8 @@ public:
     virtual size_t max_virtual_terms() { return 1; }
 
 protected:
-    std::function<bool(size_t len)> on_data;
+//    std::function<bool(size_t len)> on_data;
+    std::function<bool(uint8_t *data, size_t len)> on_data;
     std::function<void(terminal_error)> on_error;
 };
 

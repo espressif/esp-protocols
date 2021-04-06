@@ -14,15 +14,12 @@
 
 #include <cstring>
 #include <unistd.h>
+#include <cxx_include/esp_modem_cmux.hpp>
+
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
 
 using namespace esp_modem;
-
-/* CRC8 is the reflected CRC8/ROHC algorithm */
-#define FCS_POLYNOMIAL 0xe0 /* reversed crc8 */
-#define FCS_INIT_VALUE 0xFF
-#define FCS_GOOD_VALUE 0xCF
 
 #define EA 0x01  /* Extension bit      */
 #define CR 0x02  /* Command / Response */
@@ -54,28 +51,20 @@ using namespace esp_modem;
 
 /* Flag sequence field between messages (start of frame) */
 #define SOF_MARKER 0xF9
-static uint8_t crc8(const uint8_t *src, size_t len, uint8_t polynomial, uint8_t initial_value,
-             bool reversed)
+
+uint8_t CMux::fcs_crc(const uint8_t frame[6])
 {
-    uint8_t crc = initial_value;
-    size_t i, j;
+    //    #define FCS_GOOD_VALUE 0xCF
+    uint8_t crc = 0xFF; // FCS_INIT_VALUE
 
-    for (i = 0; i < len; i++) {
-        crc ^= src[i];
+    for (int i = 1; i < 4; i++) {
+        crc ^= frame[i];
 
-        for (j = 0; j < 8; j++) {
-            if (reversed) {
-                if (crc & 0x01) {
-                    crc = (crc >> 1) ^ polynomial;
-                } else {
-                    crc >>= 1;
-                }
+        for (int j = 0; j < 8; j++) {
+            if (crc & 0x01) {
+                crc = (crc >> 1) ^ 0xe0; // FCS_POLYNOMIAL
             } else {
-                if (crc & 0x80) {
-                    crc = (crc << 1) ^ polynomial;
-                } else {
-                    crc <<= 1;
-                }
+                crc >>= 1;
             }
         }
     }
@@ -83,57 +72,38 @@ static uint8_t crc8(const uint8_t *src, size_t len, uint8_t polynomial, uint8_t 
     return crc;
 }
 
-void CMUXedTerminal::start()
-{
-    for (size_t i = 0; i < 3; i++)
-    {
-        send_sabm(i);
-        usleep(100'000);
-    }
-}
-
-void CMUXedTerminal::send_sabm(size_t dlci)
+void CMux::send_sabm(size_t dlci)
 {
     uint8_t frame[6];
     frame[0] = SOF_MARKER;
     frame[1] = (dlci << 2) | 0x3;
     frame[2] = FT_SABM | PF;
     frame[3] = 1;
-    frame[4] = 0xFF - crc8(&frame[1], 3, FCS_POLYNOMIAL, FCS_INIT_VALUE, true);
+    frame[4] = 0xFF - fcs_crc(frame);
     frame[5] = SOF_MARKER;
     term->write(frame, 6);
 }
 
-bool CMUXedTerminal::process_cmux_recv(size_t len)
+
+void CMux::data_available(uint8_t *data, size_t len)
 {
-    return false;
+    if (type == 0xFF && len > 0 && dlci > 0) {
+        int virtual_term = dlci - 1;
+        if (virtual_term < max_terms && read_cb[virtual_term])
+            read_cb[virtual_term](data, len);
+    }
 }
 
-bool output(uint8_t *data, size_t len, std::string message)
+bool CMux::on_cmux(uint8_t *data, size_t actual_len)
 {
-//    printf("OUTPUT: %s len=%ld \n", message.c_str(), len);
-    for (int i=0; i< len; ++i) {
-        printf("0x%02x, ",data[i]);
+    if (!data) {
+        auto data_to_read = std::min(actual_len, buffer_size);
+        data = buffer.get();
+        actual_len = term->read(data, data_to_read);
     }
-    printf("----\n");
-
-    printf("%.*s", (int)len, data);
-    return true;
-}
-
-bool CMUXedTerminal::on_cmux(size_t len)
-{
-    auto data_to_read = std::min(len, buffer_size);
-    auto data = buffer.get();
-    auto actual_len = term->read(data, data_to_read);
-//    consumed += actual_len;
-    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_INFO);
-    for (int i=0; i< len; ++i) {
-        printf("0x%02x, ",data[i]);
-    }
-    printf("\n");
+    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_VERBOSE);
     uint8_t* frame = data;
-    auto available_len = len;
+    auto available_len = actual_len;
     size_t payload_offset = 0;
     size_t footer_offset = 0;
     while (available_len > 0) {
@@ -171,12 +141,12 @@ bool CMUXedTerminal::on_cmux(size_t len)
             case cmux_state::PAYLOAD:
                 if (available_len < payload_len) { // payload
                     state = cmux_state::PAYLOAD;
-                    output(frame, available_len, "PAYLOAD partial read"); // partial read
+                    data_available(frame, available_len); // partial read
                     payload_len -= available_len;
                     return false;
                 } else { // complete
                     if (payload_len > 0) {
-                        output(&frame[0], payload_len, "PAYLOAD full read"); // rest read
+                        data_available(&frame[0], payload_len); // rest read
                     }
                     available_len -= payload_len;
                     frame += payload_len;
@@ -196,7 +166,7 @@ bool CMUXedTerminal::on_cmux(size_t len)
                         return true;
                     }
                     if (payload_len == 0) {
-                        output(frame_header, 0, "Null payload");
+                        data_available(frame_header, 0); // Null payload
                     }
                     frame += footer_offset;
                     available_len -= footer_offset;
@@ -208,12 +178,12 @@ bool CMUXedTerminal::on_cmux(size_t len)
     }
     return true;
 }
-void CMUXedTerminal::setup_cmux()
+void CMux::init()
 {
     frame_header_offset = 0;
     state = cmux_state::INIT;
-    term->set_data_cb([this](size_t len){
-        this->on_cmux(len);
+    term->set_read_cb([this](uint8_t *data, size_t len) {
+        this->on_cmux(data, len);
         return false;
     });
 
@@ -224,51 +194,27 @@ void CMUXedTerminal::setup_cmux()
     }
 }
 
-void DTE::setup_cmux()
-{
-    auto original_term = std::move(term);
-    auto cmux_term = std::make_unique<CMUXedTerminal>(std::move(original_term), std::move(buffer), buffer_size);
-    buffer_size = 0;
-    cmux_term->setup_cmux();
-    term = std::move(cmux_term);
-}
+int CMux::write(int virtual_term, uint8_t *data, size_t len) {
 
-
-void DTE::send_cmux_command(uint8_t i, const std::string& command)
-{
-
-    uint8_t frame[6];
-    frame[0] = SOF_MARKER;
-    frame[1] = (i << 2) + 1;
-    frame[2] = FT_UIH;
-    frame[3] = (command.length() << 1) + 1;
-    frame[4] = 0xFF - crc8(&frame[1], 3, FCS_POLYNOMIAL, FCS_INIT_VALUE, true);
-    frame[5] = SOF_MARKER;
-
-    term->write(frame, 4);
-    term->write((uint8_t *)command.c_str(), command.length());
-    term->write(frame + 4, 2);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_INFO);
-    ESP_LOG_BUFFER_HEXDUMP("Send", (uint8_t *)command.c_str(), command.length(), ESP_LOG_INFO);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_INFO);
-}
-
-int CMUXedTerminal::write(uint8_t *data, size_t len) {
-
-    size_t i = 1;
+    int i = virtual_term + 1;
     uint8_t frame[6];
     frame[0] = SOF_MARKER;
     frame[1] = (i << 2) + 1;
     frame[2] = FT_UIH;
     frame[3] = (len << 1) + 1;
-    frame[4] = 0xFF - crc8(&frame[1], 3, FCS_POLYNOMIAL, FCS_INIT_VALUE, true);
+    frame[4] = 0xFF - fcs_crc(frame);
     frame[5] = SOF_MARKER;
 
     term->write(frame, 4);
     term->write(data, len);
     term->write(frame + 4, 2);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_INFO);
-    ESP_LOG_BUFFER_HEXDUMP("Send", data, len, ESP_LOG_INFO);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_VERBOSE);
+    ESP_LOG_BUFFER_HEXDUMP("Send", data, len, ESP_LOG_VERBOSE);
+    ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_VERBOSE);
     return 0;
+}
+
+void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f) {
+    if (inst < max_terms)
+        read_cb[inst] = std::move(f);
 }

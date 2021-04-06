@@ -20,6 +20,8 @@
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
+using namespace esp_modem;
+
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
@@ -114,7 +116,6 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 }
 
 
-static void modem_test_app(esp_modem_dte_config_t *dte_config, esp_modem_dce_config_t *dce_config, esp_netif_config_t *ppp_config);
 
 extern "C" void app_main(void)
 {
@@ -167,7 +168,7 @@ extern "C" void app_main(void)
 
     std::string apn = "internet";
 //    auto device = create_generic_module(uart_dte, apn);
-    auto device = create_SIM7600_module(uart_dte, apn);
+//    auto device = create_SIM7600_module(uart_dte, apn);
 //    bool pin_ok = true;
 //    if (device->read_pin(pin_ok) == command_result::OK && !pin_ok) {
 //        throw_if_false(device->set_pin("1234") == command_result::OK, "Cannot set PIN!");
@@ -187,37 +188,45 @@ extern "C" void app_main(void)
 //    std::cout << "|" << number << "|" << std::endl;
 //    std::cout << "----" << std::endl;
 //    auto my_dce = create_generic_module_dce(uart_dte, device, esp_netif);
-    auto my_dce = create_SIM7600_dce_from_module(uart_dte, device, esp_netif);
+    auto my_dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
+    my_dce->set_command_mode();
     my_dce->get_module_name(number);
     std::cout << "|" << number << "|" << std::endl;
     bool pin_ok = true;
     if (my_dce->read_pin(pin_ok) == command_result::OK && !pin_ok) {
         throw_if_false(my_dce->set_pin("1234") == command_result::OK, "Cannot set PIN!");
     }
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
 //    return;
 //    my_dce->set_cmux();
-//    my_dce->set_cmux();
+    my_dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
+    my_dce->get_imsi(number);
+    std::cout << "|" << number << "|" << std::endl;
 
 //    while (1) {
 //        vTaskDelay(pdMS_TO_TICKS(1000));
-//        uart_dte->write((uint8_t*)"AT+CPIN?\r", 9);
+//        my_dce->get_imsi(number);
+//        std::cout << "|" << number << "|" << std::endl;
 //
 //    }
 //    uart_dte->send_cmux_command(2, "AT+CPIN?");
 //    return;
 
-    my_dce->get_module_name(number);
-    my_dce->set_data_mode();
+//    my_dce->get_module_name(number);
+//    my_dce->set_data_mode();
+//
+//    my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
+//        std::string response((char*)data, len);
+//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+//        std::cout << response << std::endl;
+//        return command_result::OK;
+//    }, 1000);
 
-    my_dce->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
-        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
-        std::cout << response << std::endl;
-        return command_result::OK;
-    }, 1000);
 
-    while (1) {
+
+//    while (1)
+    {
 
         my_dce->set_data();
         /* Config MQTT */
@@ -230,14 +239,20 @@ extern "C" void app_main(void)
         xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
         esp_mqtt_client_destroy(mqtt_client);
 
+        while (1) {
+            vTaskDelay(pdMS_TO_TICKS(2000));
+            my_dce->get_imsi(number);
+            std::cout << "|" << number << "|" << std::endl;
+        }
+
 //    vTaskDelay(pdMS_TO_TICKS(20000));
-        my_dce->exit_data();
-        uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
-            std::string response((char*)data, len);
-//        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
-            std::cout << response << std::endl;
-            return command_result::OK;
-        }, 1000);
+//        my_dce->exit_data();
+//        uart_dte->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
+//            std::string response((char*)data, len);
+////        ESP_LOGI("in the lambda", "len=%d data %s", len, (char*)data);
+//            std::cout << response << std::endl;
+//            return command_result::OK;
+//        }, 1000);
     }
 
 //    ddd->send_command("AT+COPS=?\r", [&](uint8_t *data, size_t len) {

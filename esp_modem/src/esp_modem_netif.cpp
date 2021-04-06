@@ -53,7 +53,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args) {
     // check if PPP error events are enabled, if not, do enable the error occurred/state changed
     // to notify the modem layer when switching modes
     esp_netif_ppp_config_t ppp_config;
-    // esp_netif_ppp_get_params(esp_netif, &ppp_config);
+     esp_netif_ppp_get_params(esp_netif, &ppp_config);
     if (!ppp_config.ppp_error_event_enabled) {
         ppp_config.ppp_error_event_enabled = true;
         esp_netif_ppp_set_params(esp_netif, &ppp_config);
@@ -81,10 +81,8 @@ Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
 }
 
 void Netif::start() {
-    ppp_dte->set_data_cb([this](size_t len) -> bool {
-        uint8_t *data;
-        auto actual_len = ppp_dte->read(&data, len);
-        receive(data, actual_len);
+    ppp_dte->set_read_cb([this](uint8_t *data, size_t len) -> bool {
+        receive(data, len);
         return false;
     });
     esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
