@@ -31,12 +31,14 @@ public:
 
     bool setup_data_mode() override
     {
-        set_command_mode(); // send in case we were in PPP mode, ignore potential failure
+        // switch to command mode (in case we were in PPP mode)
+        static_cast<void>(set_command_mode()); // ignore the potential failure, as we might be in command mode after startup
+
         bool is_pin_ok;
         if (read_pin(is_pin_ok) != command_result::OK)
             return false;
         if (!is_pin_ok) {
-            if (set_pin(pin) != command_result::OK)
+            if (set_pin() != command_result::OK)
                 return false;
             vTaskDelay(pdMS_TO_TICKS(1000));
             if (read_pin(is_pin_ok) != command_result::OK || !is_pin_ok)
@@ -88,12 +90,12 @@ private:
     std::string apn;
     static std::string pin;
 
-    template <typename ...T> command_result set_pdp_context(T&&... args) { return dce_commands::set_pdp_context(dte.get(),std::forward<T>(args)...); }
-    template <typename ...T> command_result set_pin(T&&... args) { return dce_commands::set_pin(dte.get(),std::forward<T>(args)...); }
-    template <typename ...T> command_result read_pin(T&&... args) { return dce_commands::read_pin(dte.get(),std::forward<T>(args)...); }
-    command_result set_data_mode() { return dce_commands::set_data_mode(dte.get()); }
-    command_result resume_data_mode() { return dce_commands::resume_data_mode(dte.get()); }
-    command_result set_command_mode() { return dce_commands::set_command_mode(dte.get()); }
+    [[nodiscard]] command_result set_pdp_context(PdpContext& pdp) { return dce_commands::set_pdp_context(dte.get(),pdp); }
+    [[nodiscard]] command_result set_pin() { return dce_commands::set_pin(dte.get(), pin); }
+    [[nodiscard]] command_result read_pin(bool& pin_ok) { return dce_commands::read_pin(dte.get(), pin_ok); }
+    [[nodiscard]] command_result set_data_mode() { return dce_commands::set_data_mode(dte.get()); }
+    [[nodiscard]] command_result resume_data_mode() { return dce_commands::resume_data_mode(dte.get()); }
+    [[nodiscard]] command_result set_command_mode() { return dce_commands::set_command_mode(dte.get()); }
 };
 
 NetDCE *NetModule::dce = nullptr;
