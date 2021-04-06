@@ -61,7 +61,7 @@ is provided implementing these method using the uart driver.
 
 ## CMUX terminal
 
-The below diagram depicts the idea of using CMUX terminal mode using the CMUXedTerminal class which is a terminal
+The below diagram depicts the idea of using CMUX terminal mode using the CMux class which is a terminal
 (it implements the basic read/write methods) interfacing arbitrary number of virtual terminals,
 but at the same time it is also composed of another terminal, the real terminal, which is multiplexed.
 

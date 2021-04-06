@@ -15,7 +15,11 @@
 #ifndef _ESP_MODEM_CMUX_HPP_
 #define _ESP_MODEM_CMUX_HPP_
 
+#include "esp_modem_terminal.hpp"
+
 namespace esp_modem {
+
+constexpr size_t max_terms = 2;
 /**
  * @defgroup ESP_MODEM_CMUX ESP_MODEM CMUX class
  * @brief Definition of CMUX terminal
@@ -43,19 +47,20 @@ enum class cmux_state {
  *
  * @note Implementation of CMUX protocol is experimental
  */
-class CMUXedTerminal: public Terminal {
+class CMuxInstance;
+
+class CMux {
 public:
-    explicit CMUXedTerminal(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
-            term(std::move(t)), buffer(std::move(b)) {}
-    ~CMUXedTerminal() override = default;
-    void setup_cmux();
-    void set_data_cb(std::function<bool(size_t len)> f) override {}
-    int write(uint8_t *data, size_t len) override;
-    int read(uint8_t *data, size_t len)  override { return term->read(data, len); }
-    void start() override;
-    void stop() override {}
+    explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
+            term(std::move(t)), buffer_size(buff_size), buffer(std::move(b)) {}
+    ~CMux() = default;
+    void init();
+    void set_read_cb(int inst, std::function<bool(uint8_t *data, size_t len)> f);
+
+    int write(int i, uint8_t *data, size_t len);
 private:
-    static bool process_cmux_recv(size_t len);
+    std::function<bool(uint8_t *data, size_t len)> read_cb[max_terms];
+    void data_available(uint8_t *data, size_t len);
     void send_sabm(size_t i);
     std::unique_ptr<Terminal> term;
     cmux_state state;
@@ -65,9 +70,25 @@ private:
     uint8_t frame_header[6];
     size_t frame_header_offset;
     size_t buffer_size;
-    size_t consumed;
     std::unique_ptr<uint8_t[]> buffer;
-    bool on_cmux(size_t len);
+    bool on_cmux(uint8_t *data, size_t len);
+    static uint8_t fcs_crc(const uint8_t frame[6]);
+    Lock lock;
+    int instance;
+};
+
+class CMuxInstance: public Terminal {
+public:
+    explicit CMuxInstance(std::shared_ptr<CMux> parent, int i): cmux(std::move(parent)), instance(i) {}
+
+    int write(uint8_t *data, size_t len) override { return cmux->write(instance, data, len); }
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override { return cmux->set_read_cb(instance, std::move(f)); }
+    int read(uint8_t *data, size_t len) override { return  0; }
+    void start() override { }
+    void stop() override { }
+private:
+    std::shared_ptr<CMux> cmux;
+    int instance;
 };
 
 /**

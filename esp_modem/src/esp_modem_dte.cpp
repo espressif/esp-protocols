@@ -23,19 +23,22 @@ const int DTE_BUFFER_SIZE = 1024;
 DTE::DTE(std::unique_ptr<Terminal> terminal):
         buffer_size(DTE_BUFFER_SIZE), consumed(0),
         buffer(std::make_unique<uint8_t[]>(buffer_size)),
-        term(std::move(terminal)), mode(modem_mode::UNDEF) {}
+        term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
+        mode(modem_mode::UNDEF) {}
 
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms)
 {
     Scoped<Lock> l(lock);
     command_result res = command_result::TIMEOUT;
-    term->set_data_cb([&](size_t len){
-        auto data_to_read = std::min(len, buffer_size - consumed);
-        auto data = buffer.get() + consumed;
-        auto actual_len = term->read(data, data_to_read);
-        consumed += actual_len;
-        if (memchr(data, '\n', actual_len)) {
-            res = got_line(buffer.get(), consumed);
+    command_term->set_read_cb([&](uint8_t *data, size_t len) {
+        if (!data) {
+            auto data_to_read = std::min(len, buffer_size - consumed);
+            data = buffer.get() + consumed;
+            len = command_term->read(data, data_to_read);
+        }
+        consumed += len;
+        if (memchr(data, '\n', len)) {
+            res = got_line(data, consumed);
             if (res == command_result::OK || res == command_result::FAIL) {
                 signal.set(GOT_LINE);
                 return true;
@@ -43,12 +46,23 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         }
         return false;
     });
-    term->write((uint8_t *)command.c_str(), command.length());
+    command_term->write((uint8_t *)command.c_str(), command.length());
     auto got_lf = signal.wait(GOT_LINE, time_ms);
     if (got_lf && res == command_result::TIMEOUT) {
         throw_if_esp_fail(ESP_ERR_INVALID_STATE);
     }
     consumed = 0;
-    term->set_data_cb(nullptr);
+    command_term->set_read_cb(nullptr);
     return res;
+}
+
+void DTE::setup_cmux()
+{
+    auto original_term = std::move(term);
+    auto cmux_term = std::make_shared<CMux>(std::move(original_term), std::move(buffer), buffer_size);
+    buffer_size = 0;
+    cmux_term->init();
+    term = std::make_unique<CMuxInstance>(cmux_term, 0);
+    command_term = term.get(); // use command terminal as previously
+    other_term = std::make_unique<CMuxInstance>(cmux_term, 1);
 }
