@@ -19,7 +19,7 @@ public:
     template <typename T, typename ...Args>
     static DCE_T<T>* create(const config *cfg, Args&&... args)
     {
-        return build_generic_DCE< /* Object to create */ DCE_T<T>, /* vanilla pointer */ DCE_T<T> *, /* module */ T>
+        return build_generic_DCE<T>
                 (cfg, std::forward<Args>(args)...);
     }
 };

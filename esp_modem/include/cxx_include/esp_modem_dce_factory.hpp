@@ -23,25 +23,22 @@ class FactoryHelper {
 public:
     static std::unique_ptr<PdpContext> create_pdp_context(std::string &apn);
 
-    template <typename T, typename ...Args>
-    static auto make(T* &t, Args&&... args) -> std::remove_reference_t<decltype(t)>
+    template <typename T, typename Ptr, typename ...Args>
+    static auto make(Args&&... args) -> typename std::enable_if<std::is_same<Ptr, T*>::value, T*>::type
     {
-        t = new T(std::forward<Args>(args)...);
-        return true;
+        return new T(std::forward<Args>(args)...);
     }
 
-    template <typename T, typename ...Args>
-    static bool make(std::shared_ptr<T> &t, Args&&... args)
+    template <typename T, typename Ptr, typename ...Args>
+    static auto make(Args&&... args) ->  typename std::enable_if<std::is_same<Ptr, std::shared_ptr<T>>::value, std::shared_ptr<T>>::type
     {
-        t = std::make_shared<T>(std::forward<Args>(args)...);
-        return true;
+        return std::make_shared<T>(std::forward<Args>(args)...);
     }
 
-    template <typename T, typename ...Args>
-    static bool make(std::unique_ptr<T> &t, Args&&... args)
+    template <typename T, typename Ptr = std::unique_ptr<T>, typename ...Args>
+    static auto make(Args&&... args) -> typename std::enable_if<std::is_same<Ptr, std::unique_ptr<T>>::value, std::unique_ptr<T>>::type
     {
-        t = std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-        return true;
+        return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
     }
 
 };
@@ -50,13 +47,6 @@ template<typename Module>
 class Builder {
     static_assert(std::is_base_of<ModuleIf, Module>::value, "Builder must be used only for Module classes");
 public:
-//    explicit Builder(std::shared_ptr<DTE> dte): dte(std::move(dte))
-//    {
-//        esp_netif_config_t netif_config = ESP_NETIF_DEFAULT_PPP();
-//        netif = esp_netif_new(&netif_config);
-//        throw_if_false(netif != nullptr, "Cannot create default PPP netif");
-//    }
-
     Builder(std::shared_ptr<DTE> x, esp_netif_t* esp_netif): dte(std::move(x)), module(nullptr), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
@@ -72,24 +62,23 @@ public:
         throw_if_false(module == nullptr, "module was captured or created but never used");
     }
 
-
     template<typename Ptr>
-    bool create_module(Ptr &t, const esp_modem_dce_config *config)
+    auto create_module(const esp_modem_dce_config *config) -> Ptr
     {
-        return FactoryHelper::make<Module>(t, dte, config);
+        return FactoryHelper::make<Module, Ptr>(dte, config);
     }
 
     template<typename DceT, typename Ptr>
-    bool create(Ptr &t, const esp_modem_dce_config *config)
+    auto create(const esp_modem_dce_config *config) -> Ptr
     {
         if (dte == nullptr)
-            return false;
+            return nullptr;
         if (module == nullptr) {
-            if (!create_module(module, config)) {
-                return false;
-            }
+            module = create_module<decltype(module)>(config);
+            if (module == nullptr)
+                return nullptr;
         }
-        return FactoryHelper::make<DceT>(t, std::move(dte), std::move(module), netif);
+        return FactoryHelper::make<DceT, Ptr>(std::move(dte), std::move(module), netif);
     }
 
 private:
@@ -109,23 +98,23 @@ class Factory {
 public:
     explicit Factory(Modem modem): m(modem) {}
 
-    template <typename T, typename ...Args>
+    template <typename Module, typename ...Args>
     static std::unique_ptr<DCE> build_unique(const config *cfg, Args&&... args)
     {
-        return build_generic_DCE<DCE, std::unique_ptr<DCE>, T>(cfg, std::forward<Args>(args)...);
+        return build_generic_DCE<Module, DCE, std::unique_ptr<DCE>>(cfg, std::forward<Args>(args)...);
     }
 
-    template <typename T, typename ...Args>
+    template <typename Module, typename ...Args>
     static DCE* build(const config *cfg, Args&&... args)
     {
-        return build_generic_DCE<DCE, DCE*, T>(cfg, std::forward<Args>(args)...);
+        return build_generic_DCE<Module, DCE>(cfg, std::forward<Args>(args)...);
     }
 
 
-    template <typename T, typename ...Args>
-    static std::shared_ptr<T> build_shared_module(const config *cfg, Args&&... args)
+    template <typename Module, typename ...Args>
+    std::shared_ptr<Module> build_shared_module(const config *cfg, Args&&... args)
     {
-        return build_module_T<std::shared_ptr<T>, T>(cfg, std::forward<Args>(args)...);
+        return build_module_T<Module>(cfg, std::forward<Args>(args)...);
     }
 
 
@@ -161,43 +150,23 @@ public:
         return nullptr;
     }
 
-
 private:
     Modem m;
 
-    template <typename T, typename U, typename ...Args>
-    static bool build_module_T(U &t, const config *cfg, Args&&... args)
-    {
-        Builder<T> b(std::forward<Args>(args)...);
-        return b.create_module(t, cfg);
-    }
-
-    template <typename T, typename U, typename ...Args>
-    static T build_module_T(const config *cfg, Args&&... args)
-    {
-        T module;
-        if (build_module_T<U>(module, cfg, std::forward<Args>(args)...))
-            return module;
-        return nullptr;
-    }
-
-    template <typename Dce, typename DcePtr, typename Module, typename ...Args>
-    static bool build_generic_DCE(DcePtr &t, const config *cfg, Args&&... args)
+    template <typename Module, typename Ptr = std::shared_ptr<Module>, typename ...Args>
+    Module build_module_T(const config *cfg, Args&&... args)
     {
         Builder<Module> b(std::forward<Args>(args)...);
-        return b.template create<Dce>(t, cfg);
+        return b.template create_module<Module>(cfg);
     }
 
 protected:
-    template <typename Dce, typename DcePtr, typename Module, typename ...Args>
+    template <typename Module, typename Dce = DCE_T<Module>, typename DcePtr = Dce*,  typename ...Args>
     static DcePtr build_generic_DCE(const config *cfg, Args&&... args)
     {
-        DcePtr dce;
-        if (build_generic_DCE<Dce, DcePtr, Module>(dce, cfg, std::forward<Args>(args)...))
-            return dce;
-        return nullptr;
+        Builder<Module> b(std::forward<Args>(args)...);
+        return b.template create<Dce, DcePtr>(cfg);
     }
-
 };
 
 } // namespace esp_modem::dce_factory
