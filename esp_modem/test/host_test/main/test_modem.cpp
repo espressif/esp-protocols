@@ -22,7 +22,7 @@ public:
     }
 
     int write(uint8_t *data, size_t len) override {
-        if (len > 2 && (data[len-1] == '\r' || data[len-1] == '+') ) {
+        if (len > 2 && (data[len-1] == '\r' || data[len-1] == '+') ) { // Simple AT responder
             std::string command((char*)data, len);
             std::string response;
             if (command == "ATE1\r" || command == "ATE0\r" || command == "+++") {
@@ -38,14 +38,17 @@ public:
                 data_len = response.length();
                 loopback_data.resize(data_len);
                 memcpy(&loopback_data[0], &response[0], data_len);
-                auto ret = std::async(on_data, data_len);
+                auto ret = std::async(on_data, nullptr, data_len);
                 return len;
             }
+        }
+        if (len > 2 && data[0] == 0xf9 && data[2] == 0xef) { // Simple CMUX responder
+            data[2] = 0xff; // turn the request into a reply -> implements CMUX loopback
         }
         loopback_data.resize(data_len + len);
         memcpy(&loopback_data[data_len], data, len);
         data_len += len;
-        auto ret = std::async(on_data, data_len);
+        auto ret = std::async(on_data, nullptr, data_len);
         return len;
     }
 
@@ -59,9 +62,6 @@ public:
         return read_len;
     }
 
-    void set_data_cb(std::function<bool(size_t len)> f) override {
-        on_data = std::move(f);
-    }
 
 private:
     enum class status_t {
@@ -142,4 +142,24 @@ TEST_CASE("DCE modes", "[esp_modem]")
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == false);
     CHECK(dce->set_mode(esp_modem::modem_mode::DATA_MODE) == true);
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
+}
+
+TEST_CASE("DCE CMUX test", "[esp_modem]") {
+    auto term = std::make_unique<LoopbackTerm>();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    CHECK(dce != nullptr);
+
+    CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == true);
+    const auto test_command = "Test\n";
+    auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
+        std::string response((char *) data, len);
+        CHECK(response == test_command);
+        return command_result::OK;
+    }, 1000);
+    CHECK(ret == command_result::OK);
 }

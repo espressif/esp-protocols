@@ -101,7 +101,7 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
         data = buffer.get();
         actual_len = term->read(data, data_to_read);
     }
-    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_VERBOSE);
+    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_DEBUG);
     uint8_t* frame = data;
     auto available_len = actual_len;
     size_t payload_offset = 0;
@@ -115,6 +115,13 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 if (frame[0] != SOF_MARKER) {
                     ESP_LOGW("CMUX", "TODO: Recover!");
                     return true;
+                }
+                if (available_len > 1 && frame[1] == SOF_MARKER) {
+                    ESP_LOGI("CMUX", "Empty frame");
+                    // empty frame
+                    available_len -= 2;
+                    frame += 2;
+                    break;
                 }
                 state = cmux_state::HEADER;
                 available_len--;
@@ -133,7 +140,7 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 dlci = frame_header[1] >> 2;
                 type = frame_header[2];
                 payload_len = (frame_header[3] >> 1);
-                ESP_LOGW("CMUX", "CMUX FR: A:%02x T:%02x L:%d consumed:%d", dlci, type, payload_len, 0);
+                ESP_LOGI("CMUX", "CMUX FR: A:%02x T:%02x L:%d", dlci, type, payload_len);
                 frame += payload_offset;
                 available_len -= payload_offset;
                 state = cmux_state::PAYLOAD;
@@ -194,8 +201,9 @@ void CMux::init()
     }
 }
 
-int CMux::write(int virtual_term, uint8_t *data, size_t len) {
-
+int CMux::write(int virtual_term, uint8_t *data, size_t len)
+{
+    Scoped<Lock> l(lock);
     int i = virtual_term + 1;
     uint8_t frame[6];
     frame[0] = SOF_MARKER;
@@ -211,7 +219,7 @@ int CMux::write(int virtual_term, uint8_t *data, size_t len) {
     ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_VERBOSE);
     ESP_LOG_BUFFER_HEXDUMP("Send", data, len, ESP_LOG_VERBOSE);
     ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_VERBOSE);
-    return 0;
+    return len;
 }
 
 void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f) {
