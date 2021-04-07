@@ -51,13 +51,13 @@ public:
                 data = buffer.get();
                 len = term->read(data, data_to_read);
             }
-            return on_data(data, len);
+            if (on_data)
+                return on_data(data, len);
+            return false;
         });
     }
 
     void start() { term->start(); }
-
-    void data_mode_closed() { term->stop(); }
 
     void set_mode(modem_mode m) {
         term->start();
@@ -79,7 +79,6 @@ private:
     Lock lock;
 
     void setup_cmux();
-//    command_result command(Terminal *t, const std::string &command, got_line_cb got_line, uint32_t time_ms);
 
     static const size_t GOT_LINE = signal_group::bit0;
     size_t buffer_size;
@@ -93,12 +92,6 @@ private:
     std::function<bool(uint8_t *data, size_t len)> on_data;
 };
 
-//class DTE_inst: public DTE {
-//public:
-//    DTE_inst(std::shared_ptr<DTE> parent) : DTE(t), dte(parent) {}
-//private:
-//    std::shared_ptr<DTE> dte;
-//};
 
 } // namespace esp_modem
 
