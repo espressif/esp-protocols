@@ -44,6 +44,9 @@ public:
 
     ~DCE_T() = default;
 
+    /**
+     * @brief Set data mode!
+     */
     void set_data() { set_mode(modem_mode::DATA_MODE); }
 
     void exit_data() { set_mode(modem_mode::COMMAND_MODE); }
