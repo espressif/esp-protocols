@@ -1,0 +1,2 @@
+
+python -u -m sphinx.cmd.build -b html  . html
