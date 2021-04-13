@@ -15,12 +15,18 @@
 #ifndef _ESP_MODEM_COMMAND_DECLARE_INC_
 #define _ESP_MODEM_COMMAND_DECLARE_INC_
 
+#if GENERATE_DOCS
+#define _ARG(arg) arg
+#else
+#define _ARG(arg) x
+#endif
+
 #ifdef __cplusplus
 #include <string>
-#define STRING_IN(x) const std::string& x
-#define STRING_OUT(x) std::string& x
+#define STRING_IN(x) const std::string& _ARG(x)
+#define STRING_OUT(x) std::string& _ARG(x)
 #define BOOL_IN(x) const bool x
-#define BOOL_OUT(x) bool& x
+#define BOOL_OUT(x) bool& _ARG(x)
 #define INT_OUT(x) int& x
 
 #define STRUCT_OUT(struct_name, x)  struct_name& x
@@ -42,36 +48,74 @@
  * @brief Sends the supplied PIN code
  *
  * @param pin Pin
+ *
  */ \
     \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, 1, MUX_ARG, STRING_IN(x)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, 1, MUX_ARG, STRING_IN(pin)) \
+\
+\
 /**
  * @brief Checks if the SIM needs a PIN
  *
  * @param[out] pin_ok Pin
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, MUX_ARG, BOOL_OUT(x))           \
+ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, MUX_ARG, BOOL_OUT(pin_ok))           \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, MUX_ARG, BOOL_IN(x))           \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, 0, MUX_ARG)           \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, 1, MUX_ARG, STRUCT_OUT(PdpContext, x)) \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_command_mode, command_result, 0, MUX_ARG) \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, 0, MUX_ARG) \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, MUX_ARG, STRING_OUT(x)) \
     \
+/**
+ * @brief Reads the module name
+ *
+ * @param[out] name module name
+ */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, MUX_ARG, STRING_OUT(x)) \
     \
 /**
  * @brief Reads the module name
  *
- * @param[out]  module name
+ * @param[out] name module name
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, MUX_ARG, STRING_OUT(x)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, MUX_ARG, STRING_OUT(name)) \
 \
 /**
  * @brief Sets the modem to data mode
@@ -85,15 +129,26 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0, MUX_ARG) \
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, MUX_ARG, INT_OUT(x), INT_OUT(y))
 
-//  --- DCE command documentation starts here ---
 #ifdef GENERATE_DOCS
-// gcc -E -CC -P -DGENERATE_DOCS esp_modem_command_declare.inc | sed -n '/DCE command documentation/,//p'
-
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
-return_type name (__VA_ARGS__);
-
-DECLARE_ALL_COMMAND_APIS()
+// cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'
+// cat ../include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > c_api.h
+//  --- DCE command documentation starts here ---
+#ifdef __cplusplus
+class DCE: public DCE_T<GenericModule> {
+public:
+    using DCE_T<GenericModule>::DCE_T;
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) return_type name (__VA_ARGS__);
+#else
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) return_type esp_modem_ ## name (__VA_ARGS__);
 #endif
 
+
+DECLARE_ALL_COMMAND_APIS()
+
+#ifdef __cplusplus
+};
+#endif
+
+#endif
 
 #endif // _ESP_MODEM_COMMAND_DECLARE_INC_
