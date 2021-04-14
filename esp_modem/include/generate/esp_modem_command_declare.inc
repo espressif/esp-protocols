@@ -132,16 +132,18 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, MUX_ARG, IN
 #ifdef GENERATE_DOCS
 // cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'
 // cat ../include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > c_api.h
+// cat ../include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > cxx_api_links.rst
 //  --- DCE command documentation starts here ---
 #ifdef __cplusplus
-class DCE: public DCE_T<GenericModule> {
+class esp_modem::DCE: public DCE_T<GenericModule> {
 public:
     using DCE_T<GenericModule>::DCE_T;
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) return_type name (__VA_ARGS__);
+#elif defined(GENERATE_RST_LINKS)
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) NL- :cpp:func:`esp_modem::DCE::name`
 #else
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) return_type esp_modem_ ## name (__VA_ARGS__);
 #endif
-
 
 DECLARE_ALL_COMMAND_APIS()
 

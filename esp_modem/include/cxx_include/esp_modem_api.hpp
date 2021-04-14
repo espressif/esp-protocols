@@ -26,9 +26,6 @@ struct esp_modem_dce_config;
 namespace esp_modem {
 
 class DTE;
-using dce_config = ::esp_modem_dce_config;
-using dte_config = ::esp_modem_dte_config;
-
 typedef struct esp_netif_obj esp_netif_t;
 
 
@@ -39,6 +36,9 @@ typedef struct esp_netif_obj esp_netif_t;
 /** @addtogroup ESP_MODEM_INIT_DTE
 * @{
 */
+
+using dce_config = ::esp_modem_dce_config;
+using dte_config = ::esp_modem_dte_config;
 
 /**
  * @brief Create UART DTE
@@ -52,7 +52,7 @@ std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
 
 /**
  * @defgroup ESP_MODEM_INIT_DCE ESP_MODEM Initialization API for DCE
- * @brief Create DCE's
+ * @brief ESP_MODEM Initialization API for DCE
  */
 /** @addtogroup ESP_MODEM_INIT_DCE
 * @{

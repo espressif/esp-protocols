@@ -30,16 +30,37 @@ struct ppp_netif_driver {
     Netif *ppp;
 };
 
+/**
+ * @defgroup ESP_MODEM_NETIF
+ * @brief Network interface layer of the esp-modem
+ */
+
+/** @addtogroup ESP_MODEM_NETIF
+* @{
+*/
+
+/**
+ * @brief Network interface class responsible to glue the esp-netif to the modem's DCE
+ */
 class Netif {
 public:
     explicit Netif(std::shared_ptr<DTE> e, esp_netif_t *netif);
 
     ~Netif();
 
+    /**
+     * @brief Start the network interface
+     */
     void start();
 
+    /**
+     * @brief Blocks until the network interface closes
+     */
     void wait_until_ppp_exits();
 
+    /**
+     * @brief Stop the network interface
+     */
     void stop();
 
 private:
@@ -58,6 +79,10 @@ private:
     static const size_t PPP_STARTED = signal_group::bit0;
     static const size_t PPP_EXIT = signal_group::bit1;
 };
+
+/**
+ * @}
+ */
 
 } // namespace esp_modem
 
