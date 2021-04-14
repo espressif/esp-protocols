@@ -24,10 +24,23 @@
 
 namespace esp_modem {
 
+/**
+ * @defgroup ESP_MODEM_MODULE
+ * @brief Definition of modules representing specific modem devices
+ */
+
+/** @addtogroup ESP_MODEM_MODULE
+* @{
+*/
+
 enum class command_result;
 class DTE;
 struct PdpContext;
 
+/**
+ * @brief This is a basic building block for custom modules as well as for the supported modules in the esp-modem component
+ * It derives from the ModuleIf.
+ */
 class GenericModule: public ModuleIf {
 public:
     explicit GenericModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
@@ -72,24 +85,37 @@ protected:
 };
 
 // Definitions of other modules
+
+/**
+ * @brief Specific definition of the SIM7600 module
+ */
 class SIM7600: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
 };
 
+/**
+ * @brief Specific definition of the SIM800 module
+ */
 class SIM800: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
 };
 
+/**
+ * @brief Specific definition of the BG96 module
+ */
 class BG96: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
 };
 
+/**
+ * @}
+ */
 
 } // namespace esp_modem
 

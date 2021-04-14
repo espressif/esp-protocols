@@ -26,14 +26,37 @@
 
 namespace esp_modem {
 
+/**
+ * @defgroup ESP_MODEM_DTE
+ * @brief Definition of DTE and related classes
+ */
+/** @addtogroup ESP_MODEM_DTE
+* @{
+*/
+
+/**
+ * DTE (Data Terminal Equipment) class
+ */
 class DTE : public CommandableIf {
 public:
     explicit DTE(std::unique_ptr<Terminal> t);
 
     ~DTE() = default;
 
+    /**
+     * @brief Writing to the underlying terminal
+     * @param data Data pointer to write
+     * @param len Data len to write
+     * @return number of bytes written
+     */
     int write(uint8_t *data, size_t len) { return term->write(data, len); }
 
+    /**
+     * @brief Reading from the underlying terminal
+     * @param d Returning the data pointer of the received payload
+     * @param len Length of the data payload
+     * @return number of bytes read
+     */
     int read(uint8_t **d, size_t len) {
         auto data_to_read = std::min(len, buffer_size);
         auto data = buffer.get();
@@ -92,6 +115,9 @@ private:
     std::function<bool(uint8_t *data, size_t len)> on_data;
 };
 
+/**
+ * @}
+ */
 
 } // namespace esp_modem
 

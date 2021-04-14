@@ -21,6 +21,18 @@
 
 namespace esp_modem {
 
+/**
+ * @defgroup ESP_MODEM_DCE
+ * @brief Definition of DCE abstraction
+ */
+/** @addtogroup ESP_MODEM_DCE
+ * @{
+ */
+
+
+/**
+ * @brief Helper class responsible for switching modes of the DCE's
+ */
 class DCE_Mode {
 public:
     DCE_Mode(): mode(modem_mode::COMMAND_MODE) {}
@@ -33,7 +45,10 @@ private:
 
 };
 
-
+/**
+ * @brief General DCE class templated on a specific module. It is responsible for all the necessary transactions
+ * related to switching modes and consequent synergy with aggregated objects of DTE, Netif and a specific Module
+ */
 template<class SpecificModule>
 class DCE_T {
     static_assert(std::is_base_of<ModuleIf, SpecificModule>::value, "DCE must be instantiated with Module class only");
@@ -72,7 +87,10 @@ protected:
     DCE_Mode mode;
 };
 
-
+/**
+ * @brief Common abstraction of the modem DCE, specialized by the GenericModule which is a parent class for the supported
+ * defices and most common modems, as well.
+ */
 class DCE: public DCE_T<GenericModule> {
 public:
 
@@ -89,6 +107,10 @@ public:
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 };
+
+/**
+ * @}
+ */
 
 } // esp_modem
 

@@ -829,10 +829,23 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = c_api.h cpp_api.h ../include/esp_modem_api.h \
+INPUT                  =                 ../include/esp_modem_api.h \
                                          ../include/esp_modem_c_api_types.h \
                                          ../include/cxx_include/esp_modem_api.hpp \
-                                         ../include/cxx_include/esp_modem_dce.hpp
+                                         ../include/cxx_include/esp_modem_dce.hpp \
+                                         ../include/esp_modem_config.h \
+                                         ../include/esp_modem_dce_config.h \
+                                         ../include/cxx_include/esp_modem_dce_factory.hpp \
+                                         ../include/cxx_include/esp_modem_command_library.hpp \
+                                         ../include/cxx_include/esp_modem_dce_module.hpp \
+                                         ../include/cxx_include/esp_modem_dte.hpp \
+                                         ../include/cxx_include/esp_modem_netif.hpp \
+                                         ../include/cxx_include/esp_modem_types.hpp \
+                                         ../include/cxx_include/esp_modem_terminal.hpp \
+                                         ../include/cxx_include/esp_modem_cmux.hpp \
+                                         esp_modem_api_commands.h \
+                                         esp_modem_dce.hpp
+# The last two are generated
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -947,7 +960,7 @@ IMAGE_PATH             =
 # need to set EXTENSION_MAPPING for the extension otherwise the files are not
 # properly processed by doxygen.
 
-INPUT_FILTER           = "sed 's/std::unique_ptr<\(.*\)>/\1*/;s/std::shared_ptr<\(.*\)>/\1*/'"
+#INPUT_FILTER           = "sed 's/std::unique_ptr<\(.*\)>/\1*/;s/std::shared_ptr<\(.*\)>/\1*/'"
 
 # The FILTER_PATTERNS tag can be used to specify filters on a per file pattern
 # basis. Doxygen will compare the file name with each pattern and apply the
@@ -1103,7 +1116,7 @@ IGNORE_PREFIX          =
 # If the GENERATE_HTML tag is set to YES, doxygen will generate HTML output
 # The default value is: YES.
 
-GENERATE_HTML          = YES
+GENERATE_HTML          = NO
 
 # The HTML_OUTPUT tag is used to specify where the HTML docs will be put. If a
 # relative path is entered the value of OUTPUT_DIRECTORY will be put in front of
@@ -1658,7 +1671,7 @@ EXTRA_SEARCH_MAPPINGS  =
 # If the GENERATE_LATEX tag is set to YES, doxygen will generate LaTeX output.
 # The default value is: YES.
 
-GENERATE_LATEX         = YES
+GENERATE_LATEX         = NO
 
 # The LATEX_OUTPUT tag is used to specify where the LaTeX docs will be put. If a
 # relative path is entered the value of OUTPUT_DIRECTORY will be put in front of
@@ -2459,7 +2472,7 @@ DOT_GRAPH_MAX_NODES    = 250
 # Minimum value: 0, maximum value: 1000, default value: 0.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-MAX_DOT_GRAPH_DEPTH    = 10
+MAX_DOT_GRAPH_DEPTH    = 3
 
 # Set the DOT_TRANSPARENT tag to YES to generate images with a transparent
 # background. This is disabled by default, because dot on Windows does not seem
@@ -2509,3 +2522,4 @@ DOT_CLEANUP            = YES
 #DOT_GRAPH_MAX_NODES  = 100
 #MAX_DOT_GRAPH_DEPTH  = 0
 #DOT_TRANSPARENT      = YES
+

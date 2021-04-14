@@ -15,15 +15,31 @@
 #ifndef _ESP_MODEM_DCE_CONFIG_H_
 #define _ESP_MODEM_DCE_CONFIG_H_
 
-struct esp_modem_dce_config {
-    const char* apn;
-};
+/** @addtogroup ESP_MODEM_CONFIG
+ * @{
+ */
 
+/**
+ * @brief ESP Modem DCE Default Configuration
+ *
+ */
 #define ESP_MODEM_DCE_DEFAULT_CONFIG(APN)       \
     {                                           \
         .apn = APN                              \
     }
 
 typedef struct esp_modem_dce_config esp_modem_dce_config_t;
+
+/**
+ * @brief DCE configuration structure
+ */
+struct esp_modem_dce_config {
+    const char* apn;  /*!< APN: Logical name of the Access point */
+};
+
+/**
+ * @}
+ */
+
 
 #endif // _ESP_MODEM_DCE_CONFIG_H_

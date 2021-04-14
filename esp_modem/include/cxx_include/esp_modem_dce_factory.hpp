@@ -15,10 +15,24 @@
 #ifndef _ESP_MODEM_DCE_FACTORY_HPP_
 #define _ESP_MODEM_DCE_FACTORY_HPP_
 
+/**
+ * @defgroup ESP_MODEM_DCE_FACTORY
+ * @brief DCE modem factory
+ */
+
+
 namespace esp_modem::dce_factory {
 
 using config = ::esp_modem_dce_config;
 
+/** @addtogroup ESP_MODEM_DCE_FACTORY
+* @{
+*/
+
+
+/**
+ * @brief Helper class for creating a uder define pointer in a specific way, either as a plain pointer, shared_ptr or unique_ptr
+ */
 class FactoryHelper {
 public:
     static std::unique_ptr<PdpContext> create_pdp_context(std::string &apn);
@@ -43,6 +57,9 @@ public:
 
 };
 
+/**
+ * @brief Builder class for building a DCE_T<Module> in a specific way, either form a Module object or by default from the DTE and netif
+ */
 template<typename Module>
 class Builder {
     static_assert(std::is_base_of<ModuleIf, Module>::value, "Builder must be used only for Module classes");
@@ -87,23 +104,46 @@ private:
     esp_netif_t *netif;
 };
 
+/**
+ * @brief Specific modem choice when creating by the Factory
+ */
 enum class Modem {
-    SIM800,
-    SIM7600,
-    BG96,
-    MinModule
+    GenericModule,      /*!< Default generic module with the most common commands */
+    SIM800,             /*!< Derived from the GenericModule with specifics applied to SIM800 model */
+    SIM7600,            /*!< Derived from the GenericModule, specifics applied to SIM7600 model */
+    BG96,               /*!< Derived from the GenericModule, specifics applied to BG69 model */
 };
 
+/**
+ * @brief Factory class for creating virtual DCE objects based on the configuration of the supplied module.
+ * This could also be used to create a custom module or a DCE_T<module>, provided user app derives from this factory.
+ */
 class Factory {
 public:
     explicit Factory(Modem modem): m(modem) {}
 
+    /**
+     * @brief Create a default unique_ptr DCE in a specific way (from the module)
+     * @tparam Module Specific Module used in this DCE
+     * @tparam Args Arguments to the builder, i.e. constructor of esp_modem::DCE_T class
+     * @param cfg DCE configuration structure ::esp_modem_dte_config
+     * @param args typically a DTE object and a netif handle for PPP network
+     * @return unique_ptr DCE of the created DCE on success
+     */
     template <typename Module, typename ...Args>
     static std::unique_ptr<DCE> build_unique(const config *cfg, Args&&... args)
     {
         return build_generic_DCE<Module, DCE, std::unique_ptr<DCE>>(cfg, std::forward<Args>(args)...);
     }
 
+    /**
+     * @brief Create a DCE
+     * @tparam Module Specific Module used in this DCE
+     * @tparam Args Arguments to the builder, i.e. constructor of esp_modem::DCE_T class
+     * @param cfg DCE configuration structure ::esp_modem_dte_config
+     * @param args typically a DTE object and a netif handle for PPP network
+     * @return DCE pointer the created DCE on success
+     */
     template <typename Module, typename ...Args>
     static DCE* build(const config *cfg, Args&&... args)
     {
@@ -128,12 +168,21 @@ public:
                 return build_shared_module<SIM7600>(cfg, std::forward<Args>(args)...);
             case Modem::BG96:
                 return build_shared_module<BG96>(cfg, std::forward<Args>(args)...);
-            case Modem::MinModule:
+            case Modem::GenericModule:
+                return build_shared_module<GenericModule>(cfg, std::forward<Args>(args)...);
+            default:
                 break;
         }
         return nullptr;
     }
 
+    /**
+     * @brief Create a default unique_ptr DCE generically, with the chosen module derived from the GenericModule
+     * @tparam Args Arguments to the builder, i.e. constructor of esp_modem::DCE_T class
+     * @param cfg DCE configuration structure ::esp_modem_dte_config
+     * @param args typically a DTE object and a netif handle for PPP network
+     * @return unique_ptr DCE of the created DCE on success
+     */
     template <typename ...Args>
     std::unique_ptr<DCE> build_unique(const config *cfg, Args&&... args)
     {
@@ -144,7 +193,9 @@ public:
                 return build_unique<SIM7600>(cfg, std::forward<Args>(args)...);
             case Modem::BG96:
                 return build_unique<BG96>(cfg, std::forward<Args>(args)...);
-            case Modem::MinModule:
+            case Modem::GenericModule:
+                return build_unique<GenericModule>(cfg, std::forward<Args>(args)...);
+            default:
                 break;
         }
         return nullptr;
@@ -169,6 +220,11 @@ protected:
     }
 };
 
+/**
+ * @}
+ */
+
 } // namespace esp_modem::dce_factory
+
 
 #endif // _ESP_MODEM_DCE_FACTORY_HPP_

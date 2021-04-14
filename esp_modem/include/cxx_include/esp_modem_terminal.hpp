@@ -26,36 +26,63 @@
 
 namespace esp_modem {
 
+/**
+ * @defgroup ESP_MODEM_TERMINAL
+ * @brief Definition of an abstract terminal to be attached to DTE class
+ */
+
+/** @addtogroup ESP_MODEM_TERMINAL
+* @{
+*/
+
+/**
+ * @brief Terminal errors
+ */
 enum class terminal_error {
     BUFFER_OVERFLOW,
     CHECKSUM_ERROR,
     UNEXPECTED_CONTROL_FLOW,
 };
 
+/**
+ * @brief Terminal interface. All communication interfaces must comply this interface in order to be used as a DTE
+ */
 class Terminal {
 public:
     virtual ~Terminal() = default;
 
-//    virtual void set_data_cb(std::function<bool(size_t len)> f) { on_data = std::move(f); }
-
     void set_error_cb(std::function<void(terminal_error)> f) { on_error = std::move(f); }
+
     virtual void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) { on_data = std::move(f); }
 
+    /**
+     * @brief Writes data to the terminal
+     * @param data Data pointer
+     * @param len Data len
+     * @return length of data written
+     */
     virtual int write(uint8_t *data, size_t len) = 0;
 
+    /**
+     * @brief Read from the terminal. This function doesn't block, but return all available data.
+     * @param data Data pointer to store the read payload
+     * @param len Maximum data len to read
+     * @return length of data actually read
+     */
     virtual int read(uint8_t *data, size_t len) = 0;
 
     virtual void start() = 0;
 
     virtual void stop() = 0;
 
-    virtual size_t max_virtual_terms() { return 1; }
-
 protected:
-//    std::function<bool(size_t len)> on_data;
     std::function<bool(uint8_t *data, size_t len)> on_data;
     std::function<void(terminal_error)> on_error;
 };
+
+/**
+ * @}
+ */
 
 } // namespace esp_modem
 
