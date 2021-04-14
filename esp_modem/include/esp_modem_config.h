@@ -18,6 +18,15 @@
 #include "esp_modem_dce_config.h"
 
 /**
+ * @defgroup ESP_MODEM_CONFIG
+ * @brief Configuration structures for DTE and DCE
+ */
+
+/** @addtogroup ESP_MODEM_CONFIG
+ * @{
+ */
+
+/**
  * @brief Modem flow control type
  *
  */
@@ -27,6 +36,10 @@ typedef enum {
     ESP_MODEM_FLOW_CONTROL_HW
 } esp_modem_flow_ctrl_t;
 
+/**
+ * @brief DTE configuration structure
+ *
+ */
 struct esp_modem_dte_config {
     uart_port_t port_num;           /*!< UART port number */
     uart_word_length_t data_bits;   /*!< Data bits of UART */
@@ -73,5 +86,9 @@ struct esp_modem_dte_config {
     }
 
 typedef struct esp_modem_dte_config esp_modem_dte_config_t;
+
+/**
+ * @}
+ */
 
 #endif // _ESP_MODEM_CONFIG_H_

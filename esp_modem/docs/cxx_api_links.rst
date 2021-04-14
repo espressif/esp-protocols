@@ -1,0 +1,13 @@
+
+- :cpp:func:`esp_modem::DCE::set_pin` 
+- :cpp:func:`esp_modem::DCE::read_pin` 
+- :cpp:func:`esp_modem::DCE::set_echo` 
+- :cpp:func:`esp_modem::DCE::resume_data_mode` 
+- :cpp:func:`esp_modem::DCE::set_pdp_context` 
+- :cpp:func:`esp_modem::DCE::set_command_mode` 
+- :cpp:func:`esp_modem::DCE::set_cmux` 
+- :cpp:func:`esp_modem::DCE::get_imsi` 
+- :cpp:func:`esp_modem::DCE::get_imei` 
+- :cpp:func:`esp_modem::DCE::get_module_name` 
+- :cpp:func:`esp_modem::DCE::set_data_mode` 
+- :cpp:func:`esp_modem::DCE::get_signal_quality`

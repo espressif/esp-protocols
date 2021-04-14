@@ -49,6 +49,10 @@ enum class cmux_state {
  */
 class CMuxInstance;
 
+/**
+ * @brief CMux class which consumes the original terminal and creates multiple virtual terminals from it.
+ * This class is not usable applicable as a DTE terminal
+ */
 class CMux {
 public:
     explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
@@ -77,6 +81,10 @@ private:
     int instance;
 };
 
+/**
+ * @brief This represents a specific instance of a CMUX virtual terminal. This class also implements Terminal interface
+ * and as such could be used as a DTE's terminal.
+ */
 class CMuxInstance: public Terminal {
 public:
     explicit CMuxInstance(std::shared_ptr<CMux> parent, int i): cmux(std::move(parent)), instance(i) {}

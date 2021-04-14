@@ -1,5 +1,5 @@
-ESP-MODEM Documentation
-=======================
+ESP-MODEM Programmers manual
+============================
 
 .. toctree::
 
@@ -8,4 +8,4 @@ ESP-MODEM Documentation
    C++ interface <cxx_api_docs>
    Advanced use cases <advanced_api>
    Internal design <internal_design>
-
+   Internal implementation <internal_docs>
