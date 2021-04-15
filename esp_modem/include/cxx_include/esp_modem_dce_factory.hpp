@@ -109,9 +109,9 @@ private:
  */
 enum class Modem {
     GenericModule,      /*!< Default generic module with the most common commands */
-    SIM800,             /*!< Derived from the GenericModule with specifics applied to SIM800 model */
     SIM7600,            /*!< Derived from the GenericModule, specifics applied to SIM7600 model */
     BG96,               /*!< Derived from the GenericModule, specifics applied to BG69 model */
+    SIM800,             /*!< Derived from the GenericModule with specifics applied to SIM800 model */
 };
 
 /**
@@ -195,6 +195,24 @@ public:
                 return build_unique<BG96>(cfg, std::forward<Args>(args)...);
             case Modem::GenericModule:
                 return build_unique<GenericModule>(cfg, std::forward<Args>(args)...);
+            default:
+                break;
+        }
+        return nullptr;
+    }
+
+    template <typename ...Args>
+    DCE* build(const config *cfg, Args&&... args)
+    {
+        switch (m) {
+            case Modem::SIM800:
+                return build<SIM800>(cfg, std::forward<Args>(args)...);
+            case Modem::SIM7600:
+                return build<SIM7600>(cfg, std::forward<Args>(args)...);
+            case Modem::BG96:
+                return build<BG96>(cfg, std::forward<Args>(args)...);
+            case Modem::GenericModule:
+                return build<GenericModule>(cfg, std::forward<Args>(args)...);
             default:
                 break;
         }

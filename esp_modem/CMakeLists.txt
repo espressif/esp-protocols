@@ -16,6 +16,7 @@ set(srcs ${platform_srcs}
         "src/esp_modem_dte.cpp"
         "src/esp_modem_dce.cpp"
         "src/esp_modem_api.cpp"
+        "src/esp_modem_c_api.cpp"
         "src/esp_modem_factory.cpp"
         "src/esp_modem_cmux.cpp"
         "src/esp_modem_command_library.cpp"

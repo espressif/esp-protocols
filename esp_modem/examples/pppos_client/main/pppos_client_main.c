@@ -147,6 +147,16 @@ void app_main(void)
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
+
+    // check if PIN needed
+    bool pin_ok = false;
+    if (esp_modem_read_pin(dce, &pin_ok) == ESP_OK && pin_ok == false) {
+        if (esp_modem_set_pin(dce, "1234") == ESP_OK) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        } else {
+            abort();
+        }
+    }
     int rssi, ber;
     esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
@@ -154,6 +164,20 @@ void app_main(void)
         return;
     }
     ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
+
+    #if CONFIG_EXAMPLE_SEND_MSG
+    if (esp_modem_sms_txt_mode(dce, true) != ESP_OK || esp_modem_sms_character_set(dce) != ESP_OK) {
+        ESP_LOGE(TAG, "Setting text mode or GSM character set failed");
+        return;
+    }
+
+    err = esp_modem_send_sms(dce, CONFIG_EXAMPLE_SEND_MSG_PEER_PHONE_NUMBER, "Text message from esp-modem");
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_send_sms() failed with %d", err);
+        return;
+    }
+
+#endif
 
     err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DATA);
     if (err != ESP_OK) {
