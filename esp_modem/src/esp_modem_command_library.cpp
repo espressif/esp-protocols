@@ -64,9 +64,9 @@ static inline command_result generic_get_string(CommandableIf* t, const std::str
     }, timeout_ms);
 }
 
-static inline command_result generic_command_common(CommandableIf* t, std::string command)
+static inline command_result generic_command_common(CommandableIf* t, std::string command, uint32_t timeout = 500)
 {
-    return generic_command(t, command, "OK", "ERROR", 500);
+    return generic_command(t, command, "OK", "ERROR", timeout);
 }
 
 
@@ -130,6 +130,35 @@ command_result get_module_name(CommandableIf* t, std::string& out)
 {
     return generic_get_string(t, "AT+CGMM\r", out, 5000);
 }
+
+command_result sms_txt_mode(CommandableIf* t, bool txt = true)
+{
+    if (txt)
+        return generic_command_common(t, "AT+CMGF=1\r"); // Text mode (default)
+    return generic_command_common(t, "AT+CMGF=0\r");     // PDU mode
+}
+
+command_result sms_character_set(CommandableIf* t)
+{
+    // Sets the default GSM character set
+    return generic_command_common(t, "AT+CSCS=\"GSM\"\r");
+}
+
+command_result send_sms(CommandableIf* t, const std::string& number, const std::string& message)
+{
+    auto ret = t->command("AT+CMGS=\"" + number + "\"\r", [&](uint8_t *data, size_t len) {
+        std::string response((char*)data, len);
+        std::cout << response << std::endl;
+        if (response.find('>') != std::string::npos) {
+            return command_result::OK;
+        }
+        return command_result::TIMEOUT;
+    }, 5000, ' ');
+    if (ret != command_result::OK)
+        return ret;
+    return generic_command_common(t, message +"\x1A", 120000);
+}
+
 
 command_result set_cmux(CommandableIf* t)
 {

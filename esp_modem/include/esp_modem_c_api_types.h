@@ -43,7 +43,18 @@ typedef enum esp_modem_dce_mode
 } esp_modem_dce_mode_t;
 
 /**
- * @brief Create a DCE handle for new modem API
+ * @brief DCE devices: Enum list of supported devices
+ */
+typedef enum esp_modem_dce_device
+{
+    ESP_MODEM_DCE_GENETIC,  /**< The most generic device */
+    ESP_MODEM_DCE_SIM7600,
+    ESP_MODEM_DCE_BG96,
+    ESP_MODEM_DCE_SIM800,
+} esp_modem_dce_device_t;
+
+/**
+ * @brief Create a generic DCE handle for new modem API
  *
  * @param dte_config DTE configuration (UART config for now)
  * @param dce_config DCE configuration
@@ -52,6 +63,18 @@ typedef enum esp_modem_dce_mode
  * @return DCE pointer on success, NULL on failure
  */
 esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif);
+
+/**
+ * @brief Create a DCE handle using the supplied device
+ *
+ * @param module Specific device for creating this DCE
+ * @param dte_config DTE configuration (UART config for now)
+ * @param dce_config DCE configuration
+ * @param netif Network interface handle for the data mode
+ *
+ * @return DCE pointer on success, NULL on failure
+ */
+esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif);
 
 /**
  * @brief Destroys modem's DCE handle

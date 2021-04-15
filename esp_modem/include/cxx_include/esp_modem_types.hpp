@@ -75,6 +75,7 @@ public:
      * @param time_ms timeout in milliseconds
      * @return OK, FAIL or TIMEOUT
      */
+    virtual command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator) = 0;
     virtual command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) = 0;
 };
 
