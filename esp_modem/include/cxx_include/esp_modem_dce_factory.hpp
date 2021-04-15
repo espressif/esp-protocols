@@ -152,7 +152,7 @@ public:
 
 
     template <typename Module, typename ...Args>
-    std::shared_ptr<Module> build_shared_module(const config *cfg, Args&&... args)
+    static std::shared_ptr<Module> build_shared_module(const config *cfg, Args&&... args)
     {
         return build_module_T<Module>(cfg, std::forward<Args>(args)...);
     }
@@ -222,14 +222,15 @@ public:
 private:
     Modem m;
 
+protected:
     template <typename Module, typename Ptr = std::shared_ptr<Module>, typename ...Args>
-    Module build_module_T(const config *cfg, Args&&... args)
+    static Ptr build_module_T(const config *cfg, Args&&... args)
     {
         Builder<Module> b(std::forward<Args>(args)...);
-        return b.template create_module<Module>(cfg);
+        return b.template create_module<Ptr>(cfg);
     }
 
-protected:
+
     template <typename Module, typename Dce = DCE_T<Module>, typename DcePtr = Dce*,  typename ...Args>
     static DcePtr build_generic_DCE(const config *cfg, Args&&... args)
     {

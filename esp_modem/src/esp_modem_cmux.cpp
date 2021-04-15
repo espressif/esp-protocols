@@ -91,6 +91,9 @@ void CMux::data_available(uint8_t *data, size_t len)
         int virtual_term = dlci - 1;
         if (virtual_term < max_terms && read_cb[virtual_term])
             read_cb[virtual_term](data, len);
+    } else if (type == 0x73 && len == 0) { // notify the initial SABM command
+        Scoped<Lock> l(lock);
+        sabm_ack = dlci;
     }
 }
 
@@ -205,7 +208,8 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
     }
     return true;
 }
-void CMux::init()
+
+bool CMux::init()
 {
     frame_header_offset = 0;
     state = cmux_state::INIT;
@@ -215,11 +219,23 @@ void CMux::init()
         return false;
     });
 
+    sabm_ack = -1;
     for (size_t i = 0; i < 3; i++)
     {
+        int timeout = 0;
         send_sabm(i);
-        usleep(100'000);
+        while (1) {
+            usleep(10'000);
+            Scoped<Lock> l(lock);
+            if (sabm_ack == i) {
+                sabm_ack = -1;
+                break;
+            }
+            if (timeout++ > 100)
+                return false;
+        }
     }
+    return true;
 }
 
 int CMux::write(int virtual_term, uint8_t *data, size_t len)

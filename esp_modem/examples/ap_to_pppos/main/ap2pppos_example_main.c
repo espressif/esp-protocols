@@ -26,8 +26,8 @@ static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int DISCONNECT_BIT = BIT1;
 
-static void on_modem_event(void *arg, esp_event_base_t event_base,
-                           int32_t event_id, void *event_data)
+static void on_ip_event(void *arg, esp_event_base_t event_base,
+                        int32_t event_id, void *event_data)
 {
     if (event_base == IP_EVENT) {
         ESP_LOGD(TAG, "IP event! %d", event_id);
@@ -146,26 +146,9 @@ void app_main(void)
     assert(ppp_netif);
 
     ESP_ERROR_CHECK(modem_init_network(ppp_netif));
-//    vTaskDelay(pdMS_TO_TICKS(1000));
-//    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-//    dte_config.event_task_stack_size = 4096;
-//    dte_config.rx_buffer_size = 16384;
-//    dte_config.tx_buffer_size = 2048;
-//    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet23");
-//    dce_config.populate_command_list = true;
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL));
 
-
-    // Initialize esp-modem units, DTE, DCE, ppp-netif
-//    esp_modem_dte_t *dte = esp_modem_dte_new(&dte_config);
-//    esp_modem_dce_t *dce = sim7600_board_create(&dce_config);
-//
-//    ESP_ERROR_CHECK(esp_modem_set_event_handler(dte, on_modem_event, ESP_EVENT_ANY_ID, dte));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_modem_event, NULL));
-//
-//    ESP_ERROR_CHECK(esp_modem_default_attach(dte, dce, ppp_netif));
-//
-//    ESP_ERROR_CHECK(esp_modem_default_start(dte)); // use retry
-//    ESP_ERROR_CHECK(esp_modem_start_ppp(dte));
+    /* Init and start the modem network */
     modem_start_network();
     /* Wait for the first connection */
     EventBits_t bits;

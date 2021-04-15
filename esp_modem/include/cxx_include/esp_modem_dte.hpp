@@ -82,7 +82,7 @@ public:
 
     void start() { term->start(); }
 
-    void set_mode(modem_mode m) {
+    [[nodiscard]] bool set_mode(modem_mode m) {
         term->start();
         mode = m;
         if (m == modem_mode::DATA_MODE) {
@@ -91,8 +91,9 @@ public:
                 command_term = other_term.get();
             }
         } else if (m == modem_mode::CMUX_MODE) {
-            setup_cmux();
+            return setup_cmux();
         }
+        return true;
     }
 
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) override;
@@ -102,7 +103,7 @@ public:
 private:
     Lock lock;
 
-    void setup_cmux();
+    [[nodiscard]] bool setup_cmux();
 
     static const size_t GOT_LINE = signal_group::bit0;
     size_t buffer_size;
