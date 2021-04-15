@@ -95,6 +95,11 @@ void Netif::stop() {
 }
 
 Netif::~Netif() {
+    if (signal.is_any(PPP_STARTED)) {
+        esp_netif_action_stop(driver.base.netif, nullptr, 0, nullptr);
+        signal.clear(PPP_STARTED);
+        signal.wait(PPP_EXIT, 30000);
+    }
     esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected);

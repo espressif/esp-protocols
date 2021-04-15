@@ -18,10 +18,8 @@
 #include "esp_log.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_factory.hpp"
-#include "esp_modem_c_api_types.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
-#include "cstring"
 
 namespace esp_modem {
 
