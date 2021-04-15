@@ -103,24 +103,43 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
     }
     ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_DEBUG);
     uint8_t* frame = data;
+    uint8_t* recover_ptr;
     auto available_len = actual_len;
     size_t payload_offset = 0;
     size_t footer_offset = 0;
     while (available_len > 0) {
         switch (state) {
             case cmux_state::RECOVER:
-                // TODO: Implement recovery, looking for SOF_MARKER's
-                break;
+                if (frame[0] == SOF_MARKER) {
+                    // already init state
+                    state = cmux_state::INIT;
+                    break;
+                }
+                recover_ptr = static_cast<uint8_t*>(memchr(frame, SOF_MARKER, available_len));
+                if (recover_ptr && available_len > recover_ptr - frame) {
+                    available_len -= (recover_ptr - frame);
+                    frame = recover_ptr;
+                    state = cmux_state::INIT;
+                    ESP_LOGD("CMUX", "Protocol recovered");
+                    if (available_len > 1 && frame[1] == SOF_MARKER) {
+                        // empty frame
+                        available_len -= 1;
+                        frame += 1;
+                    }
+                    break;
+                }
+                // marker not found, continue with recovery
+                return false;
             case cmux_state::INIT:
                 if (frame[0] != SOF_MARKER) {
-                    ESP_LOGW("CMUX", "TODO: Recover!");
-                    return true;
+                    ESP_LOGI("CMUX", "Protocol mismatch!");
+                    state = cmux_state::RECOVER;
+                    break;
                 }
                 if (available_len > 1 && frame[1] == SOF_MARKER) {
-                    ESP_LOGI("CMUX", "Empty frame");
                     // empty frame
-                    available_len -= 2;
-                    frame += 2;
+                    available_len -= 1;
+                    frame += 1;
                     break;
                 }
                 state = cmux_state::HEADER;
@@ -140,7 +159,7 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 dlci = frame_header[1] >> 2;
                 type = frame_header[2];
                 payload_len = (frame_header[3] >> 1);
-                ESP_LOGI("CMUX", "CMUX FR: A:%02x T:%02x L:%d", dlci, type, payload_len);
+                ESP_LOGD("CMUX", "CMUX FR: A:%02x T:%02x L:%d", dlci, type, payload_len);
                 frame += payload_offset;
                 available_len -= payload_offset;
                 state = cmux_state::PAYLOAD;
@@ -169,8 +188,9 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                     footer_offset = std::min(available_len, 6 - frame_header_offset);
                     memcpy(frame_header + frame_header_offset, frame, footer_offset);
                     if (frame_header[5] != SOF_MARKER) {
-                        ESP_LOGW("CMUX", "TODO: Recover!");
-                        return true;
+                        ESP_LOGI("CMUX", "Protocol mismatch!");
+                        state = cmux_state::RECOVER;
+                        break;
                     }
                     if (payload_len == 0) {
                         data_available(frame_header, 0); // Null payload
@@ -190,6 +210,7 @@ void CMux::init()
     frame_header_offset = 0;
     state = cmux_state::INIT;
     term->set_read_cb([this](uint8_t *data, size_t len) {
+        Scoped<Lock> l(lock);
         this->on_cmux(data, len);
         return false;
     });
@@ -203,22 +224,31 @@ void CMux::init()
 
 int CMux::write(int virtual_term, uint8_t *data, size_t len)
 {
+    const size_t cmux_max_len = 127;
     Scoped<Lock> l(lock);
     int i = virtual_term + 1;
-    uint8_t frame[6];
-    frame[0] = SOF_MARKER;
-    frame[1] = (i << 2) + 1;
-    frame[2] = FT_UIH;
-    frame[3] = (len << 1) + 1;
-    frame[4] = 0xFF - fcs_crc(frame);
-    frame[5] = SOF_MARKER;
+    size_t need_write = len;
+    while (need_write > 0) {
+        size_t batch_len = need_write;
+        if (batch_len > cmux_max_len)
+            batch_len = cmux_max_len;
+        uint8_t frame[6];
+        frame[0] = SOF_MARKER;
+        frame[1] = (i << 2) + 1;
+        frame[2] = FT_UIH;
+        frame[3] = (batch_len << 1) + 1;
+        frame[4] = 0xFF - fcs_crc(frame);
+        frame[5] = SOF_MARKER;
 
-    term->write(frame, 4);
-    term->write(data, len);
-    term->write(frame + 4, 2);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_VERBOSE);
-    ESP_LOG_BUFFER_HEXDUMP("Send", data, len, ESP_LOG_VERBOSE);
-    ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_VERBOSE);
+        term->write(frame, 4);
+        term->write(data, batch_len);
+        term->write(frame + 4, 2);
+        ESP_LOG_BUFFER_HEXDUMP("Send", frame, 4, ESP_LOG_VERBOSE);
+        ESP_LOG_BUFFER_HEXDUMP("Send", data, batch_len, ESP_LOG_VERBOSE);
+        ESP_LOG_BUFFER_HEXDUMP("Send", frame+4, 2, ESP_LOG_VERBOSE);
+        need_write -= batch_len;
+        data += batch_len;
+    }
     return len;
 }
 

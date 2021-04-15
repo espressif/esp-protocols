@@ -24,7 +24,7 @@ using namespace esp_modem;
 
 static const char *TAG = "cmux_example";
 
-static EventGroupHandle_t event_group = NULL;
+static EventGroupHandle_t event_group = nullptr;
 static const int CONNECT_BIT = BIT0;
 static const int STOP_BIT = BIT1;
 static const int GOT_DATA_BIT = BIT2;
@@ -141,6 +141,17 @@ extern "C" void app_main(void)
     assert(esp_netif);
 
     auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
+    /// TEST
+    {
+//        std::string str;
+//        dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
+//        while (1) {
+//            dce->get_imsi(str);
+//            std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+//        }
+    }
+//    return;
+    //// TEST
     dce->set_command_mode();
 
     std::string str;
@@ -163,7 +174,7 @@ extern "C" void app_main(void)
     esp_mqtt_client_config_t mqtt_config = { };
     mqtt_config.uri = BROKER_URL;
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_ANY, mqtt_event_handler, NULL);
+    esp_mqtt_client_register_event(mqtt_client, MQTT_EVENT_ANY, mqtt_event_handler, nullptr);
     esp_mqtt_client_start(mqtt_client);
 
     EventBits_t got_data = 0;
@@ -173,13 +184,11 @@ extern "C" void app_main(void)
         got_data = xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, pdMS_TO_TICKS(500));
     }
     esp_mqtt_client_destroy(mqtt_client);
+    dce->get_imsi(str);
+    std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
-    while (true) { // reading IMSI number after
-        dce->get_imsi(str);
-        std::cout << "Modem IMSI number:" << str << "|" << std::endl;
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
+    ESP_LOGI(TAG, "Example finished");
 }
 
 

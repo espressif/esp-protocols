@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
         esp_err_t esp_modem_ ## name(esp_modem_dce_t *dce, ##__VA_ARGS__);
 
 DECLARE_ALL_COMMAND_APIS(declares esp_modem_<API>(esp_modem_t * dce, ...);)

@@ -34,7 +34,7 @@ namespace dce_commands {
 /**
  * @brief Declaration of all commands is generated from esp_modem_command_declare.inc
  */
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
         return_type name(CommandableIf *t, ## __VA_ARGS__);
 
         DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)

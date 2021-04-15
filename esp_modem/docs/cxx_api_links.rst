@@ -2,6 +2,9 @@
 - :cpp:func:`esp_modem::DCE::set_pin` 
 - :cpp:func:`esp_modem::DCE::read_pin` 
 - :cpp:func:`esp_modem::DCE::set_echo` 
+- :cpp:func:`esp_modem::DCE::sms_txt_mode` 
+- :cpp:func:`esp_modem::DCE::sms_character_set` 
+- :cpp:func:`esp_modem::DCE::send_sms` 
 - :cpp:func:`esp_modem::DCE::resume_data_mode` 
 - :cpp:func:`esp_modem::DCE::set_pdp_context` 
 - :cpp:func:`esp_modem::DCE::set_command_mode` 
