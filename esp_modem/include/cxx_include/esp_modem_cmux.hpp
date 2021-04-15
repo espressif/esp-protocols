@@ -58,7 +58,7 @@ public:
     explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
             term(std::move(t)), buffer_size(buff_size), buffer(std::move(b)) {}
     ~CMux() = default;
-    void init();
+    [[nodiscard]] bool init();
     void set_read_cb(int inst, std::function<bool(uint8_t *data, size_t len)> f);
 
     int write(int i, uint8_t *data, size_t len);
@@ -79,6 +79,8 @@ private:
     static uint8_t fcs_crc(const uint8_t frame[6]);
     Lock lock;
     int instance;
+    int sabm_ack;
+
 };
 
 /**
