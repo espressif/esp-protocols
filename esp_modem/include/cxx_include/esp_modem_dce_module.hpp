@@ -71,7 +71,7 @@ public:
     }
 
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
     virtual return_type name(__VA_ARGS__);
 
     DECLARE_ALL_COMMAND_APIS(virtual return_type name(...); )

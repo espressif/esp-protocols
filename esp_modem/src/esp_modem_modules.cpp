@@ -28,7 +28,7 @@ GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config)
 #define _ARGS(x)  ARGS ## x
 #define ARGS(x)  _ARGS(x)
 #define TEMPLATE_ARG
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, MUX_ARG, ...) \
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
      return_type GenericModule::name(__VA_ARGS__) { return esp_modem::dce_commands::name(dte.get() ARGS(arg_nr) ); }
 
 DECLARE_ALL_COMMAND_APIS(return_type name(...) {

@@ -95,7 +95,7 @@ class DCE: public DCE_T<GenericModule> {
 public:
 
     using DCE_T<GenericModule>::DCE_T;
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, MUX_ARG, ...) \
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
     template <typename ...Agrs> \
     return_type name(Agrs&&... args)   \
     {   \
