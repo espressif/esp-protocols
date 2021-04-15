@@ -28,22 +28,27 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
             if (mode == modem_mode::COMMAND_MODE)
                 return false;
             netif.stop();
-            device->set_mode(modem_mode::COMMAND_MODE);
+            if (!device->set_mode(modem_mode::COMMAND_MODE))
+                return false;
             dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
                 ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_INFO);
                 return false;
             });
             netif.wait_until_ppp_exits();
             dte->set_read_cb(nullptr);
-            dte->set_mode(modem_mode::COMMAND_MODE);
+            if (!dte->set_mode(modem_mode::COMMAND_MODE))
+                return false;
             mode = m;
             return true;
         case modem_mode::DATA_MODE:
             if (mode == modem_mode::DATA_MODE)
                 return false;
-            device->setup_data_mode();
-            device->set_mode(modem_mode::DATA_MODE);
-            dte->set_mode(modem_mode::DATA_MODE);
+            if (!device->setup_data_mode())
+                return false;
+            if (!device->set_mode(modem_mode::DATA_MODE))
+                return false;
+            if (!dte->set_mode(modem_mode::DATA_MODE))
+                return false;
             netif.start();
             mode = m;
             return true;
@@ -51,11 +56,8 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
             if (mode == modem_mode::DATA_MODE || mode == modem_mode::CMUX_MODE)
                 return false;
             device->set_mode(modem_mode::CMUX_MODE);
-            dte->set_mode(modem_mode::CMUX_MODE);
-//            auto dte1 = create_virtual(dte, 1);
-//            auto dte2 = create_virtual(dte, 2);
-//            device->swap_dte(dte1);
-//            netif->swap_dte(dte2;);
+            if (!dte->set_mode(modem_mode::CMUX_MODE))
+                return false;
             mode = modem_mode::COMMAND_MODE;
             return true;
     }
