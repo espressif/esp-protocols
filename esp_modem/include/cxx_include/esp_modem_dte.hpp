@@ -96,6 +96,7 @@ public:
     }
 
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) override;
+    command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator) override;
 
 
 private:
