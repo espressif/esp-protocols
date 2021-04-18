@@ -141,17 +141,7 @@ extern "C" void app_main(void)
     assert(esp_netif);
 
     auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
-    /// TEST
-    {
-//        std::string str;
-//        dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
-//        while (1) {
-//            dce->get_imsi(str);
-//            std::cout << "Modem IMSI number:" << str << "|" << std::endl;
-//        }
-    }
-//    return;
-    //// TEST
+
     dce->set_command_mode();
 
     std::string str;
