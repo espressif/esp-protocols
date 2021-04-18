@@ -59,7 +59,7 @@ extern "C" void app_main(void)
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
 
     auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
-    assert(dce != NULL);
+    assert(dce != nullptr);
 
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
