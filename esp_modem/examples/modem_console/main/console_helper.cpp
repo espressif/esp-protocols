@@ -84,20 +84,6 @@ int ConsoleCommand::get_int(int index)
 }
 
 
-std::vector<ConsoleCommand*> ConsoleCommand::console_commands;
-int ConsoleCommand::last_command = 0;
-
-
-
-const esp_console_cmd_func_t ConsoleCommand::command_func_pts[] = {
-
-#define TEMPLATE(index) ConsoleCommand::command_func_ ## index ,
-    REPEAT_TEMPLATE_DEF(list of function pointers to command_func_XX() )
-
-#undef  TEMPLATE
-};
-
-
 int ConsoleCommand::command_func(int argc, char **argv) {
     void * plain_arg_array = &arg_table[0];
     int nerrors = arg_parse(argc, argv, (void **)plain_arg_array);
@@ -110,3 +96,37 @@ int ConsoleCommand::command_func(int argc, char **argv) {
     }
     return 0;
 }
+
+/**
+ * @brief This class holds definitions of static functions, numbered from 0 index,
+ * that call indexed methods of ConsoleCommand (used to bridge from static esp-console
+ * to object oriented ConsoleCommand class)
+ */
+class StaticCommands {
+    friend class ConsoleCommand;
+#define ITEM_TO_REPEAT(index) \
+    static inline int command_func_ ## index(int argc, char **argv) \
+        { return ConsoleCommand::console_commands[index]->command_func(argc, argv); }
+
+    _DO_REPEAT_ITEM()
+
+#undef ITEM_TO_REPEAT
+};
+
+/**
+ * @brief ConsoleCommand list of static callbacks used for getting object context to plain esp-console context
+ */
+const esp_console_cmd_func_t ConsoleCommand::command_func_pts[] = {
+
+#define ITEM_TO_REPEAT(index) StaticCommands::command_func_ ## index ,
+
+        _DO_REPEAT_ITEM()
+
+#undef  ITEM_TO_REPEAT
+};
+
+/**
+ * @brief Static members defined for ConsoleCommand
+ */
+std::vector<ConsoleCommand*> ConsoleCommand::console_commands;
+int ConsoleCommand::last_command = 0;

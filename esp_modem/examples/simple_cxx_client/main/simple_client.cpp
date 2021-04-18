@@ -140,7 +140,15 @@ extern "C" void app_main(void)
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
 
+    #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
+    auto dce = create_BG96_dce(&dce_config, uart_dte, esp_netif);
+    #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
+    auto dce = create_SIM800_dce(&dce_config, uart_dte, esp_netif);
+    #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
     auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
+    #else
+    #error "Unsupported device"
+    #endif
 
     dce->set_command_mode();
 
@@ -149,7 +157,7 @@ extern "C" void app_main(void)
     std::cout << "Module name:" << str << std::endl;
     bool pin_ok = true;
     if (dce->read_pin(pin_ok) == command_result::OK && !pin_ok) {
-        throw_if_false(dce->set_pin("1234") == command_result::OK, "Cannot set PIN!");
+        throw_if_false(dce->set_pin(CONFIG_EXAMPLE_SIM_PIN) == command_result::OK, "Cannot set PIN!");
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -180,5 +188,3 @@ extern "C" void app_main(void)
 
     ESP_LOGI(TAG, "Example finished");
 }
-
-
