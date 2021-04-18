@@ -24,6 +24,8 @@
 #include "cxx_include/esp_modem_cmux.hpp"
 #include "cxx_include/esp_modem_types.hpp"
 
+struct esp_modem_dte_config;
+
 namespace esp_modem {
 
 /**
@@ -39,7 +41,7 @@ namespace esp_modem {
  */
 class DTE : public CommandableIf {
 public:
-    explicit DTE(std::unique_ptr<Terminal> t);
+    explicit DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t);
 
     ~DTE() = default;
 
@@ -97,7 +99,7 @@ public:
     }
 
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) override;
-    command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator) override;
+    command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, char separator) override;
 
 
 private:
@@ -106,7 +108,7 @@ private:
     [[nodiscard]] bool setup_cmux();
 
     static const size_t GOT_LINE = signal_group::bit0;
-    size_t buffer_size;
+    size_t buffer_size{};
     size_t consumed;
     std::unique_ptr<uint8_t[]> buffer;
     std::unique_ptr<Terminal> term;

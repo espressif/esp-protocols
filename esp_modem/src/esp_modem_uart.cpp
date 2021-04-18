@@ -17,12 +17,9 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_event.h"
 #include "driver/uart.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
-
-#define ESP_MODEM_EVENT_QUEUE_SIZE (16)
 
 static const char *TAG = "uart_terminal";
 
@@ -44,14 +41,12 @@ struct uart_resource {
 
     uart_port_t port;                  /*!< UART port */
     QueueHandle_t event_queue;              /*!< UART event queue handle */
-    int line_buffer_size;                   /*!< line buffer size in command mode */
-    int pattern_queue_size;                 /*!< UART pattern queue size */
 };
 
 struct uart_task {
     explicit uart_task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function) :
             task_handle(nullptr) {
-        BaseType_t ret = xTaskCreate(task_function, "uart_task", 10000, task_param, priority, &task_handle);
+        BaseType_t ret = xTaskCreate(task_function, "uart_task", stack_size, task_param, priority, &task_handle);
         throw_if_false(ret == pdTRUE, "create uart event task failed");
     }
 
@@ -62,23 +57,8 @@ struct uart_task {
     TaskHandle_t task_handle;       /*!< UART event task handle */
 };
 
-
-struct uart_event_loop {
-    explicit uart_event_loop() : event_loop_hdl(nullptr) {
-        esp_event_loop_args_t loop_args = {};
-        loop_args.queue_size = ESP_MODEM_EVENT_QUEUE_SIZE;
-        loop_args.task_name = nullptr;
-        throw_if_esp_fail(esp_event_loop_create(&loop_args, &event_loop_hdl), "create event loop failed");
-    }
-
-    void run() { esp_event_loop_run(event_loop_hdl, pdMS_TO_TICKS(0)); }
-
-    ~uart_event_loop() { if (event_loop_hdl) esp_event_loop_delete(event_loop_hdl); }
-
-    esp_event_loop_handle_t event_loop_hdl;
-};
-
-uart_resource::~uart_resource() {
+uart_resource::~uart_resource()
+{
     if (port >= UART_NUM_0 && port < UART_NUM_MAX) {
         uart_driver_delete(port);
     }
@@ -86,54 +66,54 @@ uart_resource::~uart_resource() {
 
 
 uart_resource::uart_resource(const esp_modem_dte_config *config) :
-        port(-1) {
+        port(-1)
+{
     esp_err_t res;
-    line_buffer_size = config->line_buffer_size;
 
     /* Config UART */
     uart_config_t uart_config = {};
-    uart_config.baud_rate = config->baud_rate;
-    uart_config.data_bits = config->data_bits;
-    uart_config.parity = config->parity;
-    uart_config.stop_bits = config->stop_bits;
-    uart_config.flow_ctrl = (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) ? UART_HW_FLOWCTRL_CTS_RTS
-                                                                                : UART_HW_FLOWCTRL_DISABLE;
+    uart_config.baud_rate = config->uart_config.baud_rate;
+    uart_config.data_bits = config->uart_config.data_bits;
+    uart_config.parity = config->uart_config.parity;
+    uart_config.stop_bits = config->uart_config.stop_bits;
+    uart_config.flow_ctrl = (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) ? UART_HW_FLOWCTRL_CTS_RTS
+                                                                                            : UART_HW_FLOWCTRL_DISABLE;
     uart_config.source_clk = UART_SCLK_REF_TICK;
 
-    throw_if_esp_fail(uart_param_config(config->port_num, &uart_config), "config uart parameter failed");
+    throw_if_esp_fail(uart_param_config(config->uart_config.port_num, &uart_config), "config uart parameter failed");
 
-    if (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
-        res = uart_set_pin(config->port_num, config->tx_io_num, config->rx_io_num,
-                           config->rts_io_num, config->cts_io_num);
+    if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        res = uart_set_pin(config->uart_config.port_num, config->uart_config.tx_io_num, config->uart_config.rx_io_num,
+                           config->uart_config.rts_io_num, config->uart_config.cts_io_num);
     } else {
-        res = uart_set_pin(config->port_num, config->tx_io_num, config->rx_io_num,
+        res = uart_set_pin(config->uart_config.port_num, config->uart_config.tx_io_num, config->uart_config.rx_io_num,
                            UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     }
     throw_if_esp_fail(res, "config uart gpio failed");
     /* Set flow control threshold */
-    if (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
-        res = uart_set_hw_flow_ctrl(config->port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
-    } else if (config->flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
-        res = uart_set_sw_flow_ctrl(config->port_num, true, 8, UART_FIFO_LEN - 8);
+    if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        res = uart_set_hw_flow_ctrl(config->uart_config.port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
+    } else if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
+        res = uart_set_sw_flow_ctrl(config->uart_config.port_num, true, 8, UART_FIFO_LEN - 8);
     }
     throw_if_esp_fail(res, "config uart flow control failed");
     /* Install UART driver and get event queue used inside driver */
-    res = uart_driver_install(config->port_num, config->rx_buffer_size, config->tx_buffer_size,
-                              config->event_queue_size, &(event_queue), 0);
+    res = uart_driver_install(config->uart_config.port_num, config->uart_config.rx_buffer_size, config->uart_config.tx_buffer_size,
+                              config->uart_config.event_queue_size, &(event_queue), 0);
     throw_if_esp_fail(res, "install uart driver failed");
-    throw_if_esp_fail(uart_set_rx_timeout(config->port_num, 1), "set rx timeout failed");
+    throw_if_esp_fail(uart_set_rx_timeout(config->uart_config.port_num, 1), "set rx timeout failed");
 
-    uart_set_rx_full_threshold(config->port_num, 64);
+    uart_set_rx_full_threshold(config->uart_config.port_num, 64);
     throw_if_esp_fail(res, "config uart pattern failed");
     /* mark UART as initialized */
-    port = config->port_num;
+    port = config->uart_config.port_num;
 }
 
 class uart_terminal : public Terminal {
 public:
     explicit uart_terminal(const esp_modem_dte_config *config) :
-            uart(config), event_loop(), signal(),
-            task_handle(config->event_task_stack_size, config->event_task_priority, this, s_task) {}
+            uart(config), signal(),
+            task_handle(config->uart_config.event_task_stack_size, config->uart_config.event_task_priority, this, s_task) {}
 
     ~uart_terminal() override = default;
 
@@ -168,12 +148,9 @@ private:
     static const size_t TASK_STOP = BIT2;
     static const size_t TASK_PARAMS = BIT3;
 
-
     uart_resource uart;
-    uart_event_loop event_loop;
     signal_group signal;
     uart_task task_handle;
-
 };
 
 std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config) {
@@ -194,7 +171,6 @@ void uart_terminal::task() {
         return; // exits to the static method where the task gets deleted
     }
     while (signal.is_any(TASK_START)) {
-        event_loop.run();
         if (uart.get_event(event, 100)) {
             if (signal.is_any(TASK_PARAMS)) {
                 on_data_priv = on_data;
@@ -202,10 +178,7 @@ void uart_terminal::task() {
             }
             switch (event.type) {
                 case UART_DATA:
-//                    ESP_LOGI(TAG, "UART_DATA");
-//                    ESP_LOG_BUFFER_HEXDUMP("esp-modem-pattern: debug_data", esp_dte->buffer, length, ESP_LOG_DEBUG);
                     uart_get_buffered_data_len(uart.port, &len);
-//                    ESP_LOGI(TAG, "UART_DATA len=%d, on_data=%d", len, (bool)on_data);
                     if (len && on_data_priv) {
                         if (on_data_priv(nullptr, len)) {
                             on_data_priv = nullptr;
@@ -214,23 +187,30 @@ void uart_terminal::task() {
                     break;
                 case UART_FIFO_OVF:
                     ESP_LOGW(TAG, "HW FIFO Overflow");
+                    if (on_error)
+                        on_error(terminal_error::BUFFER_OVERFLOW);
                     uart.reset_events();
                     break;
                 case UART_BUFFER_FULL:
                     ESP_LOGW(TAG, "Ring Buffer Full");
+                    if (on_error)
+                        on_error(terminal_error::BUFFER_OVERFLOW);
                     uart.reset_events();
                     break;
                 case UART_BREAK:
                     ESP_LOGW(TAG, "Rx Break");
+                    if (on_error)
+                        on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
                     break;
                 case UART_PARITY_ERR:
                     ESP_LOGE(TAG, "Parity Error");
+                    if (on_error)
+                        on_error(terminal_error::CHECKSUM_ERROR);
                     break;
                 case UART_FRAME_ERR:
                     ESP_LOGE(TAG, "Frame Error");
-                    break;
-                case UART_PATTERN_DET:
-                    ESP_LOGI(TAG, "UART_PATTERN_DET");
+                    if (on_error)
+                        on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
                     break;
                 default:
                     ESP_LOGW(TAG, "unknown uart event type: %d", event.type);

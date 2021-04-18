@@ -30,7 +30,6 @@ static esp_console_repl_t *s_repl = nullptr;
 
 using namespace esp_modem;
 
-
 #define CHECK_ERR(cmd, success_action)  do { \
         auto err = cmd; \
         if (err == command_result::OK) {     \
@@ -49,9 +48,8 @@ extern "C" void app_main(void)
 
     // init the DTE
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    dte_config.pattern_queue_size = 100;
-    dte_config.event_task_stack_size = 4096;
-    dte_config.event_task_priority = 15;
+    dte_config.uart_config.event_task_stack_size = 4096;
+    dte_config.uart_config.event_task_priority = 15;
     esp_netif_config_t ppp_netif_config = ESP_NETIF_DEFAULT_PPP();
 
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
@@ -70,12 +68,11 @@ extern "C" void app_main(void)
 
     modem_console_register_http();
     modem_console_register_ping();
-
     const struct SetModeArgs {
         SetModeArgs(): mode(STR1, nullptr, nullptr, "<mode>", "PPP or CMD") {}
         CommandArgs mode;
     } set_mode_args;
-    ConsoleCommand SetModeParser("set_mode", "sets modem mode", &set_mode_args, sizeof(set_mode_args), [&](ConsoleCommand *c){
+    const ConsoleCommand SetModeParser("set_mode", "sets modem mode", &set_mode_args, sizeof(set_mode_args), [&](ConsoleCommand *c){
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
             if (mode == "CMD") {
@@ -96,7 +93,7 @@ extern "C" void app_main(void)
         SetPinArgs(): pin(STR1, nullptr, nullptr, "<pin>", "PIN") {}
         CommandArgs pin;
     } set_pin_args;
-    ConsoleCommand SetPinParser("set_pin", "sets SIM card PIN", &set_pin_args, sizeof(set_pin_args), [&](ConsoleCommand *c){
+    const ConsoleCommand SetPinParser("set_pin", "sets SIM card PIN", &set_pin_args, sizeof(set_pin_args), [&](ConsoleCommand *c){
         if (c->get_count_of(&SetPinArgs::pin)) {
             auto pin = c->get_string_of(&SetPinArgs::pin);
             ESP_LOGI(TAG, "Setting pin=%s...", pin.c_str());
@@ -111,8 +108,8 @@ extern "C" void app_main(void)
         return 0;
     });
 
-    std::vector<CommandArgs> no_args;
-    ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand *c){
+    const std::vector<CommandArgs> no_args;
+    const ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand *c){
         bool pin_ok;
         ESP_LOGI(TAG, "Checking pin...");
         auto err = dce->read_pin(pin_ok);
@@ -125,7 +122,7 @@ extern "C" void app_main(void)
         return 0;
     });
 
-    ConsoleCommand GetModuleName("get_module_name", "reads the module name", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand GetModuleName("get_module_name", "reads the module name", no_args, [&](ConsoleCommand *c){
         std::string module_name;
         ESP_LOGI(TAG, "Reading module name...");
         CHECK_ERR(dce->get_module_name(module_name), ESP_LOGI(TAG, "OK. Module name: %s", module_name.c_str()));
@@ -167,14 +164,15 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->get_signal_quality(rssi, ber), ESP_LOGI(TAG, "OK. rssi=%d, ber=%d", rssi, ber));
     });
     signal_group exit_signal;
-    const ConsoleCommand ExitConsole("exit", "exit the console appliation", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand *c){
         ESP_LOGI(TAG, "Exiting...");
         exit_signal.set(1);
         s_repl->del(s_repl);
-        return true;
+        return 0;
     });
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
+    ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
     // wait till for exit
     exit_signal.wait_any(1, UINT32_MAX);
 }

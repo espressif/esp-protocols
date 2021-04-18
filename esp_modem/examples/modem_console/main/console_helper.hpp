@@ -53,7 +53,7 @@ public:
         RegisterCommand(command, help, args);
     }
 
-    explicit ConsoleCommand(const char* command, const char* help, std::vector<CommandArgs>& args, std::function<bool(ConsoleCommand *)> f);
+    explicit ConsoleCommand(const char* command, const char* help, const std::vector<CommandArgs>& args, std::function<bool(ConsoleCommand *)> f);
     int get_count(int index);
     template<typename T> int get_count_of(CommandArgs T::*member) { return get_count(index_arg(member)); }
     template<typename T> std::string get_string_of(CommandArgs T::*member) { return get_string(index_arg(member)); }
@@ -63,7 +63,7 @@ public:
     int get_int(int index);
 
 private:
-    void RegisterCommand(const char* command, const char* help, std::vector<CommandArgs>& args);
+    void RegisterCommand(const char* command, const char* help, const std::vector<CommandArgs>& args);
     template<typename T> static constexpr size_t index_arg(CommandArgs T::*member)
         { return ((uint8_t *)&((T*)nullptr->*member) - (uint8_t *)nullptr)/sizeof(CommandArgs); }
     std::function<bool(ConsoleCommand *)> func;
