@@ -78,3 +78,47 @@ bool DTE::setup_cmux()
     other_term = std::make_unique<CMuxInstance>(cmux_term, 1);
     return true;
 }
+
+bool DTE::set_mode(modem_mode m)
+{
+    term->start();
+    mode = m;
+    if (m == modem_mode::DATA_MODE) {
+        term->set_read_cb(on_data);
+        if (other_term) { // if we have the other terminal, let's use it for commands
+            command_term = other_term.get();
+        }
+    } else if (m == modem_mode::CMUX_MODE) {
+        return setup_cmux();
+    }
+    return true;
+}
+
+void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
+{
+    on_data = std::move(f);
+    term->set_read_cb([this](uint8_t *data, size_t len) {
+        if (!data) { // if no data available from terminal callback -> need to explicitly read some
+            auto data_to_read = std::min(len, buffer_size - consumed);
+            data = buffer.get();
+            len = term->read(data, data_to_read);
+        }
+        if (on_data)
+            return on_data(data, len);
+        return false;
+    });
+}
+
+int DTE::read(uint8_t **d, size_t len)
+{
+    auto data_to_read = std::min(len, buffer_size);
+    auto data = buffer.get();
+    auto actual_len = term->read(data, data_to_read);
+    *d = data;
+    return actual_len;
+}
+
+int DTE::write(uint8_t *data, size_t len)
+{
+    return term->write(data, len);
+}
