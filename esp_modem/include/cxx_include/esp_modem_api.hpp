@@ -80,6 +80,11 @@ std::unique_ptr<DCE> create_SIM800_dce(const dce_config *config, std::shared_ptr
 std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
 /**
+ * @brief Create generic DCE
+ */
+std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
  * @}
  */
 

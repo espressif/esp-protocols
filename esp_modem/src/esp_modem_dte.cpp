@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cxx_include/esp_modem_dte.hpp"
 #include <cstring>
 #include "esp_log.h"
+#include "cxx_include/esp_modem_dte.hpp"
+#include "esp_modem_config.h"
 
 using namespace esp_modem;
 
-const int DTE_BUFFER_SIZE = 1024;
-
-DTE::DTE(std::unique_ptr<Terminal> terminal):
-        buffer_size(DTE_BUFFER_SIZE), consumed(0),
+DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
+        buffer_size(config->dte_buffer_size), consumed(0),
         buffer(std::make_unique<uint8_t[]>(buffer_size)),
         term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
         mode(modem_mode::UNDEF) {}
@@ -56,6 +55,11 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     return res;
 }
 
+command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)
+{
+    return command(cmd, got_line, time_ms, '\n');
+}
+
 bool DTE::setup_cmux()
 {
     auto original_term = std::move(term);
@@ -73,9 +77,4 @@ bool DTE::setup_cmux()
     command_term = term.get(); // use command terminal as previously
     other_term = std::make_unique<CMuxInstance>(cmux_term, 1);
     return true;
-}
-
-command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)
-{
-    return command(cmd, got_line, time_ms, '\n');
 }

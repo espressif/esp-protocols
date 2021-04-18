@@ -12,13 +12,13 @@
 
 static const char *TAG = "modem_console_helper";
 
-ConsoleCommand::ConsoleCommand(const char* command, const char* help, std::vector<CommandArgs>& args, std::function<bool(ConsoleCommand *)> f):
+ConsoleCommand::ConsoleCommand(const char* command, const char* help, const std::vector<CommandArgs>& args, std::function<bool(ConsoleCommand *)> f):
         func(std::move(f))
 {
     RegisterCommand(command, help, args);
 }
 
-void ConsoleCommand::RegisterCommand(const char* command, const char* help, std::vector<CommandArgs>& args)
+void ConsoleCommand::RegisterCommand(const char* command, const char* help, const std::vector<CommandArgs>& args)
 {
     assert(last_command <= MAX_REPEAT_NR);
     void * common_arg = nullptr;

@@ -32,7 +32,7 @@ static const char *TAG = "modem_api";
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config) {
     TRY_CATCH_RET_NULL(
             auto term = create_uart_terminal(config);
-            return std::make_shared<DTE>(std::move(term));
+            return std::make_shared<DTE>(config, std::move(term));
     )
 }
 
@@ -54,6 +54,10 @@ std::unique_ptr<DCE> create_SIM800_dce(const dce_config *config, std::shared_ptr
 
 std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
     return create_modem_dce(dce_factory::Modem::BG96, config, std::move(dte), netif);
+}
+
+std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
+    return create_modem_dce(dce_factory::Modem::GenericModule, config, std::move(dte), netif);
 }
 
 } // namespace esp_modem
