@@ -1,27 +1,44 @@
-//
-// Created by david on 3/17/21.
-//
+/* Modem console example
+
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
+
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
 
 #ifndef MODEM_CONSOLE_REPEAT_HELPER_INC_H
 #define MODEM_CONSOLE_REPEAT_HELPER_INC_H
 
-#if MAX_REPEAT_NR < 10
-#define REPEAT_TEMPLATE_DEF(...) REPEAT_10_TIMES(VA_ARG)
-#else
-#define REPEAT_TEMPLATE_DEF(...) REPEAT_100_TIMES(VA_ARG)
+/**
+ * @brief This header is used to generate a defined macro many times with iterator
+ */
+
+#if MAX_REPEAT_NR > 20
+#error "Not enough items to repeat"
 #endif
 
-#define REPEAT_10_TIMES(a) \
-TEMPLATE(0)    \
-TEMPLATE(1)    \
-TEMPLATE(2) \
-TEMPLATE(3) \
-TEMPLATE(4) \
-TEMPLATE(5) \
-TEMPLATE(6) \
-TEMPLATE(7) \
-TEMPLATE(8) \
-TEMPLATE(9)
-
+#define _DO_REPEAT_ITEM(a) \
+ITEM_TO_REPEAT(0) \
+ITEM_TO_REPEAT(1) \
+ITEM_TO_REPEAT(2) \
+ITEM_TO_REPEAT(3) \
+ITEM_TO_REPEAT(4) \
+ITEM_TO_REPEAT(5) \
+ITEM_TO_REPEAT(6) \
+ITEM_TO_REPEAT(7) \
+ITEM_TO_REPEAT(8) \
+ITEM_TO_REPEAT(9) \
+ITEM_TO_REPEAT(10) \
+ITEM_TO_REPEAT(11) \
+ITEM_TO_REPEAT(12) \
+ITEM_TO_REPEAT(13) \
+ITEM_TO_REPEAT(14) \
+ITEM_TO_REPEAT(15) \
+ITEM_TO_REPEAT(16) \
+ITEM_TO_REPEAT(17) \
+ITEM_TO_REPEAT(18) \
+ITEM_TO_REPEAT(19) \
+ITEM_TO_REPEAT(20)
 
 #endif //MODEM_CONSOLE_REPEAT_HELPER_INC_H
