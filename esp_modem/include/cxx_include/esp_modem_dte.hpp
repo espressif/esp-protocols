@@ -41,6 +41,12 @@ namespace esp_modem {
  */
 class DTE : public CommandableIf {
 public:
+
+    /**
+     * @brief Creates a DTE instance from the terminal
+     * @param config DTE config structure
+     * @param t unique-ptr to Terminal
+     */
     explicit DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t);
 
     ~DTE() = default;
@@ -51,7 +57,7 @@ public:
      * @param len Data len to write
      * @return number of bytes written
      */
-    int write(uint8_t *data, size_t len) { return term->write(data, len); }
+    int write(uint8_t *data, size_t len);
 
     /**
      * @brief Reading from the underlying terminal
@@ -59,64 +65,50 @@ public:
      * @param len Length of the data payload
      * @return number of bytes read
      */
-    int read(uint8_t **d, size_t len) {
-        auto data_to_read = std::min(len, buffer_size);
-        auto data = buffer.get();
-        auto actual_len = term->read(data, data_to_read);
-        *d = data;
-        return actual_len;
-    }
+    int read(uint8_t **d, size_t len);
 
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f)
-    {
-        on_data = std::move(f);
-        term->set_read_cb([this](uint8_t *data, size_t len) {
-            if (!data) {
-                auto data_to_read = std::min(len, buffer_size - consumed);
-                data = buffer.get();
-                len = term->read(data, data_to_read);
-            }
-            if (on_data)
-                return on_data(data, len);
-            return false;
-        });
-    }
+    /**
+     * @brief Sets read callback with valid data and length
+     * @param f Function to be called on data available
+     */
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f);
 
-    void start() { term->start(); }
+    /**
+     * @brief Sets the DTE to desired mode (Command/Data/Cmux)
+     * @param m Desired operation mode
+     * @return true on success
+     */
+    [[nodiscard]] bool set_mode(modem_mode m);
 
-    [[nodiscard]] bool set_mode(modem_mode m) {
-        term->start();
-        mode = m;
-        if (m == modem_mode::DATA_MODE) {
-            term->set_read_cb(on_data);
-            if (other_term) { // if we have the other terminal, let's use it for commands
-                command_term = other_term.get();
-            }
-        } else if (m == modem_mode::CMUX_MODE) {
-            return setup_cmux();
-        }
-        return true;
-    }
-
+    /**
+     * @brief Sends command and provides callback with responding line
+     * @param command String parameter representing command
+     * @param got_line Function to be called after line available as a response
+     * @param time_ms Time in ms to wait for the answer
+     * @return OK, FAIL, TIMEOUT
+     */
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) override;
+
+    /**
+     * @brief Sends the command (same as above) but with a specific separator
+     */
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, char separator) override;
 
-
 private:
-    Lock lock;
+    static const size_t GOT_LINE = signal_group::bit0;       /*!< Bit indicating response available */
 
-    [[nodiscard]] bool setup_cmux();
+    [[nodiscard]] bool setup_cmux();                         /*!< Internal setup of CMUX mode */
 
-    static const size_t GOT_LINE = signal_group::bit0;
-    size_t buffer_size{};
-    size_t consumed;
-    std::unique_ptr<uint8_t[]> buffer;
-    std::unique_ptr<Terminal> term;
-    Terminal *command_term;
-    std::unique_ptr<Terminal> other_term;
-    modem_mode mode;
-    signal_group signal;
-    std::function<bool(uint8_t *data, size_t len)> on_data;
+    Lock lock{};                                            /*!< Locks DTE operations */
+    size_t buffer_size;                                      /*!< Size of available DTE buffer */
+    size_t consumed;                                         /*!< Indication of already processed portion in DTE buffer */
+    std::unique_ptr<uint8_t[]> buffer;                       /*!< DTE buffer */
+    std::unique_ptr<Terminal> term;                          /*!< Primary terminal for this DTE */
+    Terminal *command_term;                                  /*!< Reference to the terminal used for sending commands */
+    std::unique_ptr<Terminal> other_term;                    /*!< Secondary terminal for this DTE */
+    modem_mode mode;                                         /*!< DTE operation mode */
+    signal_group signal;                                     /*!< Event group used to signal request-response operations */
+    std::function<bool(uint8_t *data, size_t len)> on_data;  /*!< on data callback for current terminal */
 };
 
 /**
