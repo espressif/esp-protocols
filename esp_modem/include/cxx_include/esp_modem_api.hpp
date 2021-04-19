@@ -43,7 +43,9 @@ using dte_config = ::esp_modem_dte_config;
 /**
  * @brief Create UART DTE
  * @param config DTE configuration
- * @return shared ptr to DTE
+ * @return shared ptr to DTE on success
+ *         nullptr on failure (either due to insufficient memory or wrong dte configuration)
+ *         if exceptions are disabled the API abort()'s on error
  */
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
 /**
@@ -66,6 +68,7 @@ std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
  *
  * @return unique ptr to the created DCE on success
  *         nullptr on failure
+ *         if exceptions are disabled the API abort()'s on error
  */
 std::unique_ptr<DCE> create_SIM7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
