@@ -42,6 +42,14 @@ namespace dce_commands {
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 /**
+ * @brief Following commands that are different for some specific modules
+ */
+command_result get_battery_status_sim7xxx(CommandableIf* t, int& voltage, int &bcs, int &bcl);
+command_result power_down_sim7xxx(CommandableIf* t);
+command_result power_down_sim8xx(CommandableIf* t);
+command_result set_data_mode_sim8xx(CommandableIf* t);
+
+/**
  * @}
  */
 
