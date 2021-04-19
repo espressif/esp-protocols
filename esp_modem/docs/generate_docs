@@ -1,6 +1,9 @@
 # Cleanup the generated html
 rm -rf html
 
+# Cleans example and test build dirs (to reduce the component size before upload)
+rm -rf ../examples/ap_to_pppos/build/ ../examples/simple_cxx_client/build/ ../examples/pppos_client/build/ ../examples/modem_console/build ../test/host_test/build/ ../test/target/build/
+
 # Generate C++ API header of the DCE
 cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > esp_modem_dce.hpp
 

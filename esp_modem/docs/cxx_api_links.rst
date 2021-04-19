@@ -1,4 +1,7 @@
 
+- :cpp:func:`esp_modem::DCE::sync` 
+- :cpp:func:`esp_modem::DCE::get_operator_name` 
+- :cpp:func:`esp_modem::DCE::store_profile` 
 - :cpp:func:`esp_modem::DCE::set_pin` 
 - :cpp:func:`esp_modem::DCE::read_pin` 
 - :cpp:func:`esp_modem::DCE::set_echo` 
@@ -13,4 +16,10 @@
 - :cpp:func:`esp_modem::DCE::get_imei` 
 - :cpp:func:`esp_modem::DCE::get_module_name` 
 - :cpp:func:`esp_modem::DCE::set_data_mode` 
-- :cpp:func:`esp_modem::DCE::get_signal_quality`
+- :cpp:func:`esp_modem::DCE::get_signal_quality` 
+- :cpp:func:`esp_modem::DCE::set_flow_control` 
+- :cpp:func:`esp_modem::DCE::hang_up` 
+- :cpp:func:`esp_modem::DCE::get_battery_status` 
+- :cpp:func:`esp_modem::DCE::power_down` 
+- :cpp:func:`esp_modem::DCE::reset` 
+- :cpp:func:`esp_modem::DCE::set_baud`
