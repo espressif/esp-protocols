@@ -48,6 +48,7 @@ public:
      * @param t unique-ptr to Terminal
      */
     explicit DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t);
+    explicit DTE(std::unique_ptr<Terminal> t);
 
     ~DTE() = default;
 

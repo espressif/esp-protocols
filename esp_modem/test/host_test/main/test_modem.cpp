@@ -42,8 +42,12 @@ public:
                 return len;
             }
         }
-        if (len > 2 && data[0] == 0xf9 && data[2] == 0xef) { // Simple CMUX responder
-            data[2] = 0xff; // turn the request into a reply -> implements CMUX loopback
+        if (len > 2 && data[0] == 0xf9) { // Simple CMUX responder
+            // turn the request into a reply -> implements CMUX loopback
+            if (data[2] == 0x3f)    // SABM command
+                data[2] = 0x73;
+            else if (data[2] == 0xef)   // Generic request
+                data[2] = 0xff;         // generic reply
         }
         loopback_data.resize(data_len + len);
         memcpy(&loopback_data[data_len], data, len);
@@ -82,7 +86,7 @@ TEST_CASE("DTE send/receive command", "[esp_modem]")
     const auto test_command = "Test\n";
     CHECK(term == nullptr);
 
-    dte->set_mode(esp_modem::modem_mode::COMMAND_MODE);
+    CHECK(dte->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
 
     auto ret = dte->command(test_command, [&](uint8_t *data, size_t len) {
         std::string response((char*)data, len);

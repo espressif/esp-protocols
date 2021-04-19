@@ -40,7 +40,7 @@ static inline command_result generic_command(CommandableIf* t, const std::string
     }, timeout_ms);
 }
 
-static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms)
+static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms = 500)
 {
     return t->command(command, [&](uint8_t *data, size_t len) {
         size_t pos = 0;
@@ -69,10 +69,97 @@ static inline command_result generic_command_common(CommandableIf* t, std::strin
     return generic_command(t, command, "OK", "ERROR", timeout);
 }
 
-
 command_result sync(CommandableIf* t)
 {
     return generic_command_common(t, "AT\r");
+}
+
+command_result store_profile(CommandableIf* t)
+{
+    return generic_command_common(t, "AT&W\r");
+}
+
+command_result power_down(CommandableIf* t)
+{
+    return generic_command(t, "AT+QPOWD=1\r", "POWERED DOWN", "ERROR", 1000);
+}
+
+command_result power_down_sim7xxx(CommandableIf* t)
+{
+    return generic_command_common(t, "AT+CPOF\r", 1000);
+}
+
+command_result power_down_sim8xx(CommandableIf* t)
+{
+    return generic_command(t, "AT+CPOWD=1\r", "POWER DOWN", "ERROR", 1000);
+}
+
+command_result reset(CommandableIf* t)
+{
+    return generic_command(t,  "AT+CRESET\r", "PB DONE", "ERROR", 60000);
+}
+
+command_result set_baud(CommandableIf* t, int baud)
+{
+    return generic_command_common(t,  "AT+IPR=" + std::to_string(baud) + "\r");
+}
+
+command_result hang_up(CommandableIf* t)
+{
+    return generic_command_common(t, "ATH\r", 90000);
+}
+
+command_result get_battery_status(CommandableIf* t, int& voltage, int &bcs, int &bcl)
+{
+    std::string out;
+    auto ret = generic_get_string(t, "AT+CBC\r", out);
+    if (ret != command_result::OK)
+        return ret;
+    if (out.find("+CBC") == std::string::npos)
+        return command_result::FAIL;
+    // Parsing +CBC: <bcs>,<bcl>,<voltage>
+    sscanf(out.c_str(), "%*s%d,%d,%d", &bcs, &bcl, &voltage);
+    return command_result::OK;
+}
+
+command_result get_battery_status_sim7xxx(CommandableIf* t, int& voltage, int &bcs, int &bcl)
+{
+    std::string out;
+    auto ret = generic_get_string(t, "AT+CBC\r", out);
+    if (ret != command_result::OK)
+        return ret;
+    if (out.find("+CBC") == std::string::npos)
+        return command_result::FAIL;
+    // Parsing +CBC: <voltage in Volts> V
+    int volt, fraction;
+    sscanf(out.c_str(), "+CBC: %d.%dV", &volt, &fraction);
+    bcl = bcs = -1; // not available for these models
+    voltage = 1000*volt + fraction;
+    return command_result::OK;
+}
+
+command_result set_flow_control(CommandableIf* t, int dce_flow, int dte_flow)
+{
+    return generic_command_common(t, "AT+IFC=" + std::to_string(dce_flow) + ", " + std::to_string(dte_flow) + "\r");
+}
+
+command_result get_operator_name(CommandableIf* t, std::string& operator_name)
+{
+    std::string out;
+    auto ret = generic_get_string(t, "AT+COPS?\r", out, 75000);
+    if (ret != command_result::OK)
+        return ret;
+    auto pos = out.find("+COPS");
+    auto property = 0;
+    while (pos != std::string::npos) {
+        // Looking for: +COPS: <mode>[, <format>[, <oper>]]
+        if (property++ == 2) {  // operator name is after second comma (as a 3rd property of COPS string)
+            operator_name = out.substr(++pos);
+            return command_result::OK;
+        }
+        pos = out.find(',', ++pos);
+    }
+    return command_result::FAIL;
 }
 
 command_result set_echo(CommandableIf* t, bool on)
@@ -90,6 +177,11 @@ command_result set_pdp_context(CommandableIf* t, PdpContext& pdp)
 }
 
 command_result set_data_mode(CommandableIf* t)
+{
+    return generic_command(t, "ATD*99##\r", "CONNECT", "ERROR", 5000);
+}
+
+command_result set_data_mode_sim8xx(CommandableIf* t)
 {
     return generic_command(t, "ATD*99##\r", "CONNECT", "ERROR", 5000);
 }
