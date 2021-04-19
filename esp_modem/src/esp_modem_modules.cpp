@@ -21,33 +21,55 @@ namespace esp_modem {
 GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config) :
         dte(std::move(dte)), pdp(std::make_unique<PdpContext>(config->apn)) {}
 
+//
+// Define preprocessor's forwarding to dce_commands definitions
+//
 
+// Helper macros to handle multiple arguments of declared API
 #define ARGS0
 #define ARGS1 , x
 #define ARGS2 , x , y
+#define ARGS3 , x , y , z
 #define _ARGS(x)  ARGS ## x
 #define ARGS(x)  _ARGS(x)
-#define TEMPLATE_ARG
+
+//
+// Repeat all declarations and forward to the AT commands defined in esp_modem::dce_commands:: namespace
+//
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
      return_type GenericModule::name(__VA_ARGS__) { return esp_modem::dce_commands::name(dte.get() ARGS(arg_nr) ); }
 
-DECLARE_ALL_COMMAND_APIS(return_type name(...) {
-    forwards
-    to
-    esp_modem::dce_commands::name(...)
-})
+DECLARE_ALL_COMMAND_APIS(return_type name(...) )
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
-
+//
+// Handle specific commands for specific supported modems
+//
 command_result SIM7600::get_module_name(std::string &name) {
     name = "7600";
     return command_result::OK;
 }
 
+command_result SIM7600::get_battery_status(int& voltage, int &bcs, int &bcl) {
+    return dce_commands::get_battery_status_sim7xxx(dte.get(), voltage, bcs, bcl);
+}
+
+command_result SIM7600::power_down() {
+    return dce_commands::power_down_sim7xxx(dte.get());
+}
+
 command_result SIM800::get_module_name(std::string &name) {
     name = "800L";
     return command_result::OK;
+}
+
+command_result SIM800::power_down() {
+    return dce_commands::power_down_sim8xx(dte.get());
+}
+
+command_result SIM800::set_data_mode() {
+    return dce_commands::set_data_mode_sim8xx(dte.get());
 }
 
 command_result BG96::get_module_name(std::string &name) {

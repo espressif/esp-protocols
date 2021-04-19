@@ -19,11 +19,19 @@
 
 using namespace esp_modem;
 
+static const size_t dte_default_buffer_size = 1000;
+
 DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
         buffer_size(config->dte_buffer_size), consumed(0),
         buffer(std::make_unique<uint8_t[]>(buffer_size)),
         term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
         mode(modem_mode::UNDEF) {}
+
+DTE::DTE(std::unique_ptr<Terminal> terminal):
+    buffer_size(dte_default_buffer_size), consumed(0),
+    buffer(std::make_unique<uint8_t[]>(buffer_size)),
+    term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
+    mode(modem_mode::UNDEF) {}
 
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {

@@ -128,6 +128,12 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->get_module_name(module_name), ESP_LOGI(TAG, "OK. Module name: %s", module_name.c_str()));
     });
 
+    const ConsoleCommand GetOperatorName("get_operator_name", "reads the operator name", no_args, [&](ConsoleCommand *c){
+        std::string operator_name;
+        ESP_LOGI(TAG, "Reading operator name...");
+        CHECK_ERR(dce->get_operator_name(operator_name), ESP_LOGI(TAG, "OK. Operator name: %s", operator_name.c_str()));
+    });
+
     const struct GenericCommandArgs {
         GenericCommandArgs():
             cmd(STR1, nullptr, nullptr, "<command>", "AT command to send to the modem"),
@@ -163,6 +169,19 @@ extern "C" void app_main(void)
         int rssi, ber;
         CHECK_ERR(dce->get_signal_quality(rssi, ber), ESP_LOGI(TAG, "OK. rssi=%d, ber=%d", rssi, ber));
     });
+    const ConsoleCommand GetBatteryStatus("get_battery_status", "Reads voltage/battery status", no_args, [&](ConsoleCommand *c){
+        int volt, bcl, bcs;
+        CHECK_ERR(dce->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
+    });
+    const ConsoleCommand PowerDown("power_down", "power down the module", no_args, [&](ConsoleCommand *c){
+        ESP_LOGI(TAG, "Power down the module...");
+        CHECK_ERR(dce->power_down(), ESP_LOGI(TAG, "OK"));
+    });
+    const ConsoleCommand Reset("reset", "reset the module", no_args, [&](ConsoleCommand *c){
+        ESP_LOGI(TAG, "Resetting the module...");
+        CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
+    });
+
     signal_group exit_signal;
     const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand *c){
         ESP_LOGI(TAG, "Exiting...");

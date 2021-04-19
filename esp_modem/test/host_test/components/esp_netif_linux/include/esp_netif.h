@@ -15,12 +15,14 @@
 #define _HOST_ESP_NETIF_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include "esp_netif_ip_addr.h"
 #include "esp_err.h"
-#include "esp_event.h"
+#include "esp_event_base.h"
 
 struct esp_netif_obj {};
+typedef struct esp_netif_obj esp_netif_t;
 
 typedef struct esp_netif_driver_base_s {
     esp_err_t (*post_attach)(esp_netif_t *netif, void* h);
@@ -33,8 +35,6 @@ struct esp_netif_driver_ifconfig {
     esp_err_t (*transmit_wrap)(void *h, void *buffer, size_t len, void *netstack_buffer);
     void (*driver_free_rx_buffer)(void *h, void* buffer);
 };
-
-typedef struct esp_netif_obj esp_netif_t;
 
 /** @brief Status of DHCP client or DHCP server */
 typedef enum {

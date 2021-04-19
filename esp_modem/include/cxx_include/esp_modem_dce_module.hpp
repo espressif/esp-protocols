@@ -84,7 +84,7 @@ protected:
     std::unique_ptr<PdpContext> pdp;
 };
 
-// Definitions of other modules
+// Definitions of other supported modules with some specific commands overwritten
 
 /**
  * @brief Specific definition of the SIM7600 module
@@ -93,6 +93,8 @@ class SIM7600: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
+    command_result get_battery_status(int& voltage, int &bcs, int &bcl) override;
+    command_result power_down() override;
 };
 
 /**
@@ -102,6 +104,8 @@ class SIM800: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result get_module_name(std::string& name) override;
+    command_result power_down() override;
+    command_result set_data_mode() override;
 };
 
 /**
