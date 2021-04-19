@@ -1,6 +1,12 @@
-//
-// Created by david on 3/25/21.
-//
+/*  softAP to PPPoS Example (modem_board)
+
+   This example code is in the Public Domain (or CC0 licensed, at your option.)
+
+   Unless required by applicable law or agreed to in writing, this
+   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+   CONDITIONS OF ANY KIND, either express or implied.
+*/
+
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
@@ -14,16 +20,21 @@ using namespace esp_modem::dce_factory;
 class NetModule;
 typedef DCE_T<NetModule> NetDCE;
 
+/**
+ * @brief Custom factory which can build and create a DCE using a custom module
+ */
 class NetDCE_Factory: public Factory {
 public:
     template <typename T, typename ...Args>
     static DCE_T<T>* create(const config *cfg, Args&&... args)
     {
-        return build_generic_DCE< /* Object to create */ DCE_T<T>, /* vanilla pointer */ DCE_T<T> *, /* module */ T>
-                (cfg, std::forward<Args>(args)...);
+        return build_generic_DCE<T>(cfg, std::forward<Args>(args)...);
     }
 };
 
+/**
+ * @brief This is a null-module, doesn't define any AT commands, just passes everything to pppd
+ */
 class NetModule: public ModuleIf {
 public:
     explicit NetModule(std::shared_ptr<DTE> dte, const esp_modem_dce_config *cfg):
