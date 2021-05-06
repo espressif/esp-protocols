@@ -97,14 +97,15 @@ uart_resource::uart_resource(const esp_modem_dte_config *config) :
         res = uart_set_sw_flow_ctrl(config->uart_config.port_num, true, 8, UART_FIFO_LEN - 8);
     }
     throw_if_esp_fail(res, "config uart flow control failed");
+
     /* Install UART driver and get event queue used inside driver */
     res = uart_driver_install(config->uart_config.port_num, config->uart_config.rx_buffer_size, config->uart_config.tx_buffer_size,
                               config->uart_config.event_queue_size, &(event_queue), 0);
     throw_if_esp_fail(res, "install uart driver failed");
     throw_if_esp_fail(uart_set_rx_timeout(config->uart_config.port_num, 1), "set rx timeout failed");
 
-    uart_set_rx_full_threshold(config->uart_config.port_num, 64);
-    throw_if_esp_fail(res, "config uart pattern failed");
+    throw_if_esp_fail(uart_set_rx_full_threshold(config->uart_config.port_num, 64), "config rx full threshold failed");
+
     /* mark UART as initialized */
     port = config->uart_config.port_num;
 }

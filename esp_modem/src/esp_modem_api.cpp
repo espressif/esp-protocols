@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include <cassert>
+#include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"
-#include "esp_log.h"
+#include "vfs_termial.hpp"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include "esp_modem_config.h"
@@ -35,6 +36,14 @@ std::shared_ptr<DTE> create_uart_dte(const dte_config *config) {
             return std::make_shared<DTE>(config, std::move(term));
     )
 }
+
+std::shared_ptr<DTE> create_vfs_dte(const dte_config *config) {
+    TRY_CATCH_RET_NULL(
+            auto term = terminal::create_vfs_terminal(config);
+            return std::make_shared<DTE>(config, std::move(term));
+    )
+}
+
 
 static inline std::unique_ptr<DCE>
 create_modem_dce(dce_factory::Modem m, const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {

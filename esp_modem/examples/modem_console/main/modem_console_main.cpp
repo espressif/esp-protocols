@@ -47,14 +47,24 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // init the DTE
-    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    dte_config.uart_config.event_task_stack_size = 4096;
-    dte_config.uart_config.event_task_priority = 15;
+    esp_modem_dte_config_t dte_config = {
+            .dte_buffer_size = 512,
+            .vfs_config = {.port_num = UART_NUM_1,
+                    .dev_name = "/dev/uart/1",
+                    .rx_buffer_size = 512,
+                    .tx_buffer_size = 512,
+                    .baud_rate = 115200,
+                    .tx_io_num = 25,
+                    .rx_io_num = 26,
+                    .task_stack_size = 4096,
+                    .task_prio = 5}
+    };
+
     esp_netif_config_t ppp_netif_config = ESP_NETIF_DEFAULT_PPP();
 
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
-    auto uart_dte = create_uart_dte(&dte_config);
+    auto uart_dte = create_vfs_dte(&dte_config);
 
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
 
