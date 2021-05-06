@@ -48,6 +48,11 @@ using dte_config = ::esp_modem_dte_config;
  *         if exceptions are disabled the API abort()'s on error
  */
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
+
+
+std::shared_ptr<DTE> create_vfs_dte(const dte_config *config);
+
+
 /**
  * @}
  */
