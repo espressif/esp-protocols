@@ -58,9 +58,24 @@ struct esp_modem_uart_term_config {
     int event_task_priority;        /*!< UART Event Task Priority */
 };
 
+struct esp_modem_vfs_term_config {
+    int port_num;
+    const char* dev_name;
+    int rx_buffer_size;
+    int tx_buffer_size;
+    int baud_rate;
+    int tx_io_num;
+    int rx_io_num;
+    uint32_t task_stack_size;
+    int task_prio;
+};
+
 struct esp_modem_dte_config {
     size_t dte_buffer_size;
-    struct esp_modem_uart_term_config uart_config;
+    union {
+        struct esp_modem_uart_term_config uart_config;
+        struct esp_modem_vfs_term_config vfs_config;
+    };
 };
 
 
