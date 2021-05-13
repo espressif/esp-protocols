@@ -17,6 +17,7 @@
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include <iostream>
+#include "esp_https_ota.h"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
@@ -132,7 +133,7 @@ extern "C" void app_main(void)
             .dte_buffer_size = 512,
             .vfs_config = {.port_num = UART_NUM_1,
                     .dev_name = "/dev/uart/1",
-                    .rx_buffer_size = 512,
+                    .rx_buffer_size = 1024,
                     .tx_buffer_size = 512,
                     .baud_rate = 115200,
                     .tx_io_num = 25,
@@ -147,8 +148,9 @@ extern "C" void app_main(void)
     /* Configure the PPP netif */
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
 
-//    auto uart_dte = create_uart_dte(&dte_config);
-    auto uart_dte = create_vfs_dte(&dte_config2);
+    dte_config.dte_buffer_size = 512;
+    auto uart_dte = create_uart_dte(&dte_config);
+//    auto uart_dte = create_vfs_dte(&dte_config2);
 
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
@@ -171,8 +173,8 @@ extern "C" void app_main(void)
     bool pin_ok = true;
     if (dce->read_pin(pin_ok) == command_result::OK && !pin_ok) {
         throw_if_false(dce->set_pin(CONFIG_EXAMPLE_SIM_PIN) == command_result::OK, "Cannot set PIN!");
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));
 //    dce->get_imsi(str);
 //    std::cout << "Modem IMSI number:" << str << "|" << std::endl;
 //    std::cout << "|" << str << "|" << std::endl;
@@ -186,6 +188,8 @@ extern "C" void app_main(void)
     std::cout << "Operator name:" << str << "|" << std::endl;
 //    return;
 
+
+//    dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
     dce->set_data();
 
     // MQTT connection
@@ -198,13 +202,28 @@ extern "C" void app_main(void)
 
     EventBits_t got_data = 0;
     while (got_data == 0) { // reading IMSI number until we get published data from MQTT
-        dce->get_imsi(str);
-        std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+//        dce->get_imsi(str);
+//        std::cout << "Modem IMSI number:" << str << "|" << std::endl;
         got_data = xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, pdMS_TO_TICKS(500));
     }
     esp_mqtt_client_destroy(mqtt_client);
-    dce->get_imsi(str);
-    std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+//    dce->get_imsi(str);
+//    std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+
+    esp_http_client_config_t config = { };
+    config.skip_cert_common_name_check = true;
+    config.url = "https://github.com/david-cermak/esp32-ipv6-examples/raw/test/ota/hello-world.bin";
+
+    esp_err_t ret = esp_https_ota(&config);
+    if (ret == ESP_OK) {
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "Firmware upgrade failed");
+    }
+    while (1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     ESP_LOGI(TAG, "Example finished");
