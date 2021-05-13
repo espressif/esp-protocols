@@ -54,10 +54,23 @@ public:
     {
         // configure
         esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+        esp_modem_dte_config_t dte_config2 = {
+                .dte_buffer_size = 512,
+                .vfs_config = {.port_num = UART_NUM_1,
+                        .dev_name = "/dev/uart/1",
+                        .rx_buffer_size = 1024,
+                        .tx_buffer_size = 1024,
+                        .baud_rate = 115200,
+                        .tx_io_num = 25,
+                        .rx_io_num = 26,
+                        .task_stack_size = 4096,
+                        .task_prio = 5}
+        };
         esp_modem_dce_config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("");
 
         // create DTE and minimal network DCE
-        auto uart_dte = create_uart_dte(&dte_config);
+        auto uart_dte = create_vfs_dte(&dte_config2);
+//        auto uart_dte = create_uart_dte(&dte_config);
         dce = NetDCE_Factory::create<NetModule>(&dce_config, uart_dte, netif);
         return dce == nullptr ? ESP_FAIL : ESP_OK;
     }

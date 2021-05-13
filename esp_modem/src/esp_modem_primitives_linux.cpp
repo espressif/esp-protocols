@@ -13,35 +13,35 @@
 // limitations under the License.
 
 #include <condition_variable>
+#include <unistd.h>
 #include "cxx_include/esp_modem_primitives.hpp"
-
 
 namespace esp_modem {
 
-struct SignalGroup {
+struct SignalGroupInternal {
     std::condition_variable notify;
     std::mutex m;
     uint32_t flags{ 0 };
 };
 
 
-signal_group::signal_group(): event_group(std::make_unique<SignalGroup>())
+SignalGroup::SignalGroup(): event_group(std::make_unique<SignalGroupInternal>())
 {
 }
 
-void signal_group::set(uint32_t bits)
+void SignalGroup::set(uint32_t bits)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     event_group->flags |= bits;
 }
 
-void signal_group::clear(uint32_t bits)
+void SignalGroup::clear(uint32_t bits)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     event_group->flags &= ~bits;
 }
 
-bool signal_group::wait(uint32_t flags, uint32_t time_ms)
+bool SignalGroup::wait(uint32_t flags, uint32_t time_ms)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&]{
@@ -55,18 +55,35 @@ bool signal_group::wait(uint32_t flags, uint32_t time_ms)
 //    , [&]{return flags&event_group->flags; });
 }
 
-bool signal_group::is_any(uint32_t flags)
+bool SignalGroup::is_any(uint32_t flags)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     return flags&event_group->flags;
 }
 
-bool signal_group::wait_any(uint32_t flags, uint32_t time_ms)
+bool SignalGroup::wait_any(uint32_t flags, uint32_t time_ms)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&]{ return flags&event_group->flags; });
 }
 
-signal_group::~signal_group() = default;
+SignalGroup::~SignalGroup() = default;
+
+Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function)
+{
+#warning "Define this for linux"
+}
+
+Task::~Task()
+{
+
+}
+
+void Task::Delete() {}
+
+void Task::Relinquish()
+{
+    usleep(0);
+}
 
 } // namespace esp_modem

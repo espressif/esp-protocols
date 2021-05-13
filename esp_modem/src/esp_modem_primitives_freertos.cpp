@@ -18,11 +18,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
 
-
-
 namespace esp_modem {
-
-
 
 void Lock::unlock() {
     xSemaphoreGiveRecursive(m);
@@ -43,42 +39,66 @@ void Lock::lock() {
 }
 
 
-signal_group::signal_group(): event_group(nullptr)
+SignalGroup::SignalGroup(): event_group(nullptr)
 {
     event_group = xEventGroupCreate();
     throw_if_false(event_group != nullptr, "create signal event group failed");
 }
 
-void signal_group::set(uint32_t bits)
+void SignalGroup::set(uint32_t bits)
 {
     xEventGroupSetBits(event_group, bits);
 }
 
-void signal_group::clear(uint32_t bits)
+void SignalGroup::clear(uint32_t bits)
 {
     xEventGroupClearBits(event_group, bits);
 }
 
-bool signal_group::wait(uint32_t flags, uint32_t time_ms)
+bool SignalGroup::wait(uint32_t flags, uint32_t time_ms)
 {
     EventBits_t bits = xEventGroupWaitBits(event_group, flags, pdTRUE, pdTRUE, pdMS_TO_TICKS(time_ms));
     return bits & flags;
 }
 
-bool signal_group::is_any(uint32_t flags)
+bool SignalGroup::is_any(uint32_t flags)
 {
     return xEventGroupGetBits(event_group) & flags;
 }
 
-bool signal_group::wait_any(uint32_t flags, uint32_t time_ms)
+bool SignalGroup::wait_any(uint32_t flags, uint32_t time_ms)
 {
     EventBits_t bits = xEventGroupWaitBits(event_group, flags, pdFALSE, pdFALSE, pdMS_TO_TICKS(time_ms));
     return bits & flags;
 }
 
-signal_group::~signal_group()
+SignalGroup::~SignalGroup()
 {
-    if (event_group) vEventGroupDelete(event_group);
+    if (event_group)
+        vEventGroupDelete(event_group);
+}
+
+Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function)
+    :task_handle(nullptr)
+{
+    BaseType_t ret = xTaskCreate(task_function, "vfs_task", stack_size, task_param, priority, &task_handle);
+    throw_if_false(ret == pdTRUE, "create vfs task failed");
+}
+
+Task::~Task()
+{
+    if (task_handle)
+        vTaskDelete(task_handle);
+}
+
+void Task::Delete()
+{
+    vTaskDelete(nullptr);
+}
+
+void Task::Relinquish()
+{
+    vTaskDelay(1);
 }
 
 } // namespace esp_modem
