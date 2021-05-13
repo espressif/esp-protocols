@@ -150,7 +150,7 @@ private:
     static const size_t TASK_PARAMS = BIT3;
 
     uart_resource uart;
-    signal_group signal;
+    SignalGroup signal;
     uart_task task_handle;
 };
 

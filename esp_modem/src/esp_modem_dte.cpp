@@ -39,18 +39,19 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     command_result res = command_result::TIMEOUT;
     command_term->set_read_cb([&](uint8_t *data, size_t len) {
         if (!data) {
-            auto data_to_read = std::min(len, buffer_size - consumed);
-            data = buffer.get() + consumed;
-            len = command_term->read(data, data_to_read);
+            data = buffer.get(); // + consumed;
+            len = command_term->read(data + consumed, buffer_size - consumed);
+        } else {
+            consumed = 0;
         }
-        consumed += len;
-        if (memchr(data, separator, len)) {
-            res = got_line(data, consumed);
+        if (memchr(data + consumed, separator, len)) {
+            res = got_line(data, consumed + len);
             if (res == command_result::OK || res == command_result::FAIL) {
                 signal.set(GOT_LINE);
                 return true;
             }
         }
+        consumed += len;
         return false;
     });
     command_term->write((uint8_t *)command.c_str(), command.length());
@@ -107,9 +108,8 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
     on_data = std::move(f);
     term->set_read_cb([this](uint8_t *data, size_t len) {
         if (!data) { // if no data available from terminal callback -> need to explicitly read some
-            auto data_to_read = std::min(len, buffer_size - consumed);
             data = buffer.get();
-            len = term->read(data, data_to_read);
+            len = term->read(buffer.get(), buffer_size);
         }
         if (on_data)
             return on_data(data, len);

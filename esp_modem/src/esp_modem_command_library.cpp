@@ -12,50 +12,62 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <charconv>
+#include <list>
+#include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
-#include <cstring>
 
-// TODO: Remove iostream
-#include <iostream>
 
 namespace esp_modem::dce_commands {
 
-static inline command_result generic_command(CommandableIf* t, const std::string& command,
-                                                                   const std::string& pass_phrase,
-                                                                   const std::string& fail_phrase, uint32_t timeout_ms)
+command_result generic_command(CommandableIf* t, const std::string &command,
+                                                 const std::list<std::string_view>& pass_phrase,
+                                                 const std::list<std::string_view>& fail_phrase,
+                                                 uint32_t timeout_ms)
 {
-    std::cout << command << std::endl;
+    printf("Command %s\n", command.c_str());
     return t->command(command, [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
-        std::cout << response << std::endl;
-
-        if (response.find(pass_phrase) != std::string::npos) {
-            return command_result::OK;
-        } else if (response.find(fail_phrase) != std::string::npos) {
-            return command_result::FAIL;
-        }
+        std::string_view response((char*)data, len);
+        printf("Response: %.*s\n", (int)response.length(), response.data());
+        for (auto it : pass_phrase)
+            if (response.find(it) != std::string::npos)
+                return command_result::OK;
+        for (auto it : fail_phrase)
+            if (response.find(it) != std::string::npos)
+                return command_result::FAIL;
         return command_result::TIMEOUT;
     }, timeout_ms);
+
 }
 
-static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms = 500)
+static inline command_result generic_command(CommandableIf* t, const std::string& command,
+                                                               const std::string& pass_phrase,
+                                                               const std::string& fail_phrase, uint32_t timeout_ms)
+{
+    const auto pass = std::list<std::string_view>({pass_phrase});
+    const auto fail = std::list<std::string_view>({fail_phrase});
+    return generic_command(t, command, pass, fail, timeout_ms);
+}
+
+static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string_view& output, uint32_t timeout_ms = 500)
 {
     return t->command(command, [&](uint8_t *data, size_t len) {
         size_t pos = 0;
-        std::string response((char*)data, len);
+        std::string_view response((char*)data, len);
         while ((pos = response.find('\n')) != std::string::npos) {
-            std::string token = response.substr(0, pos);
-            for (auto i = 0; i<2; ++i)  // trip trailing \n\r of last two chars
-                if (pos >= 1 && (token[pos-1] == '\r' || token[pos-1] == '\n'))
-                    token.pop_back();
+            std::string_view token = response.substr(0, pos);
+            for (auto it = token.end() - 1; it > token.begin(); it--) // strip trailing CR or LF
+                if (*it == '\r' || *it == '\n')
+                    token.remove_suffix(1);
+            printf("{%.*s}\n", static_cast<int>(token.size()), token.data());
 
             if (token.find("OK") != std::string::npos) {
                 return command_result::OK;
             } else if (token.find("ERROR") != std::string::npos) {
                 return command_result::FAIL;
-            } else if (token.length() > 2) {
+            } else if (token.size() > 2) {
                 output = token;
             }
             response = response.substr(pos+1);
@@ -64,7 +76,17 @@ static inline command_result generic_get_string(CommandableIf* t, const std::str
     }, timeout_ms);
 }
 
-static inline command_result generic_command_common(CommandableIf* t, std::string command, uint32_t timeout = 500)
+static inline command_result generic_get_string(CommandableIf* t, const std::string& command, std::string& output, uint32_t timeout_ms = 500)
+{
+    std::string_view out;
+    auto ret = generic_get_string(t, command, out, timeout_ms);
+    if (ret == command_result::OK)
+        output = out;
+    return ret;
+}
+
+
+static inline command_result generic_command_common(CommandableIf* t, const std::string &command, uint32_t timeout = 500)
 {
     return generic_command(t, command, "OK", "ERROR", timeout);
 }
@@ -111,28 +133,54 @@ command_result hang_up(CommandableIf* t)
 
 command_result get_battery_status(CommandableIf* t, int& voltage, int &bcs, int &bcl)
 {
-    std::string out;
+    std::string_view out;
     auto ret = generic_get_string(t, "AT+CBC\r", out);
     if (ret != command_result::OK)
         return ret;
-    if (out.find("+CBC") == std::string::npos)
+
+    constexpr std::string_view pattern = "+CBC: ";
+    if (out.find(pattern) == std::string_view::npos)
         return command_result::FAIL;
     // Parsing +CBC: <bcs>,<bcl>,<voltage>
-    sscanf(out.c_str(), "%*s%d,%d,%d", &bcs, &bcl, &voltage);
+    out = out.substr(pattern.size());
+    int pos, value, property = 0;
+    while ((pos = out.find(',') != std::string::npos)) {
+        if (std::from_chars(out.data(), out.data() + pos, value).ec == std::errc::invalid_argument)
+            return command_result::FAIL;
+        switch (property++) {
+            case 0: bcs = value;
+                break;
+            case 1: bcl = value;
+                break;
+            default:
+                return command_result::FAIL;
+        }
+        out = out.substr(pos + 1);
+    }
+    if (std::from_chars(out.data(), out.data() + out.size(), voltage).ec == std::errc::invalid_argument)
+        return command_result::FAIL;
     return command_result::OK;
 }
 
 command_result get_battery_status_sim7xxx(CommandableIf* t, int& voltage, int &bcs, int &bcl)
 {
-    std::string out;
+    std::string_view out;
     auto ret = generic_get_string(t, "AT+CBC\r", out);
     if (ret != command_result::OK)
         return ret;
-    if (out.find("+CBC") == std::string::npos)
-        return command_result::FAIL;
     // Parsing +CBC: <voltage in Volts> V
+    constexpr std::string_view pattern = "+CBC: ";
+    constexpr int num_pos = pattern.size();
+    int dot_pos;
+    if (out.find(pattern) == std::string::npos ||
+        (dot_pos = out.find('.')) == std::string::npos)
+        return command_result::FAIL;
+
     int volt, fraction;
-    sscanf(out.c_str(), "+CBC: %d.%dV", &volt, &fraction);
+    if (std::from_chars(out.data() + num_pos, out.data() + dot_pos, volt).ec == std::errc::invalid_argument)
+        return command_result::FAIL;
+    if (std::from_chars(out.data() + dot_pos + 1, out.data() + out.size() - 1, fraction).ec == std::errc::invalid_argument)
+        return command_result::FAIL;
     bcl = bcs = -1; // not available for these models
     voltage = 1000*volt + fraction;
     return command_result::OK;
@@ -145,7 +193,7 @@ command_result set_flow_control(CommandableIf* t, int dce_flow, int dte_flow)
 
 command_result get_operator_name(CommandableIf* t, std::string& operator_name)
 {
-    std::string out;
+    std::string_view out;
     auto ret = generic_get_string(t, "AT+COPS?\r", out, 75000);
     if (ret != command_result::OK)
         return ret;
@@ -193,19 +241,9 @@ command_result resume_data_mode(CommandableIf* t)
 
 command_result set_command_mode(CommandableIf* t)
 {
-    std::cout << "Sending +++" << std::endl;
-    return t->command("+++", [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
-        std::cout << response << std::endl;
-        if (response.find("OK") != std::string::npos) {
-            return command_result::OK;
-        } else if (response.find("NO CARRIER") != std::string::npos) {
-            return command_result::OK;
-        } else if (response.find("ERROR") != std::string::npos) {
-            return command_result::FAIL;
-        }
-        return command_result::TIMEOUT;
-    }, 5000);
+    const auto pass = std::list<std::string_view>({"NO CARRIER", "OK"});
+    const auto fail = std::list<std::string_view>({"ERROR"});
+    return generic_command(t, "+++", pass, fail, 5000);
 }
 
 command_result get_imsi(CommandableIf* t, std::string& imsi_number)
@@ -239,8 +277,8 @@ command_result sms_character_set(CommandableIf* t)
 command_result send_sms(CommandableIf* t, const std::string& number, const std::string& message)
 {
     auto ret = t->command("AT+CMGS=\"" + number + "\"\r", [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
-        std::cout << response << std::endl;
+        std::string_view response((char*)data, len);
+        printf("%.*s", static_cast<int>(response.size()), response.data());
         if (response.find('>') != std::string::npos) {
             return command_result::OK;
         }
@@ -259,53 +297,49 @@ command_result set_cmux(CommandableIf* t)
 
 command_result read_pin(CommandableIf* t, bool& pin_ok)
 {
-    std::cout << "Sending read_pin" << std::endl;
-    return t->command("AT+CPIN?\r", [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
-        std::cout << response << std::endl;
-        if (response.find("READY") != std::string::npos) {
-            pin_ok = true;
-            return command_result::OK;
-        } else if (response.find("PIN") != std::string::npos || response.find("PUK") != std::string::npos ) {
-            pin_ok = false;
-            return command_result::OK;
-        } else if (response.find("ERROR") != std::string::npos) {
-            return command_result::FAIL;
-        }
-        return command_result::TIMEOUT;
-    }, 5000);
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CPIN?\r", out);
+    if (ret != command_result::OK)
+        return ret;
+    if (out.find("+CPIN:") == std::string::npos)
+        return command_result::FAIL;
+    if (out.find("SIM PIN") != std::string::npos || out.find("SIM PUK") != std::string::npos) {
+        pin_ok = false;
+        return command_result::OK;
+    }
+    if (out.find("READY") != std::string::npos) {
+        pin_ok = true;
+        return command_result::OK;
+    }
+    return command_result::FAIL; // Neither pin-ok, nor waiting for pin/puk -> mark as error
 }
 
 command_result set_pin(CommandableIf* t, const std::string& pin)
 {
-    std::cout << "Sending set_pin" << std::endl;
     std::string set_pin_command = "AT+CPIN=" + pin + "\r";
     return generic_command_common(t, set_pin_command);
 }
 
 command_result get_signal_quality(CommandableIf* t, int &rssi, int &ber)
 {
-    std::cout << "get_signal_quality" << std::endl;
-    return t->command("AT+CSQ\r", [&](uint8_t *data, size_t len) {
-            size_t pos = 0;
-            std::string response((char*)data, len);
-            while ((pos = response.find('\n')) != std::string::npos) {
-                std::string token = response.substr(0, pos);
-                for (auto i = 0; i<2; ++i)  // trip trailing \n\r of last two chars
-                    if (pos >= 1 && (token[pos-1] == '\r' || token[pos-1] == '\n'))
-                        token.pop_back();
+    printf("%s", __func__ );
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CSQ\r", out);
+    if (ret != command_result::OK)
+        return ret;
 
-                if (token.find("OK") != std::string::npos) {
-                    return command_result::OK;
-                } else if (token.find("ERROR") != std::string::npos) {
-                    return command_result::FAIL;
-                } else if (token.find("+CSQ") != std::string::npos) {
-                    sscanf(token.c_str(), "%*s%d,%d", &rssi, &ber);
-                }
-                response = response.substr(pos+1);
-            }
-            return command_result::TIMEOUT;
-        }, 500);
+    constexpr std::string_view pattern = "+CSQ: ";
+    constexpr int rssi_pos = pattern.size();
+    int ber_pos;
+    if (out.find(pattern) == std::string::npos ||
+        (ber_pos = out.find(',')) == std::string::npos)
+        return command_result::FAIL;
+
+    if (std::from_chars(out.data() + rssi_pos, out.data() + ber_pos, rssi).ec == std::errc::invalid_argument)
+        return command_result::FAIL;
+    if (std::from_chars(out.data() + ber_pos + 1, out.data() + out.size(), ber).ec == std::errc::invalid_argument)
+        return command_result::FAIL;
+    return command_result::OK;
 }
 
 } // esp_modem::dce_commands

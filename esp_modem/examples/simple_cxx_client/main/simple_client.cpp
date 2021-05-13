@@ -128,6 +128,18 @@ extern "C" void app_main(void)
 
     /* Configure the DTE */
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    esp_modem_dte_config_t dte_config2 = {
+            .dte_buffer_size = 512,
+            .vfs_config = {.port_num = UART_NUM_1,
+                    .dev_name = "/dev/uart/1",
+                    .rx_buffer_size = 512,
+                    .tx_buffer_size = 512,
+                    .baud_rate = 115200,
+                    .tx_io_num = 25,
+                    .rx_io_num = 26,
+                    .task_stack_size = 4096,
+                    .task_prio = 5}
+    };
 
     /* Configure the DCE */
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
@@ -135,7 +147,8 @@ extern "C" void app_main(void)
     /* Configure the PPP netif */
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
 
-    auto uart_dte = create_uart_dte(&dte_config);
+//    auto uart_dte = create_uart_dte(&dte_config);
+    auto uart_dte = create_vfs_dte(&dte_config2);
 
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
@@ -160,10 +173,18 @@ extern "C" void app_main(void)
         throw_if_false(dce->set_pin(CONFIG_EXAMPLE_SIM_PIN) == command_result::OK, "Cannot set PIN!");
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
+//    dce->get_imsi(str);
+//    std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+//    std::cout << "|" << str << "|" << std::endl;
 
     dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
     dce->get_imsi(str);
     std::cout << "Modem IMSI number:" << str << "|" << std::endl;
+    dce->get_imei(str);
+    std::cout << "Modem IMEI number:" << str << "|" << std::endl;
+    dce->get_operator_name(str);
+    std::cout << "Operator name:" << str << "|" << std::endl;
+//    return;
 
     dce->set_data();
 
