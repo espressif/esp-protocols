@@ -224,6 +224,12 @@ void uart_terminal::task() {
 int uart_terminal::read(uint8_t *data, size_t len) {
     size_t length = 0;
     uart_get_buffered_data_len(uart.port, &length);
+//    if (esp_random() < UINT32_MAX/4 && length > 32) {
+//        printf("ahoj!\n");
+//        length = length - length/2;
+//    }
+//    size_t new_size = length/2;
+    length = std::min(len, length);
     if (length > 0) {
         return uart_read_bytes(uart.port, data, length, portMAX_DELAY);
     }
