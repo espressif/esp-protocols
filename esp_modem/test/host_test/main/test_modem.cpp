@@ -2,81 +2,43 @@
 #include <memory>
 #include <future>
 #include "catch.hpp"
-#include "cxx_include/esp_modem_terminal.hpp"
 #include "cxx_include/esp_modem_api.hpp"
+#include "LoopbackTerm.h"
 
 using namespace esp_modem;
 
-class LoopbackTerm : public Terminal {
-public:
-    explicit LoopbackTerm(): loopback_data(), data_len(0) {}
+TEST_CASE("DCE AT parser", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>(true);
+    auto dte =  std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
 
-    ~LoopbackTerm() override = default;
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_BG96_dce(&dce_config, dte, &netif);
+    CHECK(dce != nullptr);
 
-    void start() override {
-        status = status_t::STARTED;
-    }
+    CHECK(dce->set_command_mode() == command_result::OK);
 
-    void stop() override {
-        status = status_t::STOPPED;
-    }
+    int milli_volt, bcl, bcs;
+    CHECK(dce->get_battery_status(milli_volt, bcl, bcs) == command_result::OK);
+    CHECK(milli_volt == 123456);
+    CHECK(bcl == 1);
+    CHECK(bcs == 2);
 
-    int write(uint8_t *data, size_t len) override {
-        if (len > 2 && (data[len-1] == '\r' || data[len-1] == '+') ) { // Simple AT responder
-            std::string command((char*)data, len);
-            std::string response;
-            if (command == "ATE1\r" || command == "ATE0\r" || command == "+++") {
-                response = "OK\r\n";
-            } else if (command == "ATO\r") {
-                response = "ERROR\r\n";
-            } else if (command.find("ATD") != std::string::npos) {
-                response = "CONNECT\r\n";
-            } else if (command.find("AT") != std::string::npos) {
-                response = "OK\r\n";
-            }
-            if (!response.empty()) {
-                data_len = response.length();
-                loopback_data.resize(data_len);
-                memcpy(&loopback_data[0], &response[0], data_len);
-                auto ret = std::async(on_data, nullptr, data_len);
-                return len;
-            }
-        }
-        if (len > 2 && data[0] == 0xf9) { // Simple CMUX responder
-            // turn the request into a reply -> implements CMUX loopback
-            if (data[2] == 0x3f)    // SABM command
-                data[2] = 0x73;
-            else if (data[2] == 0xef)   // Generic request
-                data[2] = 0xff;         // generic reply
-        }
-        loopback_data.resize(data_len + len);
-        memcpy(&loopback_data[data_len], data, len);
-        data_len += len;
-        auto ret = std::async(on_data, nullptr, data_len);
-        return len;
-    }
+    int rssi, ber;
+    CHECK(dce->get_signal_quality(rssi, ber) == command_result::OK);
+    CHECK(rssi == 123);
+    CHECK(ber == 456);
 
-    int read(uint8_t *data, size_t len) override {
-        size_t read_len = std::min(data_len, len);
-        if (read_len) {
-            memcpy(data, &loopback_data[0], len);
-            loopback_data.erase(loopback_data.begin(), loopback_data.begin() + read_len);
-            data_len -= len;
-        }
-        return read_len;
-    }
+    bool pin_ok;
+    CHECK(dce->read_pin(pin_ok) == command_result::OK);
+    CHECK(pin_ok == false);
+    CHECK(dce->set_pin("1234") == command_result::OK);
+    CHECK(dce->read_pin(pin_ok) == command_result::OK);
+    CHECK(pin_ok == true);
+}
 
-
-private:
-    enum class status_t {
-        STARTED,
-        STOPPED
-    };
-    status_t status;
-    signal_group signal;
-    std::vector<uint8_t> loopback_data;
-    size_t data_len;
-};
 
 TEST_CASE("DTE send/receive command", "[esp_modem]")
 {
@@ -127,10 +89,14 @@ TEST_CASE("DCE AT commands", "[esp_modem]")
     auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
     CHECK(dce != nullptr);
 
+    int milli_volt, bcl, bcs;
     CHECK(dce->set_echo(false) == command_result::OK);
     CHECK(dce->set_echo(true) == command_result::OK);
+    CHECK(dce->get_battery_status(milli_volt, bcl, bcs) == command_result::OK);
+    CHECK(milli_volt == 123456);
     CHECK(dce->resume_data_mode() == command_result::FAIL);
 }
+
 
 TEST_CASE("DCE modes", "[esp_modem]")
 {
@@ -162,6 +128,7 @@ TEST_CASE("DCE CMUX test", "[esp_modem]") {
     const auto test_command = "Test\n";
     auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
         std::string response((char *) data, len);
+        std::cout << "Response:" << response << std::endl;
         CHECK(response == test_command);
         return command_result::OK;
     }, 1000);

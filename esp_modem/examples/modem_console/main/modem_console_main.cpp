@@ -47,12 +47,13 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // init the DTE
-    esp_modem_dte_config_t dte_config = {
+    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    esp_modem_dte_config_t dte_config2 = {
             .dte_buffer_size = 512,
             .vfs_config = {.port_num = UART_NUM_1,
                     .dev_name = "/dev/uart/1",
-                    .rx_buffer_size = 512,
-                    .tx_buffer_size = 512,
+                    .rx_buffer_size = 1024,
+                    .tx_buffer_size = 1024,
                     .baud_rate = 115200,
                     .tx_io_num = 25,
                     .rx_io_num = 26,
@@ -64,7 +65,8 @@ extern "C" void app_main(void)
 
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
-    auto uart_dte = create_vfs_dte(&dte_config);
+    auto uart_dte = create_vfs_dte(&dte_config2);
+//    auto uart_dte = create_uart_dte(&dte_config);
 
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
 
@@ -192,7 +194,7 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
 
-    signal_group exit_signal;
+    SignalGroup exit_signal;
     const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand *c){
         ESP_LOGI(TAG, "Exiting...");
         exit_signal.set(1);

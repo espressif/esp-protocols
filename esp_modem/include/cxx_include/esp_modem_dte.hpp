@@ -96,7 +96,7 @@ public:
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, char separator) override;
 
 private:
-    static const size_t GOT_LINE = signal_group::bit0;       /*!< Bit indicating response available */
+    static const size_t GOT_LINE = SignalGroup::bit0;       /*!< Bit indicating response available */
 
     [[nodiscard]] bool setup_cmux();                         /*!< Internal setup of CMUX mode */
 
@@ -108,7 +108,7 @@ private:
     Terminal *command_term;                                  /*!< Reference to the terminal used for sending commands */
     std::unique_ptr<Terminal> other_term;                    /*!< Secondary terminal for this DTE */
     modem_mode mode;                                         /*!< DTE operation mode */
-    signal_group signal;                                     /*!< Event group used to signal request-response operations */
+    SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
     std::function<bool(uint8_t *data, size_t len)> on_data;  /*!< on data callback for current terminal */
 };
 

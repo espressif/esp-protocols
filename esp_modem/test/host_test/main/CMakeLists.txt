@@ -1,4 +1,4 @@
-idf_component_register(SRCS "test_modem.cpp"
+idf_component_register(SRCS "test_modem.cpp" "LoopbackTerm.cpp"
                        INCLUDE_DIRS "$ENV{IDF_PATH}/tools/catch"
                        REQUIRES esp_modem)
 
