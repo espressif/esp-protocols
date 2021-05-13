@@ -85,23 +85,24 @@ void CMux::send_sabm(size_t dlci)
 }
 
 
-void CMux::data_available(uint8_t *data, size_t len, size_t payload_offset)
+void CMux::data_available(uint8_t *data, size_t len)
 {
-    if (type == 0xFF && len > 0 && dlci > 0) {
+    if (data && type == 0xFF && len > 0 && dlci > 0) {
         int virtual_term = dlci - 1;
         if (virtual_term < max_terms && read_cb[virtual_term]) {
             if (payload_start == nullptr) {
                 payload_start = data;
+                total_payload_size = 0;
             }
             total_payload_size += len;
             // Post partial data (if configured)
 //            read_cb[virtual_term](payload_start, total_payload_size);
 
         }
-    } else if (type == 0x73 && len == 0) { // notify the initial SABM command
+    } else if (data == nullptr && type == 0x73 && len == 0) { // notify the initial SABM command
         Scoped<Lock> l(lock);
         sabm_ack = dlci;
-    } else if (payload_offset == -1) {
+    } else if (data == nullptr) {
         int virtual_term = dlci - 1;
         if (virtual_term < max_terms && read_cb[virtual_term]) {
             read_cb[virtual_term](payload_start, total_payload_size);
@@ -113,14 +114,21 @@ void CMux::data_available(uint8_t *data, size_t len, size_t payload_offset)
 bool CMux::on_cmux(uint8_t *data, size_t actual_len)
 {
     if (!data) {
-        auto data_to_read = buffer_size;
-        if (payload_start)
+        auto data_to_read = buffer_size - 155;
+        if (payload_start) {
             data = payload_start + total_payload_size;
-        else
+            data_to_read = payload_len + 2;
+        } else {
             data = buffer.get();
+        }
         actual_len = term->read(data, data_to_read);
+//        ESP_LOGE("Received", "data_to_read=%d, actual_len=%d, total_payload=%d", data_to_read, actual_len, total_payload_size);
     }
-    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_DEBUG);
+    printf("my_data[%d] = { ", actual_len);
+    for (int i=0; i<actual_len; ++i)
+        printf("0x%02x, ", data[i]);
+    printf("};\n");
+//    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_INFO);
     uint8_t* frame = data;
     uint8_t* recover_ptr;
     auto available_len = actual_len;
@@ -139,7 +147,7 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                     available_len -= (recover_ptr - frame);
                     frame = recover_ptr;
                     state = cmux_state::INIT;
-                    ESP_LOGD("CMUX", "Protocol recovered");
+                    ESP_LOGW("CMUX", "Protocol recovered");
                     if (available_len > 1 && frame[1] == SOF_MARKER) {
                         // empty frame
                         available_len -= 1;
@@ -167,13 +175,12 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 frame++;
                 break;
             case cmux_state::HEADER:
-                if (available_len > 0 && frame_header_offset == 1) {
-                    if (frame[0] == SOF_MARKER) {
-                        available_len--;
-                        frame++;
-                        break;
-                    }
-                }
+//                if (available_len > 0 && frame_header_offset == 1 && frame[0] == SOF_MARKER) {
+//                    // Previously trailing SOF interpreted as heading SOF, remove it and restart HEADER
+//                    available_len--;
+//                    frame++;
+//                    break;
+//                }
                 if (available_len + frame_header_offset < 4) {
                     memcpy(frame_header + frame_header_offset, frame, available_len);
                     frame_header_offset += available_len;
@@ -185,62 +192,52 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 dlci = frame_header[1] >> 2;
                 type = frame_header[2];
                 payload_len = (frame_header[3] >> 1);
-                ESP_LOGD("CMUX", "CMUX FR: A:%02x T:%02x L:%d", dlci, type, payload_len);
                 frame += payload_offset;
                 available_len -= payload_offset;
                 state = cmux_state::PAYLOAD;
                 break;
             case cmux_state::PAYLOAD:
-//                ESP_LOGD("PAYLOAD", "CMUX FR: A:%02x T:%02x available:%d payloadLen:%d", dlci, type, available_len, payload_len);
+                ESP_LOGI("CMUX", "CMUX FR: A:%02x T:%02x L:%d available: %d", dlci, type, payload_len, available_len);
                 if (available_len < payload_len) { // payload
                     state = cmux_state::PAYLOAD;
-                    data_available(frame, available_len, 0); // partial read
+                    data_available(frame, available_len); // partial read
                     payload_len -= available_len;
                     return false;
                 } else { // complete
                     if (payload_len > 0) {
-                        data_available(&frame[0], payload_len, 0); // rest read
+                        data_available(&frame[0], payload_len); // rest read
                     }
                     available_len -= payload_len;
                     frame += payload_len;
                     state = cmux_state::FOOTER;
+                    payload_len = 0;
                 }
                 break;
             case cmux_state::FOOTER:
-                if (available_len == 0) {
-                    return false; // need read more
-                } else if (available_len == 1) {
-                    frame_header[4] = frame[0];
-                    frame ++;
-                    available_len --;
+                if (available_len + frame_header_offset < 6) {
+                    memcpy(frame_header + frame_header_offset, frame, available_len);
+                    frame_header_offset += available_len;
                     return false; // need read more
                 } else {
-//
-//                }
-//                if (available_len + frame_header_offset < 6) {
-//                    memcpy(frame_header + frame_header_offset, frame, available_len);
-//                    frame_header_offset += available_len;
-//                    return false; // need read more
-//                } else {
-                    frame_header[4] = frame[0];
-                    frame_header[5] = frame[1];
-                    footer_offset = 2;
-//                    footer_offset = std::min(available_len, 6 - frame_header_offset);
-//                    memcpy(frame_header + frame_header_offset, frame, footer_offset);
+                    footer_offset = std::min(available_len, 6 - frame_header_offset);
+                    memcpy(frame_header + frame_header_offset, frame, footer_offset);
                     if (frame_header[5] != SOF_MARKER) {
-                        ESP_LOGE("CMUX", "Footer Protocol mismatch!");
+                        ESP_LOGE("CMUX-Footer", "Protocol mismatch! total pyaload: %d", total_payload_size);
+                        ESP_LOG_BUFFER_HEXDUMP("Data-valid", payload_start, total_payload_size, ESP_LOG_INFO);
+                        ESP_LOG_BUFFER_HEXDUMP("Footer", frame-8, 16, ESP_LOG_ERROR);
+                        while(1) { usleep(10000); };
+                        abort();
                         state = cmux_state::RECOVER;
                         break;
                     }
-                    if (payload_len == 0) {
-                        data_available(frame_header, 0, 0); // Null payload
-                    }
+//                    if (payload_len == 0) {
+//                        data_available(frame_header, 0); // Null payload
+//                    }
                     frame += footer_offset;
                     available_len -= footer_offset;
                     state = cmux_state::INIT;
                     frame_header_offset = 0;
-                    if (payload_len)
-                        data_available(nullptr, 0, -1); // Null payload
+                    data_available(nullptr, 0);
                     payload_start = nullptr;
                     total_payload_size = 0;
                 }
@@ -264,7 +261,7 @@ bool CMux::init()
     {
         int timeout = 0;
         send_sabm(i);
-        while (true) {
+        while (1) {
             usleep(10'000);
             Scoped<Lock> l(lock);
             if (sabm_ack == i) {

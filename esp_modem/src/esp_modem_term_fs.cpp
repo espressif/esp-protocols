@@ -130,7 +130,10 @@ void vfs_terminal::task() {
 
 int vfs_terminal::read(uint8_t *data, size_t len)
 {
-    return ::read(uart.fd, data, len);
+    int size = ::read(uart.fd, data, len);
+//    if (size < 0 && errno == EWOULDBLOCK)
+//        return 0;
+    return size;
 }
 
 int vfs_terminal::write(uint8_t *data, size_t len)

@@ -36,7 +36,7 @@ void Netif::on_ppp_changed(void *arg, esp_event_base_t event_base,
 esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len) {
     auto *ppp = static_cast<Netif *>(h);
     if (ppp->signal.is_any(PPP_STARTED)) {
-        if (ppp->ppp_dte->write((uint8_t *) buffer, len) > 0) {
+        if (ppp->ppp_dte && ppp->ppp_dte->write((uint8_t *) buffer, len) > 0) {
             return ESP_OK;
         }
     }

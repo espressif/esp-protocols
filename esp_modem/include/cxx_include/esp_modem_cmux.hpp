@@ -64,7 +64,7 @@ public:
     int write(int i, uint8_t *data, size_t len);
 private:
     std::function<bool(uint8_t *data, size_t len)> read_cb[max_terms];
-    void data_available(uint8_t *data, size_t len, size_t payload_offset);
+    void data_available(uint8_t *data, size_t len);
     void send_sabm(size_t i);
     std::unique_ptr<Terminal> term;
     cmux_state state;
