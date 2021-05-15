@@ -97,11 +97,11 @@ struct esp_modem_dte_config {
             .rx_io_num = 26,                        \
             .rts_io_num = 27,                       \
             .cts_io_num = 23,                       \
-            .rx_buffer_size = 1024,                 \
+            .rx_buffer_size = 4096,                 \
             .tx_buffer_size = 512,                  \
             .event_queue_size = 30,                 \
             .event_task_stack_size = 4096,          \
-            .event_task_priority = 5,               \
+            .event_task_priority = 20,               \
        }                                            \
     }
 

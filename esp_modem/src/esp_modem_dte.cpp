@@ -44,6 +44,8 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         } else {
             consumed = 0;
         }
+//        ESP_LOGD("CMD_read!", "-----");
+//    for (int i=0; i<len; i++) ESP_LOGV("CMD_read", "%02x",data[i] );
         if (memchr(data + consumed, separator, len)) {
             res = got_line(data, consumed + len);
             if (res == command_result::OK || res == command_result::FAIL) {
