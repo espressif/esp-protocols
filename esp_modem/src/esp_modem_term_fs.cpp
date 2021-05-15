@@ -32,6 +32,7 @@ struct uart_resource {
 };
 
 
+
 class vfs_terminal : public Terminal {
 public:
     explicit vfs_terminal(const esp_modem_dte_config *config) :
@@ -42,14 +43,16 @@ public:
                 Task::Delete();
             }) {}
 
-    ~vfs_terminal() override = default;
+    ~vfs_terminal() override {
+        stop();
+    }
 
     void start() override {
         signal.set(TASK_START);
     }
 
     void stop() override {
-        signal.set(TASK_STOP);
+        signal.clear(TASK_START);
     }
 
     int write(uint8_t *data, size_t len) override;
@@ -98,7 +101,7 @@ void vfs_terminal::task() {
         int s;
         fd_set rfds;
         struct timeval tv = {
-                .tv_sec = 5,
+                .tv_sec = 1,
                 .tv_usec = 0,
         };
         FD_ZERO(&rfds);
@@ -113,9 +116,10 @@ void vfs_terminal::task() {
         if (s < 0) {
             break;
         } else if (s == 0) {
-
+//            ESP_LOGV(TAG, "Select exitted with timeout");
         } else {
             if (FD_ISSET(uart.fd, &rfds)) {
+//                ESP_LOGV(TAG, "FD is readable");
 //                uart_get_buffered_data_len(uart.port, &len);
                 if (on_data_priv) {
                     if (on_data_priv(nullptr, 0)) {
@@ -131,13 +135,19 @@ void vfs_terminal::task() {
 int vfs_terminal::read(uint8_t *data, size_t len)
 {
     int size = ::read(uart.fd, data, len);
-//    if (size < 0 && errno == EWOULDBLOCK)
-//        return 0;
+//    for (int i=0; i<size; i++) ESP_LOGD(TAG, "Read: %02x",data[i] );
+    if (size < 0) {
+        ESP_LOGE(TAG, "Error occurred during read: %d", errno);
+        return 0;
+    }
+
     return size;
 }
 
 int vfs_terminal::write(uint8_t *data, size_t len)
 {
+
+//    for (int i=0; i<len; i++) ESP_LOGD(TAG, "%02x",data[i] );
     return ::write(uart.fd, data, len);
 }
 

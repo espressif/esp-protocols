@@ -78,7 +78,7 @@ uart_resource::uart_resource(const esp_modem_dte_config *config) :
     uart_config.stop_bits = config->uart_config.stop_bits;
     uart_config.flow_ctrl = (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) ? UART_HW_FLOWCTRL_CTS_RTS
                                                                                             : UART_HW_FLOWCTRL_DISABLE;
-    uart_config.source_clk = UART_SCLK_REF_TICK;
+    uart_config.source_clk = UART_SCLK_APB;
 
     throw_if_esp_fail(uart_param_config(config->uart_config.port_num, &uart_config), "config uart parameter failed");
 
@@ -224,11 +224,11 @@ void uart_terminal::task() {
 int uart_terminal::read(uint8_t *data, size_t len) {
     size_t length = 0;
     uart_get_buffered_data_len(uart.port, &length);
-//    if (esp_random() < UINT32_MAX/4 && length > 32) {
-//        printf("ahoj!\n");
-//        length = length - length/2;
-//    }
-//    size_t new_size = length/2;
+    if (esp_random() < UINT32_MAX/4 && length > 32) {
+        printf("ahoj!\n");
+        length -= length/4;
+    }
+    size_t new_size = length/2;
     length = std::min(len, length);
     if (length > 0) {
         return uart_read_bytes(uart.port, data, length, portMAX_DELAY);
