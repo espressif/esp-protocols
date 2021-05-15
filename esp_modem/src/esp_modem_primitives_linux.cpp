@@ -33,12 +33,14 @@ void SignalGroup::set(uint32_t bits)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     event_group->flags |= bits;
+    event_group->notify.notify_all();
 }
 
 void SignalGroup::clear(uint32_t bits)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
     event_group->flags &= ~bits;
+    event_group->notify.notify_all();
 }
 
 bool SignalGroup::wait(uint32_t flags, uint32_t time_ms)
@@ -71,12 +73,12 @@ SignalGroup::~SignalGroup() = default;
 
 Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function)
 {
-#warning "Define this for linux"
+    task_handle = std::thread(task_function, task_param);
 }
 
 Task::~Task()
 {
-
+    task_handle.join();
 }
 
 void Task::Delete() {}

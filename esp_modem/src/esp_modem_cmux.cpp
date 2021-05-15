@@ -15,7 +15,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <cxx_include/esp_modem_cmux.hpp>
-
+//#include "esp_app_trace.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
 
@@ -90,13 +90,13 @@ void CMux::data_available(uint8_t *data, size_t len)
     if (data && type == 0xFF && len > 0 && dlci > 0) {
         int virtual_term = dlci - 1;
         if (virtual_term < max_terms && read_cb[virtual_term]) {
-            if (payload_start == nullptr) {
-                payload_start = data;
-                total_payload_size = 0;
-            }
-            total_payload_size += len;
+//            if (payload_start == nullptr) {
+//                payload_start = data;
+//                total_payload_size = 0;
+//            }
+//            total_payload_size += len;
             // Post partial data (if configured)
-//            read_cb[virtual_term](payload_start, total_payload_size);
+            read_cb[virtual_term](data, len);
 
         }
     } else if (data == nullptr && type == 0x73 && len == 0) { // notify the initial SABM command
@@ -105,7 +105,7 @@ void CMux::data_available(uint8_t *data, size_t len)
     } else if (data == nullptr) {
         int virtual_term = dlci - 1;
         if (virtual_term < max_terms && read_cb[virtual_term]) {
-            read_cb[virtual_term](payload_start, total_payload_size);
+//            read_cb[virtual_term](payload_start, total_payload_size);
         }
 
     }
@@ -124,10 +124,24 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
         actual_len = term->read(data, data_to_read);
 //        ESP_LOGE("Received", "data_to_read=%d, actual_len=%d, total_payload=%d", data_to_read, actual_len, total_payload_size);
     }
-    printf("my_data[%d] = { ", actual_len);
-    for (int i=0; i<actual_len; ++i)
-        printf("0x%02x, ", data[i]);
-    printf("};\n");
+#if 0
+    if (0){
+        static char buf[8*1024];
+        for (int i=0; i<actual_len; ++i)
+            sprintf(buf + 6*i, "0x%02x, ", data[i]);
+        buf[actual_len*6] = '\n';
+        esp_err_t res = esp_apptrace_write(ESP_APPTRACE_DEST_TRAX, buf, actual_len*6+1, ESP_APPTRACE_TMO_INFINITE);
+        if (res != ESP_OK) {
+            ESP_LOGE("cmux", "Failed to write data to host!");
+        }
+        esp_apptrace_flush(ESP_APPTRACE_DEST_TRAX, 1000);
+//        usleep(1000000);
+    }
+#endif
+//    printf("my_data[%d] = { ", actual_len);
+//    for (int i=0; i<actual_len; ++i)
+//        printf("0x%02x, ", data[i]);
+//    printf("};\n");
 //    ESP_LOG_BUFFER_HEXDUMP("Received", data, actual_len, ESP_LOG_INFO);
     uint8_t* frame = data;
     uint8_t* recover_ptr;
@@ -175,12 +189,12 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                 frame++;
                 break;
             case cmux_state::HEADER:
-//                if (available_len > 0 && frame_header_offset == 1 && frame[0] == SOF_MARKER) {
-//                    // Previously trailing SOF interpreted as heading SOF, remove it and restart HEADER
-//                    available_len--;
-//                    frame++;
-//                    break;
-//                }
+                if (available_len > 0 && frame_header_offset == 1 && frame[0] == SOF_MARKER) {
+                    // Previously trailing SOF interpreted as heading SOF, remove it and restart HEADER
+                    available_len--;
+                    frame++;
+                    break;
+                }
                 if (available_len + frame_header_offset < 4) {
                     memcpy(frame_header + frame_header_offset, frame, available_len);
                     frame_header_offset += available_len;

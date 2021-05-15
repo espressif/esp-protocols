@@ -18,6 +18,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include <iostream>
 #include "esp_https_ota.h"
+#include "esp_app_trace.h"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
@@ -149,7 +150,11 @@ extern "C" void app_main(void)
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
 
     dte_config.dte_buffer_size = 512;
+    dte_config.uart_config.port_num = UART_NUM_2;
     auto uart_dte = create_uart_dte(&dte_config);
+
+
+
 //    auto uart_dte = create_vfs_dte(&dte_config2);
 
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);

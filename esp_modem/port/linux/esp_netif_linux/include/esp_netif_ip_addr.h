@@ -94,21 +94,7 @@ extern "C" {
 #define ip_2_ip4(ipaddr)   (&((ipaddr)->u_addr.ip4))
 #define IP_SET_TYPE_VAL(ipaddr, iptype) do { (ipaddr).type = (iptype); }while(0)
 #define IP_GET_TYPE(ipaddr)           ((ipaddr)->type)
-#define IP_IS_V6_VAL(ipaddr)          (IP_GET_TYPE(&ipaddr) == ESP_IPADDR_TYPE_V6)
-#define ip4_addr_copy(dest, src) ((dest).addr = (src).addr)
-#define ip6_addr_copy(dest, src) do{(dest).addr[0] = (src).addr[0]; \
-                                    (dest).addr[1] = (src).addr[1]; \
-                                    (dest).addr[2] = (src).addr[2]; \
-                                    (dest).addr[3] = (src).addr[3];}while(0)
 
-#define ip_addr_copy(dest, src)      do{ IP_SET_TYPE_VAL(dest, IP_GET_TYPE(&src)); if(IP_IS_V6_VAL(src)){ \
-  ip6_addr_copy(*ip_2_ip6(&(dest)), *ip_2_ip6(&(src))); }else{ \
-  ip4_addr_copy(*ip_2_ip4(&(dest)), *ip_2_ip4(&(src))); }}while(0)
-
-
-#define IP_MULTICAST(a)     IN_CLASSD(a)
-
-#define ip6_addr_ismulticast(ip6addr) (((ip6addr)->addr[0] & htonl(0xff000000UL)) == htonl(0xff000000UL))
 #define IP6_NO_ZONE 0
 #define ip6_addr_clear_zone(ip6addr) ((ip6addr)->zone = IP6_NO_ZONE)
 
