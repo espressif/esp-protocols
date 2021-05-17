@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cxx_include/esp_modem_dte.hpp"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -20,19 +19,13 @@
 #include "driver/uart.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "cxx_include/esp_modem_dte.hpp"
+#include "uart_resource.hpp"
 
 static const char *TAG = "uart_terminal";
 
 namespace esp_modem {
 
-/**
- * @brief Uart Resource is a platform specific struct which is implemented separately
- */
-struct uart_resource {
-    explicit uart_resource(const esp_modem_dte_config *config, struct QueueDefinition** event_queue);
-    ~uart_resource();
-    uart_port_t port;
-};
 
 struct uart_task {
     explicit uart_task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function) :
@@ -53,7 +46,7 @@ struct uart_task {
 class uart_terminal : public Terminal {
 public:
     explicit uart_terminal(const esp_modem_dte_config *config) :
-            event_queue(), uart(config, &event_queue), signal(),
+            event_queue(), uart(config, &event_queue, -1), signal(),
             task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
 
     ~uart_terminal() override = default;

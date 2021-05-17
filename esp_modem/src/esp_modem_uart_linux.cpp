@@ -12,38 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cxx_include/esp_modem_dte.hpp"
-#include <fcntl.h>
 #include <termios.h>
 #include <sys/ioctl.h>
-#include <unistd.h>
-#include <unistd.h>
-#include <sys/fcntl.h>
-#include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
-#include "driver/uart.h"
+#include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
-#include "exception_stub.hpp"
+#include "uart_resource.hpp"
 
-namespace esp_modem::terminal {
+namespace esp_modem {
 
-constexpr const char *TAG = "uart_term";
+constexpr const char *TAG = "uart_resource";
 
-struct uart_resource {
-    explicit uart_resource(const esp_modem_dte_config *config);
-
-    ~uart_resource();
-
-    uart_port_t port{};
-    int fd;
-};
-
-uart_resource::uart_resource(const esp_modem_dte_config *config)
+uart_resource::uart_resource(const esp_modem_dte_config *config, struct QueueDefinition** event_queue, int fd): port(-1)
 {
     ESP_LOGD(TAG, "Creating uart resource" );
     struct termios tty = {};
-    fd = open( config->vfs_config.dev_name, O_RDWR | O_NOCTTY | O_NONBLOCK );
-    throw_if_false(fd >= 0 , "Failed to open serial port");
     throw_if_false(tcgetattr(fd, &tty) == 0, "Failed to tcgetattr()");
 
     tty.c_cflag &= ~PARENB;
@@ -67,9 +50,6 @@ uart_resource::uart_resource(const esp_modem_dte_config *config)
     ioctl(fd, TCSETS, &tty);
 }
 
-uart_resource::~uart_resource()
-{
- close(fd);
-}
+uart_resource::~uart_resource() = default;
 
-}
+} // namespace esp_modem

@@ -37,7 +37,7 @@ typedef enum {
 } esp_modem_flow_ctrl_t;
 
 /**
- * @brief DTE configuration structure
+ * @brief UART configuration structure
  *
  */
 struct esp_modem_uart_term_config {
@@ -66,11 +66,22 @@ typedef enum {
 } esp_modem_vfs_resource_t;
 
 
+/**
+ * @brief VFS configuration structure
+ *
+ */
 struct esp_modem_vfs_term_config {
     const char* dev_name;               /*!< VFS device name, e.g. /dev/uart/n */
     esp_modem_vfs_resource_t resource;  /*!< Underlying device which gets initialized during VFS init */
 };
 
+/**
+ * @brief Complete DTE configuration structure
+ *
+ * Note that the generic part is common for DTE and its SW resources
+ * The following portions for config is dedicated to the chosen HW resource
+ * used as a communication terminal for this DTE
+ */
 struct esp_modem_dte_config {
     size_t dte_buffer_size;                             /*!< DTE buffer size */
     uint32_t task_stack_size;                           /*!< Terminal task stack size */
@@ -106,6 +117,7 @@ struct esp_modem_dte_config {
        },                                           \
        .vfs_config = {                              \
             .dev_name = "/null",                    \
+            .resource =  ESP_MODEM_VFS_IS_EXTERN    \
        }\
     }
 
