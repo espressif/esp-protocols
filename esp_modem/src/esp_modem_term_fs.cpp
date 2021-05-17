@@ -27,9 +27,30 @@ namespace esp_modem {
 
 class Resource {
 public:
-    Resource(const esp_modem_dte_config *config);
+    explicit Resource(const esp_modem_dte_config *config, int fd):
+        uart(config->vfs_config.resource == ESP_MODEM_VFS_IS_EXTERN? std::nullopt : std::make_optional<uart_resource>(config, nullptr, fd))
+        {}
 
     std::optional<uart_resource> uart;
+};
+
+struct File {
+    explicit File(const char *name): fd(-1)
+    {
+        fd = open(name, O_RDWR);
+        throw_if_false(fd >= 0, "Cannot open the fd");
+
+        // Set the FD to non-blocking mode
+        int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;
+        fcntl(fd, F_SETFL, flags);
+    }
+
+    ~File() {
+        if (fd >= 0) {
+            close(fd);
+        }
+    }
+    int fd;
 };
 
 class FdTerminal : public Terminal {
@@ -63,9 +84,9 @@ private:
     static const size_t TASK_STOP = SignalGroup::bit2;
     static const size_t TASK_PARAMS = SignalGroup::bit3;
 
-    uart_resource uart;
+    File f;
+    Resource resource;
     SignalGroup signal;
-    int fd;
     Task task_handle;
 };
 
@@ -78,19 +99,13 @@ std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config
 }
 
 FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
-        uart(config, nullptr), signal(), fd(-1),
+        f(config->vfs_config.dev_name), resource(config, f.fd), signal(),
         task_handle(config->task_stack_size, config->task_priority, this, [](void* p){
             auto t = static_cast<FdTerminal *>(p);
             t->task();
             Task::Delete();
-            if (t->fd >= 0) {
-                close(t->fd);
-            }
         })
-{
-    fd = open(config->vfs_config.dev_name, O_RDWR);
-    throw_if_false(fd >= 0, "Cannot open the fd");
-}
+        {}
 
 void FdTerminal::task()
 {
@@ -101,10 +116,6 @@ void FdTerminal::task()
         return; // exits to the static method where the task gets deleted
     }
 
-    // Set the FD to non-blocking mode
-    int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;
-    fcntl(fd, F_SETFL, flags);
-
     while (signal.is_any(TASK_START)) {
         int s;
         fd_set rfds;
@@ -113,9 +124,9 @@ void FdTerminal::task()
                 .tv_usec = 0,
         };
         FD_ZERO(&rfds);
-        FD_SET(fd, &rfds);
+        FD_SET(f.fd, &rfds);
 
-        s = select(fd + 1, &rfds, nullptr, nullptr, &tv);
+        s = select(f.fd + 1, &rfds, nullptr, nullptr, &tv);
         if (signal.is_any(TASK_PARAMS)) {
             on_data_priv = on_data;
             signal.clear(TASK_PARAMS);
@@ -126,7 +137,7 @@ void FdTerminal::task()
         } else if (s == 0) {
 //            ESP_LOGV(TAG, "Select exited with timeout");
         } else {
-            if (FD_ISSET(fd, &rfds)) {
+            if (FD_ISSET(f.fd, &rfds)) {
                 if (on_data_priv) {
                     if (on_data_priv(nullptr, 0)) {
                         on_data_priv = nullptr;
@@ -140,7 +151,7 @@ void FdTerminal::task()
 
 int FdTerminal::read(uint8_t *data, size_t len)
 {
-    int size = ::read(fd, data, len);
+    int size = ::read(f.fd, data, len);
     if (size < 0) {
         if (errno != EAGAIN) {
             ESP_LOGE(TAG, "Error occurred during read: %d", errno);
@@ -153,7 +164,7 @@ int FdTerminal::read(uint8_t *data, size_t len)
 
 int FdTerminal::write(uint8_t *data, size_t len)
 {
-    int size = ::write(fd, data, len);
+    int size = ::write(f.fd, data, len);
     if (size < 0) {
         ESP_LOGE(TAG, "Error occurred during read: %d", errno);
         return 0;

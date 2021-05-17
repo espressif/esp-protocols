@@ -28,12 +28,12 @@ command_result generic_command(CommandableIf* t, const std::string &command,
                                                  const std::list<std::string_view>& fail_phrase,
                                                  uint32_t timeout_ms)
 {
-    ESP_LOGI(TAG, "%s command %s\n", __func__, command.c_str());
+    ESP_LOGD(TAG, "%s command %s\n", __func__, command.c_str());
     return t->command(command, [&](uint8_t *data, size_t len) {
         std::string_view response((char*)data, len);
         if (data == nullptr || len == 0 || response.empty())
             return command_result::TIMEOUT;
-        ESP_LOGI(TAG, "Response: %.*s\n", (int)response.length(), response.data());
+        ESP_LOGD(TAG, "Response: %.*s\n", (int)response.length(), response.data());
         for (auto &it : pass_phrase)
             if (response.find(it) != std::string::npos)
                 return command_result::OK;
