@@ -39,13 +39,11 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     command_result res = command_result::TIMEOUT;
     command_term->set_read_cb([&](uint8_t *data, size_t len) {
         if (!data) {
-            data = buffer.get(); // + consumed;
+            data = buffer.get();
             len = command_term->read(data + consumed, buffer_size - consumed);
         } else {
-            consumed = 0;
+            consumed = 0; // if the underlying terminal contains data, we cannot fragment
         }
-//        ESP_LOGD("CMD_read!", "-----");
-//    for (int i=0; i<len; i++) ESP_LOGV("CMD_read", "%02x",data[i] );
         if (memchr(data + consumed, separator, len)) {
             res = got_line(data, consumed + len);
             if (res == command_result::OK || res == command_result::FAIL) {
@@ -92,7 +90,6 @@ bool DTE::setup_cmux()
 
 bool DTE::set_mode(modem_mode m)
 {
-    term->start();
     mode = m;
     if (m == modem_mode::DATA_MODE) {
         term->set_read_cb(on_data);

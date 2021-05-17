@@ -18,7 +18,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include <iostream>
 #include "esp_https_ota.h"
-#include "esp_app_trace.h"
+#include "esp_vfs_dev.h"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
@@ -130,18 +130,22 @@ extern "C" void app_main(void)
 
     /* Configure the DTE */
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    esp_modem_dte_config_t dte_config2 = {
-            .dte_buffer_size = 512,
-            .vfs_config = {.port_num = UART_NUM_1,
-                    .dev_name = "/dev/uart/1",
-                    .rx_buffer_size = 1024,
-                    .tx_buffer_size = 512,
-                    .baud_rate = 115200,
-                    .tx_io_num = 25,
-                    .rx_io_num = 26,
-                    .task_stack_size = 4096,
-                    .task_prio = 5}
-    };
+//    dte_config.task_stack_size = 8192;
+    dte_config.vfs_config.dev_name = "/dev/uart/1";
+    dte_config.uart_config.event_queue_size = 0;
+
+//    esp_modem_dte_config_t dte_config2 = {
+//            .dte_buffer_size = 512,
+//            .vfs_config = {.port_num = UART_NUM_1,
+//                    .dev_name = "/dev/uart/1",
+//                    .rx_buffer_size = 1024,
+//                    .tx_buffer_size = 512,
+//                    .baud_rate = 115200,
+//                    .tx_io_num = 25,
+//                    .rx_io_num = 26,
+//                    .task_stack_size = 4096,
+//                    .task_prio = 5}
+//    };
 
     /* Configure the DCE */
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
@@ -149,13 +153,11 @@ extern "C" void app_main(void)
     /* Configure the PPP netif */
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
 
-    dte_config.dte_buffer_size = 512;
-    dte_config.uart_config.port_num = UART_NUM_2;
-    auto uart_dte = create_uart_dte(&dte_config);
-
-
-
-//    auto uart_dte = create_vfs_dte(&dte_config2);
+//    dte_config.dte_buffer_size = 512;
+//    dte_config.uart_config.port_num = UART_NUM_2;
+//    auto uart_dte = create_uart_dte(&dte_config);
+    auto uart_dte = create_vfs_dte(&dte_config);
+    esp_vfs_dev_uart_use_driver(dte_config.uart_config.port_num);
 
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
