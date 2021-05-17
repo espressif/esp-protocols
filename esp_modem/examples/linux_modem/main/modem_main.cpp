@@ -19,6 +19,9 @@ int main()
     // init the DTE
     esp_modem_dte_config_t dte_config = {
             .dte_buffer_size = 512,
+            .task_stack_size = 1024,
+            .task_priority = 10,
+            .uart_config = { },
             .vfs_config = { }
     };
     dte_config.vfs_config.dev_name = "/dev/ttyUSB0";

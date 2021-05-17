@@ -53,29 +53,30 @@ struct esp_modem_uart_term_config {
     int cts_io_num;                 /*!< CTS Pin Number */
     int rx_buffer_size;             /*!< UART RX Buffer Size */
     int tx_buffer_size;             /*!< UART TX Buffer Size */
-    int event_queue_size;           /*!< UART Event Queue Size */
-    uint32_t event_task_stack_size; /*!< UART Event Task Stack size */
-    int event_task_priority;        /*!< UART Event Task Priority */
+    int event_queue_size;           /*!< UART Event Queue Size, set to 0 if no event queue needed */
 };
 
+/**
+ * @brief Resources used by VFS terminal
+ *
+ */
+typedef enum {
+    ESP_MODEM_VFS_IS_EXTERN = 0,    /*!< External resource: internal VFS terminal takes no action to setup this */
+    ESP_MODEM_VFS_IS_UART,          /*!< VFS uses UART: internal VFS initializes UART based on esp_modem_uart_term_config */
+} esp_modem_vfs_resource_t;
+
+
 struct esp_modem_vfs_term_config {
-    int port_num;
-    const char* dev_name;
-    int rx_buffer_size;
-    int tx_buffer_size;
-    int baud_rate;
-    int tx_io_num;
-    int rx_io_num;
-    uint32_t task_stack_size;
-    int task_prio;
+    const char* dev_name;               /*!< VFS device name, e.g. /dev/uart/n */
+    esp_modem_vfs_resource_t resource;  /*!< Underlying device which gets initialized during VFS init */
 };
 
 struct esp_modem_dte_config {
-    size_t dte_buffer_size;
-    union {
-        struct esp_modem_uart_term_config uart_config;
-        struct esp_modem_vfs_term_config vfs_config;
-    };
+    size_t dte_buffer_size;                             /*!< DTE buffer size */
+    uint32_t task_stack_size;                           /*!< Terminal task stack size */
+    int task_priority;                                  /*!< Terminal task priority */
+    struct esp_modem_uart_term_config uart_config;      /*!< Configuration for UART Terminal */
+    struct esp_modem_vfs_term_config vfs_config;        /*!< Configuration for VFS Terminal */
 };
 
 
@@ -86,7 +87,9 @@ struct esp_modem_dte_config {
 #define ESP_MODEM_DTE_DEFAULT_CONFIG() \
     {                                  \
         .dte_buffer_size = 512,        \
-        .uart_config = {                \
+        .task_stack_size = 4096, \
+        .task_priority = 5,      \
+        .uart_config = {               \
             .port_num = UART_NUM_1,                 \
             .data_bits = UART_DATA_8_BITS,          \
             .stop_bits = UART_STOP_BITS_1,          \
@@ -100,9 +103,10 @@ struct esp_modem_dte_config {
             .rx_buffer_size = 4096,                 \
             .tx_buffer_size = 512,                  \
             .event_queue_size = 30,                 \
-            .event_task_stack_size = 4096,          \
-            .event_task_priority = 20,               \
-       }                                            \
+       },                                           \
+       .vfs_config = {                              \
+            .dev_name = "/null",                    \
+       }\
     }
 
 typedef struct esp_modem_dte_config esp_modem_dte_config_t;
