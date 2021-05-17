@@ -11,67 +11,70 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-
 #include "cxx_include/esp_modem_dte.hpp"
-#include "esp_log.h"
 #include "driver/uart.h"
 #include "esp_modem_config.h"
-#include "exception_stub.hpp"
-#include "esp_vfs_dev.h"
-#include <sys/fcntl.h>
 
-
-
-static const char *TAG = "uart_terminal";
-
-namespace esp_modem::terminal {
+namespace esp_modem {
 
 struct uart_resource {
-    explicit uart_resource(const esp_modem_dte_config *config);
+    explicit uart_resource(const esp_modem_dte_config *config, struct QueueDefinition** event_queue);
     ~uart_resource();
     uart_port_t port;
-    int fd;
 };
 
-uart_resource::uart_resource(const esp_modem_dte_config *config) :
-        port(-1), fd(-1)
+uart_resource::~uart_resource()
 {
-    /* Config UART */
-    uart_config_t uart_config = {};
-    uart_config.baud_rate = config->vfs_config.baud_rate;
-    uart_config.data_bits = UART_DATA_8_BITS;
-    uart_config.parity = UART_PARITY_DISABLE;
-    uart_config.stop_bits = UART_STOP_BITS_1;
-    uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-    uart_config.source_clk = UART_SCLK_REF_TICK;
-
-    throw_if_esp_fail(uart_param_config(config->vfs_config.port_num, &uart_config), "config uart parameter failed");
-
-    throw_if_esp_fail(uart_set_pin(config->vfs_config.port_num, config->vfs_config.tx_io_num, config->vfs_config.rx_io_num,
-                                   UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE), "config uart gpio failed");
-
-    throw_if_esp_fail(uart_driver_install(config->vfs_config.port_num, config->vfs_config.rx_buffer_size, config->vfs_config.tx_buffer_size,
-                                          0, nullptr, 0), "install uart driver failed");
-
-//    throw_if_esp_fail(uart_set_rx_timeout(config->vfs_config.port_num, 1), "set rx timeout failed");
-//
-//    throw_if_esp_fail(uart_set_rx_full_threshold(config->uart_config.port_num, 64), "config rx full threshold failed");
-
-    /* mark UART as initialized */
-    port = config->vfs_config.port_num;
-    esp_vfs_dev_uart_use_driver(port);
-
-    fd = open(config->vfs_config.dev_name, O_RDWR);
-
-    throw_if_false(fd >= 0, "Cannot open the fd");
-}
-
-uart_resource::~uart_resource() {
     if (port >= UART_NUM_0 && port < UART_NUM_MAX) {
         uart_driver_delete(port);
     }
-
 }
 
-} // namespace esp_modem::terminal
+uart_resource::uart_resource(const esp_modem_dte_config *config, struct QueueDefinition** event_queue) :
+        port(-1)
+{
+    esp_err_t res;
+
+    /* Config UART */
+    uart_config_t uart_config = {};
+    uart_config.baud_rate = config->uart_config.baud_rate;
+    uart_config.data_bits = config->uart_config.data_bits;
+    uart_config.parity = config->uart_config.parity;
+    uart_config.stop_bits = config->uart_config.stop_bits;
+    uart_config.flow_ctrl = (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) ? UART_HW_FLOWCTRL_CTS_RTS
+                                                                                            : UART_HW_FLOWCTRL_DISABLE;
+    uart_config.source_clk = UART_SCLK_APB;
+
+    throw_if_esp_fail(uart_param_config(config->uart_config.port_num, &uart_config), "config uart parameter failed");
+
+    if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        res = uart_set_pin(config->uart_config.port_num, config->uart_config.tx_io_num, config->uart_config.rx_io_num,
+                           config->uart_config.rts_io_num, config->uart_config.cts_io_num);
+    } else {
+        res = uart_set_pin(config->uart_config.port_num, config->uart_config.tx_io_num, config->uart_config.rx_io_num,
+                           UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    }
+    throw_if_esp_fail(res, "config uart gpio failed");
+    /* Set flow control threshold */
+    if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        res = uart_set_hw_flow_ctrl(config->uart_config.port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
+    } else if (config->uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
+        res = uart_set_sw_flow_ctrl(config->uart_config.port_num, true, 8, UART_FIFO_LEN - 8);
+    }
+    throw_if_esp_fail(res, "config uart flow control failed");
+
+    /* Install UART driver and get event queue used inside driver */
+    res = uart_driver_install(config->uart_config.port_num,
+                              config->uart_config.rx_buffer_size, config->uart_config.tx_buffer_size,
+                              config->uart_config.event_queue_size, config->uart_config.event_queue_size ?  event_queue : nullptr,
+                              0);
+    throw_if_esp_fail(res, "install uart driver failed");
+    throw_if_esp_fail(uart_set_rx_timeout(config->uart_config.port_num, 1), "set rx timeout failed");
+
+    throw_if_esp_fail(uart_set_rx_full_threshold(config->uart_config.port_num, 64), "config rx full threshold failed");
+
+    /* mark UART as initialized */
+    port = config->uart_config.port_num;
+}
+
+} // namespace esp_modem

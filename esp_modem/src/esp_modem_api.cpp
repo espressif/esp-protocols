@@ -39,7 +39,7 @@ std::shared_ptr<DTE> create_uart_dte(const dte_config *config) {
 
 std::shared_ptr<DTE> create_vfs_dte(const dte_config *config) {
     TRY_CATCH_RET_NULL(
-            auto term = terminal::create_vfs_terminal(config);
+            auto term = create_vfs_terminal(config);
             return std::make_shared<DTE>(config, std::move(term));
     )
 }

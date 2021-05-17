@@ -12,40 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <optional>
 #include <unistd.h>
 #include <sys/fcntl.h>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
-#include "driver/uart.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "uart_resource.hpp"        // In case of VFS using UART
 
 static const char *TAG = "fs_terminal";
 
-namespace esp_modem::terminal {
+namespace esp_modem {
 
-struct uart_resource {
-    explicit uart_resource(const esp_modem_dte_config *config);
-    ~uart_resource();
-    uart_port_t port;
-    int fd;
+class Resource {
+public:
+    Resource(const esp_modem_dte_config *config);
+
+    std::optional<uart_resource> uart;
 };
 
-
-
-class vfs_terminal : public Terminal {
+class FdTerminal : public Terminal {
 public:
-    explicit vfs_terminal(const esp_modem_dte_config *config) :
-            uart(config), signal(),
-            task_handle(config->vfs_config.task_stack_size, config->vfs_config.task_prio, this, [](void* p){
-                auto t = static_cast<vfs_terminal *>(p);
-                t->task();
-                Task::Delete();
-            }) {}
+    explicit FdTerminal(const esp_modem_dte_config *config);
 
-    ~vfs_terminal() override {
-        stop();
-    }
+    ~FdTerminal() override;
 
     void start() override {
         signal.set(TASK_START);
@@ -74,28 +65,45 @@ private:
 
     uart_resource uart;
     SignalGroup signal;
+    int fd;
     Task task_handle;
 };
 
 std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config) {
     TRY_CATCH_RET_NULL(
-            auto term = std::make_unique<vfs_terminal>(config);
+            auto term = std::make_unique<FdTerminal>(config);
             term->start();
             return term;
     )
 }
 
-void vfs_terminal::task() {
+FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
+        uart(config, nullptr), signal(), fd(-1),
+        task_handle(config->task_stack_size, config->task_priority, this, [](void* p){
+            auto t = static_cast<FdTerminal *>(p);
+            t->task();
+            Task::Delete();
+            if (t->fd >= 0) {
+                close(t->fd);
+            }
+        })
+{
+    fd = open(config->vfs_config.dev_name, O_RDWR);
+    throw_if_false(fd >= 0, "Cannot open the fd");
+}
+
+void FdTerminal::task()
+{
     std::function<bool(uint8_t *data, size_t len)> on_data_priv = nullptr;
-//    size_t len;
     signal.set(TASK_INIT);
     signal.wait_any(TASK_START | TASK_STOP, portMAX_DELAY);
     if (signal.is_any(TASK_STOP)) {
         return; // exits to the static method where the task gets deleted
     }
-//    esp_vfs_dev_uart_use_driver(uart.port);
-    int flags = fcntl(uart.fd, F_GETFL, NULL) | O_NONBLOCK;
-    fcntl(uart.fd, F_SETFL, flags);
+
+    // Set the FD to non-blocking mode
+    int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;
+    fcntl(fd, F_SETFL, flags);
 
     while (signal.is_any(TASK_START)) {
         int s;
@@ -105,9 +113,9 @@ void vfs_terminal::task() {
                 .tv_usec = 0,
         };
         FD_ZERO(&rfds);
-        FD_SET(uart.fd, &rfds);
+        FD_SET(fd, &rfds);
 
-        s = select(uart.fd + 1, &rfds, NULL, NULL, &tv);
+        s = select(fd + 1, &rfds, nullptr, nullptr, &tv);
         if (signal.is_any(TASK_PARAMS)) {
             on_data_priv = on_data;
             signal.clear(TASK_PARAMS);
@@ -116,11 +124,9 @@ void vfs_terminal::task() {
         if (s < 0) {
             break;
         } else if (s == 0) {
-//            ESP_LOGV(TAG, "Select exitted with timeout");
+//            ESP_LOGV(TAG, "Select exited with timeout");
         } else {
-            if (FD_ISSET(uart.fd, &rfds)) {
-//                ESP_LOGV(TAG, "FD is readable");
-//                uart_get_buffered_data_len(uart.port, &len);
+            if (FD_ISSET(fd, &rfds)) {
                 if (on_data_priv) {
                     if (on_data_priv(nullptr, 0)) {
                         on_data_priv = nullptr;
@@ -132,23 +138,32 @@ void vfs_terminal::task() {
     }
 }
 
-int vfs_terminal::read(uint8_t *data, size_t len)
+int FdTerminal::read(uint8_t *data, size_t len)
 {
-    int size = ::read(uart.fd, data, len);
-//    for (int i=0; i<size; i++) ESP_LOGD(TAG, "Read: %02x",data[i] );
+    int size = ::read(fd, data, len);
     if (size < 0) {
-        ESP_LOGE(TAG, "Error occurred during read: %d", errno);
+        if (errno != EAGAIN) {
+            ESP_LOGE(TAG, "Error occurred during read: %d", errno);
+        }
         return 0;
     }
 
     return size;
 }
 
-int vfs_terminal::write(uint8_t *data, size_t len)
+int FdTerminal::write(uint8_t *data, size_t len)
 {
+    int size = ::write(fd, data, len);
+    if (size < 0) {
+        ESP_LOGE(TAG, "Error occurred during read: %d", errno);
+        return 0;
+    }
+    return size;
+}
 
-//    for (int i=0; i<len; i++) ESP_LOGD(TAG, "%02x",data[i] );
-    return ::write(uart.fd, data, len);
+FdTerminal::~FdTerminal()
+{
+    stop();
 }
 
 } // namespace esp_modem

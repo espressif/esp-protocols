@@ -19,10 +19,10 @@
 
 struct esp_modem_dte_config;
 
-namespace esp_modem::terminal {
+namespace esp_modem {
 
 std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config);
 
-}  // namespace esp_modem::terminal
+}  // namespace esp_modem
 
 #endif // _VFS_TERMINAL_HPP_
