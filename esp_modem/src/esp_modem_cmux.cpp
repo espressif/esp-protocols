@@ -235,12 +235,6 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
                         ESP_LOGW("CMUX", "Protocol mismatch: Missed trailing SOF, recovering...");
                         payload_start = nullptr;
                         total_payload_size = 0;
-
-//                        ESP_LOGE("CMUX-Footer", "Protocol mismatch! total pyaload: %d", total_payload_size);
-//                        ESP_LOG_BUFFER_HEXDUMP("Data-valid", payload_start, total_payload_size, ESP_LOG_INFO);
-//                        ESP_LOG_BUFFER_HEXDUMP("Footer", frame-8, 16, ESP_LOG_ERROR);
-//                        while(1) { usleep(10000); };
-//                        abort();
                         state = cmux_state::RECOVER;
                         break;
                     }
