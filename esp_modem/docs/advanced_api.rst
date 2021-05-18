@@ -31,11 +31,14 @@ the specific module, using :cpp:func:`esp_modem::dce_factory::Factory::build`.
 
 Please refer to the implementation of the existing modules.
 
+Please note that the ``modem_console`` example defines a trivial custom modem DCE which overrides one command,
+for demonstration purposes only.
+
 
 Create new communication interface
 ----------------------------------
 
-In order to connect to a device using an unsuppoeted interface (e.g. SPI or I2C), it is necessary to implement
+In order to connect to a device using an unsupported interface (e.g. SPI or I2C), it is necessary to implement
 a custom DTE object and supply it into :ref:`the DCE factory<dce_factory>`. The DCE is typically created in two steps:
 
 - Define and create the corresponding terminal, which can communicate on the custom interface. This terminal should support basic IO methods defined in :cpp:class:`esp_modem::Terminal` and derive from it.
