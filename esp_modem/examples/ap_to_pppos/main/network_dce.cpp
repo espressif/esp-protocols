@@ -1,4 +1,4 @@
-/*  softAP to PPPoS Example (modem_board)
+/*  softAP to PPPoS Example (network_dce)
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
 
@@ -13,6 +13,7 @@
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include <memory>
 #include <utility>
+#include "network_dce.h"
 
 using namespace esp_modem;
 using namespace esp_modem::dce_factory;
@@ -26,6 +27,7 @@ typedef DCE_T<NetModule> NetDCE;
 class PPPNetwork {
 public:
     esp_err_t init(esp_netif_t *netif, const std::string& apn, const std::string &pin_number);
+    void deinit();
     NetDCE * get_dce();
 private:
     NetDCE *dce;
@@ -120,7 +122,6 @@ esp_err_t PPPNetwork::init(esp_netif_t *netif, const std::string& apn, const std
 {
     // configure
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    dte_config.uart_config.event_task_stack_size = 4096;
     dte_config.uart_config.rx_buffer_size = 16384;
     dte_config.uart_config.tx_buffer_size = 2048;
     esp_modem_dce_config dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(apn.c_str());
@@ -140,14 +141,23 @@ esp_err_t PPPNetwork::init(esp_netif_t *netif, const std::string& apn, const std
     return ESP_OK;
 }
 
+void PPPNetwork::deinit()
+{
+    free(dce);
+    dce = nullptr;
+}
+
 NetDCE *PPPNetwork::get_dce()
 {
     return dce;
 }
 
+/**
+ * @brief Implement the C-API for the AP-2-PPP functionality
+ */
 extern "C" esp_err_t modem_init_network(esp_netif_t *netif)
 {
-    return ppp_network.init(netif, "internet", "1234");
+    return ppp_network.init(netif, CONFIG_EXAMPLE_MODEM_PPP_APN, CONFIG_EXAMPLE_SIM_PIN);
 }
 
 extern "C" void modem_start_network()
@@ -158,4 +168,9 @@ extern "C" void modem_start_network()
 extern "C" void modem_stop_network()
 {
     ppp_network.get_dce()->set_mode(esp_modem::modem_mode::COMMAND_MODE);
+}
+
+extern "C" void modem_deinit_network()
+{
+    ppp_network.deinit();
 }

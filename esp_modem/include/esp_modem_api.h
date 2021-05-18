@@ -15,6 +15,7 @@
 #ifndef _ESP_MODEM_API_H_
 #define _ESP_MODEM_API_H_
 
+#include "esp_err.h"
 #include "generate/esp_modem_command_declare.inc"
 #include "esp_modem_c_api_types.h"
 

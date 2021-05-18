@@ -20,15 +20,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "esp_log.h"
 #include "console_helper.hpp"
-
-extern "C" void modem_console_register_http(void);
-extern "C" void modem_console_register_ping(void);
-
-static const char *TAG = "modem_console";
-
-static esp_console_repl_t *s_repl = nullptr;
-
-using namespace esp_modem;
+#include "my_module_dce.hpp"
 
 #define CHECK_ERR(cmd, success_action)  do { \
         auto err = cmd; \
@@ -40,63 +32,67 @@ using namespace esp_modem;
         return 1;                            \
         } } while (0)
 
+/**
+ * Please update the default APN name here (this could be updated runtime)
+ */
+#define DEFAULT_APN "my_apn"
+
+extern "C" void modem_console_register_http(void);
+extern "C" void modem_console_register_ping(void);
+
+static const char *TAG = "modem_console";
+static esp_console_repl_t *s_repl = nullptr;
+
+using namespace esp_modem;
+
+
 extern "C" void app_main(void)
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    // init the DTE
+    // init the netif, DTE and DCE respectively
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    esp_modem_dte_config_t dte_config2 = {
-            .dte_buffer_size = 512,
-            .vfs_config = {.port_num = UART_NUM_1,
-                    .dev_name = "/dev/uart/1",
-                    .rx_buffer_size = 1024,
-                    .tx_buffer_size = 1024,
-                    .baud_rate = 115200,
-                    .tx_io_num = 25,
-                    .rx_io_num = 26,
-                    .task_stack_size = 4096,
-                    .task_prio = 5}
-    };
-
     esp_netif_config_t ppp_netif_config = ESP_NETIF_DEFAULT_PPP();
-
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
-    auto uart_dte = create_vfs_dte(&dte_config2);
-//    auto uart_dte = create_uart_dte(&dte_config);
-
-    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
-
-    auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
+    auto uart_dte = create_uart_dte(&dte_config);
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(DEFAULT_APN);
+    auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
     assert(dce != nullptr);
 
+    // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    // init console REPL environment
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &s_repl));
 
     modem_console_register_http();
     modem_console_register_ping();
     const struct SetModeArgs {
-        SetModeArgs(): mode(STR1, nullptr, nullptr, "<mode>", "PPP or CMD") {}
+        SetModeArgs(): mode(STR1, nullptr, nullptr, "<mode>", "PPP, CMD or CMUX") {}
         CommandArgs mode;
     } set_mode_args;
     const ConsoleCommand SetModeParser("set_mode", "sets modem mode", &set_mode_args, sizeof(set_mode_args), [&](ConsoleCommand *c){
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
+            modem_mode dev_mode;
             if (mode == "CMD") {
-                ESP_LOGI(TAG, "Switching to command mode...");
-                dce->exit_data();
+                dev_mode = esp_modem::modem_mode::COMMAND_MODE;
             } else if (mode == "PPP") {
-                ESP_LOGI(TAG, "Switching to data mode...");
-                dce->set_data();
+                dev_mode = esp_modem::modem_mode::DATA_MODE;
+            } else if (mode == "CMUX") {
+                dev_mode = esp_modem::modem_mode::CMUX_MODE;
             } else {
                 ESP_LOGE(TAG, "Unsupported mode: %s", mode.c_str());
                 return 1;
             }
+            ESP_LOGI(TAG, "Switching to %s name...", mode.c_str());
+            if (!dce->set_mode(dev_mode)) {
+                ESP_LOGE(TAG, "Failed to set the desired mode");
+                return 1;
+            }
+            ESP_LOGI(TAG, "OK");
         }
         return 0;
     });
@@ -151,7 +147,7 @@ extern "C" void app_main(void)
             cmd(STR1, nullptr, nullptr, "<command>", "AT command to send to the modem"),
             timeout(INT0, "t", "timeout", "<timeout>", "command timeout"),
             pattern(STR0, "p", "pattern", "<pattern>", "command response to wait for"),
-            no_cr(LIT0, "n", "no-cr", "not add trailing CR to the command") {}
+            no_cr(LIT0, "n", "no-cr", "do not add trailing CR to the command") {}
         CommandArgs cmd;
         CommandArgs timeout;
         CommandArgs pattern;
@@ -192,6 +188,20 @@ extern "C" void app_main(void)
     const ConsoleCommand Reset("reset", "reset the module", no_args, [&](ConsoleCommand *c){
         ESP_LOGI(TAG, "Resetting the module...");
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
+    });
+    const struct SetApn {
+        SetApn(): apn(STR1, nullptr, nullptr, "<apn>", "APN (Access Point Name)") {}
+        CommandArgs apn;
+    } set_apn;
+    const ConsoleCommand SetApnParser("set_apn", "sets APN", &set_apn, sizeof(set_apn), [&](ConsoleCommand *c){
+        if (c->get_count_of(&SetApn::apn)) {
+            auto apn = c->get_string_of(&SetApn::apn);
+            ESP_LOGI(TAG, "Setting the APN=%s...", apn.c_str());
+            auto new_pdp = std::unique_ptr<PdpContext>(new PdpContext(apn));
+            dce->get_module()->configure_pdp_context(std::move(new_pdp));
+            ESP_LOGI(TAG, "OK");
+        }
+        return 0;
     });
 
     SignalGroup exit_signal;

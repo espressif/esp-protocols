@@ -1,5 +1,9 @@
-idf_component_register(SRCS "ap2pppos_example_main.c"
-                            "NetworkDCE.cpp"
-                    INCLUDE_DIRS ".")
+if(CONFIG_EXAMPLE_USE_MINIMAL_DCE)
+    set(NETWORK_DCE "network_dce.cpp")
+else()
+    set(NETWORK_DCE "network_dce.c")
+endif()
 
-#target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
+idf_component_register(SRCS "ap_to_pppos.c"
+                            ${NETWORK_DCE}
+                    INCLUDE_DIRS ".")
