@@ -64,19 +64,19 @@ template<typename Module>
 class Builder {
     static_assert(std::is_base_of<ModuleIf, Module>::value, "Builder must be used only for Module classes");
 public:
-    Builder(std::shared_ptr<DTE> x, esp_netif_t* esp_netif): dte(std::move(x)), module(nullptr), netif(esp_netif)
+    Builder(std::shared_ptr<DTE> x, esp_netif_t* esp_netif): dte(std::move(x)), device(nullptr), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
 
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif, std::shared_ptr<Module> dev): dte(std::move(dte)), module(std::move(dev)), netif(esp_netif)
+    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif, std::shared_ptr<Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
 
     ~Builder()
     {
-        throw_if_false(module == nullptr, "module was captured or created but never used");
+        throw_if_false(device == nullptr, "module was captured or created but never used");
     }
 
     template<typename Ptr>
@@ -90,17 +90,17 @@ public:
     {
         if (dte == nullptr)
             return nullptr;
-        if (module == nullptr) {
-            module = create_module<decltype(module)>(config);
-            if (module == nullptr)
+        if (device == nullptr) {
+            device = create_module<decltype(device)>(config);
+            if (device == nullptr)
                 return nullptr;
         }
-        return FactoryHelper::make<DceT, Ptr>(std::move(dte), std::move(module), netif);
+        return FactoryHelper::make<DceT, Ptr>(std::move(dte), std::move(device), netif);
     }
 
 private:
     std::shared_ptr<DTE> dte;
-    std::shared_ptr<Module> module;
+    std::shared_ptr<Module> device;
     esp_netif_t *netif;
 };
 

@@ -20,9 +20,7 @@
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
-//static const int STOP_BIT = BIT1;
 static const int GOT_DATA_BIT = BIT2;
-
 
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
@@ -131,8 +129,8 @@ void app_main(void)
     dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
     dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
     dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
-    dte_config.uart_config.event_task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
-    dte_config.uart_config.event_task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
+    dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
+    dte_config.task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
 
     /* Configure the DCE */
@@ -147,6 +145,7 @@ void app_main(void)
     assert(esp_netif);
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 
+#if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
     bool pin_ok = false;
     if (esp_modem_read_pin(dce, &pin_ok) == ESP_OK && pin_ok == false) {
@@ -156,6 +155,8 @@ void app_main(void)
             abort();
         }
     }
+#endif
+
     int rssi, ber;
     esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
@@ -164,7 +165,7 @@ void app_main(void)
     }
     ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
 
-    #if CONFIG_EXAMPLE_SEND_MSG
+#if CONFIG_EXAMPLE_SEND_MSG
     if (esp_modem_sms_txt_mode(dce, true) != ESP_OK || esp_modem_sms_character_set(dce) != ESP_OK) {
         ESP_LOGE(TAG, "Setting text mode or GSM character set failed");
         return;
@@ -175,7 +176,6 @@ void app_main(void)
         ESP_LOGE(TAG, "esp_modem_send_sms() failed with %d", err);
         return;
     }
-
 #endif
 
     err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DATA);

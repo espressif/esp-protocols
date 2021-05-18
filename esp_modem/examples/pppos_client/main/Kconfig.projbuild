@@ -26,14 +26,6 @@ menu "Example Configuration"
         help
             Set APN (Access Point Name), a logical name to choose data network
 
-    config EXAMPLE_MODEM_LEGACY_API
-        bool "Use Modem legacy API"
-        default y
-        select MODEM_LEGACY_API
-        help
-            Set this to true to use backward compatible API to the original modem
-            component in example/protocol folder in IDFv4.2 and below
-
     config EXAMPLE_MODEM_PPP_AUTH_USERNAME
         string "Set username for authentication"
         default "espressif"
@@ -67,6 +59,19 @@ menu "Example Configuration"
             help
                 Enter the peer phone number that you want to send message to.
     endif
+
+    config EXAMPLE_NEED_SIM_PIN
+        bool "SIM PIN needed"
+        default n
+        help
+            Enable to set SIM PIN before starting the example
+
+    config EXAMPLE_SIM_PIN
+        string "Set SIM PIN"
+        default "1234"
+        depends on EXAMPLE_NEED_SIM_PIN
+        help
+            Pin to unlock the SIM
 
     menu "UART Configuration"
         config EXAMPLE_MODEM_UART_TX_PIN

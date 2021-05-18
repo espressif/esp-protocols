@@ -10,6 +10,8 @@ Get started with one of the examples:
 * `examples/modem_console` -- C++ example implementing simple terminal console with DCE commands
 * `examples/ap_to_pppos` -- this example focuses on the network connectivity of the esp-modem and provides a WiFi AP
   that forwards packets (and uses NAT) to and from the PPPoS connection.
+* `examples/simple_cmux_client` -- this example sets up the CMUX mode to talk to the modem using AT commands
+  with simultaneously maintaining active network connection.
 
 ## Documentation
 
