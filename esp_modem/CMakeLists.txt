@@ -33,4 +33,7 @@ idf_component_register(SRCS "${srcs}"
 
 target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
 
-set_target_properties(${COMPONENT_LIB} PROPERTIES COMPILE_FLAGS -Wno-format)
+if(${target} STREQUAL "linux")
+    # This is needed for ESP_LOGx() macros, as integer formats differ on ESP32(..) and x64
+    set_target_properties(${COMPONENT_LIB} PROPERTIES COMPILE_FLAGS -Wno-format)
+endif()
