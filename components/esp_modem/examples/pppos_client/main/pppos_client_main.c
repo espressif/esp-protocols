@@ -149,7 +149,7 @@ void app_main(void)
     // check if PIN needed
     bool pin_ok = false;
     if (esp_modem_read_pin(dce, &pin_ok) == ESP_OK && pin_ok == false) {
-        if (esp_modem_set_pin(dce, "1234") == ESP_OK) {
+        if (esp_modem_set_pin(dce, CONFIG_EXAMPLE_SIM_PIN) == ESP_OK) {
             vTaskDelay(pdMS_TO_TICKS(1000));
         } else {
             abort();
