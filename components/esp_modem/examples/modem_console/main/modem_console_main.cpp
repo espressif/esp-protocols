@@ -213,7 +213,7 @@ extern "C" void app_main(void)
     });
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
-    ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
-    // wait till for exit
+    // wait for exit
     exit_signal.wait_any(1, UINT32_MAX);
+    ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
 }
