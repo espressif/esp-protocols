@@ -43,13 +43,13 @@ struct uart_task {
 
 
 
-class uart_terminal : public Terminal {
+class UartTerminal : public Terminal {
 public:
-    explicit uart_terminal(const esp_modem_dte_config *config) :
+    explicit UartTerminal(const esp_modem_dte_config *config) :
             event_queue(), uart(config, &event_queue, -1), signal(),
             task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
 
-    ~uart_terminal() override = default;
+    ~UartTerminal() override = default;
 
     void start() override {
         signal.set(TASK_START);
@@ -70,7 +70,7 @@ public:
 
 private:
     static void s_task(void *task_param) {
-        auto t = static_cast<uart_terminal *>(task_param);
+        auto t = static_cast<UartTerminal *>(task_param);
         t->task();
         vTaskDelete(nullptr);
     }
@@ -98,13 +98,13 @@ private:
 
 std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config) {
     TRY_CATCH_RET_NULL(
-            auto term = std::make_unique<uart_terminal>(config);
+            auto term = std::make_unique<UartTerminal>(config);
             term->start();
             return term;
     )
 }
 
-void uart_terminal::task() {
+void UartTerminal::task() {
     std::function<bool(uint8_t *data, size_t len)> on_data_priv = nullptr;
     uart_event_t event;
     size_t len;
@@ -163,14 +163,9 @@ void uart_terminal::task() {
     }
 }
 
-int uart_terminal::read(uint8_t *data, size_t len) {
+int UartTerminal::read(uint8_t *data, size_t len) {
     size_t length = 0;
     uart_get_buffered_data_len(uart.port, &length);
-//    if (esp_random() < UINT32_MAX/4 && length > 32) {
-//        printf("ahoj!\n");
-//        length -= length/4;
-//    }
-//    size_t new_size = length/2;
     length = std::min(len, length);
     if (length > 0) {
         return uart_read_bytes(uart.port, data, length, portMAX_DELAY);
@@ -178,7 +173,7 @@ int uart_terminal::read(uint8_t *data, size_t len) {
     return 0;
 }
 
-int uart_terminal::write(uint8_t *data, size_t len) {
+int UartTerminal::write(uint8_t *data, size_t len) {
     return uart_write_bytes(uart.port, data, len);
 }
 

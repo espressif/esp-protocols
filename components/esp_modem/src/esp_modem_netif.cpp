@@ -52,8 +52,11 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args) {
     ESP_ERROR_CHECK(esp_netif_set_driver_config(esp_netif, &driver_ifconfig));
     // check if PPP error events are enabled, if not, do enable the error occurred/state changed
     // to notify the modem layer when switching modes
-    esp_netif_ppp_config_t ppp_config;
+    esp_netif_ppp_config_t ppp_config = { .ppp_phase_event_enabled = true,    // assuming phase enabled, as earlier IDFs
+                                          .ppp_error_event_enabled = false }; // don't provide cfg getters so we enable both events
+#if ESP_IDF_VERSION_MAJOR >= 4 && ESP_IDF_VERSION_MINOR >= 4
     esp_netif_ppp_get_params(esp_netif, &ppp_config);
+#endif // ESP-IDF >= v4.4
     if (!ppp_config.ppp_error_event_enabled) {
         ppp_config.ppp_error_event_enabled = true;
         esp_netif_ppp_set_params(esp_netif, &ppp_config);
