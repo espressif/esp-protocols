@@ -8,11 +8,14 @@
 #include "esp_modem_config.h"
 #include "esp_netif.h"
 
+
+#define CONFIG_EXAMPLE_SIM_PIN "1234"
+
 using namespace esp_modem;
 
 [[maybe_unused]] static const char *TAG = "linux_modem_main";
 
-#define CONFIG_EXAMPLE_SIM_PIN "1234"
+
 int main()
 {
 
@@ -25,6 +28,7 @@ int main()
             .vfs_config = { }
     };
     dte_config.vfs_config.dev_name = "/dev/ttyUSB0";
+    dte_config.vfs_config.resource = ESP_MODEM_VFS_IS_UART; // This tells the VFS to init the UART (use termux to setup baudrate, etc.)
 
     esp_netif_config_t netif_config = {
             .dev_name = "/dev/net/tun",
