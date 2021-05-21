@@ -12,29 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _UART_RESOURCE_HPP_
-#define _UART_RESOURCE_HPP_
+#include "esp_log.h"
+#include "driver/uart.h"
 
-#include "cxx_include/esp_modem_dte.hpp"
-#include "esp_modem_config.h"
-
-struct esp_modem_dte_config;
-
-namespace esp_modem {
+#ifndef _UART_COMPAT_H_
+#define _UART_COMPAT_H_
 
 /**
- * @brief Uart Resource is a platform specific struct which is implemented separately for ESP_PLATFORM and linux target
+ * @brief This is a compatible header, which just takes care of different data ptr type
+ * across different IDF version in driver/uart
  */
-struct uart_resource {
-    explicit uart_resource(const esp_modem_dte_config *config, QueueHandle_t* event_queue, int fd);
+static inline int uart_write_bytes_compat(uart_port_t uart_num, const void* src, size_t size)
+{
+#if ESP_IDF_VERSION_MAJOR >= 4 && ESP_IDF_VERSION_MINOR >= 3
+    const void *data = src;
+#else
+    auto *data = reinterpret_cast<const char*>(src);
+#endif
+    return uart_write_bytes(uart_num, data, size);
+}
 
-    ~uart_resource();
-
-    uart_port_t port{};
-};
-
-std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config);
-
-}  // namespace esp_modem
-
-#endif // _UART_RESOURCE_HPP_
+#endif //_UART_COMPAT_H_

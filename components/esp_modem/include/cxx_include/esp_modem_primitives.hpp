@@ -14,6 +14,8 @@
 
 #ifndef _ESP_MODEM_PRIMITIVES_HPP_
 #define _ESP_MODEM_PRIMITIVES_HPP_
+
+#include "esp_event.h"
 #include "esp_modem_exception.hpp"
 
 #if defined(CONFIG_IDF_TARGET_LINUX)
@@ -34,7 +36,7 @@ namespace esp_modem {
 using TaskFunction_t = void (*)(void*);
 #if !defined(CONFIG_IDF_TARGET_LINUX)
 struct Lock {
-    using MutexT = QueueDefinition*;
+    using MutexT = QueueHandle_t;
     explicit Lock();
     ~Lock();
     void lock();
