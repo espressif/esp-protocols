@@ -38,4 +38,6 @@ esp_err_t esp_event_handler_register(const char * event_base, int32_t event_id, 
 
 esp_err_t esp_event_handler_unregister(const char * event_base, int32_t event_id, void* event_handler);
 
+typedef void * QueueHandle_t;
+
 #endif //MDNS_HOST_ESP_EVENT_H

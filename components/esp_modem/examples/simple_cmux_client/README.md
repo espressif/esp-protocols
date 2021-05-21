@@ -15,3 +15,7 @@ The example uses the following configuration options to demonstrate basic esp-mo
 ## About the esp_modem
 
 Please check the component [README](../../README.md)
+
+### Supported IDF versions
+
+This example is only supported from `v4.3`, since is uses an experimental `esp_event_cxx` component.

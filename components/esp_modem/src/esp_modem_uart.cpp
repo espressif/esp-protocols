@@ -17,6 +17,7 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "driver/uart.h"
+#include "uart_compat.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
@@ -163,7 +164,8 @@ void UartTerminal::task() {
     }
 }
 
-int UartTerminal::read(uint8_t *data, size_t len) {
+int UartTerminal::read(uint8_t *data, size_t len)
+{
     size_t length = 0;
     uart_get_buffered_data_len(uart.port, &length);
     length = std::min(len, length);
@@ -173,8 +175,9 @@ int UartTerminal::read(uint8_t *data, size_t len) {
     return 0;
 }
 
-int UartTerminal::write(uint8_t *data, size_t len) {
-    return uart_write_bytes(uart.port, data, len);
+int UartTerminal::write(uint8_t *data, size_t len)
+{
+    return uart_write_bytes_compat(uart.port, data, len);
 }
 
 } // namespace esp_modem

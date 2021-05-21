@@ -15,3 +15,7 @@ To demonstrate creating custom modem devices, this example creates a DCE object 
 that sets up the DCE based on a custom module implemented in the `my_module_dce.hpp` file. The module class only overrides
 `get_module_name()` method supplying a user defined name, but keeps all other commands the same as defined in the `GenericModule`
 class.
+
+### Supported IDF versions
+
+This example is only supported from `v4.2`, due to support of the console repl mode. 

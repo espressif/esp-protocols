@@ -25,7 +25,7 @@ uart_resource::~uart_resource()
     }
 }
 
-uart_resource::uart_resource(const esp_modem_dte_config *config, struct QueueDefinition** event_queue, int fd)
+uart_resource::uart_resource(const esp_modem_dte_config *config, QueueHandle_t* event_queue, int fd)
     :port(-1)
 {
     esp_err_t res;
