@@ -16,20 +16,27 @@
 #define _EXCEPTION_STUB_HPP_
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
-#define TRY_CATCH_RET_NULL(block) \
+#define TRY_CATCH_OR_DO(block, action) \
     try { block                   \
     } catch (std::bad_alloc& e) { \
         ESP_LOGE(TAG, "Out of memory"); \
-        return nullptr; \
-    } catch (esp_err_exception& e) {    \
+        action; \
+    } catch (::esp_modem::esp_err_exception& e) {    \
         esp_err_t err = e.get_err_t();  \
         ESP_LOGE(TAG, "%s: Exception caught with ESP err_code=%d", __func__, err); \
         ESP_LOGE(TAG, "%s", e.what());  \
-        return nullptr; \
+        action; \
     }
+
+#define TRY_CATCH_RET_NULL(block) TRY_CATCH_OR_DO(block, return nullptr)
 #else
+
+#define TRY_CATCH_OR_DO(block, action) \
+    block
+
 #define TRY_CATCH_RET_NULL(block) \
     block
+
 #endif
 
 

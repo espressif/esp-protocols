@@ -12,6 +12,7 @@
 // limitations under the License.
 
 #pragma once
+#include <stdint.h>
 
 typedef int uart_port_t;
 typedef int uart_word_length_t;
