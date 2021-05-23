@@ -51,9 +51,9 @@ tools/unit-test-app/test_configs
 log_ut_cmake
 
 # test application build files
-tools/test_apps/**/build
-tools/test_apps/**/sdkconfig
-tools/test_apps/**/sdkconfig.old
+test/**/build
+test/**/sdkconfig
+test/**/sdkconfig.old
 
 # IDF monitor test
 tools/test_idf_monitor/outputs
@@ -88,3 +88,6 @@ build
 
 # lock files for examples and components
 dependencies.lock
+
+# ignore generated docs
+docs/html

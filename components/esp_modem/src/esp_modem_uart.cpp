@@ -47,7 +47,7 @@ struct uart_task {
 class UartTerminal : public Terminal {
 public:
     explicit UartTerminal(const esp_modem_dte_config *config) :
-            event_queue(), uart(config, &event_queue, -1), signal(),
+            event_queue(), uart(&config->uart_config, &event_queue, -1), signal(),
             task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
 
     ~UartTerminal() override = default;

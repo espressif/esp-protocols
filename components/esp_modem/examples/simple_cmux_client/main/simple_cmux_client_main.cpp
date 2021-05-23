@@ -19,7 +19,7 @@
 #include "simple_mqtt_client.hpp"
 #include "esp_vfs_dev.h"        // For optional VFS support
 #include "esp_https_ota.h"      // For potential OTA configuration
-
+#include "vfs_resource/vfs_create.hpp"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
@@ -46,11 +46,11 @@ extern "C" void app_main(void)
      * so doesn't give any practical benefit besides the FD use demonstration and a placeholder
      * to use FD terminal for other devices
      */
-    dte_config.vfs_config.dev_name = "/dev/uart/1";
-    dte_config.vfs_config.resource = ESP_MODEM_VFS_IS_UART;
-    dte_config.uart_config.event_queue_size = 0;
+    struct esp_modem_vfs_uart_creator uart_config = ESP_MODEM_VFS_DEFAULT_UART_CONFIG("/dev/uart/1");
+    assert(vfs_create_uart(&uart_config, &dte_config.vfs_config) == true);
+
     auto dte = create_vfs_dte(&dte_config);
-    esp_vfs_dev_uart_use_driver(dte_config.uart_config.port_num);
+    esp_vfs_dev_uart_use_driver(uart_config.uart.port_num);
 #else
     auto dte = create_uart_dte(&dte_config);
 #endif // CONFIG_EXAMPLE_USE_VFS_TERM

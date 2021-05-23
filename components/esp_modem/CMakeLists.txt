@@ -22,6 +22,8 @@ set(srcs ${platform_srcs}
         "src/esp_modem_cmux.cpp"
         "src/esp_modem_command_library.cpp"
         "src/esp_modem_term_fs.cpp"
+        "src/esp_modem_vfs_uart_creator.cpp"
+        "src/esp_modem_vfs_socket_creator.cpp"
         "src/esp_modem_modules.cpp")
 
 set(include_dirs "include")

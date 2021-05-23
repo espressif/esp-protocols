@@ -14,43 +14,29 @@
 
 #include <optional>
 #include <unistd.h>
-#include <sys/fcntl.h>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
-#include "uart_resource.hpp"        // In case of VFS using UART
 
 static const char *TAG = "fs_terminal";
 
 namespace esp_modem {
 
-class Resource {
-public:
-    explicit Resource(const esp_modem_dte_config *config, int fd):
-        uart(config->vfs_config.resource == ESP_MODEM_VFS_IS_EXTERN? std::nullopt : std::make_optional<uart_resource>(config, nullptr, fd))
-        {}
-
-    std::optional<uart_resource> uart;
-};
 
 struct File {
-    explicit File(const char *name): fd(-1)
-    {
-        fd = open(name, O_RDWR);
-        throw_if_false(fd >= 0, "Cannot open the fd");
-
-        // Set the FD to non-blocking mode
-        int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;
-        fcntl(fd, F_SETFL, flags);
-    }
+    explicit File(const esp_modem_dte_config *config):
+        fd(config->vfs_config.fd), deleter(config->vfs_config.deleter), resource(config->vfs_config.resource)
+    {}
 
     ~File() {
-        if (fd >= 0) {
-            close(fd);
+        if (deleter) {
+            deleter(fd, resource);
         }
     }
     int fd;
+    void (*deleter)(int fd, struct esp_modem_vfs_resource *res);
+    struct esp_modem_vfs_resource *resource;
 };
 
 class FdTerminal : public Terminal {
@@ -85,7 +71,6 @@ private:
     static const size_t TASK_PARAMS = SignalGroup::bit3;
 
     File f;
-    Resource resource;
     SignalGroup signal;
     Task task_handle;
 };
@@ -99,7 +84,7 @@ std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config
 }
 
 FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
-        f(config->vfs_config.dev_name), resource(config, f.fd), signal(),
+        f(config), signal(),
         task_handle(config->task_stack_size, config->task_priority, this, [](void* p){
             auto t = static_cast<FdTerminal *>(p);
             t->task();
