@@ -7,9 +7,11 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "esp_netif.h"
+#include "vfs_resource/vfs_create.hpp"
 
 
 #define CONFIG_EXAMPLE_SIM_PIN "1234"
+#define CONFIG_USE_VFS_UART     1
 
 using namespace esp_modem;
 
@@ -18,28 +20,41 @@ using namespace esp_modem;
 
 int main()
 {
-
     // init the DTE
     esp_modem_dte_config_t dte_config = {
             .dte_buffer_size = 512,
             .task_stack_size = 1024,
             .task_priority = 10,
-            .uart_config = { },
-            .vfs_config = { }
+            .vfs_config = {}
     };
-    dte_config.vfs_config.dev_name = "/dev/ttyUSB0";
-    dte_config.vfs_config.resource = ESP_MODEM_VFS_IS_UART; // This tells the VFS to init the UART (use termux to setup baudrate, etc.)
+#if CONFIG_USE_VFS_UART == 1
+    struct esp_modem_vfs_uart_creator uart_config = {
+            .dev_name = "/dev/ttyUSB0",
+            .uart = {}
+    };
+    assert(vfs_create_uart(&uart_config, &dte_config.vfs_config) == true);
+#else
+    /**
+     * @note: It is possible to setup a serial to socket bridge, running a this on a remote host which connects `/dev/ttyS0` to the modem
+     * socat TCP-L:2222 GOPEN:/dev/ttyS0,ispeed=115200,ospeed=1152000,b115200,raw,echo=0
+     */
+    struct esp_modem_vfs_socket_creator socket_config = {
+            .host_name = "raspberrypi.local",
+            .port = 2222
+    };
+    assert(vfs_create_socket(&socket_config, &dte_config.vfs_config) == true);
+#endif
+    auto dte = create_vfs_dte(&dte_config);
 
     esp_netif_config_t netif_config = {
             .dev_name = "/dev/net/tun",
             .if_name = "tun0"
     };
     esp_netif_t *tun_netif = esp_netif_new(&netif_config);
-    auto uart_dte = create_vfs_dte(&dte_config);
 
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
 
-    auto dce = create_SIM7600_dce(&dce_config, uart_dte, tun_netif);
+    auto dce = create_SIM7600_dce(&dce_config, dte, tun_netif);
     assert(dce != nullptr);
 
     dce->set_command_mode();
@@ -50,16 +65,17 @@ int main()
         usleep(1000000);
     }
     std::string str;
-    dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
+//    dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
     dce->get_imsi(str);
     ESP_LOGI(TAG, "Modem IMSI number: %s",str.c_str());
     dce->get_imei(str);
     ESP_LOGI(TAG, "Modem IMEI number: %s",str.c_str());
-    dce->get_operator_name(str);
+    while (command_result::OK != dce->get_operator_name(str))
+    { printf(".\n"); }
     ESP_LOGI(TAG, "Operator name: %s",str.c_str());
 
     dce->set_mode(esp_modem::modem_mode::DATA_MODE);
 
-    usleep(100'000'000);
+    usleep(15'000'000);
     esp_netif_destroy(tun_netif);
 }

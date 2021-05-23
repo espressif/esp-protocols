@@ -57,22 +57,13 @@ struct esp_modem_uart_term_config {
 };
 
 /**
- * @brief Resources used by VFS terminal
- *
- */
-typedef enum {
-    ESP_MODEM_VFS_IS_EXTERN = 0,    /*!< External resource: internal VFS terminal takes no action to setup this */
-    ESP_MODEM_VFS_IS_UART,          /*!< VFS uses UART: internal VFS initializes UART based on esp_modem_uart_term_config */
-} esp_modem_vfs_resource_t;
-
-
-/**
  * @brief VFS configuration structure
  *
  */
 struct esp_modem_vfs_term_config {
-    const char* dev_name;               /*!< VFS device name, e.g. /dev/uart/n */
-    esp_modem_vfs_resource_t resource;  /*!< Underlying device which gets initialized during VFS init */
+    int fd;                                     /*!< Already created file descriptor */
+    void (*deleter)(int, struct esp_modem_vfs_resource*);             /*!< Custom close function for the fd */
+    struct esp_modem_vfs_resource *resource;    /*!< Resource attached to the VFS (need for clenaup) */
 };
 
 /**
@@ -86,8 +77,10 @@ struct esp_modem_dte_config {
     size_t dte_buffer_size;                             /*!< DTE buffer size */
     uint32_t task_stack_size;                           /*!< Terminal task stack size */
     int task_priority;                                  /*!< Terminal task priority */
-    struct esp_modem_uart_term_config uart_config;      /*!< Configuration for UART Terminal */
-    struct esp_modem_vfs_term_config vfs_config;        /*!< Configuration for VFS Terminal */
+    union {
+        struct esp_modem_uart_term_config uart_config;      /*!< Configuration for UART Terminal */
+        struct esp_modem_vfs_term_config vfs_config;        /*!< Configuration for VFS Terminal */
+    };
 };
 
 
@@ -115,10 +108,6 @@ struct esp_modem_dte_config {
             .tx_buffer_size = 512,                  \
             .event_queue_size = 30,                 \
        },                                           \
-       .vfs_config = {                              \
-            .dev_name = "/null",                    \
-            .resource =  ESP_MODEM_VFS_IS_EXTERN    \
-       }\
     }
 
 typedef struct esp_modem_dte_config esp_modem_dte_config_t;
