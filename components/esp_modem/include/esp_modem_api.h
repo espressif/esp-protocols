@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_API_H_
-#define _ESP_MODEM_API_H_
+#pragma once
 
 #include "esp_err.h"
 #include "generate/esp_modem_command_declare.inc"
@@ -35,6 +34,3 @@ DECLARE_ALL_COMMAND_APIS(declares esp_modem_<API>(esp_modem_t * dce, ...);)
 #ifdef __cplusplus
 }
 #endif
-
-
-#endif // _CLIENT_ESP_MODEM_API_H_

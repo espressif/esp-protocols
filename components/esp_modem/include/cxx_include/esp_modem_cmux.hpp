@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_CMUX_HPP_
-#define _ESP_MODEM_CMUX_HPP_
+#pragma once
 
 #include "esp_modem_terminal.hpp"
 
@@ -108,5 +107,3 @@ private:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_CMUX_HPP_

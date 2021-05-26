@@ -7,8 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#ifndef MODEM_CONSOLE_CONSOLE_HELPER_H
-#define MODEM_CONSOLE_CONSOLE_HELPER_H
+#pragma once
 
 #include <vector>
 #include <algorithm>
@@ -112,5 +111,3 @@ private:
     std::function<bool(ConsoleCommand *)> func;
     const static esp_console_cmd_func_t command_func_pts[];
 };
-
-#endif //MODEM_CONSOLE_CONSOLE_HELPER_H

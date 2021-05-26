@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_API_HPP_
-#define _ESP_MODEM_API_HPP_
+#pragma once
 
 #include <memory>
 #include "cxx_include/esp_modem_dce.hpp"
@@ -103,5 +102,3 @@ std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_pt
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_API_HPP_

@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "esp_log.h"
 #include "driver/uart.h"
-
-#ifndef _UART_COMPAT_H_
-#define _UART_COMPAT_H_
 
 /**
  * @brief This is a compatible header, which just takes care of different data ptr type
@@ -31,5 +30,3 @@ static inline int uart_write_bytes_compat(uart_port_t uart_num, const void* src,
 #endif
     return uart_write_bytes(uart_num, data, size);
 }
-
-#endif //_UART_COMPAT_H_

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_DCE_MODULE_
-#define _ESP_MODEM_DCE_MODULE_
+#pragma once
 
 #include <memory>
 #include <utility>
@@ -146,5 +145,3 @@ public:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_DCE_MODULE_

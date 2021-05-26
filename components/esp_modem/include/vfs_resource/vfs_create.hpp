@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _VFS_CREATE_HPP_
-#define _VFS_CREATE_HPP_
+#pragma once
 
 #define ESP_MODEM_VFS_DEFAULT_UART_CONFIG(name)  {  \
         .dev_name = (name), \
@@ -67,6 +66,3 @@ bool vfs_create_socket(struct esp_modem_vfs_socket_creator *config, struct esp_m
  * @return true on success
  */
 bool vfs_create_uart(struct esp_modem_vfs_uart_creator *config, struct esp_modem_vfs_term_config *created_config);
-
-
-#endif //_VFS_CREATE_HPP_

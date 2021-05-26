@@ -11,9 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MDNS_HOST_ENDIAN_H
-#define MDNS_HOST_ENDIAN_H
+#pragma once
 
 #include_next "endian.h"
 
-#endif //MDNS_HOST_ENDIAN_H

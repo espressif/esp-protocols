@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_DCE_CONFIG_H_
-#define _ESP_MODEM_DCE_CONFIG_H_
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,5 +47,3 @@ struct esp_modem_dce_config {
 #ifdef __cplusplus
 }
 #endif
-
-#endif // _ESP_MODEM_DCE_CONFIG_H_

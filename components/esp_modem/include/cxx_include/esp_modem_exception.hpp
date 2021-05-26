@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_EXCEPTION_HPP_
-#define _ESP_MODEM_EXCEPTION_HPP_
+#pragma once
 
 #include <string>
 #include "esp_err.h"
@@ -62,5 +61,3 @@ static inline void throw_if_esp_fail(esp_err_t err)
 }
 
 } // namespace esp_modem
-
-#endif //_ESP_MODEM_EXCEPTION_HPP_
