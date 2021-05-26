@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_TERMINAL_HPP_
-#define _ESP_MODEM_TERMINAL_HPP_
+#pragma once
 
 #include <memory>
 #include <functional>
@@ -85,5 +84,3 @@ protected:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_TERMINAL_HPP_

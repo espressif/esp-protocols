@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _UART_RESOURCE_HPP_
-#define _UART_RESOURCE_HPP_
+#pragma once
 
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
@@ -35,5 +34,3 @@ struct uart_resource {
 
 
 }  // namespace esp_modem
-
-#endif // _UART_RESOURCE_HPP_

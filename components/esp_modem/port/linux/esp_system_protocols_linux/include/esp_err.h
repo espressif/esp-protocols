@@ -11,6 +11,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 typedef int esp_err_t;
 
 #define ESP_FAIL                    -1

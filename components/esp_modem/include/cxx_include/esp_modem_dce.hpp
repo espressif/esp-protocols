@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_DCE_HPP_
-#define _ESP_MODEM_DCE_HPP_
+#pragma once
 
 #include <utility>
 #include "cxx_include/esp_modem_netif.hpp"
@@ -110,5 +109,3 @@ public:
  */
 
 } // esp_modem
-
-#endif // _ESP_MODEM_DCE_HPP_

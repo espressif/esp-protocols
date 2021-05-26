@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _EXCEPTION_STUB_HPP_
-#define _EXCEPTION_STUB_HPP_
+#pragma once
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
 #define TRY_CATCH_OR_DO(block, action) \
@@ -38,6 +37,3 @@
     block
 
 #endif
-
-
-#endif // _EXCEPTION_STUB_HPP_

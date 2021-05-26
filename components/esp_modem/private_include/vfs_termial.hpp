@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _VFS_TERMINAL_HPP_
-#define _VFS_TERMINAL_HPP_
+#pragma once
 
 #include "cxx_include/esp_modem_dte.hpp"
 
@@ -24,5 +23,3 @@ namespace esp_modem {
 std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config);
 
 }  // namespace esp_modem
-
-#endif // _VFS_TERMINAL_HPP_

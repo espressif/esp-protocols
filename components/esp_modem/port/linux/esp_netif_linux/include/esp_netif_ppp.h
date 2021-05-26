@@ -13,10 +13,6 @@
 // limitations under the License.
 
 
-#ifndef _ESP_NETIF_PPP_H_
-#define _ESP_NETIF_PPP_H_
+#pragma once
 
 #define NETIF_PP_PHASE_OFFSET 0x100
-
-
-#endif //_ESP_NETIF_PPP_H_

@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MDNS_HOST_ESP_LOG_H
-#define MDNS_HOST_ESP_LOG_H
+#pragma once
 
 #include <stdio.h>
 
@@ -46,4 +45,3 @@ printf(LOG_COLOR_D); printf("(%s) ", TAG); printf(__VA_ARGS__); printf(LOG_RESET
 #define ESP_LOGV(TAG, ...)  do { \
 printf(LOG_COLOR_V); printf("(%s) ", TAG); printf(__VA_ARGS__); printf(LOG_RESET_COLOR "\n"); } while(0)
 
-#endif //MDNS_HOST_ESP_LOG_H

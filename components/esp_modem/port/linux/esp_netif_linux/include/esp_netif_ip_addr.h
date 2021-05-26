@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_NETIF_IP_ADDR_H_
-#define _ESP_NETIF_IP_ADDR_H_
+#pragma once
 
 #include <endian.h>
 
@@ -164,5 +163,3 @@ esp_ip6_addr_type_t esp_netif_ip6_get_addr_type(esp_ip6_addr_t* ip6_addr);
 #ifdef __cplusplus
 }
 #endif
-
-#endif //_ESP_NETIF_IP_ADDR_H_

@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _HOST_ESP_NETIF_H_
-#define _HOST_ESP_NETIF_H_
+#pragma once
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -63,5 +62,3 @@ void esp_netif_destroy(esp_netif_t *esp_netif);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // _HOST_ESP_NETIF_H_

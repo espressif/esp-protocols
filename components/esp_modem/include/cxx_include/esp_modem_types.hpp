@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_TYPES_HPP_
-#define _ESP_MODEM_TYPES_HPP_
+#pragma once
 
 #include <functional>
 #include <string>
@@ -103,5 +102,3 @@ public:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_TYPES_HPP_
