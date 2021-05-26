@@ -17,6 +17,10 @@
 #include "driver/uart.h"
 #include "esp_modem_dce_config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup ESP_MODEM_CONFIG
  * @brief Configuration structures for DTE and DCE
@@ -55,6 +59,9 @@ struct esp_modem_uart_term_config {
     int tx_buffer_size;             /*!< UART TX Buffer Size */
     int event_queue_size;           /*!< UART Event Queue Size, set to 0 if no event queue needed */
 };
+
+// Forward declare the resource struct
+struct esp_modem_vfs_resource;
 
 /**
  * @brief VFS configuration structure
@@ -115,5 +122,9 @@ typedef struct esp_modem_dte_config esp_modem_dte_config_t;
 /**
  * @}
  */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _ESP_MODEM_CONFIG_H_

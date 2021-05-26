@@ -65,7 +65,7 @@ public:
     int read(uint8_t *data, size_t len) override;
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override {
-        on_data = std::move(f);
+        on_read = std::move(f);
         signal.set(TASK_PARAMS);
     }
 
@@ -106,7 +106,7 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 }
 
 void UartTerminal::task() {
-    std::function<bool(uint8_t *data, size_t len)> on_data_priv = nullptr;
+    std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     uart_event_t event;
     size_t len;
     signal.set(TASK_INIT);
@@ -117,15 +117,15 @@ void UartTerminal::task() {
     while (signal.is_any(TASK_START)) {
         if (get_event(event, 100)) {
             if (signal.is_any(TASK_PARAMS)) {
-                on_data_priv = on_data;
+                on_read_priv = on_read;
                 signal.clear(TASK_PARAMS);
             }
             switch (event.type) {
                 case UART_DATA:
                     uart_get_buffered_data_len(uart.port, &len);
-                    if (len && on_data_priv) {
-                        if (on_data_priv(nullptr, len)) {
-                            on_data_priv = nullptr;
+                    if (len && on_read_priv) {
+                        if (on_read_priv(nullptr, len)) {
+                            on_read_priv = nullptr;
                         }
                     }
                     break;

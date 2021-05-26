@@ -58,7 +58,7 @@ public:
     int read(uint8_t *data, size_t len) override;
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override {
-        on_data = std::move(f);
+        on_read = std::move(f);
         signal.set(TASK_PARAMS);
     }
 
@@ -94,7 +94,7 @@ FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
 
 void FdTerminal::task()
 {
-    std::function<bool(uint8_t *data, size_t len)> on_data_priv = nullptr;
+    std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     signal.set(TASK_INIT);
     signal.wait_any(TASK_START | TASK_STOP, portMAX_DELAY);
     if (signal.is_any(TASK_STOP)) {
@@ -113,7 +113,7 @@ void FdTerminal::task()
 
         s = select(f.fd + 1, &rfds, nullptr, nullptr, &tv);
         if (signal.is_any(TASK_PARAMS)) {
-            on_data_priv = on_data;
+            on_read_priv = on_read;
             signal.clear(TASK_PARAMS);
         }
 
@@ -123,9 +123,9 @@ void FdTerminal::task()
 //            ESP_LOGV(TAG, "Select exited with timeout");
         } else {
             if (FD_ISSET(f.fd, &rfds)) {
-                if (on_data_priv) {
-                    if (on_data_priv(nullptr, 0)) {
-                        on_data_priv = nullptr;
+                if (on_read_priv) {
+                    if (on_read_priv(nullptr, 0)) {
+                        on_read_priv = nullptr;
                     }
                 }
             }

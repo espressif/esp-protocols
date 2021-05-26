@@ -51,7 +51,7 @@ class CMuxInstance;
 
 /**
  * @brief CMux class which consumes the original terminal and creates multiple virtual terminals from it.
- * This class is not usable applicable as a DTE terminal
+ * This class itself is not usable as a DTE terminal, only via its instances defined in `CMuxInstance`
  */
 class CMux {
 public:
@@ -100,7 +100,7 @@ public:
     void stop() override { }
 private:
     std::shared_ptr<CMux> cmux;
-    int instance;
+    size_t instance;
 };
 
 /**

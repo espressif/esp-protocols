@@ -31,9 +31,16 @@ menu "Example Configuration"
         help
             Set APN (Access Point Name), a logical name to choose data network
 
+    config EXAMPLE_NEED_SIM_PIN
+        bool "SIM PIN needed"
+        default n
+        help
+            Enable to set SIM PIN before starting the example
+
     config EXAMPLE_SIM_PIN
         string "Set SIM PIN"
         default "1234"
+        depends on EXAMPLE_NEED_SIM_PIN
         help
             Pin to unlock the SIM
 

@@ -15,6 +15,10 @@
 #ifndef _ESP_MODEM_DCE_CONFIG_H_
 #define _ESP_MODEM_DCE_CONFIG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** @addtogroup ESP_MODEM_CONFIG
  * @{
  */
@@ -41,5 +45,8 @@ struct esp_modem_dce_config {
  * @}
  */
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif // _ESP_MODEM_DCE_CONFIG_H_

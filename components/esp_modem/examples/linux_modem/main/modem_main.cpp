@@ -15,7 +15,7 @@
 
 using namespace esp_modem;
 
-[[maybe_unused]] static const char *TAG = "linux_modem_main";
+[[maybe_unused]] constexpr auto TAG = "linux_modem_main";
 
 
 int main()

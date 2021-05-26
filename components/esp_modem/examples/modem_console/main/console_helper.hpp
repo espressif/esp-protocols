@@ -53,6 +53,19 @@ class StaticCommands;
  * @brief This class simplifies console command definition in more object wise fashion
  */
 class ConsoleCommand {
+    /**
+     * @brief Common argument types to be stored internally for parsing later
+     */
+    using arg_type =
+    union {
+        struct arg_int *intx;
+        struct arg_str *str;
+        struct arg_lit *lit;
+        struct arg_end *end;
+        void *__raw_ptr;
+        bool is_null() const { return __raw_ptr; }
+    };
+
     friend class StaticCommands;
 public:
     /**
@@ -91,7 +104,7 @@ private:
     void RegisterCommand(const char* command, const char* help, const std::vector<CommandArgs>& args);
     template<typename T> static constexpr size_t index_arg(CommandArgs T::*member)
         { return ((uint8_t *)&((T*)nullptr->*member) - (uint8_t *)nullptr)/sizeof(CommandArgs); }
-    std::vector<void*> arg_table;
+    std::vector<arg_type> arg_table;
     int command_func(int argc, char **argv);
 
     static int last_command;
