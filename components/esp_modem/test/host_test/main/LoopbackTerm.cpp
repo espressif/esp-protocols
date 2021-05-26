@@ -43,7 +43,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
             data_len = response.length();
             loopback_data.resize(data_len);
             memcpy(&loopback_data[0], &response[0], data_len);
-            auto ret = std::async(on_data, nullptr, data_len);
+            auto ret = std::async(on_read, nullptr, data_len);
             return len;
         }
     }
@@ -58,7 +58,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     loopback_data.resize(data_len + len);
     memcpy(&loopback_data[data_len], data, len);
     data_len += len;
-    auto ret = std::async(on_data, nullptr, data_len);
+    auto ret = std::async(on_read, nullptr, data_len);
     return len;
 }
 
