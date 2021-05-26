@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_C_API_TYPES_H_
-#define _ESP_MODEM_C_API_TYPES_H_
+#pragma once
 
 #include "esp_modem_config.h"
 
@@ -98,5 +97,3 @@ esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode);
 #ifdef __cplusplus
 }
 #endif
-
-#endif //_ESP_MODEM_C_API_TYPES_H_

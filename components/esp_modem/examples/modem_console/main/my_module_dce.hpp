@@ -7,8 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#ifndef __MY_MODULE_DCE_HPP__
-#define __MY_MODULE_DCE_HPP__
+#pragma once
 
 
 #include "cxx_include/esp_modem_dce_factory.hpp"
@@ -38,6 +37,3 @@ std::unique_ptr<esp_modem::DCE> create_shiny_dce(const esp_modem::dce_config *co
 {
     return esp_modem::dce_factory::Factory::build_unique<MyShinyModem>(config, std::move(dte), netif);
 }
-
-
-#endif //__MY_MODULE_DCE_HPP__

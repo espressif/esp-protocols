@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_DCE_FACTORY_HPP_
-#define _ESP_MODEM_DCE_FACTORY_HPP_
+#pragma once
 
 /**
  * @defgroup ESP_MODEM_DCE_FACTORY
@@ -244,6 +243,3 @@ protected:
  */
 
 } // namespace esp_modem::dce_factory
-
-
-#endif // _ESP_MODEM_DCE_FACTORY_HPP_

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_NETIF_HPP
-#define _ESP_MODEM_NETIF_HPP
+#pragma once
 
 #include <memory>
 #include <cstddef>
@@ -85,5 +84,3 @@ private:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_NETIF_HPP

@@ -6,8 +6,7 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
-#ifndef _SIMPLE_MQTT_CLIENT_H_
-#define _SIMPLE_MQTT_CLIENT_H_
+#pragma once
 
 #include <string>
 #include <memory>
@@ -72,6 +71,3 @@ public:
 private:
     std::unique_ptr<MqttClientHandle> h;
 };
-
-
-#endif //_SIMPLE_MQTT_CLIENT_H_

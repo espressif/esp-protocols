@@ -1,5 +1,4 @@
-#ifndef _LOOPBACKTERM_H_
-#define _LOOPBACKTERM_H_
+#pragma once
 
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_terminal.hpp"
@@ -32,5 +31,3 @@ private:
     bool pin_ok;
     bool is_bg96;
 };
-
-#endif //_LOOPBACKTERM_H_

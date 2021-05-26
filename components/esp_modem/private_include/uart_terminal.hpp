@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _UART_TERMINAL_HPP_
-#define _UART_TERMINAL_HPP_
+#pragma once
 
 #include "cxx_include/esp_modem_dte.hpp"
 
@@ -25,4 +24,3 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 
 }  // namespace esp_modem
 
-#endif // _UART_TERMINAL_HPP_

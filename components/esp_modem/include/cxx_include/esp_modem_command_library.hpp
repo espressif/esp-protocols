@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_COMMAND_LIBRARY_HPP_
-#define _ESP_MODEM_COMMAND_LIBRARY_HPP_
+#pragma once
 
 #include "esp_modem_dte.hpp"
 #include "esp_modem_dce_module.hpp"
@@ -55,5 +54,3 @@ command_result set_data_mode_sim8xx(CommandableIf* t);
 
 } // dce_commands
 } // esp_modem
-
-#endif //_ESP_MODEM_COMMAND_LIBRARY_HPP_

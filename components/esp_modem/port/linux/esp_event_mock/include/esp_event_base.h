@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MDNS_HOST_ESP_EVENT_BASE_H
-#define MDNS_HOST_ESP_EVENT_BASE_H
+#pragma once
 
 typedef enum {
     WIFI_EVENT_STA_CONNECTED,            /**< ESP32 station connected to AP */
@@ -25,4 +24,3 @@ typedef enum {
 
 typedef void * esp_event_base_t;
 
-#endif //MDNS_HOST_ESP_EVENT_BASE_H

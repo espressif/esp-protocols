@@ -11,8 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MDNS_HOST_ESP_EVENT_H
-#define MDNS_HOST_ESP_EVENT_H
+#pragma once
 
 #include <stdint.h>
 #include "esp_netif.h"
@@ -39,5 +38,3 @@ esp_err_t esp_event_handler_register(const char * event_base, int32_t event_id, 
 esp_err_t esp_event_handler_unregister(const char * event_base, int32_t event_id, void* event_handler);
 
 typedef void * QueueHandle_t;
-
-#endif //MDNS_HOST_ESP_EVENT_H

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _ESP_MODEM_DTE_HPP_
-#define _ESP_MODEM_DTE_HPP_
+#pragma once
 
 #include <memory>
 #include <cstddef>
@@ -117,5 +116,3 @@ private:
  */
 
 } // namespace esp_modem
-
-#endif // _ESP_MODEM_DTE_HPP_

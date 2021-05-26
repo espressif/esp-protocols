@@ -7,8 +7,7 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#ifndef _NETWORK_DCE_H_
-#define _NETWORK_DCE_H_
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,5 +42,3 @@ void modem_stop_network();
 #ifdef __cplusplus
 }
 #endif
-
-#endif //_NETWORK_DCE_H_
