@@ -88,7 +88,7 @@ protected:
  * @brief Common abstraction of the modem DCE, specialized by the GenericModule which is a parent class for the supported
  * defices and most common modems, as well.
  */
-class DCE: public DCE_T<GenericModule> {
+class DCE : public DCE_T<GenericModule> {
 public:
 
     using DCE_T<GenericModule>::DCE_T;

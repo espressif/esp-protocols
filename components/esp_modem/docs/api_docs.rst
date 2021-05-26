@@ -1,15 +1,15 @@
 .. _c_api:
 
-API Guide for C interface
-=========================
+C API Documentation
+===================
 
 
-C API is very simple and consist of these two basic parts:
+The C API is very simple and consist of these two basic parts:
 
 - :ref:`lifecycle_api` 
 - :ref:`modem_commands`
 
-Typical application workflow is to:
+The Typical application workflow is to:
 
 - Create a DCE instance (using :cpp:func:`esp_modem_new`)
 - Call specific functions to issue AT commands (:ref:`modem_commands`)

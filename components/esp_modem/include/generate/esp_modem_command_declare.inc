@@ -213,7 +213,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(x, baud))
 #define _ARG(param, name) name
 //  --- DCE command documentation starts here ---
 #ifdef __cplusplus
-class esp_modem::DCE: public DCE_T<GenericModule> {
+class esp_modem::DCE : public DCE_T<GenericModule> {
 public:
     using DCE_T<GenericModule>::DCE_T;
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) return_type name (__VA_ARGS__);
