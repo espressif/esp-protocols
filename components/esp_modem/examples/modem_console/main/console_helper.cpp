@@ -21,35 +21,37 @@ ConsoleCommand::ConsoleCommand(const char* command, const char* help, const std:
 void ConsoleCommand::RegisterCommand(const char* command, const char* help, const std::vector<CommandArgs>& args)
 {
     assert(last_command <= MAX_REPEAT_NR);
-    void * common_arg = nullptr;
-    for (auto it: args) {
+    arg_type common_arg = { };
+    for (auto& it: args) {
         switch(it.type) {
             case ARG_END:
                 break;
             case STR0:
-                common_arg = arg_str0(it.shortopts, it.longopts, it.datatype, it.glossary);
+                common_arg.str = arg_str0(it.shortopts, it.longopts, it.datatype, it.glossary);
                 break;
             case STR1:
-                common_arg = arg_str1(it.shortopts, it.longopts, it.datatype, it.glossary);
+                common_arg.str = arg_str1(it.shortopts, it.longopts, it.datatype, it.glossary);
                 break;
             case INT0:
-                common_arg = arg_int0(it.shortopts, it.longopts, it.datatype, it.glossary);
+                common_arg.intx = arg_int0(it.shortopts, it.longopts, it.datatype, it.glossary);
                 break;
             case INT1:
-                common_arg = arg_int1(it.shortopts, it.longopts, it.datatype, it.glossary);
+                common_arg.intx = arg_int1(it.shortopts, it.longopts, it.datatype, it.glossary);
                 break;
             case LIT0:
-                common_arg = arg_lit0(it.shortopts, it.longopts, it.glossary);
+                common_arg.lit = arg_lit0(it.shortopts, it.longopts, it.glossary);
                 break;
         }
-        if (common_arg) {
+        if (common_arg.is_null()) {
             arg_table.emplace_back(common_arg);
         } else {
             ESP_LOGE(TAG, "Creating argument parser failed for %s", it.glossary);
             abort();
         }
     }
-    arg_table.emplace_back( arg_end(1));
+
+    arg_type end = { .end = arg_end(1) };
+    arg_table.emplace_back(end);
     const esp_console_cmd_t command_def = {
             .command = command,
             .help = help,
@@ -64,13 +66,13 @@ void ConsoleCommand::RegisterCommand(const char* command, const char* help, cons
 
 int ConsoleCommand::get_count(int index)
 {
-    return ((struct arg_str *)arg_table[index])->count;
+    return (arg_table[index].str)->count;
 }
 
 std::string ConsoleCommand::get_string(int index)
 {
     if (get_count(index) > 0) {
-        return std::string(((struct arg_str *)arg_table[index])->sval[0]);
+        return std::string(arg_table[index].str->sval[0]);
     }
     return std::string();
 }
@@ -78,17 +80,17 @@ std::string ConsoleCommand::get_string(int index)
 int ConsoleCommand::get_int(int index)
 {
     if (get_count(index) > 0) {
-        return *((struct arg_int *)arg_table[index])->ival;
+        return *(arg_table[index].intx)->ival;
     }
     return -1;
 }
 
 
 int ConsoleCommand::command_func(int argc, char **argv) {
-    void * plain_arg_array = &arg_table[0];
+    arg_type* plain_arg_array = &arg_table[0];
     int nerrors = arg_parse(argc, argv, (void **)plain_arg_array);
     if (nerrors != 0) {
-        arg_print_errors(stderr, (struct arg_end *) arg_table.back(), argv[0]);
+        arg_print_errors(stderr, arg_table.back().end, argv[0]);
         return 1;
     }
     if (func) {

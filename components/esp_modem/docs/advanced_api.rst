@@ -26,7 +26,7 @@ Create custom module
 Creating a custom module is necessary if the application needs to use a specific device that is not supported
 and their commands differ from any of the supported devices. In this case it is recommended to define a new class
 representing this specific device and derive from the :cpp:class:`GenericModule`. In order to instantiate
-the appropriate DCE of this module, application could use :ref:`the DCE factory<dce_factory>`, but build the DCE with
+the appropriate DCE of this module, application could use :ref:`the DCE factory<dce_factory>`, and build the DCE with
 the specific module, using :cpp:func:`esp_modem::dce_factory::Factory::build`.
 
 Please refer to the implementation of the existing modules.
@@ -41,7 +41,7 @@ Create new communication interface
 In order to connect to a device using an unsupported interface (e.g. SPI or I2C), it is necessary to implement
 a custom DTE object and supply it into :ref:`the DCE factory<dce_factory>`. The DCE is typically created in two steps:
 
-- Define and create the corresponding terminal, which can communicate on the custom interface. This terminal should support basic IO methods defined in :cpp:class:`esp_modem::Terminal` and derive from it.
+- Define and create the corresponding terminal, which communicates on the custom interface. This terminal should support basic IO methods defined in :cpp:class:`esp_modem::Terminal` and derive from it.
 - Create the DTE which uses the custom Terminal
 
 Please refer to the implementation of the existing UART DTE.

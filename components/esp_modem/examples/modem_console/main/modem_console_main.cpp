@@ -157,11 +157,11 @@ extern "C" void app_main(void)
         auto cmd = c->get_string_of(&GenericCommandArgs::cmd);
         auto timeout = c->get_count_of(&GenericCommandArgs::timeout) ? c->get_int_of(&GenericCommandArgs::timeout)
                                                                      : 1000;
+        ESP_LOGI(TAG, "Sending command %s with timeout %d", cmd.c_str(), timeout);
         auto pattern = c->get_string_of(&GenericCommandArgs::pattern);
         if (c->get_count_of(&GenericCommandArgs::no_cr) == 0) {
             cmd += '\r';
         }
-        ESP_LOGI(TAG, "Sending command %s with timeout %d", cmd.c_str(), timeout);
         CHECK_ERR(dce->command(cmd, [&](uint8_t *data, size_t len) {
             std::string response((char *) data, len);
             ESP_LOGI(TAG, "%s", response.c_str());

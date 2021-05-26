@@ -1,6 +1,6 @@
 # ESP MODEM
 
-The `esp-modem` component is a managed component for `esp-idf` that could be used for communication with GSM/LTE modems
+The `esp-modem` component is a managed component for `esp-idf` that is used for communication with GSM/LTE modems
 that support AT commands and PPP protocol as a network interface.
 
 ## Examples
