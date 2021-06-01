@@ -22,15 +22,15 @@ int main()
 {
     // init the DTE
     esp_modem_dte_config_t dte_config = {
-            .dte_buffer_size = 512,
-            .task_stack_size = 1024,
-            .task_priority = 10,
-            .vfs_config = {}
+        .dte_buffer_size = 512,
+        .task_stack_size = 1024,
+        .task_priority = 10,
+        .vfs_config = {}
     };
 #if CONFIG_USE_VFS_UART == 1
     struct esp_modem_vfs_uart_creator uart_config = {
-            .dev_name = "/dev/ttyUSB0",
-            .uart = {}
+        .dev_name = "/dev/ttyUSB0",
+        .uart = {}
     };
     assert(vfs_create_uart(&uart_config, &dte_config.vfs_config) == true);
 #else
@@ -39,16 +39,16 @@ int main()
      * socat TCP-L:2222 GOPEN:/dev/ttyS0,ispeed=115200,ospeed=1152000,b115200,raw,echo=0
      */
     struct esp_modem_vfs_socket_creator socket_config = {
-            .host_name = "raspberrypi.local",
-            .port = 2222
+        .host_name = "raspberrypi.local",
+        .port = 2222
     };
     assert(vfs_create_socket(&socket_config, &dte_config.vfs_config) == true);
 #endif
     auto dte = create_vfs_dte(&dte_config);
 
     esp_netif_config_t netif_config = {
-            .dev_name = "/dev/net/tun",
-            .if_name = "tun0"
+        .dev_name = "/dev/net/tun",
+        .if_name = "tun0"
     };
     esp_netif_t *tun_netif = esp_netif_new(&netif_config);
 
@@ -67,12 +67,13 @@ int main()
     std::string str;
 //    dce->set_mode(esp_modem::modem_mode::CMUX_MODE);
     dce->get_imsi(str);
-    ESP_LOGI(TAG, "Modem IMSI number: %s",str.c_str());
+    ESP_LOGI(TAG, "Modem IMSI number: %s", str.c_str());
     dce->get_imei(str);
-    ESP_LOGI(TAG, "Modem IMEI number: %s",str.c_str());
-    while (command_result::OK != dce->get_operator_name(str))
-    { printf(".\n"); }
-    ESP_LOGI(TAG, "Operator name: %s",str.c_str());
+    ESP_LOGI(TAG, "Modem IMEI number: %s", str.c_str());
+    while (command_result::OK != dce->get_operator_name(str)) {
+        printf(".\n");
+    }
+    ESP_LOGI(TAG, "Operator name: %s", str.c_str());
 
     dce->set_mode(esp_modem::modem_mode::DATA_MODE);
 

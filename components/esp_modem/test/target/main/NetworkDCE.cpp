@@ -26,7 +26,7 @@ typedef DCE_T<NetModule> NetDCE;
 class NetDCE_Factory: public Factory {
 public:
     template <typename T, typename ...Args>
-    static DCE_T<T>* create(const config *cfg, Args&&... args)
+    static DCE_T<T> *create(const config *cfg, Args &&... args)
     {
         return build_generic_DCE<T>(cfg, std::forward<Args>(args)...);
     }
@@ -38,7 +38,7 @@ public:
 class NetModule: public ModuleIf {
 public:
     explicit NetModule(std::shared_ptr<DTE> dte, const esp_modem_dce_config *cfg):
-            dte(std::move(dte)) {}
+        dte(std::move(dte)) {}
 
     bool setup_data_mode() override
     {
@@ -62,9 +62,18 @@ public:
         return dce == nullptr ? ESP_FAIL : ESP_OK;
     }
 
-    static void deinit()    { delete dce; }
-    static void start()     { dce->set_data();  }
-    static void stop()      { dce->exit_data(); }
+    static void deinit()
+    {
+        delete dce;
+    }
+    static void start()
+    {
+        dce->set_data();
+    }
+    static void stop()
+    {
+        dce->exit_data();
+    }
 
 private:
     static NetDCE *dce;

@@ -24,7 +24,7 @@ public:
         DATA,
     };
 
-    explicit MqttClient(const std::string & uri);
+    explicit MqttClient(const std::string &uri);
     ~MqttClient();
 
     /**
@@ -39,7 +39,7 @@ public:
      * @param qos QoS (0 by default)
      * @return message id
      */
-    int publish(const std::string & topic, const std::string & data, int qos = 0);
+    int publish(const std::string &topic, const std::string &data, int qos = 0);
 
     /**
      * @brief Subscribe to a topic
@@ -47,7 +47,7 @@ public:
      * @param qos QoS (0 by default)
      * @return message id
      */
-    int subscribe(const std::string & topic, int qos = 0);
+    int subscribe(const std::string &topic, int qos = 0);
 
     /**
      * @brief Get topic from event data

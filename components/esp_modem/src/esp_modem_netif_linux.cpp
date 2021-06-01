@@ -19,7 +19,8 @@
 namespace esp_modem {
 
 void Netif::on_ppp_changed(void *arg, esp_event_base_t event_base,
-                           int32_t event_id, void *event_data) {
+                           int32_t event_id, void *event_data)
+{
 }
 
 esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
@@ -29,7 +30,8 @@ esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
     return len;
 }
 
-esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args) {
+esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
+{
     return ESP_OK;
 }
 
@@ -39,7 +41,7 @@ void Netif::receive(uint8_t *data, size_t len)
 }
 
 Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
-        ppp_dte(std::move(e)), netif(ppp_netif) {}
+    ppp_dte(std::move(e)), netif(ppp_netif) {}
 
 void Netif::start()
 {
@@ -48,7 +50,7 @@ void Netif::start()
         return false;
     });
     netif->transmit = esp_modem_dte_transmit;
-    netif->ctx = (void*)this;
+    netif->ctx = (void *)this;
     signal.set(PPP_STARTED);
 }
 
@@ -56,7 +58,8 @@ void Netif::stop() {}
 
 Netif::~Netif() = default;
 
-void Netif::wait_until_ppp_exits() {
+void Netif::wait_until_ppp_exits()
+{
 
 }
 

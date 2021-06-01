@@ -27,13 +27,13 @@ constexpr const char *TAG = "vfs_uart_creator";
 
 struct esp_modem_vfs_resource {
     explicit esp_modem_vfs_resource(const esp_modem_uart_term_config *config, int fd)
-            : internal(config, nullptr, fd) {}
+        : internal(config, nullptr, fd) {}
 
     esp_modem::uart_resource internal;
 };
 
 
-static void vfs_destroy_uart(int fd, struct esp_modem_vfs_resource * resource)
+static void vfs_destroy_uart(int fd, struct esp_modem_vfs_resource *resource)
 {
     if (fd >= 0) {
         close(fd);
@@ -58,7 +58,7 @@ bool vfs_create_uart(struct esp_modem_vfs_uart_creator *config, struct esp_modem
         int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;
         fcntl(fd, F_SETFL, flags);
 
-    , return false)
+        , return false)
 
     return true;
 }

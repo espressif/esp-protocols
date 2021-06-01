@@ -12,35 +12,35 @@
 
 static const char *TAG = "modem_console_helper";
 
-ConsoleCommand::ConsoleCommand(const char* command, const char* help, const std::vector<CommandArgs>& args, std::function<bool(ConsoleCommand *)> f):
-        func(std::move(f))
+ConsoleCommand::ConsoleCommand(const char *command, const char *help, const std::vector<CommandArgs> &args, std::function<bool(ConsoleCommand *)> f):
+    func(std::move(f))
 {
     RegisterCommand(command, help, args);
 }
 
-void ConsoleCommand::RegisterCommand(const char* command, const char* help, const std::vector<CommandArgs>& args)
+void ConsoleCommand::RegisterCommand(const char *command, const char *help, const std::vector<CommandArgs> &args)
 {
     assert(last_command <= MAX_REPEAT_NR);
     arg_type common_arg = { };
-    for (auto& it: args) {
-        switch(it.type) {
-            case ARG_END:
-                break;
-            case STR0:
-                common_arg.str = arg_str0(it.shortopts, it.longopts, it.datatype, it.glossary);
-                break;
-            case STR1:
-                common_arg.str = arg_str1(it.shortopts, it.longopts, it.datatype, it.glossary);
-                break;
-            case INT0:
-                common_arg.intx = arg_int0(it.shortopts, it.longopts, it.datatype, it.glossary);
-                break;
-            case INT1:
-                common_arg.intx = arg_int1(it.shortopts, it.longopts, it.datatype, it.glossary);
-                break;
-            case LIT0:
-                common_arg.lit = arg_lit0(it.shortopts, it.longopts, it.glossary);
-                break;
+    for (auto &it : args) {
+        switch (it.type) {
+        case ARG_END:
+            break;
+        case STR0:
+            common_arg.str = arg_str0(it.shortopts, it.longopts, it.datatype, it.glossary);
+            break;
+        case STR1:
+            common_arg.str = arg_str1(it.shortopts, it.longopts, it.datatype, it.glossary);
+            break;
+        case INT0:
+            common_arg.intx = arg_int0(it.shortopts, it.longopts, it.datatype, it.glossary);
+            break;
+        case INT1:
+            common_arg.intx = arg_int1(it.shortopts, it.longopts, it.datatype, it.glossary);
+            break;
+        case LIT0:
+            common_arg.lit = arg_lit0(it.shortopts, it.longopts, it.glossary);
+            break;
         }
         if (common_arg.is_null()) {
             arg_table.emplace_back(common_arg);
@@ -53,11 +53,11 @@ void ConsoleCommand::RegisterCommand(const char* command, const char* help, cons
     arg_type end = { .end = arg_end(1) };
     arg_table.emplace_back(end);
     const esp_console_cmd_t command_def = {
-            .command = command,
-            .help = help,
-            .hint = nullptr,
-            .func = command_func_pts[last_command],
-            .argtable = &arg_table[0]
+        .command = command,
+        .help = help,
+        .hint = nullptr,
+        .func = command_func_pts[last_command],
+        .argtable = &arg_table[0]
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&command_def));
     last_command++;
@@ -86,8 +86,9 @@ int ConsoleCommand::get_int(int index)
 }
 
 
-int ConsoleCommand::command_func(int argc, char **argv) {
-    arg_type* plain_arg_array = &arg_table[0];
+int ConsoleCommand::command_func(int argc, char **argv)
+{
+    arg_type *plain_arg_array = &arg_table[0];
     int nerrors = arg_parse(argc, argv, (void **)plain_arg_array);
     if (nerrors != 0) {
         arg_print_errors(stderr, arg_table.back().end, argv[0]);
@@ -122,7 +123,7 @@ const esp_console_cmd_func_t ConsoleCommand::command_func_pts[] = {
 
 #define ITEM_TO_REPEAT(index) StaticCommands::command_func_ ## index ,
 
-        _DO_REPEAT_ITEM()
+    _DO_REPEAT_ITEM()
 
 #undef  ITEM_TO_REPEAT
 };
@@ -130,5 +131,5 @@ const esp_console_cmd_func_t ConsoleCommand::command_func_pts[] = {
 /**
  * @brief Static members defined for ConsoleCommand
  */
-std::vector<ConsoleCommand*> ConsoleCommand::console_commands;
+std::vector<ConsoleCommand *> ConsoleCommand::console_commands;
 int ConsoleCommand::last_command = 0;

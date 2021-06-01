@@ -51,7 +51,7 @@ TEST_CASE("DTE send/receive command", "[esp_modem]")
     CHECK(dte->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
 
     auto ret = dte->command(test_command, [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
+        std::string response((char *)data, len);
         CHECK(response == test_command);
         return command_result::OK;
     }, 1000);
@@ -71,7 +71,7 @@ TEST_CASE("DCE commands", "[esp_modem]")
 
     const auto test_command = "Test\n";
     auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
-        std::string response((char*)data, len);
+        std::string response((char *)data, len);
         CHECK(response == test_command);
         return command_result::OK;
     }, 1000);
@@ -114,7 +114,8 @@ TEST_CASE("DCE modes", "[esp_modem]")
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
 }
 
-TEST_CASE("DCE CMUX test", "[esp_modem]") {
+TEST_CASE("DCE CMUX test", "[esp_modem]")
+{
     auto term = std::make_unique<LoopbackTerm>();
     auto dte = std::make_shared<DTE>(std::move(term));
     CHECK(term == nullptr);

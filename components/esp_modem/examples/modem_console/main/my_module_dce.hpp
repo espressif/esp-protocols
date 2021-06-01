@@ -20,7 +20,7 @@
 class MyShinyModem: public esp_modem::GenericModule {
     using GenericModule::GenericModule;
 public:
-    esp_modem::command_result get_module_name(std::string& name) override
+    esp_modem::command_result get_module_name(std::string &name) override
     {
         name = "Custom Shiny Module";
         return esp_modem::command_result::OK;
@@ -32,8 +32,8 @@ public:
  * @return unique pointer of the resultant DCE
  */
 std::unique_ptr<esp_modem::DCE> create_shiny_dce(const esp_modem::dce_config *config,
-                                                 std::shared_ptr<esp_modem::DTE> dte,
-                                                 esp_netif_t *netif)
+        std::shared_ptr<esp_modem::DTE> dte,
+        esp_netif_t *netif)
 {
     return esp_modem::dce_factory::Factory::build_unique<MyShinyModem>(config, std::move(dte), netif);
 }
