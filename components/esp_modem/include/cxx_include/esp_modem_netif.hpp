@@ -73,7 +73,7 @@ private:
 
     std::shared_ptr<DTE> ppp_dte;
     esp_netif_t *netif;
-    struct ppp_netif_driver driver{};
+    struct ppp_netif_driver driver {};
     SignalGroup signal;
     static const size_t PPP_STARTED = SignalGroup::bit0;
     static const size_t PPP_EXIT = SignalGroup::bit1;

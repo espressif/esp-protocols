@@ -22,44 +22,53 @@ namespace esp_modem {
 bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
 {
     switch (m) {
-        case modem_mode::UNDEF:
-            break;
-        case modem_mode::COMMAND_MODE:
-            if (mode == modem_mode::COMMAND_MODE)
-                return false;
-            netif.stop();
-            if (!device->set_mode(modem_mode::COMMAND_MODE))
-                return false;
-            dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
-                ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_INFO);
-                return false;
-            });
-            netif.wait_until_ppp_exits();
-            dte->set_read_cb(nullptr);
-            if (!dte->set_mode(modem_mode::COMMAND_MODE))
-                return false;
-            mode = m;
-            return true;
-        case modem_mode::DATA_MODE:
-            if (mode == modem_mode::DATA_MODE)
-                return false;
-            if (!device->setup_data_mode())
-                return false;
-            if (!device->set_mode(modem_mode::DATA_MODE))
-                return false;
-            if (!dte->set_mode(modem_mode::DATA_MODE))
-                return false;
-            netif.start();
-            mode = m;
-            return true;
-        case modem_mode::CMUX_MODE:
-            if (mode == modem_mode::DATA_MODE || mode == modem_mode::CMUX_MODE)
-                return false;
-            device->set_mode(modem_mode::CMUX_MODE);
-            if (!dte->set_mode(modem_mode::CMUX_MODE))
-                return false;
-            mode = modem_mode::COMMAND_MODE;
-            return true;
+    case modem_mode::UNDEF:
+        break;
+    case modem_mode::COMMAND_MODE:
+        if (mode == modem_mode::COMMAND_MODE) {
+            return false;
+        }
+        netif.stop();
+        if (!device->set_mode(modem_mode::COMMAND_MODE)) {
+            return false;
+        }
+        dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
+            ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_INFO);
+            return false;
+        });
+        netif.wait_until_ppp_exits();
+        dte->set_read_cb(nullptr);
+        if (!dte->set_mode(modem_mode::COMMAND_MODE)) {
+            return false;
+        }
+        mode = m;
+        return true;
+    case modem_mode::DATA_MODE:
+        if (mode == modem_mode::DATA_MODE) {
+            return false;
+        }
+        if (!device->setup_data_mode()) {
+            return false;
+        }
+        if (!device->set_mode(modem_mode::DATA_MODE)) {
+            return false;
+        }
+        if (!dte->set_mode(modem_mode::DATA_MODE)) {
+            return false;
+        }
+        netif.start();
+        mode = m;
+        return true;
+    case modem_mode::CMUX_MODE:
+        if (mode == modem_mode::DATA_MODE || mode == modem_mode::CMUX_MODE) {
+            return false;
+        }
+        device->set_mode(modem_mode::CMUX_MODE);
+        if (!dte->set_mode(modem_mode::CMUX_MODE)) {
+            return false;
+        }
+        mode = modem_mode::COMMAND_MODE;
+        return true;
     }
     return false;
 }

@@ -22,10 +22,10 @@ using namespace esp_modem;
 static const size_t dte_default_buffer_size = 1000;
 
 DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
-        buffer_size(config->dte_buffer_size), consumed(0),
-        buffer(std::make_unique<uint8_t[]>(buffer_size)),
-        term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
-        mode(modem_mode::UNDEF) {}
+    buffer_size(config->dte_buffer_size), consumed(0),
+    buffer(std::make_unique<uint8_t[]>(buffer_size)),
+    term(std::move(terminal)), command_term(term.get()), other_term(nullptr),
+    mode(modem_mode::UNDEF) {}
 
 DTE::DTE(std::unique_ptr<Terminal> terminal):
     buffer_size(dte_default_buffer_size), consumed(0),
@@ -72,17 +72,21 @@ command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32
 bool DTE::setup_cmux()
 {
     auto original_term = std::move(term);
-    if (original_term == nullptr)
+    if (original_term == nullptr) {
         return false;
+    }
     auto cmux_term = std::make_shared<CMux>(std::move(original_term), std::move(buffer), buffer_size);
-    if (cmux_term == nullptr)
+    if (cmux_term == nullptr) {
         return false;
+    }
     buffer_size = 0;
-    if (!cmux_term->init())
+    if (!cmux_term->init()) {
         return false;
+    }
     term = std::make_unique<CMuxInstance>(cmux_term, 0);
-    if (term == nullptr)
+    if (term == nullptr) {
         return false;
+    }
     command_term = term.get(); // use command terminal as previously
     other_term = std::make_unique<CMuxInstance>(cmux_term, 1);
     return true;
@@ -110,8 +114,9 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
             data = buffer.get();
             len = term->read(buffer.get(), buffer_size);
         }
-        if (on_data)
+        if (on_data) {
             return on_data(data, len);
+        }
         return false;
     });
 }

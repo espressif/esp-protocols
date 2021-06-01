@@ -25,8 +25,8 @@ uart_resource::~uart_resource()
     }
 }
 
-uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHandle_t* event_queue, int fd)
-    :port(-1)
+uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHandle_t *event_queue, int fd)
+    : port(-1)
 {
     esp_err_t res;
 
@@ -37,7 +37,7 @@ uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHand
     uart_config.parity = config->parity;
     uart_config.stop_bits = config->stop_bits;
     uart_config.flow_ctrl = (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) ? UART_HW_FLOWCTRL_CTS_RTS
-                                                                                            : UART_HW_FLOWCTRL_DISABLE;
+                            : UART_HW_FLOWCTRL_DISABLE;
     uart_config.source_clk = UART_SCLK_APB;
 
     throw_if_esp_fail(uart_param_config(config->port_num, &uart_config), "config uart parameter failed");

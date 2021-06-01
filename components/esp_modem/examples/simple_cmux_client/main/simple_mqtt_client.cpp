@@ -22,9 +22,8 @@ ESP_EVENT_DECLARE_BASE(MQTT_EVENTS);
 /**
  * Thin wrapper around C mqtt_client
  */
-struct MqttClientHandle
-{
-    explicit MqttClientHandle(const std::string & uri)
+struct MqttClientHandle {
+    explicit MqttClientHandle(const std::string &uri)
     {
         esp_mqtt_client_config_t config = { };
         config.uri = uri.c_str();
@@ -49,9 +48,9 @@ struct MqttClientHandle
 /**
  * @brief Definitions of MqttClient methods
  */
-MqttClient::MqttClient(const std::string & uri):
+MqttClient::MqttClient(const std::string &uri):
     h(std::unique_ptr<MqttClientHandle>(new MqttClientHandle(uri)))
-    {}
+{}
 
 void MqttClient::connect()
 {
@@ -61,11 +60,11 @@ void MqttClient::connect()
 idf::event::ESPEvent MqttClient::get_event(MqttClient::Event ev)
 {
     switch (ev) {
-        case Event::CONNECT: {
-            return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_CONNECTED) };
-        }
-        case Event::DATA:
-            return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_DATA) };
+    case Event::CONNECT: {
+        return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_CONNECTED) };
+    }
+    case Event::DATA:
+        return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_DATA) };
     }
     return { };
 }
@@ -80,7 +79,7 @@ int MqttClient::subscribe(const std::string &topic, int qos)
     return esp_mqtt_client_subscribe(h->client, topic.c_str(), qos);
 }
 
-std::string MqttClient::get_topic(void * event_data)
+std::string MqttClient::get_topic(void *event_data)
 {
     auto event = (esp_mqtt_event_handle_t)event_data;
     if (event == nullptr || event->client != h->client)
@@ -89,7 +88,7 @@ std::string MqttClient::get_topic(void * event_data)
     return std::string(event->topic, event->topic_len);
 }
 
-std::string MqttClient::get_data(void * event_data)
+std::string MqttClient::get_data(void *event_data)
 {
     auto event = (esp_mqtt_event_handle_t)event_data;
     if (event == nullptr || event->client != h->client)

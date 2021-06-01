@@ -30,13 +30,17 @@ namespace esp_modem {
 
 struct uart_task {
     explicit uart_task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function) :
-            task_handle(nullptr) {
+        task_handle(nullptr)
+    {
         BaseType_t ret = xTaskCreate(task_function, "uart_task", stack_size, task_param, priority, &task_handle);
         throw_if_false(ret == pdTRUE, "create uart event task failed");
     }
 
-    ~uart_task() {
-        if (task_handle) vTaskDelete(task_handle);
+    ~uart_task()
+    {
+        if (task_handle) {
+            vTaskDelete(task_handle);
+        }
     }
 
     TaskHandle_t task_handle;       /*!< UART event task handle */
@@ -47,16 +51,18 @@ struct uart_task {
 class UartTerminal : public Terminal {
 public:
     explicit UartTerminal(const esp_modem_dte_config *config) :
-            event_queue(), uart(&config->uart_config, &event_queue, -1), signal(),
-            task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
+        event_queue(), uart(&config->uart_config, &event_queue, -1), signal(),
+        task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
 
     ~UartTerminal() override = default;
 
-    void start() override {
+    void start() override
+    {
         signal.set(TASK_START);
     }
 
-    void stop() override {
+    void stop() override
+    {
         signal.set(TASK_STOP);
     }
 
@@ -64,24 +70,28 @@ public:
 
     int read(uint8_t *data, size_t len) override;
 
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override {
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
+    {
         on_read = std::move(f);
         signal.set(TASK_PARAMS);
     }
 
 private:
-    static void s_task(void *task_param) {
+    static void s_task(void *task_param)
+    {
         auto t = static_cast<UartTerminal *>(task_param);
         t->task();
         vTaskDelete(nullptr);
     }
 
     void task();
-    bool get_event(uart_event_t &event, uint32_t time_ms) {
+    bool get_event(uart_event_t &event, uint32_t time_ms)
+    {
         return xQueueReceive(event_queue, &event, pdMS_TO_TICKS(time_ms));
     }
 
-    void reset_events() {
+    void reset_events()
+    {
         uart_flush_input(uart.port);
         xQueueReset(event_queue);
     }
@@ -97,15 +107,17 @@ private:
     uart_task task_handle;
 };
 
-std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config) {
+std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *config)
+{
     TRY_CATCH_RET_NULL(
-            auto term = std::make_unique<UartTerminal>(config);
-            term->start();
-            return term;
+        auto term = std::make_unique<UartTerminal>(config);
+        term->start();
+        return term;
     )
 }
 
-void UartTerminal::task() {
+void UartTerminal::task()
+{
     std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     uart_event_t event;
     size_t len;
@@ -121,44 +133,49 @@ void UartTerminal::task() {
                 signal.clear(TASK_PARAMS);
             }
             switch (event.type) {
-                case UART_DATA:
-                    uart_get_buffered_data_len(uart.port, &len);
-                    if (len && on_read_priv) {
-                        if (on_read_priv(nullptr, len)) {
-                            on_read_priv = nullptr;
-                        }
+            case UART_DATA:
+                uart_get_buffered_data_len(uart.port, &len);
+                if (len && on_read_priv) {
+                    if (on_read_priv(nullptr, len)) {
+                        on_read_priv = nullptr;
                     }
-                    break;
-                case UART_FIFO_OVF:
-                    ESP_LOGW(TAG, "HW FIFO Overflow");
-                    if (on_error)
-                        on_error(terminal_error::BUFFER_OVERFLOW);
-                    reset_events();
-                    break;
-                case UART_BUFFER_FULL:
-                    ESP_LOGW(TAG, "Ring Buffer Full");
-                    if (on_error)
-                        on_error(terminal_error::BUFFER_OVERFLOW);
-                    reset_events();
-                    break;
-                case UART_BREAK:
-                    ESP_LOGW(TAG, "Rx Break");
-                    if (on_error)
-                        on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
-                    break;
-                case UART_PARITY_ERR:
-                    ESP_LOGE(TAG, "Parity Error");
-                    if (on_error)
-                        on_error(terminal_error::CHECKSUM_ERROR);
-                    break;
-                case UART_FRAME_ERR:
-                    ESP_LOGE(TAG, "Frame Error");
-                    if (on_error)
-                        on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
-                    break;
-                default:
-                    ESP_LOGW(TAG, "unknown uart event type: %d", event.type);
-                    break;
+                }
+                break;
+            case UART_FIFO_OVF:
+                ESP_LOGW(TAG, "HW FIFO Overflow");
+                if (on_error) {
+                    on_error(terminal_error::BUFFER_OVERFLOW);
+                }
+                reset_events();
+                break;
+            case UART_BUFFER_FULL:
+                ESP_LOGW(TAG, "Ring Buffer Full");
+                if (on_error) {
+                    on_error(terminal_error::BUFFER_OVERFLOW);
+                }
+                reset_events();
+                break;
+            case UART_BREAK:
+                ESP_LOGW(TAG, "Rx Break");
+                if (on_error) {
+                    on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
+                }
+                break;
+            case UART_PARITY_ERR:
+                ESP_LOGE(TAG, "Parity Error");
+                if (on_error) {
+                    on_error(terminal_error::CHECKSUM_ERROR);
+                }
+                break;
+            case UART_FRAME_ERR:
+                ESP_LOGE(TAG, "Frame Error");
+                if (on_error) {
+                    on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
+                }
+                break;
+            default:
+                ESP_LOGW(TAG, "unknown uart event type: %d", event.type);
+                break;
             }
         }
     }

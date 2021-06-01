@@ -73,7 +73,7 @@ extern "C" void app_main(void)
         SetModeArgs(): mode(STR1, nullptr, nullptr, "<mode>", "PPP, CMD or CMUX") {}
         CommandArgs mode;
     } set_mode_args;
-    const ConsoleCommand SetModeParser("set_mode", "sets modem mode", &set_mode_args, sizeof(set_mode_args), [&](ConsoleCommand *c){
+    const ConsoleCommand SetModeParser("set_mode", "sets modem mode", &set_mode_args, sizeof(set_mode_args), [&](ConsoleCommand * c) {
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
             modem_mode dev_mode;
@@ -101,7 +101,7 @@ extern "C" void app_main(void)
         SetPinArgs(): pin(STR1, nullptr, nullptr, "<pin>", "PIN") {}
         CommandArgs pin;
     } set_pin_args;
-    const ConsoleCommand SetPinParser("set_pin", "sets SIM card PIN", &set_pin_args, sizeof(set_pin_args), [&](ConsoleCommand *c){
+    const ConsoleCommand SetPinParser("set_pin", "sets SIM card PIN", &set_pin_args, sizeof(set_pin_args), [&](ConsoleCommand * c) {
         if (c->get_count_of(&SetPinArgs::pin)) {
             auto pin = c->get_string_of(&SetPinArgs::pin);
             ESP_LOGI(TAG, "Setting pin=%s...", pin.c_str());
@@ -109,7 +109,7 @@ extern "C" void app_main(void)
             if (err == command_result::OK) {
                 ESP_LOGI(TAG, "OK");
             } else {
-                ESP_LOGE(TAG, "Failed %s", err == command_result::TIMEOUT ? "TIMEOUT":"");
+                ESP_LOGE(TAG, "Failed %s", err == command_result::TIMEOUT ? "TIMEOUT" : "");
                 return 1;
             }
         }
@@ -117,26 +117,26 @@ extern "C" void app_main(void)
     });
 
     const std::vector<CommandArgs> no_args;
-    const ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand * c) {
         bool pin_ok;
         ESP_LOGI(TAG, "Checking pin...");
         auto err = dce->read_pin(pin_ok);
         if (err == command_result::OK) {
-            ESP_LOGI(TAG, "OK. Pin status: %s", pin_ok ? "true": "false");
+            ESP_LOGI(TAG, "OK. Pin status: %s", pin_ok ? "true" : "false");
         } else {
-            ESP_LOGE(TAG, "Failed %s", err == command_result::TIMEOUT ? "TIMEOUT":"");
+            ESP_LOGE(TAG, "Failed %s", err == command_result::TIMEOUT ? "TIMEOUT" : "");
             return 1;
         }
         return 0;
     });
 
-    const ConsoleCommand GetModuleName("get_module_name", "reads the module name", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand GetModuleName("get_module_name", "reads the module name", no_args, [&](ConsoleCommand * c) {
         std::string module_name;
         ESP_LOGI(TAG, "Reading module name...");
         CHECK_ERR(dce->get_module_name(module_name), ESP_LOGI(TAG, "OK. Module name: %s", module_name.c_str()));
     });
 
-    const ConsoleCommand GetOperatorName("get_operator_name", "reads the operator name", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand GetOperatorName("get_operator_name", "reads the operator name", no_args, [&](ConsoleCommand * c) {
         std::string operator_name;
         ESP_LOGI(TAG, "Reading operator name...");
         CHECK_ERR(dce->get_operator_name(operator_name), ESP_LOGI(TAG, "OK. Operator name: %s", operator_name.c_str()));
@@ -153,10 +153,10 @@ extern "C" void app_main(void)
         CommandArgs pattern;
         CommandArgs no_cr;
     } send_cmd_args;
-    const ConsoleCommand SendCommand("cmd", "sends generic AT command, no_args", &send_cmd_args, sizeof(send_cmd_args), [&](ConsoleCommand *c) {
+    const ConsoleCommand SendCommand("cmd", "sends generic AT command, no_args", &send_cmd_args, sizeof(send_cmd_args), [&](ConsoleCommand * c) {
         auto cmd = c->get_string_of(&GenericCommandArgs::cmd);
         auto timeout = c->get_count_of(&GenericCommandArgs::timeout) ? c->get_int_of(&GenericCommandArgs::timeout)
-                                                                     : 1000;
+                       : 1000;
         ESP_LOGI(TAG, "Sending command %s with timeout %d", cmd.c_str(), timeout);
         auto pattern = c->get_string_of(&GenericCommandArgs::pattern);
         if (c->get_count_of(&GenericCommandArgs::no_cr) == 0) {
@@ -165,27 +165,29 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->command(cmd, [&](uint8_t *data, size_t len) {
             std::string response((char *) data, len);
             ESP_LOGI(TAG, "%s", response.c_str());
-            if (pattern.empty() || response.find(pattern) != std::string::npos)
+            if (pattern.empty() || response.find(pattern) != std::string::npos) {
                 return command_result::OK;
-            if (response.find(pattern) != std::string::npos)
+            }
+            if (response.find(pattern) != std::string::npos) {
                 return command_result::OK;
+            }
             return command_result::TIMEOUT;
         }, timeout),);
     });
 
-    const ConsoleCommand GetSignalQuality("get_signal_quality", "Gets signal quality", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand GetSignalQuality("get_signal_quality", "Gets signal quality", no_args, [&](ConsoleCommand * c) {
         int rssi, ber;
         CHECK_ERR(dce->get_signal_quality(rssi, ber), ESP_LOGI(TAG, "OK. rssi=%d, ber=%d", rssi, ber));
     });
-    const ConsoleCommand GetBatteryStatus("get_battery_status", "Reads voltage/battery status", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand GetBatteryStatus("get_battery_status", "Reads voltage/battery status", no_args, [&](ConsoleCommand * c) {
         int volt, bcl, bcs;
         CHECK_ERR(dce->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
     });
-    const ConsoleCommand PowerDown("power_down", "power down the module", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand PowerDown("power_down", "power down the module", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Power down the module...");
         CHECK_ERR(dce->power_down(), ESP_LOGI(TAG, "OK"));
     });
-    const ConsoleCommand Reset("reset", "reset the module", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand Reset("reset", "reset the module", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Resetting the module...");
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
@@ -193,7 +195,7 @@ extern "C" void app_main(void)
         SetApn(): apn(STR1, nullptr, nullptr, "<apn>", "APN (Access Point Name)") {}
         CommandArgs apn;
     } set_apn;
-    const ConsoleCommand SetApnParser("set_apn", "sets APN", &set_apn, sizeof(set_apn), [&](ConsoleCommand *c){
+    const ConsoleCommand SetApnParser("set_apn", "sets APN", &set_apn, sizeof(set_apn), [&](ConsoleCommand * c) {
         if (c->get_count_of(&SetApn::apn)) {
             auto apn = c->get_string_of(&SetApn::apn);
             ESP_LOGI(TAG, "Setting the APN=%s...", apn.c_str());
@@ -205,7 +207,7 @@ extern "C" void app_main(void)
     });
 
     SignalGroup exit_signal;
-    const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand *c){
+    const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Exiting...");
         exit_signal.set(1);
         s_repl->del(s_repl);
