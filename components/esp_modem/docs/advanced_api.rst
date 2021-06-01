@@ -19,13 +19,14 @@ All the functionality is provided by the DCE factory
 .. doxygengroup:: ESP_MODEM_DCE_FACTORY
    :members:
 
+.. _create_custom_module:
 
 Create custom module
 --------------------
 
 Creating a custom module is necessary if the application needs to use a specific device that is not supported
 and their commands differ from any of the supported devices. In this case it is recommended to define a new class
-representing this specific device and derive from the :cpp:class:`GenericModule`. In order to instantiate
+representing this specific device and derive from the :cpp:class:`esp_modem::GenericModule`. In order to instantiate
 the appropriate DCE of this module, application could use :ref:`the DCE factory<dce_factory>`, and build the DCE with
 the specific module, using :cpp:func:`esp_modem::dce_factory::Factory::build`.
 

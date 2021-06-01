@@ -27,9 +27,13 @@ GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config)
 
 // Helper macros to handle multiple arguments of declared API
 #define ARGS0
-#define ARGS1 , x
-#define ARGS2 , x , y
-#define ARGS3 , x , y , z
+#define ARGS1 , p1
+#define ARGS2 , p1 , p2
+#define ARGS3 , p1 , p2 , p3
+#define ARGS4 , p1 , p2 , p3, p4
+#define ARGS5 , p1 , p2 , p3, p4, p5
+#define ARGS6 , p1 , p2 , p3, p4, p5, p6
+
 #define _ARGS(x)  ARGS ## x
 #define ARGS(x)  _ARGS(x)
 
