@@ -29,14 +29,14 @@
 #define BOOL_OUT(param, name) bool&  _ARG(param, name)
 #define INT_OUT(param, name) int&  _ARG(param, name)
 
-#define STRUCT_OUT(struct_name, x)  struct_name& x
+#define STRUCT_OUT(struct_name, p1)  struct_name& p1
 #else
 #define STRING_IN(param, name) const char* _ARG(param, name)
 #define STRING_OUT(param, name) char* _ARG(param, name)
 #define BOOL_IN(param, name) const bool _ARG(param, name)
 #define BOOL_OUT(param, name) bool* _ARG(param, name)
 #define INT_OUT(param, name) int* _ARG(param, name)
-#define STRUCT_OUT(struct_name, x)  struct struct_name* x
+#define STRUCT_OUT(struct_name, p1)  struct struct_name* p1
 #endif
 
 #define DECLARE_ALL_COMMAND_APIS(...) \
@@ -50,7 +50,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 1, STRING_OUT(x, name)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 1, STRING_OUT(p1, name)) \
     \
 /**
  * @brief Stores current user profile
@@ -63,28 +63,28 @@ ESP_MODEM_DECLARE_DCE_COMMAND(store_profile, command_result, 0) \
  * @param[in] pin Pin
  * @return OK, FAIL or TIMEOUT
  */\
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, 1, STRING_IN(x, pin)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_pin,  command_result, 1, STRING_IN(p1, pin)) \
     \
 /**
  * @brief Checks if the SIM needs a PIN
  * @param[out] pin_ok true if the SIM card doesn't need a PIN to unlock
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, BOOL_OUT(x, pin_ok)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, BOOL_OUT(p1, pin_ok)) \
     \
 /**
  * @brief Sets echo mode
  * @param[in] echo_on true if echo mode on (repeats the commands)
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, BOOL_IN(x, echo_on)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, BOOL_IN(p1, echo_on)) \
     \
 /**
  * @brief Sets the Txt or Pdu mode for SMS (only txt is supported)
  * @param[in] txt true if txt mode
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(sms_txt_mode, command_result, 1, BOOL_IN(x, txt)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(sms_txt_mode, command_result, 1, BOOL_IN(p1, txt)) \
     \
 /**
  * @brief Sets the default (GSM) charater set
@@ -98,7 +98,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sms_character_set, command_result, 0) \
  * @param[in] message Text message to be sent
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(send_sms, command_result, 2, STRING_IN(x, number), STRING_IN(y, message)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(send_sms, command_result, 2, STRING_IN(p1, number), STRING_IN(p2, message)) \
     \
 /**
  * @brief Resumes data mode (Switches back to th data mode, which was temporarily suspended)
@@ -108,10 +108,10 @@ ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, 0) \
     \
 /**
  * @brief Sets php context
- * @param[in] x PdP context struct to setup modem cellular connection
+ * @param[in] p1 PdP context struct to setup modem cellular connection
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, 1, STRUCT_OUT(PdpContext, x)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, 1, STRUCT_OUT(PdpContext, p1)) \
     \
 /**
  * @brief Switches to the command mode
@@ -130,21 +130,21 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, 0) \
  * @param[out] imsi Module's IMSI number
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, STRING_OUT(x, imsi)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, STRING_OUT(p1, imsi)) \
     \
 /**
  * @brief Reads the IMEI number
  * @param[out] imei Module's IMEI number
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, STRING_OUT(x, imei)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, STRING_OUT(p1, imei)) \
     \
 /**
  * @brief Reads the module name
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, STRING_OUT(x, name)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, STRING_OUT(p1, name)) \
     \
 /**
  * @brief Sets the modem to data mode
@@ -158,7 +158,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0) \
  * @param[out] ber channel bit error rate
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, INT_OUT(x, rssi), INT_OUT(y, ber)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, INT_OUT(p1, rssi), INT_OUT(p2, ber)) \
     \
 /**
  * @brief Sets HW control flow
@@ -166,7 +166,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, INT_OUT(x, 
  * @param[in] dte_flow 0=none, 2=CTS hw flow control of DTE
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_flow_control, command_result, 2, INT_IN(x, dce_flow), INT_IN(y, dte_flow)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_flow_control, command_result, 2, INT_IN(p1, dce_flow), INT_IN(p2, dte_flow)) \
     \
 /**
  * @brief Hangs up current data call
@@ -181,7 +181,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(hang_up, command_result, 0) \
  * @param[out] bcl 1-100% battery capacity, -1-Not available
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_battery_status, command_result, 3, INT_OUT(x, voltage), INT_OUT(y, bcs), INT_OUT(z, bcl)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_battery_status, command_result, 3, INT_OUT(p1, voltage), INT_OUT(p2, bcs), INT_OUT(p3, bcl)) \
     \
 /**
  * @brief Power down the module
@@ -193,14 +193,14 @@ ESP_MODEM_DECLARE_DCE_COMMAND(power_down, command_result, 0) \
  * @brief Reset the module
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(reset, command_result, 0)\
+ESP_MODEM_DECLARE_DCE_COMMAND(reset, command_result, 0) \
     \
 /**
  * @brief Configures the baudrate
  * @param[in] baud Desired baud rate of the DTE
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(x, baud))
+ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(p1, baud))
 
 
 #ifdef GENERATE_DOCS

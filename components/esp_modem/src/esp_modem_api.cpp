@@ -46,7 +46,7 @@ std::shared_ptr<DTE> create_vfs_dte(const dte_config *config) {
 
 
 static inline std::unique_ptr<DCE>
-create_modem_dce(dce_factory::Modem m, const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
+create_modem_dce(dce_factory::ModemType m, const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
     dce_factory::Factory f(m);
     TRY_CATCH_RET_NULL(
             return f.build_unique(config, std::move(dte), netif);
@@ -54,19 +54,19 @@ create_modem_dce(dce_factory::Modem m, const dce_config *config, std::shared_ptr
 }
 
 std::unique_ptr<DCE> create_SIM7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
-    return create_modem_dce(dce_factory::Modem::SIM7600, config, std::move(dte), netif);
+    return create_modem_dce(dce_factory::ModemType::SIM7600, config, std::move(dte), netif);
 }
 
 std::unique_ptr<DCE> create_SIM800_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
-    return create_modem_dce(dce_factory::Modem::SIM800, config, std::move(dte), netif);
+    return create_modem_dce(dce_factory::ModemType::SIM800, config, std::move(dte), netif);
 }
 
 std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
-    return create_modem_dce(dce_factory::Modem::BG96, config, std::move(dte), netif);
+    return create_modem_dce(dce_factory::ModemType::BG96, config, std::move(dte), netif);
 }
 
 std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif) {
-    return create_modem_dce(dce_factory::Modem::GenericModule, config, std::move(dte), netif);
+    return create_modem_dce(dce_factory::ModemType::GenericModule, config, std::move(dte), netif);
 }
 
 } // namespace esp_modem
