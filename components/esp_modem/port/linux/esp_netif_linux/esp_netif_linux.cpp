@@ -35,8 +35,7 @@ class NetifStorage;
 
 void read_task(NetifStorage *netif);
 
-class NetifStorage: public esp_netif_obj
-{
+class NetifStorage: public esp_netif_obj {
 public:
     explicit NetifStorage(const esp_netif_config_t *config) : esp_netif_obj(), exit(false)
     {
@@ -132,5 +131,5 @@ extern "C" esp_netif_t *esp_netif_new(const esp_netif_config_t *config)
 
 void esp_netif_destroy(esp_netif_t *netif)
 {
-    delete static_cast<NetifStorage*>(netif);
+    delete static_cast<NetifStorage *>(netif);
 }

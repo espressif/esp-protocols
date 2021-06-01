@@ -36,17 +36,17 @@ namespace dce_commands {
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
         return_type name(CommandableIf *t, ## __VA_ARGS__);
 
-        DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)
+DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 /**
  * @brief Following commands that are different for some specific modules
  */
-command_result get_battery_status_sim7xxx(CommandableIf* t, int& voltage, int &bcs, int &bcl);
-command_result power_down_sim7xxx(CommandableIf* t);
-command_result power_down_sim8xx(CommandableIf* t);
-command_result set_data_mode_sim8xx(CommandableIf* t);
+command_result get_battery_status_sim7xxx(CommandableIf *t, int &voltage, int &bcs, int &bcl);
+command_result power_down_sim7xxx(CommandableIf *t);
+command_result power_down_sim8xx(CommandableIf *t);
+command_result set_data_mode_sim8xx(CommandableIf *t);
 
 /**
  * @}

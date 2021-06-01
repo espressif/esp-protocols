@@ -122,10 +122,10 @@ extern "C" void app_main(void)
         event_handler.listen_to(MqttClient::get_event(MqttClient::Event::DATA));
 
         auto reg = loop->register_event(MqttClient::get_event(MqttClient::Event::DATA),
-                                        [&mqtt](const ESPEvent &event, void *data) {
-                                            std::cout << " TOPIC:" << mqtt.get_topic(data) << std::endl;
-                                            std::cout << " DATA:" << mqtt.get_data(data) << std::endl;
-                                        });
+        [&mqtt](const ESPEvent & event, void *data) {
+            std::cout << " TOPIC:" << mqtt.get_topic(data) << std::endl;
+            std::cout << " DATA:" << mqtt.get_data(data) << std::endl;
+        });
         mqtt.connect();
         while (true) {
             result = event_handler.wait_event_for(std::chrono::milliseconds(60000));

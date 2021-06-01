@@ -24,7 +24,7 @@
 #else
 // forward declarations of FreeRTOS primitives
 struct QueueDefinition;
-typedef void * EventGroupHandle_t;
+typedef void *EventGroupHandle_t;
 #endif
 
 
@@ -32,7 +32,7 @@ namespace esp_modem {
 
 // Forward declaration for both linux/FreeRTOS targets
 //
-using TaskFunction_t = void (*)(void*);
+using TaskFunction_t = void (*)(void *);
 #if !defined(CONFIG_IDF_TARGET_LINUX)
 struct Lock {
     using MutexT = QueueHandle_t;
@@ -56,11 +56,17 @@ static constexpr uint32_t portMAX_DELAY = UINT32_MAX;
 template<class T>
 class Scoped {
 public:
-    explicit Scoped(T &l):lock(l) { lock.lock(); }
-    ~Scoped() { lock.unlock(); }
+    explicit Scoped(T &l): lock(l)
+    {
+        lock.lock();
+    }
+    ~Scoped()
+    {
+        lock.unlock();
+    }
 
 private:
-    T& lock;
+    T &lock;
 };
 
 class Task {

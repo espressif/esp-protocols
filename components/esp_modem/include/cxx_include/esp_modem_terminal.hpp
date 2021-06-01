@@ -50,9 +50,15 @@ class Terminal {
 public:
     virtual ~Terminal() = default;
 
-    void set_error_cb(std::function<void(terminal_error)> f) { on_error = std::move(f); }
+    void set_error_cb(std::function<void(terminal_error)> f)
+    {
+        on_error = std::move(f);
+    }
 
-    virtual void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) { on_read = std::move(f); }
+    virtual void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f)
+    {
+        on_read = std::move(f);
+    }
 
     /**
      * @brief Writes data to the terminal

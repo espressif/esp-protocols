@@ -120,15 +120,15 @@ TEST_CASE("Disconnection test", "[esp_modem]")
 
 extern "C" {
 
-static void handle(int nr)
-{
-    ESP_LOGE(TAG, "Signal handler %d", nr);
-}
+    static void handle(int nr)
+    {
+        ESP_LOGE(TAG, "Signal handler %d", nr);
+    }
 
-_sig_func_ptr signal (int nr, _sig_func_ptr)
-{
-    return handle;
-}
+    _sig_func_ptr signal (int nr, _sig_func_ptr)
+    {
+        return handle;
+    }
 
 
 }

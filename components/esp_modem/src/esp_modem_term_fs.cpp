@@ -29,7 +29,8 @@ struct File {
         fd(config->vfs_config.fd), deleter(config->vfs_config.deleter), resource(config->vfs_config.resource)
     {}
 
-    ~File() {
+    ~File()
+    {
         if (deleter) {
             deleter(fd, resource);
         }
@@ -45,11 +46,13 @@ public:
 
     ~FdTerminal() override;
 
-    void start() override {
+    void start() override
+    {
         signal.set(TASK_START);
     }
 
-    void stop() override {
+    void stop() override
+    {
         signal.clear(TASK_START);
     }
 
@@ -57,7 +60,8 @@ public:
 
     int read(uint8_t *data, size_t len) override;
 
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override {
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
+    {
         on_read = std::move(f);
         signal.set(TASK_PARAMS);
     }
@@ -75,22 +79,24 @@ private:
     Task task_handle;
 };
 
-std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config) {
+std::unique_ptr<Terminal> create_vfs_terminal(const esp_modem_dte_config *config)
+{
     TRY_CATCH_RET_NULL(
-            auto term = std::make_unique<FdTerminal>(config);
-            term->start();
-            return term;
+        auto term = std::make_unique<FdTerminal>(config);
+        term->start();
+        return term;
     )
 }
 
 FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
-        f(config), signal(),
-        task_handle(config->task_stack_size, config->task_priority, this, [](void* p){
-            auto t = static_cast<FdTerminal *>(p);
-            t->task();
-            Task::Delete();
-        })
-        {}
+    f(config), signal(),
+    task_handle(config->task_stack_size, config->task_priority, this, [](void *p)
+{
+    auto t = static_cast<FdTerminal *>(p);
+    t->task();
+    Task::Delete();
+})
+{}
 
 void FdTerminal::task()
 {
@@ -105,8 +111,8 @@ void FdTerminal::task()
         int s;
         fd_set rfds;
         struct timeval tv = {
-                .tv_sec = 1,
-                .tv_usec = 0,
+            .tv_sec = 1,
+            .tv_usec = 0,
         };
         FD_ZERO(&rfds);
         FD_SET(f.fd, &rfds);

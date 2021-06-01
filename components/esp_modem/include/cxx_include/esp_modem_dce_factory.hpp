@@ -38,19 +38,19 @@ public:
     static std::unique_ptr<PdpContext> create_pdp_context(std::string &apn);
 
     template <typename T, typename T_Ptr, typename ...Args>
-    static auto make(Args&&... args) -> typename std::enable_if<std::is_same<T_Ptr, T*>::value, T*>::type
+    static auto make(Args &&... args) -> typename std::enable_if<std::is_same<T_Ptr, T *>::value, T *>::type
     {
         return new T(std::forward<Args>(args)...);
     }
 
     template <typename T, typename T_Ptr, typename ...Args>
-    static auto make(Args&&... args) ->  typename std::enable_if<std::is_same<T_Ptr, std::shared_ptr<T>>::value, std::shared_ptr<T>>::type
+    static auto make(Args &&... args) ->  typename std::enable_if<std::is_same<T_Ptr, std::shared_ptr<T>>::value, std::shared_ptr<T>>::type
     {
         return std::make_shared<T>(std::forward<Args>(args)...);
     }
 
     template <typename T, typename T_Ptr = std::unique_ptr<T>, typename ...Args>
-    static auto make(Args&&... args) -> typename std::enable_if<std::is_same<T_Ptr, std::unique_ptr<T>>::value, std::unique_ptr<T>>::type
+    static auto make(Args && ... args) -> typename std::enable_if<std::is_same<T_Ptr, std::unique_ptr<T>>::value, std::unique_ptr<T>>::type
     {
         return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
     }
@@ -67,12 +67,12 @@ template<typename T_Module>
 class Builder {
     static_assert(std::is_base_of<ModuleIf, T_Module>::value, "Builder must be used only for Module classes");
 public:
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
+    Builder(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
 
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t* esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
+    Builder(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
@@ -93,12 +93,14 @@ public:
     template<typename T_Dce, typename T_Ptr>
     auto create(const esp_modem_dce_config *config) -> T_Ptr
     {
-        if (dte == nullptr)
+        if (dte == nullptr) {
             return nullptr;
+        }
         if (device == nullptr) {
             device = create_module<decltype(device)>(config);
-            if (device == nullptr)
+            if (device == nullptr) {
                 return nullptr;
+            }
         }
         return FactoryHelper::make<T_Dce, T_Ptr>(std::move(dte), std::move(device), netif);
     }
@@ -136,7 +138,7 @@ public:
      * @return unique_ptr DCE of the created DCE on success
      */
     template <typename T_Module, typename ...Args>
-    static std::unique_ptr<DCE> build_unique(const config *cfg, Args&&... args)
+    static std::unique_ptr<DCE> build_unique(const config *cfg, Args &&... args)
     {
         return build_generic_DCE<T_Module, DCE, std::unique_ptr<DCE>>(cfg, std::forward<Args>(args)...);
     }
@@ -150,33 +152,33 @@ public:
      * @return DCE pointer the created DCE on success
      */
     template <typename T_Module, typename ...Args>
-    static DCE* build(const config *cfg, Args&&... args)
+    static DCE *build(const config *cfg, Args &&... args)
     {
         return build_generic_DCE<T_Module, DCE>(cfg, std::forward<Args>(args)...);
     }
 
 
     template <typename T_Module, typename ...Args>
-    static std::shared_ptr<T_Module> build_shared_module(const config *cfg, Args&&... args)
+    static std::shared_ptr<T_Module> build_shared_module(const config *cfg, Args &&... args)
     {
         return build_module_T<T_Module>(cfg, std::forward<Args>(args)...);
     }
 
 
     template <typename ...Args>
-    std::shared_ptr<GenericModule> build_shared_module(const config *cfg, Args&&... args)
+    std::shared_ptr<GenericModule> build_shared_module(const config *cfg, Args &&... args)
     {
         switch (m) {
-            case ModemType::SIM800:
-                return build_shared_module<SIM800>(cfg, std::forward<Args>(args)...);
-            case ModemType::SIM7600:
-                return build_shared_module<SIM7600>(cfg, std::forward<Args>(args)...);
-            case ModemType::BG96:
-                return build_shared_module<BG96>(cfg, std::forward<Args>(args)...);
-            case ModemType::GenericModule:
-                return build_shared_module<GenericModule>(cfg, std::forward<Args>(args)...);
-            default:
-                break;
+        case ModemType::SIM800:
+            return build_shared_module<SIM800>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7600:
+            return build_shared_module<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::BG96:
+            return build_shared_module<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::GenericModule:
+            return build_shared_module<GenericModule>(cfg, std::forward<Args>(args)...);
+        default:
+            break;
         }
         return nullptr;
     }
@@ -189,37 +191,37 @@ public:
      * @return unique_ptr DCE of the created DCE on success
      */
     template <typename ...Args>
-    std::unique_ptr<DCE> build_unique(const config *cfg, Args&&... args)
+    std::unique_ptr<DCE> build_unique(const config *cfg, Args &&... args)
     {
         switch (m) {
-            case ModemType::SIM800:
-                return build_unique<SIM800>(cfg, std::forward<Args>(args)...);
-            case ModemType::SIM7600:
-                return build_unique<SIM7600>(cfg, std::forward<Args>(args)...);
-            case ModemType::BG96:
-                return build_unique<BG96>(cfg, std::forward<Args>(args)...);
-            case ModemType::GenericModule:
-                return build_unique<GenericModule>(cfg, std::forward<Args>(args)...);
-            default:
-                break;
+        case ModemType::SIM800:
+            return build_unique<SIM800>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7600:
+            return build_unique<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::BG96:
+            return build_unique<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::GenericModule:
+            return build_unique<GenericModule>(cfg, std::forward<Args>(args)...);
+        default:
+            break;
         }
         return nullptr;
     }
 
     template <typename ...Args>
-    DCE* build(const config *cfg, Args&&... args)
+    DCE *build(const config *cfg, Args &&... args)
     {
         switch (m) {
-            case ModemType::SIM800:
-                return build<SIM800>(cfg, std::forward<Args>(args)...);
-            case ModemType::SIM7600:
-                return build<SIM7600>(cfg, std::forward<Args>(args)...);
-            case ModemType::BG96:
-                return build<BG96>(cfg, std::forward<Args>(args)...);
-            case ModemType::GenericModule:
-                return build<GenericModule>(cfg, std::forward<Args>(args)...);
-            default:
-                break;
+        case ModemType::SIM800:
+            return build<SIM800>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7600:
+            return build<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::BG96:
+            return build<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::GenericModule:
+            return build<GenericModule>(cfg, std::forward<Args>(args)...);
+        default:
+            break;
         }
         return nullptr;
     }
@@ -229,15 +231,15 @@ private:
 
 protected:
     template <typename T_Module, typename Ptr = std::shared_ptr<T_Module>, typename ...Args>
-    static Ptr build_module_T(const config *cfg, Args&&... args)
+    static Ptr build_module_T(const config *cfg, Args && ... args)
     {
         Builder<T_Module> b(std::forward<Args>(args)...);
         return b.template create_module<Ptr>(cfg);
     }
 
 
-    template <typename T_Module, typename T_Dce = DCE_T<T_Module>, typename T_DcePtr = T_Dce*,  typename ...Args>
-    static auto build_generic_DCE(const config *cfg, Args&&... args) -> T_DcePtr
+    template <typename T_Module, typename T_Dce = DCE_T<T_Module>, typename T_DcePtr = T_Dce *,  typename ...Args>
+    static auto build_generic_DCE(const config *cfg, Args && ... args) -> T_DcePtr
     {
         Builder<T_Module> b(std::forward<Args>(args)...);
         return b.template create<T_Dce, T_DcePtr>(cfg);

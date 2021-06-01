@@ -55,7 +55,7 @@ class CMuxInstance;
 class CMux {
 public:
     explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
-            term(std::move(t)), buffer_size(buff_size), buffer(std::move(b)), payload_start(nullptr), total_payload_size(0) {}
+        term(std::move(t)), buffer_size(buff_size), buffer(std::move(b)), payload_start(nullptr), total_payload_size(0) {}
     ~CMux() = default;
     [[nodiscard]] bool init();
     void set_read_cb(int inst, std::function<bool(uint8_t *data, size_t len)> f);
@@ -92,9 +92,18 @@ class CMuxInstance: public Terminal {
 public:
     explicit CMuxInstance(std::shared_ptr<CMux> parent, int i): cmux(std::move(parent)), instance(i) {}
 
-    int write(uint8_t *data, size_t len) override { return cmux->write(instance, data, len); }
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override { return cmux->set_read_cb(instance, std::move(f)); }
-    int read(uint8_t *data, size_t len) override { return  0; }
+    int write(uint8_t *data, size_t len) override
+    {
+        return cmux->write(instance, data, len);
+    }
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
+    {
+        return cmux->set_read_cb(instance, std::move(f));
+    }
+    int read(uint8_t *data, size_t len) override
+    {
+        return  0;
+    }
     void start() override { }
     void stop() override { }
 private:

@@ -20,7 +20,8 @@
 
 namespace esp_modem {
 
-void Lock::unlock() {
+void Lock::unlock()
+{
     xSemaphoreGiveRecursive(m);
 }
 
@@ -30,11 +31,13 @@ Lock::Lock(): m(nullptr)
     throw_if_false(m != nullptr, "create signal event group failed");
 }
 
-Lock::~Lock() {
+Lock::~Lock()
+{
     vSemaphoreDelete(m);
 }
 
-void Lock::lock() {
+void Lock::lock()
+{
     xSemaphoreTakeRecursive(m, portMAX_DELAY);
 }
 
@@ -74,12 +77,13 @@ bool SignalGroup::wait_any(uint32_t flags, uint32_t time_ms)
 
 SignalGroup::~SignalGroup()
 {
-    if (event_group)
+    if (event_group) {
         vEventGroupDelete(event_group);
+    }
 }
 
 Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function)
-    :task_handle(nullptr)
+    : task_handle(nullptr)
 {
     BaseType_t ret = xTaskCreate(task_function, "vfs_task", stack_size, task_param, priority, &task_handle);
     throw_if_false(ret == pdTRUE, "create vfs task failed");
@@ -87,8 +91,9 @@ Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t 
 
 Task::~Task()
 {
-    if (task_handle)
+    if (task_handle) {
         vTaskDelete(task_handle);
+    }
 }
 
 void Task::Delete()

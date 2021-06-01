@@ -34,7 +34,7 @@ constexpr const char *TAG = "vfs_socket_creator";
  * @note: Remote command:
  * socat TCP-L:2222 GOPEN:/dev/ttyS0,ispeed=115200,ospeed=1152000,b115200,raw,echo=0
  */
-static esp_err_t hostname_to_fd(const char *host, int port, int* fd)
+static esp_err_t hostname_to_fd(const char *host, int port, int *fd)
 {
     struct sockaddr_storage address = {};
     struct addrinfo *address_info;
@@ -46,7 +46,7 @@ static esp_err_t hostname_to_fd(const char *host, int port, int* fd)
     int res = getaddrinfo(host, nullptr, &hints, &address_info);
     if (res != 0 || address_info == nullptr) {
         ESP_LOGE(TAG, "couldn't get hostname for :%s: "
-                      "getaddrinfo() returns %d, addrinfo=%p", host, res, address_info);
+                 "getaddrinfo() returns %d, addrinfo=%p", host, res, address_info);
         return ESP_FAIL;
     }
     *fd = socket(address_info->ai_family, address_info->ai_socktype, address_info->ai_protocol);
@@ -77,7 +77,7 @@ static esp_err_t hostname_to_fd(const char *host, int port, int* fd)
 }
 
 
-static void vfs_destroy_socket(int fd, struct esp_modem_vfs_resource * resource)
+static void vfs_destroy_socket(int fd, struct esp_modem_vfs_resource *resource)
 {
     if (fd >= 0) {
         close(fd);

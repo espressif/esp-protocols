@@ -46,8 +46,9 @@ void SignalGroup::clear(uint32_t bits)
 bool SignalGroup::wait(uint32_t flags, uint32_t time_ms)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
-    return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&]{
-        if ((flags&event_group->flags) == flags) {
+    return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&] {
+        if ((flags & event_group->flags) == flags)
+        {
             event_group->flags &= ~flags;
             return true;
         }
@@ -60,13 +61,13 @@ bool SignalGroup::wait(uint32_t flags, uint32_t time_ms)
 bool SignalGroup::is_any(uint32_t flags)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
-    return flags&event_group->flags;
+    return flags & event_group->flags;
 }
 
 bool SignalGroup::wait_any(uint32_t flags, uint32_t time_ms)
 {
     std::unique_lock<std::mutex> lock(event_group->m);
-    return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&]{ return flags&event_group->flags; });
+    return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&] { return flags & event_group->flags; });
 }
 
 SignalGroup::~SignalGroup() = default;
