@@ -74,6 +74,6 @@ Currently we support only UART, but modern modules support other communication i
 
 ### Other devices
 
-Adding a new device is a must-have requirement for the esp-component. Different modules support different commands,
+Adding a new device is a must-have requirement for the esp-modem component. Different modules support different commands,
 or some commands might have a different implementation. Adding a new device means to provide a new implementation
 as a class derived from `GenericModule`, where we could add new commands or modify the existing ones.
