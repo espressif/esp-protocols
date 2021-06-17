@@ -73,7 +73,7 @@ std::shared_ptr<DTE> create_vfs_dte(const dte_config *config);
 /**
  * @brief Create DCE based on SIM7600 module
  * @param config DCE configuration
- * @param DTE reference to the communicating DTE
+ * @param dte reference to the communicating DTE
  * @param netif reference to the network interface
  *
  * @return unique ptr to the created DCE on success
