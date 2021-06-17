@@ -84,7 +84,7 @@ public:
 class ModuleIf {
 public:
     /**
-     * @brief Sets the data mode up (provides the necessary configuration to connect to the cellular network
+     * @brief Sets the data mode up (provides the necessary configuration to connect to the cellular network)
      * @return true on success
      */
     virtual bool setup_data_mode() = 0;
