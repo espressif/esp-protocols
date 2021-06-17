@@ -57,30 +57,30 @@ public:
 };
 
 /**
- * @brief Builder class for building a DCE_T<Module> in a specific way, either from a Module object or by default from the DTE and netif
+ * @brief Creator class for building a DCE_T<Module> in a specific way, either from a Module object or by default from the DTE and netif
  *
  * @throws
  *      - esp_modem::esp_err_exception on invalid arguments
  *      - std::bad_alloc if failed to allocate
  */
 template<typename T_Module>
-class Builder {
+class Creator {
     static_assert(std::is_base_of<ModuleIf, T_Module>::value, "Builder must be used only for Module classes");
 public:
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
+    Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
 
-    Builder(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
+    Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
     {
         throw_if_false(netif != nullptr, "Null netif");
     }
 
-    ~Builder()
+    ~Creator()
     {
-        if (device == nullptr) {
-            ESP_LOGE("dce_factory::~Builder", "module was captured or created but never used");
+        if (device != nullptr) {
+            ESP_LOGE("dce_factory::~Creator", "module was captured or created but never used");
         }
     }
 
@@ -233,16 +233,16 @@ protected:
     template <typename T_Module, typename Ptr = std::shared_ptr<T_Module>, typename ...Args>
     static Ptr build_module_T(const config *cfg, Args && ... args)
     {
-        Builder<T_Module> b(std::forward<Args>(args)...);
-        return b.template create_module<Ptr>(cfg);
+        Creator<T_Module> creator(std::forward<Args>(args)...);
+        return creator.template create_module<Ptr>(cfg);
     }
 
 
     template <typename T_Module, typename T_Dce = DCE_T<T_Module>, typename T_DcePtr = T_Dce *,  typename ...Args>
     static auto build_generic_DCE(const config *cfg, Args && ... args) -> T_DcePtr
     {
-        Builder<T_Module> b(std::forward<Args>(args)...);
-        return b.template create<T_Dce, T_DcePtr>(cfg);
+        Creator<T_Module> creator(std::forward<Args>(args)...);
+        return creator.template create<T_Dce, T_DcePtr>(cfg);
     }
 };
 
