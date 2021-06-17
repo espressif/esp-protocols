@@ -91,11 +91,21 @@ void CMux::send_sabm(size_t i)
 }
 
 
+struct CMux::CMuxFrame {
+    uint8_t *ptr;     /*!< pointer to the currently processing byte of the CMUX frame */
+    size_t len;       /*!< length of available data in the current CMUX frame */
+    void advance(int size = 1)
+    {
+        ptr += size;
+        len -= size;
+    }
+};
+
 void CMux::data_available(uint8_t *data, size_t len)
 {
     if (data && type == 0xFF && len > 0 && dlci > 0) {
         int virtual_term = dlci - 1;
-        if (virtual_term < max_terms && read_cb[virtual_term]) {
+        if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
             // Post partial data (or defragment to post on CMUX footer)
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
             if (payload_start == nullptr) {
@@ -112,13 +122,124 @@ void CMux::data_available(uint8_t *data, size_t len)
         sabm_ack = dlci;
     } else if (data == nullptr) {
         int virtual_term = dlci - 1;
-        if (virtual_term < max_terms && read_cb[virtual_term]) {
+        if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif
         }
-
     }
+}
+
+bool CMux::on_init(CMuxFrame &frame)
+{
+    if (frame.ptr[0] != SOF_MARKER) {
+        ESP_LOGW("CMUX", "Protocol mismatch: Missed leading SOF, recovering...");
+        state = cmux_state::RECOVER;
+        return true;
+    }
+    if (frame.len > 1 && frame.ptr[1] == SOF_MARKER) {
+        // empty frame
+        frame.advance();
+        return true;
+    }
+    state = cmux_state::HEADER;
+    frame.advance();
+    frame_header_offset = 1;
+    return true;
+}
+
+bool CMux::on_recovery(CMuxFrame &frame)
+{
+    uint8_t *recover_ptr;
+    if (frame.ptr[0] == SOF_MARKER) {
+        // already init state
+        state = cmux_state::INIT;
+        return true;
+    }
+    recover_ptr = static_cast<uint8_t *>(memchr(frame.ptr, SOF_MARKER, frame.len));
+    if (recover_ptr && frame.len > recover_ptr - frame.ptr) {
+        frame.len -= (recover_ptr - frame.ptr);
+        frame.ptr = recover_ptr;
+        state = cmux_state::INIT;
+        ESP_LOGI("CMUX", "Protocol recovered");
+        if (frame.len > 1 && frame.ptr[1] == SOF_MARKER) {
+            // empty frame
+            frame.advance();
+        }
+        return true;
+    }
+    // marker not found, continue with recovery
+    return false;
+}
+
+
+bool CMux::on_header(CMuxFrame &frame)
+{
+    if (frame.len > 0 && frame_header_offset == 1 && frame.ptr[0] == SOF_MARKER) {
+        // Previously trailing SOF interpreted as heading SOF, remove it and restart HEADER
+        frame.advance();
+        return true;
+    }
+    if (frame.len + frame_header_offset < 4) {
+        memcpy(frame_header + frame_header_offset, frame.ptr, frame.len);
+        frame_header_offset += frame.len;
+        return false; // need read more
+    }
+    size_t payload_offset = std::min(frame.len, 4 - frame_header_offset);
+    memcpy(frame_header + frame_header_offset, frame.ptr, payload_offset);
+    frame_header_offset += payload_offset;
+    dlci = frame_header[1] >> 2;
+    type = frame_header[2];
+    payload_len = (frame_header[3] >> 1);
+    frame.advance(payload_offset);
+    state = cmux_state::PAYLOAD;
+    return true;
+}
+
+bool CMux::on_payload(CMuxFrame &frame)
+{
+    ESP_LOGD("CMUX", "Payload frame: dlci:%02x type:%02x payload:%d available:%d", dlci, type, payload_len, frame.len);
+    if (frame.len < payload_len) { // payload
+        state = cmux_state::PAYLOAD;
+        data_available(frame.ptr, frame.len); // partial read
+        payload_len -= frame.len;
+        return false;
+    } else { // complete
+        if (payload_len > 0) {
+            data_available(&frame.ptr[0], payload_len); // rest read
+        }
+        frame.advance((payload_len));
+        state = cmux_state::FOOTER;
+        payload_len = 0;
+    }
+    return true;
+}
+
+bool CMux::on_footer(CMuxFrame &frame)
+{
+    size_t footer_offset = 0;
+    if (frame.len + frame_header_offset < 6) {
+        memcpy(frame_header + frame_header_offset, frame.ptr, frame.len);
+        frame_header_offset += frame.len;
+        return false; // need read more
+    } else {
+        footer_offset = std::min(frame.len, 6 - frame_header_offset);
+        memcpy(frame_header + frame_header_offset, frame.ptr, footer_offset);
+        if (frame_header[5] != SOF_MARKER) {
+            ESP_LOGW("CMUX", "Protocol mismatch: Missed trailing SOF, recovering...");
+            payload_start = nullptr;
+            total_payload_size = 0;
+            state = cmux_state::RECOVER;
+            return true;
+        }
+        frame.advance(footer_offset);
+        state = cmux_state::INIT;
+        frame_header_offset = 0;
+        data_available(nullptr, 0);
+        payload_start = nullptr;
+        total_payload_size = 0;
+    }
+    return true;
 }
 
 bool CMux::on_cmux(uint8_t *data, size_t actual_len)
@@ -138,113 +259,33 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
         actual_len = term->read(data, buffer_size);
 #endif
     }
-    ESP_LOG_BUFFER_HEXDUMP("CMUX Received", data, actual_len, ESP_LOG_DEBUG);
-    uint8_t *frame = data;
-    uint8_t *recover_ptr;
-    auto available_len = actual_len;
-    size_t payload_offset = 0;
-    size_t footer_offset = 0;
-    while (available_len > 0) {
+    ESP_LOG_BUFFER_HEXDUMP("CMUX Received", data, actual_len, ESP_LOG_VERBOSE);
+    CMuxFrame frame = { .ptr = data, .len = actual_len };
+    while (frame.len > 0) {
         switch (state) {
         case cmux_state::RECOVER:
-            if (frame[0] == SOF_MARKER) {
-                // already init state
-                state = cmux_state::INIT;
-                break;
+            if (!on_recovery(frame)) {
+                return false;
             }
-            recover_ptr = static_cast<uint8_t *>(memchr(frame, SOF_MARKER, available_len));
-            if (recover_ptr && available_len > recover_ptr - frame) {
-                available_len -= (recover_ptr - frame);
-                frame = recover_ptr;
-                state = cmux_state::INIT;
-                ESP_LOGI("CMUX", "Protocol recovered");
-                if (available_len > 1 && frame[1] == SOF_MARKER) {
-                    // empty frame
-                    available_len -= 1;
-                    frame += 1;
-                }
-                break;
-            }
-            // marker not found, continue with recovery
-            return false;
+            break;
         case cmux_state::INIT:
-            if (frame[0] != SOF_MARKER) {
-                ESP_LOGW("CMUX", "Protocol mismatch: Missed leading SOF, recovering...");
-                state = cmux_state::RECOVER;
-                break;
+            if (!on_init(frame)) {
+                return false;
             }
-            if (available_len > 1 && frame[1] == SOF_MARKER) {
-                // empty frame
-                available_len -= 1;
-                frame += 1;
-                break;
-            }
-            state = cmux_state::HEADER;
-            available_len--;
-            frame_header_offset = 1;
-            frame++;
             break;
         case cmux_state::HEADER:
-            if (available_len > 0 && frame_header_offset == 1 && frame[0] == SOF_MARKER) {
-                // Previously trailing SOF interpreted as heading SOF, remove it and restart HEADER
-                available_len--;
-                frame++;
-                break;
+            if (!on_header(frame)) {
+                return false;
             }
-            if (available_len + frame_header_offset < 4) {
-                memcpy(frame_header + frame_header_offset, frame, available_len);
-                frame_header_offset += available_len;
-                return false; // need read more
-            }
-            payload_offset = std::min(available_len, 4 - frame_header_offset);
-            memcpy(frame_header + frame_header_offset, frame, payload_offset);
-            frame_header_offset += payload_offset;
-            dlci = frame_header[1] >> 2;
-            type = frame_header[2];
-            payload_len = (frame_header[3] >> 1);
-            frame += payload_offset;
-            available_len -= payload_offset;
-            state = cmux_state::PAYLOAD;
             break;
         case cmux_state::PAYLOAD:
-            ESP_LOGD("CMUX", "Payload frame: dlci:%02x type:%02x payload:%d available:%d", dlci, type, payload_len, available_len);
-            if (available_len < payload_len) { // payload
-                state = cmux_state::PAYLOAD;
-                data_available(frame, available_len); // partial read
-                payload_len -= available_len;
+            if (!on_payload(frame)) {
                 return false;
-            } else { // complete
-                if (payload_len > 0) {
-                    data_available(&frame[0], payload_len); // rest read
-                }
-                available_len -= payload_len;
-                frame += payload_len;
-                state = cmux_state::FOOTER;
-                payload_len = 0;
             }
             break;
         case cmux_state::FOOTER:
-            if (available_len + frame_header_offset < 6) {
-                memcpy(frame_header + frame_header_offset, frame, available_len);
-                frame_header_offset += available_len;
-                return false; // need read more
-            } else {
-                footer_offset = std::min(available_len, 6 - frame_header_offset);
-                memcpy(frame_header + frame_header_offset, frame, footer_offset);
-                if (frame_header[5] != SOF_MARKER) {
-                    ESP_LOGW("CMUX", "Protocol mismatch: Missed trailing SOF, recovering...");
-                    payload_start = nullptr;
-                    total_payload_size = 0;
-                    state = cmux_state::RECOVER;
-                    break;
-                }
-                frame += footer_offset;
-                available_len -= footer_offset;
-                state = cmux_state::INIT;
-                frame_header_offset = 0;
-                data_available(nullptr, 0);
-                payload_start = nullptr;
-                total_payload_size = 0;
+            if (!on_footer(frame)) {
+                return false;
             }
             break;
         }
@@ -313,7 +354,7 @@ int CMux::write(int virtual_term, uint8_t *data, size_t len)
 
 void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
 {
-    if (inst < max_terms) {
+    if (inst < MAX_TERMINALS_NUM) {
         read_cb[inst] = std::move(f);
     }
 }

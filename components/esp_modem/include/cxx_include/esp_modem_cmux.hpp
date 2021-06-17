@@ -55,33 +55,74 @@ class CMuxInstance;
 class CMux {
 public:
     explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
-        term(std::move(t)), buffer_size(buff_size), buffer(std::move(b)), payload_start(nullptr), total_payload_size(0) {}
+        term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer_size(buff_size), buffer(std::move(b))  {}
     ~CMux() = default;
+
+    /**
+     * @brief Initializes CMux protocol
+     * @return true on success
+     */
     [[nodiscard]] bool init();
+
+    /**
+     * @brief Sets read callback for the appropriate terminal
+     * @param inst Index of the terminal
+     * @param f function pointer
+     */
     void set_read_cb(int inst, std::function<bool(uint8_t *data, size_t len)> f);
 
+    /**
+     * @brief Writes to the appropriate terminal
+     * @param i Index of the terminal
+     * @param data Data to write
+     * @param len Data length to write
+     * @return The actual written length
+     */
     int write(int i, uint8_t *data, size_t len);
+
 private:
-    std::function<bool(uint8_t *data, size_t len)> read_cb[max_terms];
-    void data_available(uint8_t *data, size_t len);
-    void send_sabm(size_t i);
-    std::unique_ptr<Terminal> term;
-    cmux_state state;
+    static uint8_t fcs_crc(const uint8_t frame[6]);     /*!< Utility to calculate FCS CRC */
+    void data_available(uint8_t *data, size_t len);     /*!< Called when valid data available */
+    void send_sabm(size_t i);                           /*!< Sending initial SABM */
+    bool on_cmux(uint8_t *data, size_t len);            /*!< Called from terminal layer when raw CMUX protocol data available */
+
+    struct CMuxFrame;                                   /*!< Forward declare the Frame struct, used in protocol decoders */
+    /**
+     * These methods serve different states of the CMUX protocols
+     * @param frame Currently available cmux frame (basically data, size, methods)
+     * @return - true if the state processed successfully
+     *         - false if more data needed to process the current state
+     */
+    bool on_recovery(CMuxFrame &frame);
+    bool on_init(CMuxFrame &frame);
+    bool on_header(CMuxFrame &frame);
+    bool on_payload(CMuxFrame &frame);
+    bool on_footer(CMuxFrame &frame);
+
+    std::function<bool(uint8_t *data, size_t len)> read_cb[MAX_TERMINALS_NUM];  /*!< Function pointers to read callbacks */
+    std::unique_ptr<Terminal> term;                   /*!< The original terminal */
+    cmux_state state;                                 /*!< CMux protocol state */
+
+    /**
+     * CMux control fields and offsets
+     */
     uint8_t dlci;
     uint8_t type;
     size_t payload_len;
     uint8_t frame_header[6];
     size_t frame_header_offset;
-    size_t buffer_size;
-    std::unique_ptr<uint8_t[]> buffer;
-    bool on_cmux(uint8_t *data, size_t len);
-    static uint8_t fcs_crc(const uint8_t frame[6]);
-    Lock lock;
-    int instance;
-    int sabm_ack;
     uint8_t *payload_start;
     size_t total_payload_size;
+    int instance;
+    int sabm_ack;
 
+    /**
+     * Processing buffer size and pointer
+     */
+    size_t buffer_size;
+    std::unique_ptr<uint8_t[]> buffer;
+
+    Lock lock;
 };
 
 /**
