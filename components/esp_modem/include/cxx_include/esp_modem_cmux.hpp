@@ -18,7 +18,7 @@
 
 namespace esp_modem {
 
-constexpr size_t max_terms = 2;
+constexpr size_t MAX_TERMINALS_NUM = 2;
 /**
  * @defgroup ESP_MODEM_CMUX ESP_MODEM CMUX class
  * @brief Definition of CMUX terminal
