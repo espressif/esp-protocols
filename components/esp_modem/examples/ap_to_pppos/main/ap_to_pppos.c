@@ -32,36 +32,32 @@ static const int DISCONNECT_BIT = BIT1;
 static void on_ip_event(void *arg, esp_event_base_t event_base,
                         int32_t event_id, void *event_data)
 {
-    if (event_base == IP_EVENT) {
-        ESP_LOGD(TAG, "IP event! %d", event_id);
-        if (event_id == IP_EVENT_PPP_GOT_IP) {
-            esp_netif_dns_info_t dns_info;
+    ESP_LOGD(TAG, "IP event! %d", event_id);
+    if (event_id == IP_EVENT_PPP_GOT_IP) {
+        esp_netif_dns_info_t dns_info;
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        esp_netif_t *netif = event->esp_netif;
 
+        ESP_LOGI(TAG, "Modem Connect to PPP Server");
+        ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
+        ESP_LOGI(TAG, "IP          : " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "Netmask     : " IPSTR, IP2STR(&event->ip_info.netmask));
+        ESP_LOGI(TAG, "Gateway     : " IPSTR, IP2STR(&event->ip_info.gw));
+        esp_netif_get_dns_info(netif, 0, &dns_info);
+        ESP_LOGI(TAG, "Name Server1: " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
+        esp_netif_get_dns_info(netif, 1, &dns_info);
+        ESP_LOGI(TAG, "Name Server2: " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
+        ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
+        xEventGroupSetBits(event_group, CONNECT_BIT);
 
-            ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-            esp_netif_t *netif = event->esp_netif;
-
-            ESP_LOGI(TAG, "Modem Connect to PPP Server");
-            ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
-            ESP_LOGI(TAG, "IP          : " IPSTR, IP2STR(&event->ip_info.ip));
-            ESP_LOGI(TAG, "Netmask     : " IPSTR, IP2STR(&event->ip_info.netmask));
-            ESP_LOGI(TAG, "Gateway     : " IPSTR, IP2STR(&event->ip_info.gw));
-            esp_netif_get_dns_info(netif, 0, &dns_info);
-            ESP_LOGI(TAG, "Name Server1: " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
-            esp_netif_get_dns_info(netif, 1, &dns_info);
-            ESP_LOGI(TAG, "Name Server2: " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
-            ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
-            xEventGroupSetBits(event_group, CONNECT_BIT);
-
-            ESP_LOGI(TAG, "GOT ip event!!!");
-        } else if (event_id == IP_EVENT_PPP_LOST_IP) {
-            ESP_LOGI(TAG, "Modem Disconnect from PPP Server");
-            xEventGroupSetBits(event_group, DISCONNECT_BIT);
-        } else if (event_id == IP_EVENT_GOT_IP6) {
-            ESP_LOGI(TAG, "GOT IPv6 event!");
-            ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
-            ESP_LOGI(TAG, "Got IPv6 address " IPV6STR, IPV62STR(event->ip6_info.ip));
-        }
+        ESP_LOGI(TAG, "GOT ip event!!!");
+    } else if (event_id == IP_EVENT_PPP_LOST_IP) {
+        ESP_LOGI(TAG, "Modem Disconnect from PPP Server");
+        xEventGroupSetBits(event_group, DISCONNECT_BIT);
+    } else if (event_id == IP_EVENT_GOT_IP6) {
+        ESP_LOGI(TAG, "GOT IPv6 event!");
+        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        ESP_LOGI(TAG, "Got IPv6 address " IPV6STR, IPV62STR(event->ip6_info.ip));
     }
 }
 
