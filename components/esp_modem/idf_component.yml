@@ -1,4 +1,4 @@
-version: "0.1.7"
+version: "0.1.8"
 description: esp modem
 dependencies:
   # Required IDF version
