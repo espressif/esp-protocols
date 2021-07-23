@@ -58,8 +58,7 @@ IP address changes.
 Common use cases of the esp-modem are also listed as the examples:
 * `examples/pppos_client` -- simple client which reads some module properties and switches to the data mode to connect to a public mqtt broker.
 * `examples/modem_console` -- is an example to exercise all possible module commands in a console application.
-* `examples/ap_to_pppos` -- this example focuses on the network connectivity of the esp-modem and provides a WiFi AP
-  that forwards packets (and uses NAT) to and from the PPPoS connection.
+* `examples/ap_to_pppos` -- this example focuses on the network connectivity of the esp-modem and provides a WiFi AP that forwards packets (and uses NAT) to and from the PPPoS connection.
 
 ## Extensibility
 
