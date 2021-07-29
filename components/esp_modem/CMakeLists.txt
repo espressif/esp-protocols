@@ -33,7 +33,16 @@ idf_component_register(SRCS "${srcs}"
                     PRIV_INCLUDE_DIRS private_include
                     REQUIRES ${dependencies})
 
-target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
+
+# If CMake doesn't know C++17 features, set it manually via comile options
+# esp-modem component requires C++17 internally, but older CMake (< 3.8, but still supported in IDF)
+# doesn't support target_compile_features() for cxx_std_17.
+get_property(cxx_known_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
+if ("cxx_std_17" IN_LIST cxx_known_features)
+    target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
+else()
+    target_compile_options(${COMPONENT_LIB} PRIVATE "-std=gnu++17")
+endif()
 
 if(${target} STREQUAL "linux")
     # This is needed for ESP_LOGx() macros, as integer formats differ on ESP32(..) and x64
