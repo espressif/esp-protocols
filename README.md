@@ -1,1 +1,1 @@
-# Collection of components for ESP-IDF
+# Collection of protocol components for ESP-IDF
