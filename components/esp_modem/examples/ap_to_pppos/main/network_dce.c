@@ -25,6 +25,7 @@ esp_err_t modem_init_network(esp_netif_t *netif)
         return ESP_FAIL;
     }
 
+#ifdef CONFIG_EXAMPLE_NEED_SIM_PIN
     // configure the PIN
     bool pin_ok = false;
     if (esp_modem_read_pin(dce, &pin_ok) == ESP_OK && pin_ok == false) {
@@ -34,6 +35,7 @@ esp_err_t modem_init_network(esp_netif_t *netif)
             abort();
         }
     }
+#endif // CONFIG_EXAMPLE_NEED_SIM_PIN
     return ESP_OK;
 }
 
