@@ -1,7 +1,6 @@
-name: Builld with IDF
+name: Build
 
-on:
-  - push
+on: [push, pull_request]
 
 jobs:
   build_idf_master:
@@ -34,118 +33,38 @@ jobs:
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/pppos_client
           idf.py build
 
-  build_idf_v4_4:
-    name: build-with-IDF-4.4
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        idf_ver: ["v4.1", "v4.2", "v4.3", "v4.4"]
+        examples: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
+        idf_target: ["esp32"]        
+        exclude:
+          - idf_ver: "v4.1"
+            examples: modem_console
+          - idf_ver: "v4.1"
+            examples: ap_to_pppos
+          - idf_ver: "v4.1"
+            examples: simple_cmux_client
+          - idf_ver: "v4.2"
+            examples: simple_cmux_client
 
+    runs-on: ubuntu-20.04
+    container: espressif/idf:release-${{ matrix.idf_ver }}
     steps:
+      - name: Checkout IDF
+        uses: actions/checkout@v1
+        with:
+          submodules: recursive
       - name: Checkout esp-protocols
         uses: actions/checkout@master
         with:
           path: esp-protocols
-      - name: Checkout IDF
-        uses: actions/checkout@master
-        with:
-          repository:  espressif/esp-idf
-          path: esp-idf
-          ref: release/v4.4
-
-      - name: Build-examples-with-IDF
+      - name: Build for ESP32
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
         run: |
-          cd $GITHUB_WORKSPACE/esp-idf
-          git submodule update --init --recursive
-          ./install.sh
-          source export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/simple_cmux_client
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/ap_to_pppos
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/modem_console
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/pppos_client
-          idf.py build
-
-  build_idf_v4_3:
-    name: build-with-IDF-4.3
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@master
-        with:
-          path: esp-protocols
-      - name: Checkout IDF
-        uses: actions/checkout@master
-        with:
-          repository:  espressif/esp-idf
-          path: esp-idf
-          ref: release/v4.3
-
-      - name: Build-examples-with-IDF
-        run: |
-          cd $GITHUB_WORKSPACE/esp-idf
-          git submodule update --init --recursive
-          ./install.sh
-          source export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/simple_cmux_client
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/ap_to_pppos
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/modem_console
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/pppos_client
-          idf.py build
-
-  build_idf_v4_2:
-    name: build-with-IDF-4.2
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@master
-        with:
-          path: esp-protocols
-      - name: Checkout IDF
-        uses: actions/checkout@master
-        with:
-          repository:  espressif/esp-idf
-          path: esp-idf
-          ref: release/v4.2
-
-      - name: Build-examples-with-IDF
-        run: |
-          cd $GITHUB_WORKSPACE/esp-idf
-          git submodule update --init --recursive
-          ./install.sh
-          source export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/ap_to_pppos
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/modem_console
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/pppos_client
-          idf.py build
-
-  build_idf_v4_1:
-    name: build-with-IDF-4.1
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@master
-        with:
-          path: esp-protocols
-      - name: Checkout IDF
-        uses: actions/checkout@master
-        with:
-          repository:  espressif/esp-idf
-          path: esp-idf
-          ref: release/v4.1
-
-      - name: Build-examples-with-IDF
-        run: |
-          cd $GITHUB_WORKSPACE/esp-idf
-          git submodule update --init --recursive
-          ./install.sh
-          source export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/pppos_client
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/${{ matrix.examples }}
           idf.py build
