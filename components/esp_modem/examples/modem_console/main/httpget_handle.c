@@ -83,9 +83,9 @@ static int do_http_client(int argc, char **argv)
 
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %d",
-                 esp_http_client_get_status_code(client),
-                 esp_http_client_get_content_length(client));
+        uint64_t content_length = esp_http_client_get_content_length(client);
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %lld",
+                 esp_http_client_get_status_code(client), content_length);
         return 0;
     }
     ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
