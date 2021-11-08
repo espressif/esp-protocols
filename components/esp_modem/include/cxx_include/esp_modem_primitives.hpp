@@ -43,8 +43,8 @@ struct Lock {
 private:
     MutexT m{};
 };
-using TaskT = void*;
-using SignalT = void*;
+using TaskT = TaskHandle_t;
+using SignalT = EventGroupHandle_t;
 #else
 using Lock = std::mutex;
 struct SignalGroupInternal;
