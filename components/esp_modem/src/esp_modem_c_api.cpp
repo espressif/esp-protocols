@@ -23,6 +23,10 @@
 #include "exception_stub.hpp"
 #include "cstring"
 
+#ifndef ESP_MODEM_C_API_STR_MAX
+#define ESP_MODEM_C_API_STR_MAX 64
+#endif
+
 //
 // C API definitions
 using namespace esp_modem;
@@ -173,7 +177,85 @@ extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce_wrap, char *p_imsi)
     std::string imsi;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_imsi(imsi));
     if (ret == ESP_OK && !imsi.empty()) {
-        strcpy(p_imsi, imsi.c_str());
+        strlcpy(p_imsi, imsi.c_str(), ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
+}
+
+extern "C" esp_err_t esp_modem_set_flow_control(esp_modem_dce_t *dce_wrap, int dce_flow, int dte_flow)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_flow_control(dce_flow, dte_flow));
+}
+
+extern "C" esp_err_t esp_modem_store_profile(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->store_profile());
+}
+
+extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string imei;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_imei(imei));
+    if (ret == ESP_OK && !imei.empty()) {
+        strlcpy(p_imei, imei.c_str(), ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string name;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name));
+    if (ret == ESP_OK && !name.empty()) {
+        strlcpy(p_name, name.c_str(), ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce_wrap, char *p_name)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string name;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_module_name(name));
+    if (ret == ESP_OK && !name.empty()) {
+        strlcpy(p_name, name.c_str(), ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_get_battery_status(esp_modem_dce_t *dce_wrap, int *p_volt, int *p_bcs, int *p_bcl)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_bcs == nullptr || p_bcl == nullptr || p_volt == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int bcs, bcl, volt;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_battery_status(volt, bcs, bcl));
+    if (ret == ESP_OK) {
+        *p_volt = volt;
+        *p_bcs = bcs;
+        *p_bcl = bcl;
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_power_down(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->power_down());
 }

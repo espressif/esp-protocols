@@ -41,6 +41,9 @@ Modem commands
 
 These functions are the actual commands to communicate with the modem using AT command interface.
 
+Note that the functions which implement AT commands returning textual values use plain ``char *``
+pointer as the return value. The API expects the output data to point to user allocated space of at least
+``ESP_MODEM_C_API_STR_MAX`` (64 by default) bytes, it also truncates the output data to this size.
 
 .. doxygenfile:: esp_modem_api_commands.h
 

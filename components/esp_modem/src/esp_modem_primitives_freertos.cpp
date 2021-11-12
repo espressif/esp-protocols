@@ -106,4 +106,9 @@ void Task::Relinquish()
     vTaskDelay(1);
 }
 
+void Task::Delay(uint32_t ms)
+{
+    vTaskDelay(pdMS_TO_TICKS(ms));
+}
+
 } // namespace esp_modem
