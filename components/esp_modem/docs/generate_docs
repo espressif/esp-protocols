@@ -17,7 +17,9 @@ cat ../include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../in
 doxygen
 
 # Generate the docs
-python -u -m sphinx.cmd.build -b html  . html
+
+mkdir -p ../../../docs/esp_modem
+python -u -m sphinx.cmd.build -b html  . ../../../docs/esp_modem
 
 # Cleanup the doxygen xml's and temporary headers
 rm -rf xml esp_modem_api_commands.h esp_modem_dce.hpp cxx_api_links.rst
