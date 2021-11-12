@@ -1,4 +1,4 @@
-name: Docs build
+name: Docs and Publish
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   docs_build:
-    name: Docs-Build
+    name: Docs-Build-And-Upload
     runs-on: ubuntu-latest
 
     steps:
@@ -24,9 +24,19 @@ jobs:
           python -m pip install breathe recommonmark
           cd $GITHUB_WORKSPACE/components/esp_modem/docs
           ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/esp_modem
+          cp -r html/. $GITHUB_WORKSPACE/docs/esp_modem
           cd $GITHUB_WORKSPACE/docs
           touch .nojekyll
           echo '<a href="esp_modem/index.html">esp-modem</a>' > index.html
+
+      - name: Upload components to component service
+        uses: espressif/github-actions/upload_components@master
+        with:
+          directories: "components/esp_modem"
+          name: "esp_modem"
+          namespace: "espressif"
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
 
       - name: Deploy generated docs
         uses: JamesIves/github-pages-deploy-action@4.1.5
