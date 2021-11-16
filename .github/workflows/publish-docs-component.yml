@@ -1,0 +1,45 @@
+name: Docs and Publish
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  docs_build:
+    name: Docs-Build-And-Upload
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Generate docs
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install doxygen clang python3-pip
+          python -m pip install breathe recommonmark
+          cd $GITHUB_WORKSPACE/components/esp_modem/docs
+          ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/esp_modem
+          cp -r html/. $GITHUB_WORKSPACE/docs/esp_modem
+          cd $GITHUB_WORKSPACE/docs
+          touch .nojekyll
+          echo '<a href="esp_modem/index.html">esp-modem</a>' > index.html
+
+      - name: Upload components to component service
+        uses: espressif/github-actions/upload_components@master
+        with:
+          directories: "components/esp_modem"
+          name: "esp_modem"
+          namespace: "espressif"
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
+
+      - name: Deploy generated docs
+        uses: JamesIves/github-pages-deploy-action@4.1.5
+        with:
+          branch: gh-pages
+          folder: docs

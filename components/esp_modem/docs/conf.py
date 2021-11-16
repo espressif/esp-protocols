@@ -16,7 +16,8 @@ copyright = u'2016 - 2021, Espressif Systems (Shanghai) Co., Ltd'
 # for a list of supported languages.
 language = 'en'
 
-extensions = ['breathe']
+extensions = ['breathe', 'recommonmark']
+
 
 breathe_projects = {'esp_modem': 'xml'}
 
