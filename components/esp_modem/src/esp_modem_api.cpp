@@ -30,13 +30,6 @@ struct PdpContext;
 static const char *TAG = "modem_api";
 #endif
 
-std::shared_ptr<DTE> create_uart_dte(const dte_config *config)
-{
-    TRY_CATCH_RET_NULL(
-        auto term = create_uart_terminal(config);
-        return std::make_shared<DTE>(config, std::move(term));
-    )
-}
 
 std::shared_ptr<DTE> create_vfs_dte(const dte_config *config)
 {
