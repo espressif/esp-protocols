@@ -27,6 +27,10 @@
 #define ESP_MODEM_C_API_STR_MAX 64
 #endif
 
+#ifndef HAVE_STRLCPY
+size_t strlcpy(char *dest, const char *src, size_t len);
+#endif
+
 //
 // C API definitions
 using namespace esp_modem;
