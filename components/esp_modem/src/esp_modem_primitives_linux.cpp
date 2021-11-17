@@ -89,4 +89,9 @@ void Task::Relinquish()
     usleep(0);
 }
 
+void Task::Delay(uint32_t ms)
+{
+    usleep(ms*1000);
+}
+
 } // namespace esp_modem
