@@ -79,6 +79,7 @@ public:
             }
             return true;
         } else if (mode == modem_mode::COMMAND_MODE) {
+            Task::Delay(1000); // Mandatory 1s pause
             return set_command_mode() == command_result::OK;
         } else if (mode == modem_mode::CMUX_MODE) {
             return set_cmux() == command_result::OK;

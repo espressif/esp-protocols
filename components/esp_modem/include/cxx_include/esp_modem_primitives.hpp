@@ -76,6 +76,7 @@ public:
 
     static void Delete();
     static void Relinquish();
+    static void Delay(uint32_t delay);
 private:
     TaskT task_handle;
 };
