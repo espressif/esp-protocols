@@ -90,43 +90,6 @@ public:
 extern "C" esp_netif_t *esp_netif_new(const esp_netif_config_t *config)
 {
     return new NetifStorage(config);
-//    struct ifreq ifr = { };
-//    esp_netif_t * netif = netif_storage;
-//    if (netif == NULL) {
-//        return NULL;
-//    }
-//    if ((netif->fd = open(config->dev_name, O_RDWR)) == -1) {
-//        ESP_LOGE(TAG, "Cannot open %s", config->dev_name);
-//        goto cleanup;
-//    }
-//    ifr.ifr_flags = IFF_TUN;
-//    strncpy(ifr.ifr_name, config->if_name, IFNAMSIZ);
-//
-//    if (ioctl(netif->fd, TUNSETIFF, (void *)&ifr) == -1) {
-//        ESP_LOGE(TAG, "Cannot set ioctl TUNSETIFF %m");
-//        goto cleanup;
-//    }
-//    ioctl(netif->fd, TUNSETNOCSUM, 1);
-//
-//    netif->in_buf = new uint8_t[BUF_SIZE];
-//    netif->out_buf = new uint8_t[BUF_SIZE];
-//    if (netif->in_buf == nullptr || netif->out_buf == nullptr) {
-//        goto cleanup;
-//    }
-//
-//    if (!ppp_netif_init(netif)) {
-//        ESP_LOGE(TAG, "Cannot initialize pppos lwip netif %m");
-//        goto cleanup;
-//    }
-//
-//    return netif;
-//
-//cleanup:
-//    close(netif->fd);
-//    delete[] netif->in_buf;
-//    delete[] netif->out_buf;
-//    delete netif_storage;
-//    return nullptr;
 }
 
 void esp_netif_destroy(esp_netif_t *netif)

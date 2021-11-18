@@ -7,6 +7,7 @@ if(${target} STREQUAL "linux")
     set(dependencies esp_system_protocols_linux)
 else()
     set(platform_srcs src/esp_modem_primitives_freertos.cpp
+                      src/esp_modem_api_target.cpp
                       src/esp_modem_uart.cpp
                       src/esp_modem_term_uart.cpp
                       src/esp_modem_netif.cpp)
