@@ -22,9 +22,9 @@
 #include <thread>
 
 #else
+#include "freertos/event_groups.h"
 // forward declarations of FreeRTOS primitives
 struct QueueDefinition;
-typedef void *EventGroupHandle_t;
 #endif
 
 
