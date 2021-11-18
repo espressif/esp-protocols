@@ -210,6 +210,9 @@
 <section id="modem-commands">
 <span id="id2"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this headline">¶</a></h2>
 <p>These functions are the actual commands to communicate with the modem using AT command interface.</p>
+<p>Note that the functions which implement AT commands returning textual values use plain <code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span></code>
+pointer as the return value. The API expects the output data to point to user allocated space of at least
+<code class="docutils literal notranslate"><span class="pre">ESP_MODEM_C_API_STR_MAX</span></code> (64 by default) bytes, it also truncates the output data to this size.</p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
