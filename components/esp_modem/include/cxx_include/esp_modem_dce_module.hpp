@@ -119,7 +119,6 @@ protected:
 class SIM7600: public GenericModule {
     using GenericModule::GenericModule;
 public:
-    command_result get_module_name(std::string &name) override;
     command_result get_battery_status(int &voltage, int &bcs, int &bcl) override;
     command_result power_down() override;
 };
@@ -130,7 +129,6 @@ public:
 class SIM800: public GenericModule {
     using GenericModule::GenericModule;
 public:
-    command_result get_module_name(std::string &name) override;
     command_result power_down() override;
     command_result set_data_mode() override;
 };
@@ -140,8 +138,6 @@ public:
  */
 class BG96: public GenericModule {
     using GenericModule::GenericModule;
-public:
-    command_result get_module_name(std::string &name) override;
 };
 
 /**
