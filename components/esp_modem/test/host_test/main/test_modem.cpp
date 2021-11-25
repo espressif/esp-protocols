@@ -37,6 +37,10 @@ TEST_CASE("DCE AT parser", "[esp_modem]")
     CHECK(dce->set_pin("1234") == command_result::OK);
     CHECK(dce->read_pin(pin_ok) == command_result::OK);
     CHECK(pin_ok == true);
+
+    std::string model;
+    CHECK(dce->get_module_name(model) == command_result::OK);
+    CHECK(model == "0G Dummy Model");
 }
 
 
