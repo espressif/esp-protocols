@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>DCE Internal implementation &#8212; esp-modem  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -94,15 +94,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE17get_operator_nameERNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE17get_operator_nameERNSt6stringE"></span><span id="esp_modem::DCE::get_operator_name__ssR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1aa05c40e6c6559f23de1d3905e63e0197"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_operator_name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the operator name. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>name</strong> – <strong>[out]</strong> module name </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -122,15 +119,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE7set_pinERKNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE7set_pinERKNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE7set_pinERKNSt6stringE"></span><span id="esp_modem::DCE::set_pin__ssCR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1aa45248169c7ab1979fca17035db57062"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_pin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">pin</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE7set_pinERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the supplied PIN code. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>pin</strong> – <strong>[in]</strong> Pin </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -139,15 +133,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8read_pinERb">
 <span id="_CPPv3N9esp_modem3DCE8read_pinERb"></span><span id="_CPPv2N9esp_modem3DCE8read_pinERb"></span><span id="esp_modem::DCE::read_pin__bR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a9055f8d714ba23adba7be5acf58f8136"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read_pin</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">pin_ok</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8read_pinERb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Checks if the SIM needs a PIN. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>pin_ok</strong> – <strong>[out]</strong> true if the SIM card doesn’t need a PIN to unlock </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -156,15 +147,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8set_echoEKb">
 <span id="_CPPv3N9esp_modem3DCE8set_echoEKb"></span><span id="_CPPv2N9esp_modem3DCE8set_echoEKb"></span><span id="esp_modem::DCE::set_echo__bC"></span><span class="target" id="classesp__modem_1_1_d_c_e_1afe90115748d693a13cf9184d2280b0db"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_echo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">echo_on</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8set_echoEKb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets echo mode. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>echo_on</strong> – <strong>[in]</strong> true if echo mode on (repeats the commands) </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -173,15 +161,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE12sms_txt_modeEKb">
 <span id="_CPPv3N9esp_modem3DCE12sms_txt_modeEKb"></span><span id="_CPPv2N9esp_modem3DCE12sms_txt_modeEKb"></span><span id="esp_modem::DCE::sms_txt_mode__bC"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a016f25608788ab1487bb062c109dc046"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sms_txt_mode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">txt</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE12sms_txt_modeEKb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the Txt or Pdu mode for SMS (only txt is supported) </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>txt</strong> – <strong>[in]</strong> true if txt mode </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -201,18 +186,15 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8send_smsERKNSt6stringERKNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE8send_smsERKNSt6stringERKNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE8send_smsERKNSt6stringERKNSt6stringE"></span><span id="esp_modem::DCE::send_sms__ssCR.ssCR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ae33cfaae15a74414039d4c8a865dded3"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">send_sms</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">number</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8send_smsERKNSt6stringERKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sends SMS message in txt mode. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>number</strong> – <strong>[in]</strong> Phone number to send the message to </p></li>
 <li><p><strong>message</strong> – <strong>[in]</strong> Text message to be sent </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -232,15 +214,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE15set_pdp_contextER10PdpContext">
 <span id="_CPPv3N9esp_modem3DCE15set_pdp_contextER10PdpContext"></span><span id="_CPPv2N9esp_modem3DCE15set_pdp_contextER10PdpContext"></span><span id="esp_modem::DCE::set_pdp_context__PdpContextR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a9e58a4197f2b8d34be49dc1b6505f55f"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_pdp_context</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N9esp_modem10PdpContextE" title="esp_modem::PdpContext"><span class="n"><span class="pre">PdpContext</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">p1</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE15set_pdp_contextER10PdpContext" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets php context. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>p1</strong> – <strong>[in]</strong> PdP context struct to setup modem cellular connection </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -271,15 +250,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8get_imsiERNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE8get_imsiERNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE8get_imsiERNSt6stringE"></span><span id="esp_modem::DCE::get_imsi__ssR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ab03c9675819fe550b174a1f40a122b0a"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_imsi</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">imsi</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8get_imsiERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the IMSI number. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>imsi</strong> – <strong>[out]</strong> Module’s IMSI number </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -288,15 +264,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8get_imeiERNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE8get_imeiERNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE8get_imeiERNSt6stringE"></span><span id="esp_modem::DCE::get_imei__ssR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1abc0e081ce74bc4f20e4699faaa674966"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_imei</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">imei</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8get_imeiERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the IMEI number. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>imei</strong> – <strong>[out]</strong> Module’s IMEI number </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -305,15 +278,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE15get_module_nameERNSt6stringE">
 <span id="_CPPv3N9esp_modem3DCE15get_module_nameERNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE15get_module_nameERNSt6stringE"></span><span id="esp_modem::DCE::get_module_name__ssR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1af5763fd6bcdea19f4bca750d387f45c0"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_module_name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE15get_module_nameERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the module name. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>name</strong> – <strong>[out]</strong> module name </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -333,18 +303,15 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE18get_signal_qualityERiRi">
 <span id="_CPPv3N9esp_modem3DCE18get_signal_qualityERiRi"></span><span id="_CPPv2N9esp_modem3DCE18get_signal_qualityERiRi"></span><span id="esp_modem::DCE::get_signal_quality__iR.iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ad55babb50dc8394420c9ca2fc1282b4e"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_signal_quality</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">rssi</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">ber</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE18get_signal_qualityERiRi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get Signal quality. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rssi</strong> – <strong>[out]</strong> signal strength indication </p></li>
 <li><p><strong>ber</strong> – <strong>[out]</strong> channel bit error rate </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -353,18 +320,15 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE16set_flow_controlEii">
 <span id="_CPPv3N9esp_modem3DCE16set_flow_controlEii"></span><span id="_CPPv2N9esp_modem3DCE16set_flow_controlEii"></span><span id="esp_modem::DCE::set_flow_control__i.i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a23effa5d3b7f650b7a7874651d16bb42"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_flow_control</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dce_flow</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte_flow</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE16set_flow_controlEii" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets HW control flow. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dce_flow</strong> – <strong>[in]</strong> 0=none, 2=RTS hw flow control of <a class="reference internal" href="#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> </p></li>
 <li><p><strong>dte_flow</strong> – <strong>[in]</strong> 0=none, 2=CTS hw flow control of <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -384,12 +348,6 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE18get_battery_statusERiRiRi">
 <span id="_CPPv3N9esp_modem3DCE18get_battery_statusERiRiRi"></span><span id="_CPPv2N9esp_modem3DCE18get_battery_statusERiRiRi"></span><span id="esp_modem::DCE::get_battery_status__iR.iR.iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a9b1b60ffcd71483bc763ad1d2da73ce9"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_battery_status</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">voltage</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">bcs</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">bcl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE18get_battery_statusERiRiRi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get voltage levels of modem power up circuitry. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -397,6 +355,9 @@
 <li><p><strong>bcs</strong> – <strong>[out]</strong> charge status (-1-Not available, 0-Not charging, 1-Charging, 2-Charging done) </p></li>
 <li><p><strong>bcl</strong> – <strong>[out]</strong> 1-100% battery capacity, -1-Not available </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -427,15 +388,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE8set_baudEi">
 <span id="_CPPv3N9esp_modem3DCE8set_baudEi"></span><span id="_CPPv2N9esp_modem3DCE8set_baudEi"></span><span id="esp_modem::DCE::set_baud__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a579851a45d862c4400a68183efdd1c7f"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_baud</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">baud</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE8set_baudEi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Configures the baudrate. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>baud</strong> – <strong>[in]</strong> Desired baud rate of the <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -482,18 +440,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DTE5writeEP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem3DTE5writeEP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem3DTE5writeEP7uint8_t6size_t"></span><span id="esp_modem::DTE::write__uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_d_t_e_1a51c11d82d5dec6c502d2f32ffc96d928"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DTE5writeEP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Writing to the underlying terminal. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>number of bytes written </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – Data pointer to write </p></li>
 <li><p><strong>len</strong> – Data len to write </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>number of bytes written </p>
 </dd>
 </dl>
 </dd></dl>
@@ -502,18 +457,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DTE4readEPP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem3DTE4readEPP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem3DTE4readEPP7uint8_t6size_t"></span><span id="esp_modem::DTE::read__uint8_tPP.s"></span><span class="target" id="classesp__modem_1_1_d_t_e_1a9cf529ece97b282ce02b00c0f4720868"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">d</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DTE4readEPP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reading from the underlying terminal. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>number of bytes read </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>d</strong> – Returning the data pointer of the received payload </p></li>
 <li><p><strong>len</strong> – Length of the data payload </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>number of bytes read </p>
 </dd>
 </dl>
 </dd></dl>
@@ -533,15 +485,12 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DTE8set_modeE10modem_mode">
 <span id="_CPPv3N9esp_modem3DTE8set_modeE10modem_mode"></span><span id="_CPPv2N9esp_modem3DTE8set_modeE10modem_mode"></span><span id="esp_modem::DTE::set_mode__modem_mode"></span><span class="target" id="classesp__modem_1_1_d_t_e_1af832ec4696cd797148edbedd7e95fa5e"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_mode</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv410modem_mode" title="modem_mode"><span class="n"><span class="pre">modem_mode</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">m</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DTE8set_modeE10modem_mode" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> to desired mode (Command/Data/Cmux) </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>true on success </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>m</strong> – Desired operation mode </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>true on success </p>
 </dd>
 </dl>
 </dd></dl>
@@ -550,12 +499,6 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DTE7commandERKNSt6stringE11got_line_cb8uint32_t">
 <span id="_CPPv3N9esp_modem3DTE7commandERKNSt6stringE11got_line_cb8uint32_t"></span><span id="_CPPv2N9esp_modem3DTE7commandERKNSt6stringE11got_line_cb8uint32_t"></span><span id="esp_modem::DTE::command__ssCR.got_line_cb.uint32_t"></span><span class="target" id="classesp__modem_1_1_d_t_e_1af492fa2a39d90ba394f6e29a675bfd58"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">command</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">command</span></span>, <a class="reference internal" href="#_CPPv411got_line_cb" title="got_line_cb"><span class="n"><span class="pre">got_line_cb</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">got_line</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">time_ms</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4N9esp_modem3DTE7commandERKNSt6stringE11got_line_cb8uint32_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sends command and provides callback with responding line. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL, TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -563,6 +506,9 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <li><p><strong>got_line</strong> – Function to be called after line available as a response </p></li>
 <li><p><strong>time_ms</strong> – Time in ms to wait for the answer </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL, TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -620,18 +566,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem8Terminal5writeEP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem8Terminal5writeEP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem8Terminal5writeEP7uint8_t6size_t"></span><span id="esp_modem::Terminal::write__uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_terminal_1aaa6b8fe3a2336b8369740e7ca4aeae00"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4N9esp_modem8Terminal5writeEP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Writes data to the terminal. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>length of data written </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – Data pointer </p></li>
 <li><p><strong>len</strong> – Data len </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>length of data written </p>
 </dd>
 </dl>
 </dd></dl>
@@ -640,18 +583,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem8Terminal4readEP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem8Terminal4readEP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem8Terminal4readEP7uint8_t6size_t"></span><span id="esp_modem::Terminal::read__uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_terminal_1a66e832c319e7c8f523043a04d4972a31"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4N9esp_modem8Terminal4readEP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Read from the terminal. This function doesn’t block, but return all available data. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>length of data actually read </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – Data pointer to store the read payload </p></li>
 <li><p><strong>len</strong> – Maximum data len to read </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>length of data actually read </p>
 </dd>
 </dl>
 </dd></dl>
@@ -738,12 +678,6 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem4CMux5writeEiP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem4CMux5writeEiP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem4CMux5writeEiP7uint8_t6size_t"></span><span id="esp_modem::CMux::write__i.uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_c_mux_1ac3362af09a829ae5001c8667da418f9d"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">i</span></span>, <span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem4CMux5writeEiP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Writes to the appropriate terminal. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The actual written length </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -751,6 +685,9 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <li><p><strong>data</strong> – Data to write </p></li>
 <li><p><strong>len</strong> – Data length to write </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The actual written length </p>
 </dd>
 </dl>
 </dd></dl>
@@ -768,18 +705,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem12CMuxInstance5writeEP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem12CMuxInstance5writeEP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem12CMuxInstance5writeEP7uint8_t6size_t"></span><span id="esp_modem::CMuxInstance::write__uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_c_mux_instance_1a439640b744fbc33d6ae559c3b8dc2cf6"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4N9esp_modem12CMuxInstance5writeEP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Writes data to the terminal. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>length of data written </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – Data pointer </p></li>
 <li><p><strong>len</strong> – Data len </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>length of data written </p>
 </dd>
 </dl>
 </dd></dl>
@@ -788,18 +722,15 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem12CMuxInstance4readEP7uint8_t6size_t">
 <span id="_CPPv3N9esp_modem12CMuxInstance4readEP7uint8_t6size_t"></span><span id="_CPPv2N9esp_modem12CMuxInstance4readEP7uint8_t6size_t"></span><span id="esp_modem::CMuxInstance::read__uint8_tP.s"></span><span class="target" id="classesp__modem_1_1_c_mux_instance_1ae460145a1298c8afeee0583cdc765bb7"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">read</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="k"><span class="pre">override</span></span><a class="headerlink" href="#_CPPv4N9esp_modem12CMuxInstance4readEP7uint8_t6size_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Read from the terminal. This function doesn’t block, but return all available data. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>length of data actually read </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>data</strong> – Data pointer to store the read payload </p></li>
 <li><p><strong>len</strong> – Maximum data len to read </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>length of data actually read </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1067,12 +998,6 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem13CommandableIf7commandERKNSt6stringE11got_line_cb8uint32_tKc">
 <span id="_CPPv3N9esp_modem13CommandableIf7commandERKNSt6stringE11got_line_cb8uint32_tKc"></span><span id="_CPPv2N9esp_modem13CommandableIf7commandERKNSt6stringE11got_line_cb8uint32_tKc"></span><span id="esp_modem::CommandableIf::command__ssCR.got_line_cb.uint32_t.cC"></span><span class="target" id="classesp__modem_1_1_commandable_if_1a9af6c6ad4597fb234cfe11e9b6635c0b"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">command</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">command</span></span>, <a class="reference internal" href="#_CPPv411got_line_cb" title="got_line_cb"><span class="n"><span class="pre">got_line_cb</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">got_line</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">time_ms</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">separator</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4N9esp_modem13CommandableIf7commandERKNSt6stringE11got_line_cb8uint32_tKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sends custom AT command. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1080,6 +1005,9 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 <li><p><strong>got_line</strong> – callback if a line received </p></li>
 <li><p><strong>time_ms</strong> – timeout in milliseconds </p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1109,15 +1037,12 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem8ModuleIf8set_modeE10modem_mode">
 <span id="_CPPv3N9esp_modem8ModuleIf8set_modeE10modem_mode"></span><span id="_CPPv2N9esp_modem8ModuleIf8set_modeE10modem_mode"></span><span id="esp_modem::ModuleIf::set_mode__modem_mode"></span><span class="target" id="classesp__modem_1_1_module_if_1ab6bb69e6d18bb16101c20857394a8eab"></span><span class="k"><span class="pre">virtual</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_mode</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv410modem_mode" title="modem_mode"><span class="n"><span class="pre">modem_mode</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="m"><span class="pre">0</span></span><a class="headerlink" href="#_CPPv4N9esp_modem8ModuleIf8set_modeE10modem_mode" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the operation mode. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">return<span class="colon">:</span></dt>
-<dd class="field-odd"><p>true on success </p>
-</dd>
-</dl>
-</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>mode</strong> – Desired mode </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>true on success </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1205,7 +1130,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.3.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
