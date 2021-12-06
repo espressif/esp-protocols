@@ -167,7 +167,7 @@ command_result get_battery_status(CommandableIf *t, int &voltage, int &bcs, int 
     // Parsing +CBC: <bcs>,<bcl>,<voltage>
     out = out.substr(pattern.size());
     int pos, value, property = 0;
-    while ((pos = out.find(',') != std::string::npos)) {
+    while ((pos = out.find(',')) != std::string::npos) {
         if (std::from_chars(out.data(), out.data() + pos, value).ec == std::errc::invalid_argument) {
             return command_result::FAIL;
         }
