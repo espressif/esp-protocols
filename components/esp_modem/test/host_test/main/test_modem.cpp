@@ -24,7 +24,7 @@ TEST_CASE("DCE AT parser", "[esp_modem]")
     CHECK(dce->get_battery_status(milli_volt, bcl, bcs) == command_result::OK);
     CHECK(milli_volt == 123456);
     CHECK(bcl == 1);
-    CHECK(bcs == 2);
+    CHECK(bcs == 20);
 
     int rssi, ber;
     CHECK(dce->get_signal_quality(rssi, ber) == command_result::OK);
