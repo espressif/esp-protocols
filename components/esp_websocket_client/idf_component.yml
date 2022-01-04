@@ -1,0 +1,5 @@
+version: "0.0.1"
+description: esp websocket client
+dependencies:
+  idf:
+    version: ">=5.0"
