@@ -1,0 +1,6 @@
+version: "0.0.1"
+description: esp modem
+dependencies:
+  # Required IDF version
+  idf:
+    version: ">=4.1"

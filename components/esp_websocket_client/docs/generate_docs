@@ -1,0 +1,4 @@
+build-docs --project-path ../
+
+cp -rf _build/en/esp32/html .
+rm -rf _build
