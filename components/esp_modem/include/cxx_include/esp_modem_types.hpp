@@ -67,6 +67,12 @@ struct PdpContext {
  */
 class CommandableIf {
 public:
+    CommandableIf() = default;
+    CommandableIf(const CommandableIf&) = delete;
+    CommandableIf& operator=(const CommandableIf&) = delete;
+    CommandableIf(CommandableIf&&) = delete;
+    CommandableIf& operator=(CommandableIf&&) = delete;
+    virtual ~CommandableIf() = default;
     /**
      * @brief Sends custom AT command
      * @param command Command to be sent
@@ -83,6 +89,12 @@ public:
  */
 class ModuleIf {
 public:
+    ModuleIf() = default;
+    ModuleIf(const ModuleIf&) = delete;
+    ModuleIf& operator=(const ModuleIf&) = delete;
+    ModuleIf(ModuleIf&&) = delete;
+    ModuleIf& operator=(ModuleIf&&) = delete;
+    virtual ~ModuleIf() = default;
     /**
      * @brief Sets the data mode up (provides the necessary configuration to connect to the cellular network)
      * @return true on success
