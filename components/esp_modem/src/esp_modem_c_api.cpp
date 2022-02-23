@@ -104,6 +104,14 @@ extern "C" void esp_modem_destroy(esp_modem_dce_t *dce_wrap)
     }
 }
 
+extern "C" esp_err_t esp_modem_sync(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->sync());
+}
+
 extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce_mode_t mode)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
