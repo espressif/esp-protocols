@@ -51,9 +51,9 @@
 <dd><p><a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> modem factory. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
-<dl class="cpp enum">
+<dl class="cpp enum-class">
 <dt class="sig sig-object cpp" id="_CPPv49ModemType">
-<span id="_CPPv39ModemType"></span><span id="_CPPv29ModemType"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___f_a_c_t_o_r_y_1ga34f5bd407ce186b43f44b5c8cfbf2fd9"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ModemType</span></span></span><a class="headerlink" href="#_CPPv49ModemType" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv39ModemType"></span><span id="_CPPv29ModemType"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___f_a_c_t_o_r_y_1ga34f5bd407ce186b43f44b5c8cfbf2fd9"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ModemType</span></span></span><a class="headerlink" href="#_CPPv49ModemType" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Specific modem choice when creating by the <a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_factory"><span class="std std-ref">Factory</span></a>. </p>
 <p><em>Values:</em></p>
 <dl class="cpp enumerator">
@@ -86,24 +86,29 @@
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem11dce_factory13FactoryHelperE">
 <span id="_CPPv3N9esp_modem11dce_factory13FactoryHelperE"></span><span id="_CPPv2N9esp_modem11dce_factory13FactoryHelperE"></span><span id="esp_modem::dce_factory::FactoryHelper"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory_helper"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">FactoryHelper</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory13FactoryHelperE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><em>#include &lt;esp_modem_dce_factory.hpp&gt;</em><p>Helper class for creating a user define pointer in a specific way, either as a plain pointer, shared_ptr or unique_ptr. </p>
+<dd><div class="docutils container">
+<em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
+<p>Helper class for creating a user define pointer in a specific way, either as a plain pointer, shared_ptr or unique_ptr. </p>
 </dd></dl>
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN9esp_modem11dce_factory7CreatorE">
 <span id="_CPPv3I0EN9esp_modem11dce_factory7CreatorE"></span><span id="_CPPv2I0EN9esp_modem11dce_factory7CreatorE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T_Module</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1dce__factory_1_1_creator"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Creator</span></span></span><a class="headerlink" href="#_CPPv4I0EN9esp_modem11dce_factory7CreatorE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><em>#include &lt;esp_modem_dce_factory.hpp&gt;</em><p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_creator"><span class="std std-ref">Creator</span></a> class for building a DCE_T&lt;Module&gt; in a specific way, either from a Module object or by default from the <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> and netif. </p>
-<p><dl class="field-list simple">
-<dt class="field-odd">throws <span class="colon">:</span></dt>
+<dd><div class="docutils container">
+<em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
+<p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_creator"><span class="std std-ref">Creator</span></a> class for building a DCE_T&lt;Module&gt; in a specific way, either from a Module object or by default from the <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> and netif. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Throws <span class="colon">:</span></dt>
 <dd class="field-odd"><p></p></dd>
 </dl>
-</p>
 </dd></dl>
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem11dce_factory7FactoryE">
 <span id="_CPPv3N9esp_modem11dce_factory7FactoryE"></span><span id="_CPPv2N9esp_modem11dce_factory7FactoryE"></span><span id="esp_modem::dce_factory::Factory"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">dce_factory</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Factory</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory7FactoryE" title="Permalink to this definition">¶</a><br /></dt>
-<dd><em>#include &lt;esp_modem_dce_factory.hpp&gt;</em><p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_factory"><span class="std std-ref">Factory</span></a> class for creating virtual <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> objects based on the configuration of the supplied module. This could also be used to create a custom module or a DCE_T&lt;module&gt;, provided user app derives from this factory. </p>
+<dd><div class="docutils container">
+<em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
+<p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_factory"><span class="std std-ref">Factory</span></a> class for creating virtual <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> objects based on the configuration of the supplied module. This could also be used to create a custom module or a DCE_T&lt;module&gt;, provided user app derives from this factory. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
@@ -270,7 +275,7 @@ a custom DTE object and supply it into <a class="reference internal" href="#dce-
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.3.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.4.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
