@@ -20,6 +20,8 @@ static const char *TAG = "modem_console_httpget";
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
     switch(evt->event_id) {
+        default:
+            break;
         case HTTP_EVENT_ERROR:
             ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
             break;
