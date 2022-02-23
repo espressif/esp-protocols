@@ -7,12 +7,27 @@
 
 using namespace esp_modem;
 
+TEST_CASE("Test polymorphic delete for custom device/dte", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>(true);
+    auto dte = std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+
+    // Create custom device and DTE manually to check for a potential undefined behaviour
+    auto device = new GenericModule(std::move(dte), &dce_config);
+    device->power_down();
+    delete device;
+    auto custom_dte = new DTE(std::make_unique<LoopbackTerm>(false));
+    custom_dte->command("AT", nullptr, 0);
+    delete custom_dte;
+}
+
 TEST_CASE("DCE AT parser", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>(true);
     auto dte =  std::make_shared<DTE>(std::move(term));
     CHECK(term == nullptr);
-
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
     esp_netif_t netif{};
     auto dce = create_BG96_dce(&dce_config, dte, &netif);
