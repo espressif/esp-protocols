@@ -1,6 +1,5 @@
 # Websocket Sample application
 
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
 This example will shows how to set up and communicate over a websocket.
 
 ## How to Use Example
@@ -12,7 +11,7 @@ This example can be executed on any ESP32 board, the only required interface is 
 ### Configure the project
 
 * Open the project configuration menu (`idf.py menuconfig`)
-* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu. See "Establishing Wi-Fi or Ethernet Connection" section in [examples/protocols/README.md](../../README.md) for more details.
+* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu.
 * Configure the websocket endpoint URI under "Example Configuration", if "WEBSOCKET_URI_FROM_STDIN" is selected then the example application will connect to the URI it reads from stdin (used for testing)
 
 ### Build and Flash
