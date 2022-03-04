@@ -3,4 +3,8 @@ idf_component_register(SRCS "pppd_test.cpp"
         INCLUDE_DIRS "$ENV{IDF_PATH}/tools/catch"
         REQUIRES esp_modem)
 
-target_compile_features(${COMPONENT_LIB} PRIVATE cxx_std_17)
+set_target_properties(${COMPONENT_LIB} PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS ON
+)
