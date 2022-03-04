@@ -7,7 +7,7 @@ extensions += ['sphinx_copybutton',
                ]
 
 # link roles config
-github_repo = 'espressif/esp-idf'
+github_repo = 'espressif/esp-protocols'
 
 # context used by sphinx_idf_theme
 html_context['github_user'] = 'espressif'
