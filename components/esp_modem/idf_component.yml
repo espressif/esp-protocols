@@ -1,5 +1,6 @@
-version: "0.1.14"
+version: "0.1.15"
 description: esp modem
+url: https://github.com/espressif/esp-protocols/tree/master/components/esp_modem
 dependencies:
   # Required IDF version
   idf:
