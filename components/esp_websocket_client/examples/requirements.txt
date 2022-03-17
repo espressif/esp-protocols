@@ -1,0 +1,4 @@
+pytest-embedded-serial-esp 
+pytest-embedded-idf 
+junit_xml 
+SimpleWebSocketServer
