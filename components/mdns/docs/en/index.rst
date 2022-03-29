@@ -179,7 +179,7 @@ Example of using the methods above::
 Application Example
 -------------------
 
-mDNS server/scanner example: :example:`protocols/mdns`.
+mDNS server/scanner example: :example:`<../examples>`.
 
 API Reference
 -------------

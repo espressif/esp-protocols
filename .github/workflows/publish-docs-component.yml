@@ -30,10 +30,15 @@ jobs:
           ./generate_docs
           mkdir -p $GITHUB_WORKSPACE/docs/esp_websocket_client
           cp -r html/. $GITHUB_WORKSPACE/docs/esp_websocket_client
+          cd $GITHUB_WORKSPACE/components/mdns/docs
+          ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/mdns
+          cp -r html/. $GITHUB_WORKSPACE/docs/mdns
           cd $GITHUB_WORKSPACE/docs
           touch .nojekyll
           echo '<a href="esp_modem/index.html">esp-modem</a>' > index.html
           echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a>' >> index.html
+          echo '<a href="mdns/index.html">mDNS</a>' >> index.html
 
 
       - name: Upload components to component service

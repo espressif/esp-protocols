@@ -23,7 +23,7 @@ In order to run both of them just needed to set up the project and run by 'pytho
 
 * Open the project configuration menu (`idf.py menuconfig`)
 
-* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu. See "Establishing Wi-Fi or Ethernet Connection" section in [examples/protocols/README.md](README.md) for more details.
+* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu
 * Set `mDNS Hostname` as host name prefix for the device and its instance name in `mDNS Instance Name`
 
 ### Build and Flash
