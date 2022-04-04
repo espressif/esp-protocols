@@ -83,10 +83,11 @@ struct esp_modem_vfs_term_config {
 struct esp_modem_dte_config {
     size_t dte_buffer_size;                             /*!< DTE buffer size */
     uint32_t task_stack_size;                           /*!< Terminal task stack size */
-    int task_priority;                                  /*!< Terminal task priority */
+    unsigned task_priority;                             /*!< Terminal task priority */
     union {
         struct esp_modem_uart_term_config uart_config;      /*!< Configuration for UART Terminal */
         struct esp_modem_vfs_term_config vfs_config;        /*!< Configuration for VFS Terminal */
+        void *extension_config;                             /*!< Configuration for app specific Terminal */
     };
 };
 

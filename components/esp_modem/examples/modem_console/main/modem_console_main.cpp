@@ -18,6 +18,10 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
+#if defined(CONFIG_USB_OTG_SUPPORTED)
+#include "esp_modem_usb_config.h"
+#include "cxx_include/esp_modem_usb_api.hpp"
+#endif
 #include "esp_log.h"
 #include "console_helper.hpp"
 #include "my_module_dce.hpp"
@@ -53,13 +57,29 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // init the netif, DTE and DCE respectively
-    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(DEFAULT_APN);
     esp_netif_config_t ppp_netif_config = ESP_NETIF_DEFAULT_PPP();
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
+
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
+    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
     auto uart_dte = create_uart_dte(&dte_config);
-    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(DEFAULT_APN);
     auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
+
+#elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+    struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296); // VID and PID of BG96 modem
+    // BG96 modem implements Vendor Specific class, that is CDC-ACM like. Interface for AT commands has index no. 2.
+    usb_config.interface_idx = 2;
+    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
+    ESP_LOGI(TAG, "Waiting for USB device connection...");
+    auto dte = create_usb_dte(&dte_config);
+    std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+
+#else
+#error Invalid serial connection to modem.
+#endif
+    
     assert(dce != nullptr);
 
     // init console REPL environment
