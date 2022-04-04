@@ -191,7 +191,7 @@
         
             
             
-              <a href="https://github.com/espressif/esp-docs/blob/16ea3f7/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/804a8d5/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
             
           
         
@@ -269,7 +269,7 @@ overridden. Sample:</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>If you want to verify the server, then you need to provide a certificate in PEM format, and provide to <code class="docutils literal notranslate"><span class="pre">cert_pem</span></code> in <code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">websocket_client_config_t</span></code>. If no certficate is provided then the TLS connection will default to not requiring verification.</p>
-</aside>
+</div>
 <p>PEM certificate for this example could be extracted from an openssl <cite>s_client</cite> command connecting to websocket.org.
 In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> packages installed, one could execute the following command to download and save the root or intermediate root certificate to a file (Note for Windows users: Both Linux like environment or Windows native packages may be used).
 <code class="docutils literal notranslate"><span class="pre">`</span>
@@ -289,7 +289,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The client is indifferent to the subprotocol field in the server response and will accept the connection no matter what the server replies.</p>
-</aside>
+</div>
 <p>For more options on <a class="reference internal" href="#_CPPv429esp_websocket_client_config_t" title="esp_websocket_client_config_t"><code class="xref cpp cpp-type docutils literal notranslate"><span class="pre">esp_websocket_client_config_t</span></code></a>, please refer to API reference below</p>
 </section>
 </section>
@@ -314,7 +314,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 <section id="application-example">
 <h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline">¶</a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/16ea3f7/examples/../examples">example </a>.</p>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/804a8d5/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
 <h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this headline">¶</a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
@@ -328,7 +328,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="header-file">
 <h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline">¶</a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/16ea3f7/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/804a8d5/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
