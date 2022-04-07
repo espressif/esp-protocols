@@ -143,7 +143,21 @@ void app_main(void)
     // Init netif object
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
     assert(esp_netif);
+
+#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_BG96, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM800, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7600, &dte_config, &dce_config, esp_netif);
+#else
+    ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
+#endif
+    assert(dce);
 
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
