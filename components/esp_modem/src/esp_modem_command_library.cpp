@@ -121,10 +121,16 @@ command_result power_down(CommandableIf *t)
     return generic_command(t, "AT+QPOWD=1\r", "POWERED DOWN", "ERROR", 1000);
 }
 
-command_result power_down_sim7xxx(CommandableIf *t)
+command_result power_down_sim7600(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     return generic_command_common(t, "AT+CPOF\r", 1000);
+}
+
+command_result power_down_sim7070(CommandableIf *t)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command(t, "AT+CPOWD=1\r", "POWER DOWN", "ERROR", 1000);
 }
 
 command_result power_down_sim8xx(CommandableIf *t)
