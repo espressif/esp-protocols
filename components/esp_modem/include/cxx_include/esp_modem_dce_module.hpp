@@ -133,6 +133,15 @@ public:
 };
 
 /**
+ * @brief Specific definition of the SIM7000 module
+ */
+class SIM7000: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result power_down() override;
+};
+
+/**
  * @brief Specific definition of the SIM800 module
  */
 class SIM800: public GenericModule {
