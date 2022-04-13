@@ -399,4 +399,116 @@ command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
     return command_result::OK;
 }
 
+command_result set_operator(CommandableIf *t, int mode, int format, const std::string& oper)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+COPS=" + std::to_string(mode) + "," + std::to_string(format) + ",\"" + oper + "\"\r", 90000);
+}
+
+command_result set_network_attachment_state(CommandableIf *t, int state)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGATT=" + std::to_string(state) + "\r");
+}
+
+command_result get_network_attachment_state(CommandableIf *t, int &state)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CGATT?\r", out);
+    if (ret != command_result::OK) {
+        return ret;
+    }
+    constexpr std::string_view pattern = "+CGATT: ";
+    constexpr int pos = pattern.size();
+    if (out.find(pattern) == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    if (std::from_chars(out.data() + pos, out.data() + out.size(), state).ec == std::errc::invalid_argument) {
+        return command_result::FAIL;
+    }
+
+    return command_result::OK;
+}
+
+command_result set_radio_state(CommandableIf *t, int state)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CFUN=" + std::to_string(state) + "\r");
+}
+
+command_result get_radio_state(CommandableIf *t, int &state)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CFUN?\r", out);
+    if (ret != command_result::OK) {
+        return ret;
+    }
+    constexpr std::string_view pattern = "+CFUN: ";
+    constexpr int pos = pattern.size();
+    if (out.find(pattern) == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    if (std::from_chars(out.data() + pos, out.data() + out.size(), state).ec == std::errc::invalid_argument) {
+        return command_result::FAIL;
+    }
+
+    return command_result::OK;
+}
+
+command_result set_network_mode(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CNMP=" + std::to_string(mode) + "\r");
+}
+
+command_result set_preferred_mode(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CMNB=" + std::to_string(mode) + "\r");
+}
+
+command_result set_network_bands(CommandableIf *t, const std::string& mode, const int* bands, int size)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string band_string = "";
+    for (int i = 0; i<size-1; i++){
+        band_string += std::to_string(bands[i]) + ",";
+    }
+    band_string += std::to_string(bands[size-1]);
+    
+    return generic_command_common(t, "AT+CBANDCFG=\"" + mode + "\"," + band_string + "\r");
+}
+
+command_result get_network_system_mode(CommandableIf *t, int &mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CNSMOD?\r", out);
+    if (ret != command_result::OK) {
+        return ret;
+    }
+
+    constexpr std::string_view pattern = "+CNSMOD: ";
+    int mode_pos = out.find(",") + 1; // Skip "<n>,"
+    if (out.find(pattern) == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    if (std::from_chars(out.data() + mode_pos, out.data() + out.size(), mode).ec == std::errc::invalid_argument) {
+        return command_result::FAIL;
+    }
+
+    return command_result::OK;
+}
+
+command_result set_gnss_power_mode(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGNSPWR=" + std::to_string(mode) + "\r");
+}
+
 } // esp_modem::dce_commands
