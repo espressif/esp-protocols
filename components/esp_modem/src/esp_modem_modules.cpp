@@ -57,12 +57,17 @@ command_result SIM7600::get_battery_status(int &voltage, int &bcs, int &bcl)
 
 command_result SIM7600::power_down()
 {
-    return dce_commands::power_down_sim7600(dte.get());
+    return dce_commands::power_down_sim76xx(dte.get());
 }
 
 command_result SIM7070::power_down()
 {
-    return dce_commands::power_down_sim7070(dte.get());
+    return dce_commands::power_down_sim70xx(dte.get());
+}
+
+command_result SIM7000::power_down()
+{
+    return dce_commands::power_down_sim70xx(dte.get());
 }
 
 command_result SIM800::power_down()
