@@ -59,6 +59,8 @@ static inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t m
     switch (module) {
     case ESP_MODEM_DCE_SIM7600:
         return esp_modem::dce_factory::ModemType::SIM7600;
+    case ESP_MODEM_DCE_SIM7070:
+        return esp_modem::dce_factory::ModemType::SIM7070;
     case ESP_MODEM_DCE_BG96:
         return esp_modem::dce_factory::ModemType::BG96;
     case ESP_MODEM_DCE_SIM800:
