@@ -43,6 +43,7 @@ typedef enum {
 typedef struct {
     const char *data_ptr;                   /*!< Data pointer */
     int data_len;                           /*!< Data length */
+    bool fin;                               /*!< Fin flag */
     uint8_t op_code;                        /*!< Received opcode */
     esp_websocket_client_handle_t client;   /*!< esp_websocket_client_handle_t context */
     void *user_context;                     /*!< user_data context, from esp_websocket_client_config_t user_data */
