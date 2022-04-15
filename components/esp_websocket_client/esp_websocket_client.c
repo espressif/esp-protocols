@@ -109,6 +109,7 @@ struct esp_websocket_client {
     char                        *rx_buffer;
     char                        *tx_buffer;
     int                         buffer_size;
+    bool                        last_fin;
     ws_transport_opcodes_t      last_opcode;
     int                         payload_len;
     int                         payload_offset;
@@ -133,6 +134,7 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
     event_data.user_context = client->config->user_context;
     event_data.data_ptr = data;
     event_data.data_len = data_len;
+    event_data.fin = client->last_fin;
     event_data.op_code = client->last_opcode;
     event_data.payload_len = client->payload_len;
     event_data.payload_offset = client->payload_offset;
@@ -548,6 +550,7 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
+        client->last_fin = esp_transport_ws_get_fin_flag(client->transport);
         client->last_opcode = esp_transport_ws_get_read_opcode(client->transport);
 
         if (rlen == 0 && client->last_opcode == WS_TRANSPORT_OPCODES_NONE ) {
