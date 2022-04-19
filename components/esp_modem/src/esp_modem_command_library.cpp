@@ -18,6 +18,7 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
+#include <iomanip>
 
 namespace esp_modem::dce_commands {
 
@@ -489,6 +490,21 @@ command_result set_network_bands(CommandableIf *t, const std::string& mode, cons
     return generic_command_common(t, "AT+CBANDCFG=\"" + mode + "\"," + band_string + "\r");
 }
 
+command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string any_mode = "0xFFFFFFFF7FFFFFFF";
+    uint64_t band_bits = 0;
+    for (int i = 0; i<size; ++i) {
+        // OR-operation to add bands
+        band_bits |= 1 << bands[i];
+    }
+    std::stringstream stream;
+    stream << "0x" << std::setfill('0') << std::setw(16) << std::hex << band_bits;
+    std::string band_string = stream.str();
+    return generic_command_common(t, "AT+CNBP=" + any_mode + "," + band_string + "\r");
+}
+
 command_result get_network_system_mode(CommandableIf *t, int &mode)
 {
     ESP_LOGV(TAG, "%s", __func__ );
@@ -515,6 +531,12 @@ command_result set_gnss_power_mode(CommandableIf *t, int mode)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     return generic_command_common(t, "AT+CGNSPWR=" + std::to_string(mode) + "\r");
+}
+
+command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGPS=" + std::to_string(mode) + "\r");
 }
 
 } // esp_modem::dce_commands
