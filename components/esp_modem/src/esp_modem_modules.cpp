@@ -60,6 +60,16 @@ command_result SIM7600::power_down()
     return dce_commands::power_down_sim76xx(dte.get());
 }
 
+command_result SIM7600::set_network_bands(const std::string& mode, const int* bands, int size)
+{
+    return dce_commands::set_network_bands_sim76xx(dte.get(), mode, bands, size);
+}
+
+command_result SIM7600::power_down()
+{
+    return dce_commands::power_down_sim76xx(dte.get());
+}
+
 command_result SIM7070::power_down()
 {
     return dce_commands::power_down_sim70xx(dte.get());
