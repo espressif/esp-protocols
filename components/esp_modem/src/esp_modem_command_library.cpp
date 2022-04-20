@@ -490,10 +490,11 @@ command_result set_network_bands(CommandableIf *t, const std::string& mode, cons
     return generic_command_common(t, "AT+CBANDCFG=\"" + mode + "\"," + band_string + "\r");
 }
 
+// mode is expected to be 64bit string (in hex)
+// any_mode = "0xFFFFFFFF7FFFFFFF";
 command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    //std::string any_mode = "0xFFFFFFFF7FFFFFFF";
     uint64_t band_bits = 0;
     for (int i = 0; i<size; ++i) {
         // OR-operation to add bands
