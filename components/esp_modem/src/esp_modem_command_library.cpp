@@ -482,7 +482,7 @@ command_result set_network_bands(CommandableIf *t, const std::string& mode, cons
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string band_string = "";
-    for (int i = 0; i<size-1; i++){
+    for (int i = 0; i<size-1; ++i){
         band_string += std::to_string(bands[i]) + ",";
     }
     band_string += std::to_string(bands[size-1]);
@@ -493,7 +493,7 @@ command_result set_network_bands(CommandableIf *t, const std::string& mode, cons
 command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    std::string any_mode = "0xFFFFFFFF7FFFFFFF";
+    //std::string any_mode = "0xFFFFFFFF7FFFFFFF";
     uint64_t band_bits = 0;
     for (int i = 0; i<size; ++i) {
         // OR-operation to add bands
@@ -501,8 +501,8 @@ command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mo
     }
     std::stringstream stream;
     stream << "0x" << std::setfill('0') << std::setw(16) << std::hex << band_bits;
-    std::string band_string = stream.str();
-    return generic_command_common(t, "AT+CNBP=" + any_mode + "," + band_string + "\r");
+    std::string band_string(stream.str());
+    return generic_command_common(t, "AT+CNBP=" + mode + "," + band_string + "\r");
 }
 
 command_result get_network_system_mode(CommandableIf *t, int &mode)

@@ -281,7 +281,7 @@ extern "C" esp_err_t esp_modem_set_operator(esp_modem_dce_t *dce_wrap, int mode,
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    std::string operator_str = std::string(oper);
+    std::string operator_str(oper);
     return command_response_to_esp_err(dce_wrap->dce->set_operator(mode, format, operator_str));
 }
 
@@ -348,7 +348,7 @@ extern "C" esp_err_t esp_modem_set_network_bands(esp_modem_dce_t *dce_wrap, cons
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    std::string mode_str = std::string(mode);
+    std::string mode_str(mode);
     return command_response_to_esp_err(dce_wrap->dce->set_network_bands(mode, bands, size));
 }
 
