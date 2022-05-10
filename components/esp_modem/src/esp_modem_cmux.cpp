@@ -103,7 +103,7 @@ struct CMux::CMuxFrame {
 
 void CMux::data_available(uint8_t *data, size_t len)
 {
-    if (data && type == 0xFF && len > 0 && dlci > 0) {
+    if (data && (type&FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
         int virtual_term = dlci - 1;
         if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
             // Post partial data (or defragment to post on CMUX footer)

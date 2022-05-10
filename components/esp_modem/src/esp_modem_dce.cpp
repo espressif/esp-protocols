@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <unistd.h>
+
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce.hpp"
 #include "esp_log.h"
@@ -63,7 +65,9 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
         if (mode == modem_mode::DATA_MODE || mode == modem_mode::CMUX_MODE) {
             return false;
         }
-        device->set_mode(modem_mode::CMUX_MODE);
+        device->set_mode(modem_mode::CMUX_MODE);    // switch the device into CMUX mode
+        usleep(100'000);                            // some devices need a few ms to switch
+
         if (!dte->set_mode(modem_mode::CMUX_MODE)) {
             return false;
         }
