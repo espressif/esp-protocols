@@ -121,6 +121,26 @@ class SIM7600: public GenericModule {
 public:
     command_result get_battery_status(int &voltage, int &bcs, int &bcl) override;
     command_result power_down() override;
+    command_result set_gnss_power_mode(int mode) override;
+    command_result set_network_bands(const std::string& mode, const int* bands, int size) override;
+};
+
+/**
+ * @brief Specific definition of the SIM7070 module
+ */
+class SIM7070: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result power_down() override;
+};
+
+/**
+ * @brief Specific definition of the SIM7000 module
+ */
+class SIM7000: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result power_down() override;
 };
 
 /**

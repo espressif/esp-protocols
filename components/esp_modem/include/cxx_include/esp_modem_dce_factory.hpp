@@ -117,6 +117,8 @@ private:
 enum class ModemType {
     GenericModule,      /*!< Default generic module with the most common commands */
     SIM7600,            /*!< Derived from the GenericModule, specifics applied to SIM7600 model */
+    SIM7070,            /*!< Derived from the GenericModule, specifics applied to SIM7070 model */
+    SIM7000,            /*!< Derived from the GenericModule, specifics applied to SIM7000 model */
     BG96,               /*!< Derived from the GenericModule, specifics applied to BG69 model */
     SIM800,             /*!< Derived from the GenericModule with specifics applied to SIM800 model */
 };
@@ -173,6 +175,10 @@ public:
             return build_shared_module<SIM800>(cfg, std::forward<Args>(args)...);
         case ModemType::SIM7600:
             return build_shared_module<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7070:
+            return build_shared_module<SIM7070>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7000:
+            return build_shared_module<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build_shared_module<BG96>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:
@@ -198,6 +204,10 @@ public:
             return build_unique<SIM800>(cfg, std::forward<Args>(args)...);
         case ModemType::SIM7600:
             return build_unique<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7070:
+            return build_unique<SIM7070>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7000:
+            return build_unique<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build_unique<BG96>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:
@@ -216,6 +226,10 @@ public:
             return build<SIM800>(cfg, std::forward<Args>(args)...);
         case ModemType::SIM7600:
             return build<SIM7600>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7070:
+            return build<SIM7070>(cfg, std::forward<Args>(args)...);
+        case ModemType::SIM7000:
+            return build<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build<BG96>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:

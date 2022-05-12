@@ -44,7 +44,10 @@ DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)
  * @brief Following commands that are different for some specific modules
  */
 command_result get_battery_status_sim7xxx(CommandableIf *t, int &voltage, int &bcs, int &bcl);
-command_result power_down_sim7xxx(CommandableIf *t);
+command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode);
+command_result power_down_sim76xx(CommandableIf *t);
+command_result power_down_sim70xx(CommandableIf *t);
+command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size);
 command_result power_down_sim8xx(CommandableIf *t);
 command_result set_data_mode_sim8xx(CommandableIf *t);
 

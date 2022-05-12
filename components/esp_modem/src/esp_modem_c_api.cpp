@@ -59,6 +59,10 @@ static inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t m
     switch (module) {
     case ESP_MODEM_DCE_SIM7600:
         return esp_modem::dce_factory::ModemType::SIM7600;
+    case ESP_MODEM_DCE_SIM7070:
+        return esp_modem::dce_factory::ModemType::SIM7070;
+    case ESP_MODEM_DCE_SIM7000:
+        return esp_modem::dce_factory::ModemType::SIM7000;
     case ESP_MODEM_DCE_BG96:
         return esp_modem::dce_factory::ModemType::BG96;
     case ESP_MODEM_DCE_SIM800:
@@ -270,4 +274,101 @@ extern "C" esp_err_t esp_modem_power_down(esp_modem_dce_t *dce_wrap)
         return ESP_ERR_INVALID_ARG;
     }
     return command_response_to_esp_err(dce_wrap->dce->power_down());
+}
+
+extern "C" esp_err_t esp_modem_set_operator(esp_modem_dce_t *dce_wrap, int mode, int format, const char* oper)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string operator_str(oper);
+    return command_response_to_esp_err(dce_wrap->dce->set_operator(mode, format, operator_str));
+}
+
+extern "C" esp_err_t esp_modem_set_network_attachment_state(esp_modem_dce_t *dce_wrap, int state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_network_attachment_state(state));
+}
+
+extern "C" esp_err_t esp_modem_get_network_attachment_state(esp_modem_dce_t *dce_wrap, int *p_state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int state;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_network_attachment_state(state));
+    if (ret == ESP_OK) {
+        *p_state = state;
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_set_radio_state(esp_modem_dce_t *dce_wrap, int state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_radio_state(state));
+}
+
+extern "C" esp_err_t esp_modem_get_radio_state(esp_modem_dce_t *dce_wrap, int *p_state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int state;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_radio_state(state));
+    if (ret == ESP_OK) {
+        *p_state = state;
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_set_network_mode(esp_modem_dce_t *dce_wrap, int mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_network_mode(mode));
+}
+
+extern "C" esp_err_t esp_modem_set_preferred_mode(esp_modem_dce_t *dce_wrap, int mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_preferred_mode(mode));
+}
+
+extern "C" esp_err_t esp_modem_set_network_bands(esp_modem_dce_t *dce_wrap, const char* mode, const int* bands, int size)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string mode_str(mode);
+    return command_response_to_esp_err(dce_wrap->dce->set_network_bands(mode, bands, size));
+}
+
+extern "C" esp_err_t esp_modem_get_network_system_mode(esp_modem_dce_t *dce_wrap, int* p_mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int mode;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_network_system_mode(mode));
+    if (ret == ESP_OK) {
+        *p_mode = mode;
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_set_gnss_power_mode(esp_modem_dce_t *dce_wrap, int mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->set_gnss_power_mode(mode));
 }
