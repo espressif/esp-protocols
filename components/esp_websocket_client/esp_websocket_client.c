@@ -54,6 +54,9 @@ static const char *TAG = "WEBSOCKET_CLIENT";
         action;                                                                                     \
         }
 
+#define WS_OVER_TCP_SCHEME  "ws"
+#define WS_OVER_TLS_SCHEME  "wss"
+
 const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
                                         // and we are waiting for the server to continue with clean close
@@ -78,6 +81,15 @@ typedef struct {
     char                        *headers;
     int                         pingpong_timeout_sec;
     size_t                      ping_interval_sec;
+    const char                  *cert;
+    size_t                      cert_len;                
+    const char                  *client_cert;
+    size_t                      client_cert_len;
+    const char                  *client_key;
+    size_t                      client_key_len;
+    bool                        use_global_ca_store;
+    bool                        skip_cert_common_name_check;
+    esp_err_t                   (*crt_bundle_attach)(void *conf);
 } websocket_config_storage_t;
 
 typedef enum {
@@ -120,6 +132,45 @@ struct esp_websocket_client {
 static uint64_t _tick_get_ms(void)
 {
     return esp_timer_get_time()/1000;
+}
+
+static esp_err_t esp_websocket_new_buf(esp_websocket_client_handle_t client, bool is_tx)
+{
+#ifdef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
+    if (is_tx) {
+        if (client->tx_buffer) {
+            free(client->tx_buffer);
+        }
+
+        client->tx_buffer = calloc(1, client->buffer_size);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_buffer, return ESP_ERR_NO_MEM);
+    } else {
+        if (client->rx_buffer) {
+            free(client->rx_buffer);
+        }
+
+        client->rx_buffer = calloc(1, client->buffer_size);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, return ESP_ERR_NO_MEM);
+    }
+#endif
+    return ESP_OK;
+}
+
+static void esp_websocket_free_buf(esp_websocket_client_handle_t client, bool is_tx)
+{
+#ifdef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
+    if (is_tx) {
+        if (client->tx_buffer) {
+            free(client->tx_buffer);
+            client->tx_buffer = NULL;
+        }
+    } else {
+        if (client->rx_buffer) {
+            free(client->rx_buffer);
+            client->rx_buffer = NULL;
+        }
+    }
+#endif
 }
 
 static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle_t client,
@@ -308,6 +359,93 @@ static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_
     return ESP_ERR_INVALID_ARG;
 }
 
+static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_handle_t client)
+{
+    if (!client->config->scheme) {
+        ESP_LOGE(TAG, "No scheme found");
+        return ESP_FAIL;
+    }
+
+    if (client->transport_list) {
+        esp_transport_list_destroy(client->transport_list);
+        client->transport_list = NULL;
+    }
+
+    client->transport_list = esp_transport_list_init();
+    ESP_WS_CLIENT_MEM_CHECK(TAG, client->transport_list, return ESP_ERR_NO_MEM);
+    if (strcasecmp(client->config->scheme, WS_OVER_TCP_SCHEME) == 0) {
+        esp_transport_handle_t tcp = esp_transport_tcp_init();
+        ESP_WS_CLIENT_MEM_CHECK(TAG, tcp, return ESP_ERR_NO_MEM);
+
+        esp_transport_set_default_port(tcp, WEBSOCKET_TCP_DEFAULT_PORT);
+        esp_transport_list_add(client->transport_list, tcp, "_tcp"); // need to save to transport list, for cleanup
+        if (client->keep_alive_cfg.keep_alive_enable) {
+            esp_transport_tcp_set_keep_alive(tcp, &client->keep_alive_cfg);
+        }
+        if (client->if_name) {
+            esp_transport_tcp_set_interface_name(tcp, client->if_name);
+        }
+
+        esp_transport_handle_t ws = esp_transport_ws_init(tcp);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, ws, return ESP_ERR_NO_MEM);
+
+        esp_transport_set_default_port(ws, WEBSOCKET_TCP_DEFAULT_PORT);
+        esp_transport_list_add(client->transport_list, ws, WS_OVER_TCP_SCHEME);
+        ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, WS_OVER_TCP_SCHEME), return ESP_FAIL;)
+    } else if (strcasecmp(client->config->scheme, WS_OVER_TLS_SCHEME) == 0) {
+        esp_transport_handle_t ssl = esp_transport_ssl_init();
+        ESP_WS_CLIENT_MEM_CHECK(TAG, ssl, return ESP_ERR_NO_MEM);
+
+        esp_transport_set_default_port(ssl, WEBSOCKET_SSL_DEFAULT_PORT);
+        esp_transport_list_add(client->transport_list, ssl, "_ssl"); // need to save to transport list, for cleanup
+        if (client->config->use_global_ca_store == true) {
+            esp_transport_ssl_enable_global_ca_store(ssl);
+        } else if (client->config->cert) {
+            if (!client->config->cert_len) {
+                esp_transport_ssl_set_cert_data(ssl, client->config->cert, strlen(client->config->cert));
+            } else {
+                esp_transport_ssl_set_cert_data_der(ssl, client->config->cert, client->config->cert_len);
+            }
+        }
+        if (client->config->client_cert) {
+            if (!client->config->client_cert_len) {
+                esp_transport_ssl_set_client_cert_data(ssl, client->config->client_cert, strlen(client->config->client_cert));
+            } else {
+                esp_transport_ssl_set_client_cert_data_der(ssl, client->config->client_cert, client->config->client_cert_len);
+            }
+        }
+        if (client->config->client_key) {
+            if (!client->config->client_key_len) {
+                esp_transport_ssl_set_client_key_data(ssl, client->config->client_key, strlen(client->config->client_key));
+            } else {
+                esp_transport_ssl_set_client_key_data_der(ssl, client->config->client_key, client->config->client_key_len);
+            }
+        }
+        if (client->config->crt_bundle_attach) {
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+            esp_transport_ssl_crt_bundle_attach(ssl, client->config->crt_bundle_attach);
+#else //CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+            ESP_LOGE(TAG, "crt_bundle_attach configured but not enabled in menuconfig: Please enable MBEDTLS_CERTIFICATE_BUNDLE option");
+#endif
+        }
+        if (client->config->skip_cert_common_name_check) {
+            esp_transport_ssl_skip_common_name_check(ssl);
+        }
+
+        esp_transport_handle_t wss = esp_transport_ws_init(ssl);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, wss, return ESP_ERR_NO_MEM);
+
+        esp_transport_set_default_port(wss, WEBSOCKET_SSL_DEFAULT_PORT);
+
+        esp_transport_list_add(client->transport_list, wss, WS_OVER_TLS_SCHEME);
+        ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, WS_OVER_TLS_SCHEME), return ESP_FAIL;)
+    } else {
+        ESP_LOGE(TAG, "Not support this websocket scheme %s, only support %s and %s", client->config->scheme, WS_OVER_TCP_SCHEME, WS_OVER_TLS_SCHEME);
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
 {
     esp_websocket_client_handle_t client = calloc(1, sizeof(struct esp_websocket_client));
@@ -343,83 +481,31 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config = calloc(1, sizeof(websocket_config_storage_t));
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
 
-    client->transport_list = esp_transport_list_init();
-    ESP_WS_CLIENT_MEM_CHECK(TAG, client->transport_list, goto _websocket_init_fail);
-
-    esp_transport_handle_t tcp = esp_transport_tcp_init();
-    ESP_WS_CLIENT_MEM_CHECK(TAG, tcp, goto _websocket_init_fail);
-
-    esp_transport_set_default_port(tcp, WEBSOCKET_TCP_DEFAULT_PORT);
-    esp_transport_list_add(client->transport_list, tcp, "_tcp"); // need to save to transport list, for cleanup
-    esp_transport_tcp_set_keep_alive(tcp, &client->keep_alive_cfg);
-    esp_transport_tcp_set_interface_name(tcp, client->if_name);
-
-    esp_transport_handle_t ws = esp_transport_ws_init(tcp);
-    ESP_WS_CLIENT_MEM_CHECK(TAG, ws, goto _websocket_init_fail);
-
-    esp_transport_set_default_port(ws, WEBSOCKET_TCP_DEFAULT_PORT);
-    esp_transport_list_add(client->transport_list, ws, "ws");
     if (config->transport == WEBSOCKET_TRANSPORT_OVER_TCP) {
-        asprintf(&client->config->scheme, "ws");
+        asprintf(&client->config->scheme, WS_OVER_TCP_SCHEME);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->scheme, goto _websocket_init_fail);
+    } else if (config->transport == WEBSOCKET_TRANSPORT_OVER_SSL) {
+        asprintf(&client->config->scheme, WS_OVER_TLS_SCHEME);
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->scheme, goto _websocket_init_fail);
     }
 
-    esp_transport_handle_t ssl = esp_transport_ssl_init();
-    ESP_WS_CLIENT_MEM_CHECK(TAG, ssl, goto _websocket_init_fail);
-
-    esp_transport_set_default_port(ssl, WEBSOCKET_SSL_DEFAULT_PORT);
-    esp_transport_list_add(client->transport_list, ssl, "_ssl"); // need to save to transport list, for cleanup
-    if (config->use_global_ca_store == true) {
-        esp_transport_ssl_enable_global_ca_store(ssl);
-    } else if (config->cert_pem) {
-        if (!config->cert_len) {
-            esp_transport_ssl_set_cert_data(ssl, config->cert_pem, strlen(config->cert_pem));
-        } else {
-            esp_transport_ssl_set_cert_data_der(ssl, config->cert_pem, config->cert_len);
-        }
-    }
-    if (config->client_cert) {
-        if (!config->client_cert_len) {
-            esp_transport_ssl_set_client_cert_data(ssl, config->client_cert, strlen(config->client_cert));
-        } else {
-            esp_transport_ssl_set_client_cert_data_der(ssl, config->client_cert, config->client_cert_len);
-        }
-    }
-    if (config->client_key) {
-        if (!config->client_key_len) {
-            esp_transport_ssl_set_client_key_data(ssl, config->client_key, strlen(config->client_key));
-        } else {
-            esp_transport_ssl_set_client_key_data_der(ssl, config->client_key, config->client_key_len);
-        }
-    }
-
-    if (config->crt_bundle_attach) {
-#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
-        esp_transport_ssl_crt_bundle_attach(ssl, config->crt_bundle_attach);
-#else //CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
-        ESP_LOGE(TAG, "crt_bundle_attach configured but not enabled in menuconfig: Please enable MBEDTLS_CERTIFICATE_BUNDLE option");
-#endif
-    }
-
-    if (config->skip_cert_common_name_check) {
-        esp_transport_ssl_skip_common_name_check(ssl);
-    }
     if (config->reconnect_timeout_ms <= 0) {
         client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
         ESP_LOGW(TAG, "`reconnect_timeout_ms` is not set, or it is less than or equal to zero, using default time out %d (milliseconds)", WEBSOCKET_RECONNECT_TIMEOUT_MS);
     } else {
         client->wait_timeout_ms = config->reconnect_timeout_ms;
     }
-    esp_transport_handle_t wss = esp_transport_ws_init(ssl);
-    ESP_WS_CLIENT_MEM_CHECK(TAG, wss, goto _websocket_init_fail);
 
-    esp_transport_set_default_port(wss, WEBSOCKET_SSL_DEFAULT_PORT);
-
-    esp_transport_list_add(client->transport_list, wss, "wss");
-    if (config->transport == WEBSOCKET_TRANSPORT_OVER_SSL) {
-        asprintf(&client->config->scheme, "wss");
-        ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->scheme, goto _websocket_init_fail);
-    }
+    // configure ssl related parameters
+    client->config->use_global_ca_store = config->use_global_ca_store;
+    client->config->cert = config->cert_pem;
+    client->config->cert_len = config->cert_len;
+    client->config->client_cert = config->client_cert;
+    client->config->client_cert_len = config->client_cert_len;
+    client->config->client_key = config->client_key;
+    client->config->client_key_len = config->client_key_len;
+    client->config->skip_cert_common_name_check = config->skip_cert_common_name_check;
+    client->config->crt_bundle_attach = config->crt_bundle_attach;
 
     if (config->uri) {
         if (esp_websocket_client_set_uri(client, config->uri) != ESP_OK) {
@@ -434,12 +520,9 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     }
 
     if (client->config->scheme == NULL) {
-        asprintf(&client->config->scheme, "ws");
+        asprintf(&client->config->scheme, WS_OVER_TCP_SCHEME);
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->scheme, goto _websocket_init_fail);
     }
-
-    ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, "ws"), goto _websocket_init_fail;)
-    ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, "wss"), goto _websocket_init_fail;)
 
     client->keepalive_tick_ms = _tick_get_ms();
     client->reconnect_tick_ms = _tick_get_ms();
@@ -450,6 +533,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     if (buffer_size <= 0) {
         buffer_size = WEBSOCKET_BUFFER_SIZE_BYTE;
     }
+#ifndef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
     client->rx_buffer = malloc(buffer_size);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, {
         goto _websocket_init_fail;
@@ -458,6 +542,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_buffer, {
         goto _websocket_init_fail;
     });
+#endif
     client->status_bits = xEventGroupCreate();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->status_bits, {
         goto _websocket_init_fail;
@@ -566,10 +651,15 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
 {
     int rlen;
     client->payload_offset = 0;
+    if (esp_websocket_new_buf(client, false) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to setup rx buffer");
+        return ESP_FAIL;
+    }
     do {
         rlen = esp_transport_read(client->transport, client->rx_buffer, client->buffer_size, client->config->network_timeout_ms);
         if (rlen < 0) {
             ESP_LOGE(TAG, "Error read data");
+            esp_websocket_free_buf(client, false);
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
@@ -578,6 +668,7 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
 
         if (rlen == 0 && client->last_opcode == WS_TRANSPORT_OPCODES_NONE ) {
             ESP_LOGV(TAG, "esp_transport_read timeouts");
+            esp_websocket_free_buf(client, false);
             return ESP_OK;
         }
 
@@ -598,7 +689,7 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         ESP_LOGD(TAG, "Received close frame");
         client->state = WEBSOCKET_STATE_CLOSING;
     }
-
+    esp_websocket_free_buf(client, false);
     return ESP_OK;
 }
 
@@ -757,6 +848,11 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
     }
+    if (esp_websocket_client_create_transport(client) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create websocket transport");
+        return ESP_FAIL;
+    }
+
     if (xTaskCreate(esp_websocket_client_task, "websocket_task", client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
@@ -890,6 +986,10 @@ static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t c
         ESP_LOGE(TAG, "Invalid transport");
         goto unlock_and_return;
     }
+    if (esp_websocket_new_buf(client, true) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to setup tx buffer");
+        goto unlock_and_return;
+    }
     uint32_t current_opcode = opcode;
     while (widx < len || current_opcode) {  // allow for sending "current_opcode" only message with len==0
         if (need_write > client->buffer_size) {
@@ -904,6 +1004,7 @@ static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t c
         if (wlen < 0 || (wlen == 0 && need_write != 0)) {
             ret = wlen;
             ESP_LOGE(TAG, "Network error: esp_transport_write() returned %d, errno=%d", ret, errno);
+            esp_websocket_free_buf(client, true);
             esp_websocket_client_abort_connection(client);
             goto unlock_and_return;
         }
@@ -913,6 +1014,7 @@ static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t c
 
     }
     ret = widx;
+    esp_websocket_free_buf(client, true);
 unlock_and_return:
     xSemaphoreGiveRecursive(client->lock);
     return ret;
