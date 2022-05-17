@@ -47,7 +47,7 @@
 ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
 /**
  * @brief Reads the operator name
- * @param[out] name module name
+ * @param[out] operator name
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 1, STRING_OUT(p1, name)) \
