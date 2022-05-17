@@ -32,6 +32,11 @@ jobs:
           mkdir -p $GITHUB_WORKSPACE/docs/esp_websocket_client
           cp -r html/. $GITHUB_WORKSPACE/docs/esp_websocket_client
 
+          cd $GITHUB_WORKSPACE/components/asio/docs
+          ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/asio
+          cp -r html/. $GITHUB_WORKSPACE/docs/asio
+
           cd $GITHUB_WORKSPACE/components/mdns/docs
           ./generate_docs
           mkdir -p $GITHUB_WORKSPACE/docs/mdns/en
@@ -43,6 +48,7 @@ jobs:
           touch .nojekyll
           echo '<a href="esp_modem/index.html">esp-modem</a><br>' > index.html
           echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a><br>' >> index.html
+          echo '<a href="asio/index.html">ASIO</a><br>' >> index.html
           echo '<a href="mdns/en/index.html">mDNS_en</a><br>' >> index.html
           echo '<a href="mdns/zh_CN/index.html">mDNS_zh_CN</a><br>' >> index.html
 

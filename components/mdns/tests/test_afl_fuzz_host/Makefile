@@ -46,6 +46,12 @@ endif
 ifeq ($(INSTR),off)
     CC=gcc
     CFLAGS+=-DINSTR_IS_OFF
+    CFLAGS+=-I$(COMPONENTS_DIR)/mdns/host_test/components/esp_timer_linux/include/
+    CFLAGS+=-I$(COMPONENTS_DIR)/esp_modem/port/linux/esp_netif_linux/include/
+    CFLAGS+=-I$(COMPONENTS_DIR)/mdns/host_test/components/esp_timer_linux/include/
+    CFLAGS+=-I$(COMPONENTS_DIR)/mdns/host_test/components/esp_system_protocols_linux/include/machine
+    CFLAGS+=-I$(COMPONENTS_DIR)/mdns/components/mdns/test_afl_fuzz_host/
+    CFLAGS+=-I$(COMPONENTS_DIR)/esp_modem/port/linux/esp_system_protocols_linux/include/machine
     TEST_NAME=test_sim
 else
     CC=afl-clang-fast

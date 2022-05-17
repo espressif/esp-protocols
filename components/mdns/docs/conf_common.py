@@ -11,7 +11,11 @@ github_repo = 'espressif/esp-protocols'
 
 # context used by sphinx_idf_theme
 html_context['github_user'] = 'espressif'
+<<<<<<< HEAD
 html_context['github_repo'] = 'esp-protocols'
+=======
+html_context['github_repo'] = 'esp-docs'
+>>>>>>> a9ed7eb5a (mDNS: Initial version based on IDF 5.0)
 
 # Extra options required by sphinx_idf_theme
 project_slug = 'esp-idf' # >=5.0
