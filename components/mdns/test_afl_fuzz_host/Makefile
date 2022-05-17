@@ -1,6 +1,6 @@
 TEST_NAME=test
 FUZZ=afl-fuzz
-COMPONENTS_DIR=../..
+COMPONENTS_DIR=$(IDF_PATH)/components
 COMPILER_ICLUDE_DIR=$(shell echo `which xtensa-esp32-elf-gcc | xargs dirname | xargs dirname`/xtensa-esp32-elf)
 
 CFLAGS=-g -Wno-unused-value -Wno-missing-declarations -Wno-pointer-bool-conversion -Wno-macro-redefined -Wno-int-to-void-pointer-cast -DHOOK_MALLOC_FAILED -DESP_EVENT_H_ -D__ESP_LOG_H__ \

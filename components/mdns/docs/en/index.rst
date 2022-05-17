@@ -176,10 +176,22 @@ Example of using the methods above::
         find_mdns_service("_ipp", "_tcp");
     }
 
+Ram Usage
+^^^^^^^^^^
+
+ - mDNS creates tasks with stack sizes configured by :ref:`CONFIG_MDNS_TASK_STACK_SIZE`.
+ Please check `Minimizing RAM Usage <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/performance/ram-usage.html>`_ for more details.
+
+Execution Speed
+^^^^^^^^^^^^^^^^
+
+ - mDNS creates a task with default low priority 1 (:ref:`configurable <CONFIG_MDNS_TASK_PRIORITY>`) and pinned to CPU0 (:ref:`configurable <CONFIG_MDNS_TASK_AFFINITY>`).
+ Please check `Maximizing Execution Speed <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/performance/speed.html>`_ for more details.
+
 Application Example
 -------------------
 
-mDNS server/scanner example: :example:`protocols/mdns`.
+mDNS server/scanner example: :example:`<../examples>`.
 
 API Reference
 -------------

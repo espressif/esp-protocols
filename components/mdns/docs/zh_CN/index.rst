@@ -179,7 +179,7 @@ mDNS 提供查询服务和解析主机 IP/IPv6 地址的方法。
 应用示例
 --------
 
-有关 mDNS 服务器和查询器的应用示例请参考 :example:`protocols/mdns`。
+有关 mDNS 服务器和查询器的应用示例请参考 :example:`<../examples>`。
 
 API 参考
 --------

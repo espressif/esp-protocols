@@ -1,0 +1,31 @@
+name: Test AFL fuzzer host
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32"]
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          path: esp-protocols
+      - name: Install Necessary Libs
+        run: |
+          apt-get update -y
+          apt-get install -y libbsd-dev
+      #    apt-get install -y afl++
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/test_afl_fuzz_host/
+          make INSTR=off
