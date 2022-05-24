@@ -28,7 +28,7 @@
 #define BOOL_IN(param, name) const bool  _ARG(param, name)
 #define BOOL_OUT(param, name) bool&  _ARG(param, name)
 #define INT_OUT(param, name) int&  _ARG(param, name)
-#define LIST_IN(param, name) const int* _ARG(param, name)
+#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
 
 #define STRUCT_OUT(struct_name, p1)  struct_name& p1
 #else
@@ -37,7 +37,7 @@
 #define BOOL_IN(param, name) const bool _ARG(param, name)
 #define BOOL_OUT(param, name) bool* _ARG(param, name)
 #define INT_OUT(param, name) int* _ARG(param, name)
-#define LIST_IN(param, name) const int* _ARG(param, name)
+#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
 #define STRUCT_OUT(struct_name, p1)  struct struct_name* p1
 #endif
 
@@ -252,11 +252,6 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_radio_state, command_result, 1, INT_OUT(p1, st
 /**
  * @brief Set network mode
  * @param[in] mode preferred mode
- * -- SIM7xxx --
- * mode=2 - Automatic
- * mode=13 - GSM only
- * mode=38 - LTE only
- * mode=51 - GSM and LTE only
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_network_mode, command_result, 1, INT_IN(p1, mode)) \
@@ -273,7 +268,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_preferred_mode, command_result, 1, INT_IN(p1, 
  * @param[in] mode CAT-M or NB-IoT
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_network_bands, command_result, 3, STRING_IN(p1, mode), LIST_IN(p2, bands), INT_IN(p3, size)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_network_bands, command_result, 3, STRING_IN(p1, mode), INTEGER_LIST_IN(p2, bands), INT_IN(p3, size)) \
     \
 /**
  * @brief Show network system mode
