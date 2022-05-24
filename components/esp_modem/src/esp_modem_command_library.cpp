@@ -18,7 +18,6 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
-#include <iomanip>
 
 namespace esp_modem::dce_commands {
 
@@ -495,15 +494,19 @@ command_result set_network_bands(CommandableIf *t, const std::string& mode, cons
 command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size)
 {
     ESP_LOGV(TAG, "%s", __func__ );
+    static const char *hexDigits = "0123456789ABCDEF";
     uint64_t band_bits = 0;
+    int hex_len = 16;
+    std::string band_string(hex_len, '0');
     for (int i = 0; i<size; ++i) {
         // OR-operation to add bands
-        band_bits |= 1 << bands[i];
+        auto band = bands[i]-1; // Sim7600 has 0-indexed band selection (band 20 has to be shifted 19 places)
+        band_bits |= 1 << band;
     }
-    std::stringstream stream;
-    stream << "0x" << std::setfill('0') << std::setw(16) << std::hex << band_bits;
-    std::string band_string(stream.str());
-    return generic_command_common(t, "AT+CNBP=" + mode + "," + band_string + "\r");
+    for(int i=hex_len; i>0; i--){
+        band_string[i-1] = hexDigits[(band_bits >> ((hex_len-i)*4)) & 0xF];
+    }
+    return generic_command_common(t, "AT+CNBP=" + mode + ",0x" + band_string + "\r");
 }
 
 command_result get_network_system_mode(CommandableIf *t, int &mode)
