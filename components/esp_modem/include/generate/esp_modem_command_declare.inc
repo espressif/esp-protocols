@@ -28,6 +28,7 @@
 #define BOOL_IN(param, name) const bool  _ARG(param, name)
 #define BOOL_OUT(param, name) bool&  _ARG(param, name)
 #define INT_OUT(param, name) int&  _ARG(param, name)
+#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
 
 #define STRUCT_OUT(struct_name, p1)  struct_name& p1
 #else
@@ -36,6 +37,7 @@
 #define BOOL_IN(param, name) const bool _ARG(param, name)
 #define BOOL_OUT(param, name) bool* _ARG(param, name)
 #define INT_OUT(param, name) int* _ARG(param, name)
+#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
 #define STRUCT_OUT(struct_name, p1)  struct struct_name* p1
 #endif
 
@@ -200,7 +202,88 @@ ESP_MODEM_DECLARE_DCE_COMMAND(reset, command_result, 0) \
  * @param[in] baud Desired baud rate of the DTE
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(p1, baud))
+ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(p1, baud)) \
+    \
+/**
+ * @brief Force an attempt to connect to a specific operator
+ * @param[in] mode mode of attempt
+ * mode=0 - automatic
+ * mode=1 - manual
+ * mode=2 - deregister
+ * mode=3 - set format for read operation
+ * mode=4 - manual with fallback to automatic
+ * @param[in] format what format the operator is given in
+ * format=0 - long format
+ * format=1 - short format
+ * format=2 - numeric
+ * @param[in] oper the operator to connect to
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_operator, command_result, 3, INT_IN(p1, mode), INT_IN(p2, format), STRING_IN(p3, oper)) \
+    \
+/**
+ * @brief Attach or detach from the GPRS service
+ * @param[in] state 1-attach 0-detach
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_network_attachment_state, command_result, 1, INT_IN(p1, state)) \
+    \
+/**
+ * @brief Get network attachment state
+ * @param[out] state 1-attached 0-detached
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_network_attachment_state, command_result, 1, INT_OUT(p1, state)) \
+    \
+/**
+ * @brief What mode the radio should be set to
+ * @param[in] state state 1-full 0-minimum ...
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_radio_state, command_result, 1, INT_IN(p1, state)) \
+    \
+/**
+ * @brief Get current radio state
+ * @param[out] state 1-full 0-minimum ...
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_radio_state, command_result, 1, INT_OUT(p1, state)) \
+    \
+/**
+ * @brief Set network mode
+ * @param[in] mode preferred mode
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_network_mode, command_result, 1, INT_IN(p1, mode)) \
+    \
+/**
+ * @brief Preferred network mode (CAT-M and/or NB-IoT)
+ * @param[in] mode preferred selection
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_preferred_mode, command_result, 1, INT_IN(p1, mode)) \
+    \
+/**
+ * @brief Set network bands for CAT-M or NB-IoT
+ * @param[in] mode CAT-M or NB-IoT
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_network_bands, command_result, 3, STRING_IN(p1, mode), INTEGER_LIST_IN(p2, bands), INT_IN(p3, size)) \
+    \
+/**
+ * @brief Show network system mode
+ * @param[out] mode current network mode
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_network_system_mode, command_result, 1, INT_OUT(p1, mode)) \
+    \
+/**
+ * @brief GNSS power control
+ * @param[out] mode power mode (0 - off, 1 - on)
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(set_gnss_power_mode, command_result, 1, INT_IN(p1, mode)) \
+    \
 
 
 #ifdef GENERATE_DOCS

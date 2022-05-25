@@ -34,7 +34,7 @@ namespace esp_modem {
  */
 class DCE_Mode {
 public:
-    DCE_Mode(): mode(modem_mode::COMMAND_MODE) {}
+    DCE_Mode(): mode(modem_mode::UNDEF) {}
     ~DCE_Mode() = default;
     bool set(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
     modem_mode get();

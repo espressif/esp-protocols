@@ -55,9 +55,29 @@ command_result SIM7600::get_battery_status(int &voltage, int &bcs, int &bcl)
     return dce_commands::get_battery_status_sim7xxx(dte.get(), voltage, bcs, bcl);
 }
 
+command_result SIM7600::set_network_bands(const std::string& mode, const int* bands, int size)
+{
+    return dce_commands::set_network_bands_sim76xx(dte.get(), mode, bands, size);
+}
+
+command_result SIM7600::set_gnss_power_mode(int mode)
+{
+    return dce_commands::set_gnss_power_mode_sim76xx(dte.get(), mode);
+}
+
 command_result SIM7600::power_down()
 {
-    return dce_commands::power_down_sim7xxx(dte.get());
+    return dce_commands::power_down_sim76xx(dte.get());
+}
+
+command_result SIM7070::power_down()
+{
+    return dce_commands::power_down_sim70xx(dte.get());
+}
+
+command_result SIM7000::power_down()
+{
+    return dce_commands::power_down_sim70xx(dte.get());
 }
 
 command_result SIM800::power_down()

@@ -48,6 +48,8 @@ typedef enum esp_modem_dce_device
 {
     ESP_MODEM_DCE_GENETIC,  /**< The most generic device */
     ESP_MODEM_DCE_SIM7600,
+    ESP_MODEM_DCE_SIM7070,
+    ESP_MODEM_DCE_SIM7000,
     ESP_MODEM_DCE_BG96,
     ESP_MODEM_DCE_SIM800,
 } esp_modem_dce_device_t;
