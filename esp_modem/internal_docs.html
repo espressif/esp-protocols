@@ -404,6 +404,150 @@
 </dl>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE12set_operatorEiiRKNSt6stringE">
+<span id="_CPPv3N9esp_modem3DCE12set_operatorEiiRKNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE12set_operatorEiiRKNSt6stringE"></span><span id="esp_modem::DCE::set_operator__i.i.ssCR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a8de584fff3a10e799b3e9f653cddc9d0"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_operator</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">format</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">oper</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE12set_operatorEiiRKNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Force an attempt to connect to a specific operator. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> – <strong>[in]</strong> mode of attempt mode=0 - automatic mode=1 - manual mode=2 - deregister mode=3 - set format for read operation mode=4 - manual with fallback to automatic </p></li>
+<li><p><strong>format</strong> – <strong>[in]</strong> what format the operator is given in format=0 - long format format=1 - short format format=2 - numeric </p></li>
+<li><p><strong>oper</strong> – <strong>[in]</strong> the operator to connect to </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE28set_network_attachment_stateEi">
+<span id="_CPPv3N9esp_modem3DCE28set_network_attachment_stateEi"></span><span id="_CPPv2N9esp_modem3DCE28set_network_attachment_stateEi"></span><span id="esp_modem::DCE::set_network_attachment_state__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a4a9ddaabcf93c3059dc9ec9ee0ff4524"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_network_attachment_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE28set_network_attachment_stateEi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Attach or detach from the GPRS service. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>state</strong> – <strong>[in]</strong> 1-attach 0-detach </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE28get_network_attachment_stateERi">
+<span id="_CPPv3N9esp_modem3DCE28get_network_attachment_stateERi"></span><span id="_CPPv2N9esp_modem3DCE28get_network_attachment_stateERi"></span><span id="esp_modem::DCE::get_network_attachment_state__iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a78d3d8ecf90f068cef5975a5a4359afb"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_network_attachment_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE28get_network_attachment_stateERi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Get network attachment state. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>state</strong> – <strong>[out]</strong> 1-attached 0-detached </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE15set_radio_stateEi">
+<span id="_CPPv3N9esp_modem3DCE15set_radio_stateEi"></span><span id="_CPPv2N9esp_modem3DCE15set_radio_stateEi"></span><span id="esp_modem::DCE::set_radio_state__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ad2a3b7db8dbe2942cf824b84e25e7a9c"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_radio_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE15set_radio_stateEi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>What mode the radio should be set to. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>state</strong> – <strong>[in]</strong> state 1-full 0-minimum … </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE15get_radio_stateERi">
+<span id="_CPPv3N9esp_modem3DCE15get_radio_stateERi"></span><span id="_CPPv2N9esp_modem3DCE15get_radio_stateERi"></span><span id="esp_modem::DCE::get_radio_state__iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a3f3a18928ab1ade320ece8c9167862f6"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_radio_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE15get_radio_stateERi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Get current radio state. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>state</strong> – <strong>[out]</strong> 1-full 0-minimum … </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE16set_network_modeEi">
+<span id="_CPPv3N9esp_modem3DCE16set_network_modeEi"></span><span id="_CPPv2N9esp_modem3DCE16set_network_modeEi"></span><span id="esp_modem::DCE::set_network_mode__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a49103b6df52b4e35fe7e62cecae3a5d0"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_network_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE16set_network_modeEi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set network mode. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> preferred mode </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE18set_preferred_modeEi">
+<span id="_CPPv3N9esp_modem3DCE18set_preferred_modeEi"></span><span id="_CPPv2N9esp_modem3DCE18set_preferred_modeEi"></span><span id="esp_modem::DCE::set_preferred_mode__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ad79bdadc3b28aa641e77af56ae749a5b"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_preferred_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE18set_preferred_modeEi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Preferred network mode (CAT-M and/or NB-IoT) </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> preferred selection </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE17set_network_bandsERKNSt6stringEPKii">
+<span id="_CPPv3N9esp_modem3DCE17set_network_bandsERKNSt6stringEPKii"></span><span id="_CPPv2N9esp_modem3DCE17set_network_bandsERKNSt6stringEPKii"></span><span id="esp_modem::DCE::set_network_bands__ssCR.iCP.i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ae5b5440ff5dd8bd81c4636eef5c9f9cd"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_network_bands</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">mode</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">bands</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">size</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE17set_network_bandsERKNSt6stringEPKii" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set network bands for CAT-M or NB-IoT. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> CAT-M or NB-IoT </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE23get_network_system_modeERi">
+<span id="_CPPv3N9esp_modem3DCE23get_network_system_modeERi"></span><span id="_CPPv2N9esp_modem3DCE23get_network_system_modeERi"></span><span id="esp_modem::DCE::get_network_system_mode__iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1ace6a75b18d97b7e28f52435a9e00e7af"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_network_system_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE23get_network_system_modeERi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Show network system mode. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> – <strong>[out]</strong> current network mode </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE19set_gnss_power_modeEi">
+<span id="_CPPv3N9esp_modem3DCE19set_gnss_power_modeEi"></span><span id="_CPPv2N9esp_modem3DCE19set_gnss_power_modeEi"></span><span id="esp_modem::DCE::set_gnss_power_mode__i"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a51d148854c9d5310101e0d1ac67ac015"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_gnss_power_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE19set_gnss_power_modeEi" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>GNSS power control. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> – <strong>[out]</strong> power mode (0 - off, 1 - on) </p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </dd></dl>
 
@@ -806,7 +950,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce_module.hpp&gt;</em></div>
 <p>This is a basic building block for custom modules as well as for the supported modules in the esp-modem component It derives from the <a class="reference internal" href="#classesp__modem_1_1_module_if"><span class="std std-ref">ModuleIf</span></a>. </p>
-<p>Subclassed by <a class="reference internal" href="#classesp__modem_1_1_b_g96"><span class="std std-ref">esp_modem::BG96</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m7600"><span class="std std-ref">esp_modem::SIM7600</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m800"><span class="std std-ref">esp_modem::SIM800</span></a></p>
+<p>Subclassed by <a class="reference internal" href="#classesp__modem_1_1_b_g96"><span class="std std-ref">esp_modem::BG96</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m7000"><span class="std std-ref">esp_modem::SIM7000</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m7070"><span class="std std-ref">esp_modem::SIM7070</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m7600"><span class="std std-ref">esp_modem::SIM7600</span></a>, <a class="reference internal" href="#classesp__modem_1_1_s_i_m800"><span class="std std-ref">esp_modem::SIM800</span></a></p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
@@ -842,6 +986,22 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce_module.hpp&gt;</em></div>
 <p>Specific definition of the <a class="reference internal" href="#classesp__modem_1_1_s_i_m7600"><span class="std std-ref">SIM7600</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem7SIM7070E">
+<span id="_CPPv3N9esp_modem7SIM7070E"></span><span id="_CPPv2N9esp_modem7SIM7070E"></span><span id="esp_modem::SIM7070"></span><span class="target" id="classesp__modem_1_1_s_i_m7070"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SIM7070</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><span class="n"><span class="pre">GenericModule</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem7SIM7070E" title="Permalink to this definition">¶</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;esp_modem_dce_module.hpp&gt;</em></div>
+<p>Specific definition of the <a class="reference internal" href="#classesp__modem_1_1_s_i_m7070"><span class="std std-ref">SIM7070</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem7SIM7000E">
+<span id="_CPPv3N9esp_modem7SIM7000E"></span><span id="_CPPv2N9esp_modem7SIM7000E"></span><span id="esp_modem::SIM7000"></span><span class="target" id="classesp__modem_1_1_s_i_m7000"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SIM7000</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><span class="n"><span class="pre">GenericModule</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem7SIM7000E" title="Permalink to this definition">¶</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;esp_modem_dce_module.hpp&gt;</em></div>
+<p>Specific definition of the <a class="reference internal" href="#classesp__modem_1_1_s_i_m7000"><span class="std std-ref">SIM7000</span></a> module. </p>
 </dd></dl>
 
 <dl class="cpp class">
@@ -914,8 +1074,23 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv418power_down_sim7xxxP13CommandableIf">
-<span id="_CPPv318power_down_sim7xxxP13CommandableIf"></span><span id="_CPPv218power_down_sim7xxxP13CommandableIf"></span><span id="power_down_sim7xxx__CommandableIfP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___c_o_m_m_a_n_d_1ga4a78776f1eb012f918b9ce86174f7cca"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">power_down_sim7xxx</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CommandableIf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418power_down_sim7xxxP13CommandableIf" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv427set_gnss_power_mode_sim76xxP13CommandableIfi">
+<span id="_CPPv327set_gnss_power_mode_sim76xxP13CommandableIfi"></span><span id="_CPPv227set_gnss_power_mode_sim76xxP13CommandableIfi"></span><span id="set_gnss_power_mode_sim76xx__CommandableIfP.i"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___c_o_m_m_a_n_d_1ga059f01a3e02e2788cbd88e6dd9ee8f88"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_gnss_power_mode_sim76xx</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CommandableIf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">t</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427set_gnss_power_mode_sim76xxP13CommandableIfi" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418power_down_sim76xxP13CommandableIf">
+<span id="_CPPv318power_down_sim76xxP13CommandableIf"></span><span id="_CPPv218power_down_sim76xxP13CommandableIf"></span><span id="power_down_sim76xx__CommandableIfP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___c_o_m_m_a_n_d_1ga2c5425184e6412ed1fd26a131c2f12f0"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">power_down_sim76xx</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CommandableIf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418power_down_sim76xxP13CommandableIf" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418power_down_sim70xxP13CommandableIf">
+<span id="_CPPv318power_down_sim70xxP13CommandableIf"></span><span id="_CPPv218power_down_sim70xxP13CommandableIf"></span><span id="power_down_sim70xx__CommandableIfP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___c_o_m_m_a_n_d_1ga5c77c76b111445d0994664a526f4cb3a"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">power_down_sim70xx</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CommandableIf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">t</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418power_down_sim70xxP13CommandableIf" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425set_network_bands_sim76xxP13CommandableIfRKNSt6stringEPKii">
+<span id="_CPPv325set_network_bands_sim76xxP13CommandableIfRKNSt6stringEPKii"></span><span id="_CPPv225set_network_bands_sim76xxP13CommandableIfRKNSt6stringEPKii"></span><span id="set_network_bands_sim76xx__CommandableIfP.ssCR.iCP.i"></span><span class="target" id="group___e_s_p___m_o_d_e_m___d_c_e___c_o_m_m_a_n_d_1gaef65172c7740ab61f7cce6617064e823"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_network_bands_sim76xx</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CommandableIf</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">t</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">mode</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">bands</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">size</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425set_network_bands_sim76xxP13CommandableIfRKNSt6stringEPKii" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <dl class="cpp function">
