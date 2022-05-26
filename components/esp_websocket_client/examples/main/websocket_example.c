@@ -103,7 +103,6 @@ static void websocket_app_start(void)
 
 #else
     websocket_cfg.uri = CONFIG_WEBSOCKET_URI;
-
 #endif /* CONFIG_WEBSOCKET_URI_FROM_STDIN */
 
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
