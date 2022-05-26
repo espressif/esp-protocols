@@ -65,6 +65,13 @@ public:
     [[nodiscard]] bool init();
 
     /**
+     * @brief   Closes CMux protocol and ejects attached terminal and buffer
+     * @return  nullptr on failure
+     *          tuple of the original terminal and buffer on success
+     */
+    std::tuple<std::unique_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> deinit_and_eject();
+
+    /**
      * @brief Sets read callback for the appropriate terminal
      * @param inst Index of the terminal
      * @param f function pointer
@@ -84,6 +91,9 @@ private:
     static uint8_t fcs_crc(const uint8_t frame[6]);     /*!< Utility to calculate FCS CRC */
     void data_available(uint8_t *data, size_t len);     /*!< Called when valid data available */
     void send_sabm(size_t i);                           /*!< Sending initial SABM */
+    void send_disc(size_t i);                           /*!< Sending closing request for each virtual terminal */
+    void close_down();                                  /*!< Close up the control terminla (term=0) */
+    bool exit_cmux_protocol();                          /*!< Sequence of exit of all virtual terms and control term */
     bool on_cmux(uint8_t *data, size_t len);            /*!< Called from terminal layer when raw CMUX protocol data available */
 
     struct CMuxFrame;                                   /*!< Forward declare the Frame struct, used in protocol decoders */
@@ -147,6 +157,7 @@ public:
     }
     void start() override { }
     void stop() override { }
+    CMux* get_cmux() { return cmux.get(); }
 private:
     std::shared_ptr<CMux> cmux;
     size_t instance;

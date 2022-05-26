@@ -69,6 +69,23 @@ command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32
     return command(cmd, got_line, time_ms, '\n');
 }
 
+bool DTE::exit_cmux()
+{
+    auto cmux_term = static_cast<CMuxInstance*>(term.get())->get_cmux();
+    auto ejected = cmux_term->deinit_and_eject();
+    if (ejected == std::tuple(nullptr, nullptr, 0)) {
+        return false;
+    }
+    // deinit succeeded -> swap the internal terminals with those ejected from cmux
+    auto term_orig = std::move(term);
+    auto other_term_orig = std::move(other_term);
+    term = std::move(std::get<0>(ejected));
+    buffer = std::move(std::get<1>(ejected));
+    buffer_size = std::get<2>(ejected);
+    command_term = term.get(); // use command terminal as previously
+    return true;
+}
+
 bool DTE::setup_cmux()
 {
     auto original_term = std::move(term);
@@ -94,7 +111,16 @@ bool DTE::setup_cmux()
 
 bool DTE::set_mode(modem_mode m)
 {
-    mode = m;
+    if (mode == modem_mode::CMUX_MODE && m == modem_mode::COMMAND_MODE) {
+        if (exit_cmux()) {
+            mode = m;
+            return true;
+        }
+        return false;
+    }
+    if (mode != modem_mode::CMUX_MODE) {    // keep CMUX internally, it's CMD+PPP
+        mode = m;
+    }
     if (m == modem_mode::DATA_MODE) {
         term->set_read_cb(on_data);
         if (other_term) { // if we have the other terminal, let's use it for commands

@@ -33,6 +33,15 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
             if (mode == modem_mode::COMMAND_MODE) {
                 return false;
             }
+            if (mode == modem_mode::CMUX_MODE) {
+                netif.stop();
+                netif.wait_until_ppp_exits();
+                if (!dte->set_mode(modem_mode::COMMAND_MODE)) {
+                    return false;
+                }
+                mode = m;
+                return true;
+            }
             netif.stop();
             SignalGroup signal;
             dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
@@ -90,7 +99,17 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
         if (!dte->set_mode(modem_mode::CMUX_MODE)) {
             return false;
         }
-        mode = modem_mode::COMMAND_MODE;
+        mode = modem_mode::CMUX_MODE;
+        if (!device->setup_data_mode()) {
+            return false;
+        }
+        if (!device->set_mode(modem_mode::DATA_MODE)) {
+            return false;
+        }
+        if (!dte->set_mode(modem_mode::DATA_MODE)) {
+            return false;
+        }
+        netif.start();
         return true;
     }
     return false;
