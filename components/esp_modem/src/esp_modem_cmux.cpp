@@ -78,6 +78,25 @@ uint8_t CMux::fcs_crc(const uint8_t frame[6])
     return crc;
 }
 
+void CMux::close_down()
+{
+    uint8_t frame[] = {
+        SOF_MARKER, 0x3, 0xFF, 0x5, 0xC3, 0x1, 0xE7, SOF_MARKER };
+    term->write(frame, 8);
+}
+
+void CMux::send_disc(size_t i)
+{
+    uint8_t frame[6];
+    frame[0] = SOF_MARKER;
+    frame[1] = (i << 2) | 0x3;
+    frame[2] = FT_DISC | PF;
+    frame[3] = 1;
+    frame[4] = 0xFF - fcs_crc(frame);
+    frame[5] = SOF_MARKER;
+    term->write(frame, 6);
+}
+
 void CMux::send_sabm(size_t i)
 {
     uint8_t frame[6];
@@ -305,6 +324,31 @@ bool CMux::on_cmux(uint8_t *data, size_t actual_len)
     return true;
 }
 
+bool CMux::exit_cmux_protocol()
+{
+    sabm_ack = -1;
+    for (size_t i = 1; i < 3; i++) {
+        int timeout = 0;
+        send_disc(i);
+        while (true) {
+            usleep(10'000);
+            Scoped<Lock> l(lock);
+            if (sabm_ack == i) {
+                sabm_ack = -1;
+                break;
+            }
+            if (timeout++ > 100) {
+                return false;
+            }
+        }
+    }
+    close_down();
+    usleep(100'000);
+    term->set_read_cb(nullptr);
+    return true;
+
+}
+
 bool CMux::init()
 {
     frame_header_offset = 0;
@@ -369,4 +413,12 @@ void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
     if (inst < MAX_TERMINALS_NUM) {
         read_cb[inst] = std::move(f);
     }
+}
+
+std::tuple<std::unique_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> esp_modem::CMux::deinit_and_eject()
+{
+    if (exit_cmux_protocol()) {
+        return std::make_tuple(std::move(term), std::move(buffer), buffer_size);
+    }
+    return std::tuple(nullptr, nullptr, 0);
 }
