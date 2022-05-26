@@ -125,6 +125,13 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce
         dce_wrap->dce->set_data();
     } else if (mode == ESP_MODEM_MODE_COMMAND) {
         dce_wrap->dce->exit_data();
+    } else if (mode == ESP_MODEM_MODE_CMUX) {
+        if (dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) &&
+            // automatically switch to data mode for the primary terminal
+            dce_wrap->dce->set_mode(modem_mode::DATA_MODE)) {
+            return ESP_OK;
+        }
+        return ESP_FAIL;
     } else {
         return ESP_ERR_NOT_SUPPORTED;
     }
