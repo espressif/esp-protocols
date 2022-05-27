@@ -1,0 +1,35 @@
+name: Build mDNS
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32", "esp32s2", "esp32c3"]
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          path: esp-protocols
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/
+          cat sdkconfig.ci.eth_def >> sdkconfig.defaults
+          idf.py build
+          rm sdkconfig.defaults
+          cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults
+          idf.py build
+          rm sdkconfig.defaults
+          cat sdkconfig.ci.eth_socket >> sdkconfig.defaults
+          idf.py build
+          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/
+          idf.py build

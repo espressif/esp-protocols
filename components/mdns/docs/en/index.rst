@@ -7,7 +7,7 @@ Overview
 
 mDNS is a multicast UDP service that is used to provide local network service and host discovery.
 
-mDNS is installed by default on most operating systems or is available as separate package. On ``Mac OS`` it is installed by default and is called ``Bonjour``. Apple releases an installer for ``Windows`` that can be found `on Apple's support page <https://support.apple.com/downloads/bonjour-for-windows>`_. On ``Linux``, mDNS is provided by `avahi <https://github.com/lathiat/avahi>`_ and is usually installed by default.
+mDNS is installed by default on most operating systems or is available as separate package. On ``Mac OS`` it is installed by default and is called ``Bonjour``. Apple releases an installer for ``Windows`` that can be found `on Apple's support page <https://support.apple.com/downloads/bonjour%2520for%2520windows>`_. On ``Linux``, mDNS is provided by `avahi <https://github.com/lathiat/avahi>`_ and is usually installed by default.
 
 mDNS Properties
 ^^^^^^^^^^^^^^^
@@ -176,10 +176,26 @@ Example of using the methods above::
         find_mdns_service("_ipp", "_tcp");
     }
 
+
+Performance Optimization
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Execution Speed
+^^^^^^^^^^^^^^^
+
+ - mDNS creates a task with default low priority 1 ``CONFIG_MDNS_TASK_PRIORITY`` (If ``CONFIG_FREERTOS_UNICORE`` enabeled it pinned to CPU0 (``CONFIG_MDNS_TASK_AFFINITY``).
+ Please check `Maximizing Execution Speed <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/performance/speed.html>`_ for more details.
+
+Minimizing RAM Usage
+^^^^^^^^^^^^^^^^^^^^
+
+- mDNS creates a tasks with stack sizes configured by ``CONFIG_MDNS_TASK_STACK_SIZE``.
+Please check `Minimizing RAM Usage <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/performance/ram-usage.html>`_ for more details.
+
 Application Example
 -------------------
 
-mDNS server/scanner example: :example:`protocols/mdns`.
+mDNS server/scanner example: :example:`<../examples>`.
 
 API Reference
 -------------

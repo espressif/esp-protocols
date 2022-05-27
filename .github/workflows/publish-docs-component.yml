@@ -21,25 +21,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install doxygen clang python3-pip
-          python -m pip install breathe recommonmark esp-docs==0.2.1
+          python -m pip install breathe recommonmark esp-docs
           cd $GITHUB_WORKSPACE/components/esp_modem/docs
           ./generate_docs
           mkdir -p $GITHUB_WORKSPACE/docs/esp_modem
           cp -r html/. $GITHUB_WORKSPACE/docs/esp_modem
+
           cd $GITHUB_WORKSPACE/components/esp_websocket_client/docs
           ./generate_docs
           mkdir -p $GITHUB_WORKSPACE/docs/esp_websocket_client
           cp -r html/. $GITHUB_WORKSPACE/docs/esp_websocket_client
+
+          cd $GITHUB_WORKSPACE/components/mdns/docs
+          ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/mdns/en
+          mkdir -p $GITHUB_WORKSPACE/docs/mdns/zh_CN
+          cp -r html_en/. $GITHUB_WORKSPACE/docs/mdns/en
+          cp -r html_zh_CN/. $GITHUB_WORKSPACE/docs/mdns/zh_CN
+
           cd $GITHUB_WORKSPACE/docs
           touch .nojekyll
-          echo '<a href="esp_modem/index.html">esp-modem</a>' > index.html
-          echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a>' >> index.html
+          echo '<a href="esp_modem/index.html">esp-modem</a><br>' > index.html
+          echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a><br>' >> index.html
+          echo '<a href="mdns/en/index.html">mDNS_en</a><br>' >> index.html
+          echo '<a href="mdns/zh_CN/index.html">mDNS_zh_CN</a><br>' >> index.html
 
 
       - name: Upload components to component service
         uses: espressif/github-actions/upload_components@master
         with:
-          directories: "components/esp_modem;components/esp_websocket_client"
+          directories: "components/esp_modem;components/esp_websocket_client;components/mdns"
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
 
