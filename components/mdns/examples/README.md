@@ -15,7 +15,7 @@ Shows how to use mDNS to advertise lookup services and hosts
 
 * Open the project configuration menu (`idf.py menuconfig`)
 
-* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu. See "Establishing Wi-Fi or Ethernet Connection" section in [examples/protocols/README.md](../README.md) for more details.
+* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu
 * Set `mDNS Hostname` as host name prefix for the device and its instance name in `mDNS Instance Name`
 * Disable `Resolve test services` to prevent the example from querying defined names/services on startup (cause warnings in example logs, as illustrated below)
 
@@ -89,5 +89,3 @@ I (29396) mdns-test: Query PTR: _printer._tcp.local
 2: Interface: STA, Type: V4
   PTR : HP Color LaserJet MFP M277dw (7C2E10)
 ```
-
-See the README.md file in the upper level 'examples' directory for more information about examples.
