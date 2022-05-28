@@ -38,7 +38,7 @@ Set following parameters under Example Configuration Options:
     * Configure `EXAMPLE_CHAT_CLIENT_CONNECT_ADDRESS` to a string representation of the address to connect the client to.
     * Configure `EXAMPLE_CHAT_CLIENT_CONNECT_PORT` to the port number.
 
-* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu. See "Establishing Wi-Fi or Ethernet Connection" section in [examples/protocols/README.md](../../README.md) for more d    etails.
+* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu.
 
 ## Running the example in server mode
 
@@ -59,4 +59,3 @@ Set following parameters under Example Configuration Options:
 - Wait for the board to connect to WiFi or Ethernet.
 - Receive and send messages to/from other clients on stdin/stdout via serial terminal.
 
-See the README.md file in the upper level 'examples' directory for more information about examples.

@@ -22,6 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install doxygen clang python3-pip
           python -m pip install breathe recommonmark esp-docs
+
           cd $GITHUB_WORKSPACE/components/esp_modem/docs
           ./generate_docs
           mkdir -p $GITHUB_WORKSPACE/docs/esp_modem
@@ -44,6 +45,11 @@ jobs:
           cp -r html_en/. $GITHUB_WORKSPACE/docs/mdns/en
           cp -r html_zh_CN/. $GITHUB_WORKSPACE/docs/mdns/zh_CN
 
+          cd $GITHUB_WORKSPACE/components/asio/docs
+          ./generate_docs
+          mkdir -p $GITHUB_WORKSPACE/docs/asio
+          cp -r html/. $GITHUB_WORKSPACE/docs/asio
+
           cd $GITHUB_WORKSPACE/docs
           touch .nojekyll
           echo '<a href="esp_modem/index.html">esp-modem</a><br>' > index.html
@@ -56,7 +62,7 @@ jobs:
       - name: Upload components to component service
         uses: espressif/github-actions/upload_components@master
         with:
-          directories: "components/esp_modem;components/esp_websocket_client;components/mdns"
+          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio"
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
 

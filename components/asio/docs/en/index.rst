@@ -32,11 +32,11 @@ Internal asio settings for ESP include
 
 Application Example
 -------------------
-ESP examples are based on standard asio :example:`protocols/asio`:
+ESP examples are based on standard asio :example:`examples <../examples>`:
 
-- :example:`protocols/asio/udp_echo_server`
-- :example:`protocols/asio/tcp_echo_server`
-- :example:`protocols/asio/asio_chat`
-- :example:`protocols/asio/ssl_client_server`
+- :example:`udp_echo_server <../examples/udp_echo_server>`
+- :example:`tcp_echo_server <../examples/tcp_echo_server>`
+- :example:`asio_chat <../examples/asio_chat>`
+- :example:`ssl_client_server <../examples/ssl_client_server>`
 
 Please refer to the specific example README.md for details

@@ -1,4 +1,4 @@
-name: Build mDNS
+name: Build ASIO
 
 on: [push, pull_request]
 
@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest"]
-        idf_target: ["esp32", "esp32s2", "esp32c3"]
+        idf_target: ["esp32"]
 
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -22,14 +22,15 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/
-          cat sdkconfig.ci.eth_def >> sdkconfig.defaults
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/asio_chat
           idf.py build
-          rm sdkconfig.defaults
-          cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/async_request
           idf.py build
-          rm sdkconfig.defaults
-          cat sdkconfig.ci.eth_socket >> sdkconfig.defaults
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/socks4
           idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/ssl_client_server
+          idf.py build
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/tcp_echo_server
+          idf.py build
+          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/udp_echo_server
           idf.py build
