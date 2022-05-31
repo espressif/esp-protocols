@@ -379,6 +379,13 @@ command_result set_pin(CommandableIf *t, const std::string &pin)
     return generic_command_common(t, set_pin_command);
 }
 
+command_result at(CommandableIf *t, const std::string &cmd, std::string &out)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string at_command = cmd + "\r";
+    return generic_get_string(t, at_command, out);
+}
+
 command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
 {
     ESP_LOGV(TAG, "%s", __func__ );
