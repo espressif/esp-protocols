@@ -392,6 +392,15 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
             esp_transport_ssl_set_client_key_data_der(ssl, config->client_key, config->client_key_len);
         }
     }
+
+    if (config->crt_bundle_attach) {
+#ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        esp_transport_ssl_crt_bundle_attach(ssl, config->crt_bundle_attach);
+#else //CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
+        ESP_LOGE(TAG, "crt_bundle_attach configured but not enabled in menuconfig: Please enable MBEDTLS_CERTIFICATE_BUNDLE option");
+#endif
+    }
+
     if (config->skip_cert_common_name_check) {
         esp_transport_ssl_skip_common_name_check(ssl);
     }
