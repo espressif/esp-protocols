@@ -15,7 +15,7 @@ html_context['github_repo'] = 'esp-docs'
 
 # Extra options required by sphinx_idf_theme
 project_slug = 'esp-idf' # >=5.0
-versions_url = 'https://dl.espressif.com/dl/esp-idf/idf_versions.js' 
+versions_url = 'https://github.com/espressif/esp-protocols/docs/docs_versions.js'
 
 idf_targets = ['esp32']
 languages = ['en']
