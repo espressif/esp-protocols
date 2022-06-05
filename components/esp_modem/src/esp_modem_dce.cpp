@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
 #include <unistd.h>
+#include <cstring>
 
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce.hpp"
@@ -27,24 +29,41 @@ bool DCE_Mode::set(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m)
     case modem_mode::UNDEF:
         break;
     case modem_mode::COMMAND_MODE:
-        if (mode == modem_mode::COMMAND_MODE) {
-            return false;
+        {
+            if (mode == modem_mode::COMMAND_MODE) {
+                return false;
+            }
+            netif.stop();
+            SignalGroup signal;
+            dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
+                if (memchr(data, '\n', len)) {
+                    ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_DEBUG);
+                    const auto pass = std::list<std::string_view>({"NO CARRIER", "DISCONNECTED"});
+                    std::string_view response((char *) data, len);
+                    for (auto &it : pass)
+                        if (response.find(it) != std::string::npos) {
+                            signal.set(1);
+                            return true;
+                        }
+                }
+                return false;
+            });
+            netif.wait_until_ppp_exits();
+            if (!signal.wait(1, 2000)) {
+                if (!device->set_mode(modem_mode::COMMAND_MODE)) {
+                    mode = modem_mode::UNDEF;
+                    return false;
+                }
+            }
+            dte->set_read_cb(nullptr);
+            if (!dte->set_mode(modem_mode::COMMAND_MODE)) {
+                mode = modem_mode::UNDEF;
+                return false;
+            }
+            mode = m;
+            return true;
         }
-        netif.stop();
-        if (!device->set_mode(modem_mode::COMMAND_MODE)) {
-            return false;
-        }
-        dte->set_read_cb([&](uint8_t *data, size_t len) -> bool {
-            ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_INFO);
-            return false;
-        });
-        netif.wait_until_ppp_exits();
-        dte->set_read_cb(nullptr);
-        if (!dte->set_mode(modem_mode::COMMAND_MODE)) {
-            return false;
-        }
-        mode = m;
-        return true;
+        break;
     case modem_mode::DATA_MODE:
         if (mode == modem_mode::DATA_MODE) {
             return false;
