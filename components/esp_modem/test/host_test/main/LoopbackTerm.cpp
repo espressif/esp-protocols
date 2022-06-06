@@ -15,6 +15,10 @@ void LoopbackTerm::stop()
 
 int LoopbackTerm::write(uint8_t *data, size_t len)
 {
+    if (inject_by) {    // injection test: ignore what we write, but respond with injected data
+        auto ret = std::async(&LoopbackTerm::batch_read, this);
+        return len;
+    }
     if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+') ) { // Simple AT responder
         std::string command((char *)data, len);
         std::string response;
@@ -67,6 +71,8 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
 int LoopbackTerm::read(uint8_t *data, size_t len)
 {
     size_t read_len = std::min(data_len, len);
+    if (inject_by && read_len > inject_by)
+        read_len = inject_by;
     if (read_len) {
         if (loopback_data.capacity() < len) {
             loopback_data.reserve(len);
@@ -78,8 +84,30 @@ int LoopbackTerm::read(uint8_t *data, size_t len)
     return read_len;
 }
 
-LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), is_bg96(is_bg96) {}
+LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), is_bg96(is_bg96), inject_by(0) {}
 
-LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), is_bg96(false) {}
+LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), is_bg96(false), inject_by(0) {}
+
+int LoopbackTerm::inject(uint8_t *data, size_t len, size_t injected_by)
+{
+    if (data == nullptr) {
+        inject_by = 0;
+        return 0;
+    }
+
+    loopback_data.resize(len);
+    memcpy(&loopback_data[0], data, len);
+    data_len = len;
+    inject_by = injected_by;
+    return len;
+}
+
+void LoopbackTerm::batch_read()
+{
+    while (data_len > 0) {
+        on_read(nullptr, std::min(inject_by, data_len));
+        Task::Delay(1);
+    }
+}
 
 LoopbackTerm::~LoopbackTerm() = default;

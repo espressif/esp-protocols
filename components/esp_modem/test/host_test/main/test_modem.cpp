@@ -155,3 +155,47 @@ TEST_CASE("DCE CMUX test", "[esp_modem]")
     }, 1000);
     CHECK(ret == command_result::OK);
 }
+
+TEST_CASE("Test CMUX protocol by injecting payloads", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>();
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    CHECK(dce != nullptr);
+
+    CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == true);
+    const auto test_command = "Test\n";
+    // 1 byte payload size
+    uint8_t test_payload[] = {0xf9, 0x05, 0xff, 0x0b, 0x54, 0x65, 0x73, 0x74, 0x0a, 0xbb, 0xf9 };
+    loopback->inject(&test_payload[0], sizeof(test_payload), 1);
+    auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
+        std::string response((char *) data, len);
+        CHECK(response == test_command);
+        return command_result::OK;
+    }, 1000);
+    CHECK(ret == command_result::OK);
+
+    // 2 byte payload size
+    uint8_t long_payload[453] = { 0xf9, 0x05, 0xef, 0x7c, 0x03, 0x7e }; // header
+    long_payload[5]   = 0x7e;   // payload to validate
+    long_payload[449] = 0x7e;
+    long_payload[450] = '\n';
+    long_payload[451] = 0x53;   // footer
+    long_payload[452] = 0xf9;
+    for (int i=0; i<5; ++i) {
+        // inject the whole payload (i=0) and then per 1,2,3,4 bytes (i)
+        loopback->inject(&long_payload[0], sizeof(long_payload), i==0?sizeof(long_payload):i);
+        auto ret = dce->command("ignore", [&](uint8_t *data, size_t len) {
+            CHECK(data[0]     == 0x7e);
+            CHECK(data[len-2] == 0x7e);
+            CHECK(data[len-1] == '\n');
+            return command_result::OK;
+        }, 1000);
+        CHECK(ret == command_result::OK);
+    }
+}
