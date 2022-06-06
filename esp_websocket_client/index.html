@@ -116,7 +116,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>ESP WebSocket Client</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-docs/blob/1f91d24/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/6dbfc69/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -233,7 +233,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 <section id="application-example">
 <h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline"></a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/1f91d24/examples/../examples">example </a>.</p>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/6dbfc69/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
 <h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this headline"></a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
@@ -247,7 +247,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="header-file">
 <h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/1f91d24/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/6dbfc69/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
@@ -713,6 +713,12 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <dt class="sig sig-object cpp" id="_CPPv4N29esp_websocket_client_config_t19use_global_ca_storeE">
 <span id="_CPPv3N29esp_websocket_client_config_t19use_global_ca_storeE"></span><span id="_CPPv2N29esp_websocket_client_config_t19use_global_ca_storeE"></span><span id="esp_websocket_client_config_t::use_global_ca_store__b"></span><span class="target" id="structesp__websocket__client__config__t_1a4b811b30ac0acc5e1dfdd95394620a76"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">use_global_ca_store</span></span></span><a class="headerlink" href="#_CPPv4N29esp_websocket_client_config_t19use_global_ca_storeE" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Use a global ca_store for all the connections in which this bool is set. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N29esp_websocket_client_config_t17crt_bundle_attachE">
+<span id="_CPPv3N29esp_websocket_client_config_t17crt_bundle_attachE"></span><span id="_CPPv2N29esp_websocket_client_config_t17crt_bundle_attachE"></span><span class="target" id="structesp__websocket__client__config__t_1a736d9d4d9acdf75aca18e377d0b988bc"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">crt_bundle_attach</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">conf</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N29esp_websocket_client_config_t17crt_bundle_attachE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Function pointer to esp_crt_bundle_attach. Enables the use of certification bundle for server verification, MBEDTLS_CERTIFICATE_BUNDLE must be enabled in menuconfig. Include esp_crt_bundle.h, and use <code class="docutils literal notranslate"><span class="pre">esp_crt_bundle_attach</span></code> here to include bundled CA certificates. </p>
 </dd></dl>
 
 <dl class="cpp var">
