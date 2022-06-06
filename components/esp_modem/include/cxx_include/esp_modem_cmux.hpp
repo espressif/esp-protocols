@@ -94,7 +94,7 @@ private:
     void send_disc(size_t i);                           /*!< Sending closing request for each virtual terminal */
     void close_down();                                  /*!< Close up the control terminla (term=0) */
     bool exit_cmux_protocol();                          /*!< Sequence of exit of all virtual terms and control term */
-    bool on_cmux(uint8_t *data, size_t len);            /*!< Called from terminal layer when raw CMUX protocol data available */
+    bool on_cmux_data(uint8_t *data, size_t len);            /*!< Called from terminal layer when raw CMUX protocol data available */
 
     struct CMuxFrame;                                   /*!< Forward declare the Frame struct, used in protocol decoders */
     /**
