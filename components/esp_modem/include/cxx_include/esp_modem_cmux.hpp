@@ -54,7 +54,7 @@ class CMuxInstance;
  */
 class CMux {
 public:
-    explicit CMux(std::unique_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
+    explicit CMux(std::shared_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
         term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer_size(buff_size), buffer(std::move(b))  {}
     ~CMux() = default;
 
@@ -69,7 +69,7 @@ public:
      * @return  nullptr on failure
      *          tuple of the original terminal and buffer on success
      */
-    std::tuple<std::unique_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> deinit_and_eject();
+    std::tuple<std::shared_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> deinit_and_eject();
 
     /**
      * @brief Sets read callback for the appropriate terminal
@@ -110,7 +110,7 @@ private:
     bool on_footer(CMuxFrame &frame);
 
     std::function<bool(uint8_t *data, size_t len)> read_cb[MAX_TERMINALS_NUM];  /*!< Function pointers to read callbacks */
-    std::unique_ptr<Terminal> term;                   /*!< The original terminal */
+    std::shared_ptr<Terminal> term;                   /*!< The original terminal */
     cmux_state state;                                 /*!< CMux protocol state */
 
     /**

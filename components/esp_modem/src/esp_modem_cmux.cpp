@@ -273,7 +273,7 @@ bool CMux::on_footer(CMuxFrame &frame)
     return true;
 }
 
-bool CMux::on_cmux(uint8_t *data, size_t actual_len)
+bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
 {
     if (!data) {
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
@@ -354,7 +354,7 @@ bool CMux::init()
     frame_header_offset = 0;
     state = cmux_state::INIT;
     term->set_read_cb([this](uint8_t *data, size_t len) {
-        this->on_cmux(data, len);
+        this->on_cmux_data(data, len);
         return false;
     });
 
@@ -415,7 +415,7 @@ void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
     }
 }
 
-std::tuple<std::unique_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> esp_modem::CMux::deinit_and_eject()
+std::tuple<std::shared_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> esp_modem::CMux::deinit_and_eject()
 {
     if (exit_cmux_protocol()) {
         return std::make_tuple(std::move(term), std::move(buffer), buffer_size);
