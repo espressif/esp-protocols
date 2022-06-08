@@ -40,6 +40,7 @@ public:
     modem_mode get();
 
 private:
+    bool set_unsafe(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
     modem_mode mode;
 
 };
