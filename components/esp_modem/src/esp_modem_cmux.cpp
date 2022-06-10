@@ -187,10 +187,22 @@ bool CMux::on_header(CMuxFrame &frame)
     }
     size_t payload_offset = std::min(frame.len, 4 - frame_header_offset);
     memcpy(frame_header + frame_header_offset, frame.ptr, payload_offset);
-    frame_header_offset += payload_offset;
+    if ((frame_header[3] & 1) == 0) {
+        if (frame_header_offset + frame.len <= 4) {
+            frame_header_offset += frame.len;
+            return false; // need read more
+        }
+        payload_offset = std::min(frame.len, 5 - frame_header_offset);
+        memcpy(frame_header + frame_header_offset, frame.ptr, payload_offset);
+        payload_len = frame_header[4] << 7;
+        frame_header_offset += payload_offset - 1; // rewind frame_header back to hold only 6 bytes size
+    } else {
+        payload_len = 0;
+        frame_header_offset += payload_offset;
+    }
     dlci = frame_header[1] >> 2;
     type = frame_header[2];
-    payload_len = (frame_header[3] >> 1);
+    payload_len += (frame_header[3] >> 1);
     frame.advance(payload_offset);
     state = cmux_state::PAYLOAD;
     return true;
