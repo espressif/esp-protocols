@@ -15,6 +15,7 @@
 #pragma once
 
 #include "esp_modem_terminal.hpp"
+#include "cxx_include/esp_modem_buffer.hpp"
 
 namespace esp_modem {
 
@@ -54,8 +55,8 @@ class CMuxInstance;
  */
 class CMux {
 public:
-    explicit CMux(std::shared_ptr<Terminal> t, std::unique_ptr<uint8_t[]> b, size_t buff_size):
-        term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer_size(buff_size), buffer(std::move(b))  {}
+    explicit CMux(std::shared_ptr<Terminal> t, unique_buffer&& b):
+        term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer(std::move(b))  {}
     ~CMux() = default;
 
     /**
@@ -65,11 +66,17 @@ public:
     [[nodiscard]] bool init();
 
     /**
-     * @brief   Closes CMux protocol and ejects attached terminal and buffer
-     * @return  nullptr on failure
-     *          tuple of the original terminal and buffer on success
+     * @brief Closes and deinits CMux protocol
+     * @return true on success
      */
-    std::tuple<std::shared_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> deinit_and_eject();
+    [[nodiscard]] bool deinit();
+
+    /**
+     * @brief   Ejects the attached terminal and buffer,
+     * so they could be used as traditional command/data DTE's
+     * @return  pair of the original terminal and buffer
+     */
+    std::pair<std::shared_ptr<Terminal>, unique_buffer> detach();
 
     /**
      * @brief Sets read callback for the appropriate terminal
@@ -91,10 +98,8 @@ private:
     static uint8_t fcs_crc(const uint8_t frame[6]);     /*!< Utility to calculate FCS CRC */
     void data_available(uint8_t *data, size_t len);     /*!< Called when valid data available */
     void send_sabm(size_t i);                           /*!< Sending initial SABM */
-    void send_disc(size_t i);                           /*!< Sending closing request for each virtual terminal */
-    void close_down();                                  /*!< Close up the control terminla (term=0) */
-    bool exit_cmux_protocol();                          /*!< Sequence of exit of all virtual terms and control term */
-    bool on_cmux_data(uint8_t *data, size_t len);            /*!< Called from terminal layer when raw CMUX protocol data available */
+    void send_disconnect(size_t i);                     /*!< Sending closing request for each virtual or control terminal */
+    bool on_cmux_data(uint8_t *data, size_t len);       /*!< Called from terminal layer when raw CMUX protocol data available */
 
     struct CMuxFrame;                                   /*!< Forward declare the Frame struct, used in protocol decoders */
     /**
@@ -127,10 +132,9 @@ private:
     int sabm_ack;
 
     /**
-     * Processing buffer size and pointer
+     * Processing unique buffer (reused and transferred from it's parent DTE)
      */
-    size_t buffer_size;
-    std::unique_ptr<uint8_t[]> buffer;
+    unique_buffer buffer;
 
     Lock lock;
 };
@@ -157,7 +161,6 @@ public:
     }
     void start() override { }
     void stop() override { }
-    CMux* get_cmux() { return cmux.get(); }
 private:
     std::shared_ptr<CMux> cmux;
     size_t instance;
