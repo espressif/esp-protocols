@@ -46,7 +46,7 @@ private:
 using TaskT = TaskHandle_t;
 using SignalT = EventGroupHandle_t;
 #else
-using Lock = std::mutex;
+using Lock = std::recursive_mutex;
 struct SignalGroupInternal;
 using SignalT = std::unique_ptr<SignalGroupInternal>;
 using TaskT = std::thread;

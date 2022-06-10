@@ -78,23 +78,19 @@ uint8_t CMux::fcs_crc(const uint8_t frame[6])
     return crc;
 }
 
-void CMux::close_down()
+void CMux::send_disconnect(size_t i)
 {
-    uint8_t frame[] = {
-        SOF_MARKER, 0x3, 0xFF, 0x5, 0xC3, 0x1, 0xE7, SOF_MARKER };
-    term->write(frame, 8);
-}
-
-void CMux::send_disc(size_t i)
-{
-    uint8_t frame[6];
-    frame[0] = SOF_MARKER;
-    frame[1] = (i << 2) | 0x3;
-    frame[2] = FT_DISC | PF;
-    frame[3] = 1;
-    frame[4] = 0xFF - fcs_crc(frame);
-    frame[5] = SOF_MARKER;
-    term->write(frame, 6);
+    if (i == 0) {   // control terminal
+        uint8_t frame[] = {
+                SOF_MARKER, 0x3, 0xFF, 0x5, 0xC3, 0x1, 0xE7, SOF_MARKER };
+        term->write(frame, 8);
+    } else {        // separate virtual terminal
+        uint8_t frame[] = {
+                SOF_MARKER, 0x3, FT_DISC | PF, 0x1, 0, SOF_MARKER };
+        frame[1] |= i << 2;
+        frame[4] = 0xFF - fcs_crc(frame);
+        term->write(frame, sizeof(frame));
+    }
 }
 
 void CMux::send_sabm(size_t i)
@@ -146,6 +142,9 @@ void CMux::data_available(uint8_t *data, size_t len)
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif
         }
+    } else if (type == 0xFF && dlci == 0) { // notify the internal DISC command
+        Scoped<Lock> l(lock);
+        sabm_ack = dlci;
     }
 }
 
@@ -277,7 +276,7 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
 {
     if (!data) {
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
-        auto data_to_read = buffer_size - 128; // keep 128 (max CMUX payload) backup buffer)
+        auto data_to_read = buffer.size - 128; // keep 128 (max CMUX payload) backup buffer)
         if (payload_start) {
             data = payload_start + total_payload_size;
             data_to_read = payload_len + 2;
@@ -324,12 +323,13 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
     return true;
 }
 
-bool CMux::exit_cmux_protocol()
+bool CMux::deinit()
 {
+    int timeout = 0;
     sabm_ack = -1;
+    // First disconnect all (2) virtual terminals
     for (size_t i = 1; i < 3; i++) {
-        int timeout = 0;
-        send_disc(i);
+        send_disconnect(i);
         while (true) {
             usleep(10'000);
             Scoped<Lock> l(lock);
@@ -342,11 +342,21 @@ bool CMux::exit_cmux_protocol()
             }
         }
     }
-    close_down();
-    usleep(100'000);
+    sabm_ack = -1;
+    // Then disconnect the control terminal
+    send_disconnect(0);
+    while (true) {
+        usleep(10'000);
+        Scoped<Lock> l(lock);
+        if (sabm_ack == 0) {
+            break;
+        }
+        if (timeout++ > 100) {
+            return false;
+        }
+    }
     term->set_read_cb(nullptr);
     return true;
-
 }
 
 bool CMux::init()
@@ -415,10 +425,7 @@ void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
     }
 }
 
-std::tuple<std::shared_ptr<Terminal>, std::unique_ptr<uint8_t[]>, size_t> esp_modem::CMux::deinit_and_eject()
+std::pair<std::shared_ptr<Terminal>, unique_buffer> CMux::detach()
 {
-    if (exit_cmux_protocol()) {
-        return std::make_tuple(std::move(term), std::move(buffer), buffer_size);
-    }
-    return std::tuple(nullptr, nullptr, 0);
+    return std::make_pair(std::move(term), std::move(buffer));
 }

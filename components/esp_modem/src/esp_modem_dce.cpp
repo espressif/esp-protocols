@@ -59,22 +59,24 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
                 return true;
             }
             netif.stop();
-            SignalGroup signal;
-            dte->set_read_cb([&signal](uint8_t *data, size_t len) -> bool {
+            auto signal = std::make_shared<SignalGroup>();
+            std::weak_ptr<SignalGroup> weak_signal = signal;
+            dte->set_read_cb([weak_signal](uint8_t *data, size_t len) -> bool {
                 if (memchr(data, '\n', len)) {
                     ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data", data, len, ESP_LOG_DEBUG);
                     const auto pass = std::list<std::string_view>({"NO CARRIER", "DISCONNECTED"});
                     std::string_view response((char *) data, len);
                     for (auto &it : pass)
                         if (response.find(it) != std::string::npos) {
-                            signal.set(1);
+                            if (auto signal = weak_signal.lock())
+                                signal->set(1);
                             return true;
                         }
                 }
                 return false;
             });
             netif.wait_until_ppp_exits();
-            if (!signal.wait(1, 2000)) {
+            if (!signal->wait(1, 2000)) {
                 if (!device->set_mode(modem_mode::COMMAND_MODE)) {
                     mode = modem_mode::UNDEF;
                     return false;
@@ -110,7 +112,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
             return false;
         }
         device->set_mode(modem_mode::CMUX_MODE);    // switch the device into CMUX mode
-        usleep(100'000);                          // some devices need a few ms to switch
+        usleep(100'000);                            // some devices need a few ms to switch
 
         if (!dte->set_mode(modem_mode::CMUX_MODE)) {
             return false;

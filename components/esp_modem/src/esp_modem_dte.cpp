@@ -15,6 +15,7 @@
 #include <cstring>
 #include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_cmux.hpp"
 #include "esp_modem_config.h"
 
 using namespace esp_modem;
@@ -22,14 +23,12 @@ using namespace esp_modem;
 static const size_t dte_default_buffer_size = 1000;
 
 DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
-    buffer_size(config->dte_buffer_size), consumed(0),
-    buffer(std::make_unique<uint8_t[]>(buffer_size)),
+    buffer(config->dte_buffer_size),
     cmux_term(nullptr), command_term(std::move(terminal)), data_term(command_term),
     mode(modem_mode::UNDEF) {}
 
 DTE::DTE(std::unique_ptr<Terminal> terminal):
-    buffer_size(dte_default_buffer_size), consumed(0),
-    buffer(std::make_unique<uint8_t[]>(buffer_size)),
+    buffer(dte_default_buffer_size),
     cmux_term(nullptr), command_term(std::move(terminal)), data_term(command_term),
     mode(modem_mode::UNDEF) {}
 
@@ -40,18 +39,18 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     command_term->set_read_cb([&](uint8_t *data, size_t len) {
         if (!data) {
             data = buffer.get();
-            len = command_term->read(data + consumed, buffer_size - consumed);
+            len = command_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
         } else {
-            consumed = 0; // if the underlying terminal contains data, we cannot fragment
+            buffer.consumed = 0; // if the underlying terminal contains data, we cannot fragment
         }
-        if (memchr(data + consumed, separator, len)) {
-            res = got_line(data, consumed + len);
+        if (memchr(data + buffer.consumed, separator, len)) {
+            res = got_line(data, buffer.consumed + len);
             if (res == command_result::OK || res == command_result::FAIL) {
                 signal.set(GOT_LINE);
                 return true;
             }
         }
-        consumed += len;
+        buffer.consumed += len;
         return false;
     });
     command_term->write((uint8_t *)command.c_str(), command.length());
@@ -59,7 +58,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     if (got_lf && res == command_result::TIMEOUT) {
         throw_if_esp_fail(ESP_ERR_INVALID_STATE);
     }
-    consumed = 0;
+    buffer.consumed = 0;
     command_term->set_read_cb(nullptr);
     return res;
 }
@@ -71,25 +70,23 @@ command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32
 
 bool DTE::exit_cmux()
 {
-    auto ejected = cmux_term->deinit_and_eject();
-    if (ejected == std::tuple(nullptr, nullptr, 0)) {
+    if (!cmux_term->deinit()) {
         return false;
     }
-    // deinit succeeded -> swap the internal terminals with those ejected from cmux
-    command_term = std::move(std::get<0>(ejected));
-    buffer = std::move(std::get<1>(ejected));
-    buffer_size = std::get<2>(ejected);
+    auto ejected = cmux_term->detach();
+    // return the ejected terminal and buffer back to this DTE
+    command_term = std::move(ejected.first);
+    buffer = std::move(ejected.second);
     data_term = command_term;
     return true;
 }
 
 bool DTE::setup_cmux()
 {
-    cmux_term = std::make_shared<CMux>(command_term, std::move(buffer), buffer_size);
+    cmux_term = std::make_shared<CMux>(command_term, std::move(buffer));
     if (cmux_term == nullptr) {
         return false;
     }
-    buffer_size = 0;
     if (!cmux_term->init()) {
         return false;
     }
@@ -149,7 +146,7 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
     data_term->set_read_cb([this](uint8_t *data, size_t len) {
         if (!data) { // if no data available from terminal callback -> need to explicitly read some
             data = buffer.get();
-            len = data_term->read(buffer.get(), buffer_size);
+            len = data_term->read(buffer.get(), buffer.size);
         }
         if (on_data) {
             return on_data(data, len);
@@ -160,7 +157,7 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
 
 int DTE::read(uint8_t **d, size_t len)
 {
-    auto data_to_read = std::min(len, buffer_size);
+    auto data_to_read = std::min(len, buffer.size);
     auto data = buffer.get();
     auto actual_len = data_term->read(data, data_to_read);
     *d = data;
@@ -171,3 +168,9 @@ int DTE::write(uint8_t *data, size_t len)
 {
     return data_term->write(data, len);
 }
+
+/**
+ * Implemented here to keep all headers C++11 compliant
+ */
+unique_buffer::unique_buffer(size_t size):
+    data(std::make_unique<uint8_t[]>(size)), size(size), consumed(0) {}

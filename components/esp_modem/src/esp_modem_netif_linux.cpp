@@ -54,13 +54,16 @@ void Netif::start()
     signal.set(PPP_STARTED);
 }
 
-void Netif::stop() {}
+void Netif::stop()
+{
+    ppp_dte->set_read_cb(nullptr);
+    signal.clear(PPP_STARTED);
+}
 
 Netif::~Netif() = default;
 
 void Netif::wait_until_ppp_exits()
 {
-
 }
 
 } // namespace esp_modem
