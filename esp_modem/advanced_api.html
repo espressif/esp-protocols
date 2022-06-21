@@ -12,6 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -34,10 +35,10 @@
           <div class="body" role="main">
             
   <section id="advanced-esp-modem-use-cases">
-<h1>Advanced esp-modem use cases<a class="headerlink" href="#advanced-esp-modem-use-cases" title="Permalink to this headline">¶</a></h1>
+<h1>Advanced esp-modem use cases<a class="headerlink" href="#advanced-esp-modem-use-cases" title="Permalink to this heading">¶</a></h1>
 <p>This chapter outlines basic extensibility of the esp-modem component.</p>
 <section id="custom-instantiation-with-dce-factory">
-<span id="dce-factory"></span><h2>Custom instantiation with DCE factory<a class="headerlink" href="#custom-instantiation-with-dce-factory" title="Permalink to this headline">¶</a></h2>
+<span id="dce-factory"></span><h2>Custom instantiation with DCE factory<a class="headerlink" href="#custom-instantiation-with-dce-factory" title="Permalink to this heading">¶</a></h2>
 <p>It is possible to create a modem handle in many different ways:</p>
 <ul class="simple">
 <li><p>Build a DCE on top a generic module, user defined module or build the module only (in case the application will only use AT command interface)</p></li>
@@ -117,7 +118,7 @@
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem11dce_factory7FactoryE">
-<span id="_CPPv3N9esp_modem11dce_factory7FactoryE"></span><span id="_CPPv2N9esp_modem11dce_factory7FactoryE"></span><span id="esp_modem::dce_factory::Factory"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">dce_factory</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Factory</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory7FactoryE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem11dce_factory7FactoryE"></span><span id="_CPPv2N9esp_modem11dce_factory7FactoryE"></span><span id="esp_modem::dce_factory::Factory"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Factory</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory7FactoryE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_factory"><span class="std std-ref">Factory</span></a> class for creating virtual <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> objects based on the configuration of the supplied module. This could also be used to create a custom module or a DCE_T&lt;module&gt;, provided user app derives from this factory. </p>
@@ -199,7 +200,7 @@
 
 </section>
 <section id="create-custom-module">
-<span id="id1"></span><h2>Create custom module<a class="headerlink" href="#create-custom-module" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Create custom module<a class="headerlink" href="#create-custom-module" title="Permalink to this heading">¶</a></h2>
 <p>Creating a custom module is necessary if the application needs to use a specific device that is not supported
 and their commands differ from any of the supported devices. In this case it is recommended to define a new class
 representing this specific device and derive from the <a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">esp_modem::GenericModule</span></code></a>. In order to instantiate
@@ -210,7 +211,7 @@ the specific module, using <a class="reference internal" href="#_CPPv4I0DpEN9esp
 for demonstration purposes only.</p>
 </section>
 <section id="create-new-communication-interface">
-<h2>Create new communication interface<a class="headerlink" href="#create-new-communication-interface" title="Permalink to this headline">¶</a></h2>
+<h2>Create new communication interface<a class="headerlink" href="#create-new-communication-interface" title="Permalink to this heading">¶</a></h2>
 <p>In order to connect to a device using an unsupported interface (e.g. SPI or I2C), it is necessary to implement
 a custom DTE object and supply it into <a class="reference internal" href="#dce-factory"><span class="std std-ref">the DCE factory</span></a>. The DCE is typically created in two steps:</p>
 <ul class="simple">
@@ -270,7 +271,7 @@ a custom DTE object and supply it into <a class="reference internal" href="#dce-
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -287,7 +288,7 @@ a custom DTE object and supply it into <a class="reference internal" href="#dce-
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -16,6 +16,7 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/clipboard.min.js"></script>
         <script src="_static/copybutton.js"></script>
@@ -116,7 +117,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>ESP WebSocket Client</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-docs/blob/ebf122b/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/609594a/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -125,13 +126,13 @@
            <div itemprop="articleBody">
              
   <section id="esp-websocket-client">
-<h1>ESP WebSocket Client<a class="headerlink" href="#esp-websocket-client" title="Permalink to this headline"></a></h1>
+<h1>ESP WebSocket Client<a class="headerlink" href="#esp-websocket-client" title="Permalink to this heading"></a></h1>
 <section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
 <p>The ESP WebSocket client is an implementation of <a class="reference external" href="https://tools.ietf.org/html/rfc6455">WebSocket protocol client</a> for ESP32</p>
 </section>
 <section id="features">
-<h2>Features<a class="headerlink" href="#features" title="Permalink to this headline"></a></h2>
+<h2>Features<a class="headerlink" href="#features" title="Permalink to this heading"></a></h2>
 <blockquote>
 <div><ul class="simple">
 <li><p>Supports WebSocket over TCP, TLS with mbedtls</p></li>
@@ -141,9 +142,9 @@
 </div></blockquote>
 </section>
 <section id="configuration">
-<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline"></a></h2>
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this heading"></a></h2>
 <section id="uri">
-<h3>URI<a class="headerlink" href="#uri" title="Permalink to this headline"></a></h3>
+<h3>URI<a class="headerlink" href="#uri" title="Permalink to this heading"></a></h3>
 <ul class="simple">
 <li><p>Supports <code class="docutils literal notranslate"><span class="pre">ws</span></code>, <code class="docutils literal notranslate"><span class="pre">wss</span></code> schemes</p></li>
 <li><p>WebSocket samples:</p>
@@ -177,7 +178,7 @@ overridden. Sample:</p>
 </div>
 </section>
 <section id="tls">
-<h3>TLS<a class="headerlink" href="#tls" title="Permalink to this headline"></a></h3>
+<h3>TLS<a class="headerlink" href="#tls" title="Permalink to this heading"></a></h3>
 <p>Configuration:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="n">esp_websocket_client_config_t</span> <span class="n">ws_cfg</span> <span class="o">=</span> <span class="p">{</span>
     <span class="p">.</span><span class="n">uri</span> <span class="o">=</span> <span class="s">&quot;wss://echo.websocket.org&quot;</span><span class="p">,</span>
@@ -197,7 +198,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <p>This command will extract the second certificate in the chain and save it as a pem-file.</p>
 </section>
 <section id="subprotocol">
-<h3>Subprotocol<a class="headerlink" href="#subprotocol" title="Permalink to this headline"></a></h3>
+<h3>Subprotocol<a class="headerlink" href="#subprotocol" title="Permalink to this heading"></a></h3>
 <p>The subprotocol field in the config struct can be used to request a subprotocol</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">const</span> <span class="n">esp_websocket_client_config_t</span> <span class="n">ws_cfg</span> <span class="o">=</span> <span class="p">{</span>
     <span class="p">.</span><span class="n">uri</span> <span class="o">=</span> <span class="s">&quot;ws://websocket.org&quot;</span><span class="p">,</span>
@@ -213,7 +214,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 </section>
 <section id="events">
-<h2>Events<a class="headerlink" href="#events" title="Permalink to this headline"></a></h2>
+<h2>Events<a class="headerlink" href="#events" title="Permalink to this heading"></a></h2>
 <ul class="simple">
 <li><p><cite>WEBSOCKET_EVENT_CONNECTED</cite>: The client has successfully established a connection to the server. The client is now ready to send and receive data. Contains no event data.</p></li>
 <li><p><cite>WEBSOCKET_EVENT_DISCONNECTED</cite>: The client has aborted the connection due to the transport layer failing to read data, e.g. because the server is unavailable. Contains no event data.</p></li>
@@ -226,16 +227,16 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </div>
 </section>
 <section id="limitations-and-known-issues">
-<h2>Limitations and Known Issues<a class="headerlink" href="#limitations-and-known-issues" title="Permalink to this headline"></a></h2>
+<h2>Limitations and Known Issues<a class="headerlink" href="#limitations-and-known-issues" title="Permalink to this heading"></a></h2>
 <ul class="simple">
 <li><p>The client is able to request the use of a subprotocol from the server during the handshake, but does not do any subprotocol related checks on the response from the server.</p></li>
 </ul>
 </section>
 <section id="application-example">
-<h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline"></a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/ebf122b/examples/../examples">example </a>.</p>
+<h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this heading"></a></h2>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/609594a/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
-<h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this headline"></a></h3>
+<h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this heading"></a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">esp_websocket_client_send_text</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">len</span><span class="p">,</span> <span class="n">portMAX_DELAY</span><span class="p">);</span>
 </pre></div>
@@ -243,15 +244,15 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 </section>
 <section id="api-reference">
-<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline"></a></h2>
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading"></a></h2>
 <section id="header-file">
-<h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline"></a></h3>
+<h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this heading"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/ebf122b/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/609594a/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline"></a></h3>
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv425esp_websocket_client_initPK29esp_websocket_client_config_t">
 <span id="_CPPv325esp_websocket_client_initPK29esp_websocket_client_config_t"></span><span id="_CPPv225esp_websocket_client_initPK29esp_websocket_client_config_t"></span><span id="esp_websocket_client_init__esp_websocket_client_config_tCP"></span><span class="target" id="esp__websocket__client_8h_1a243bea9ad290aa71efa02d7fff90d15d"></span><a class="reference internal" href="#_CPPv429esp_websocket_client_handle_t" title="esp_websocket_client_handle_t"><span class="n"><span class="pre">esp_websocket_client_handle_t</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_client_init</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv429esp_websocket_client_config_t" title="esp_websocket_client_config_t"><span class="n"><span class="pre">esp_websocket_client_config_t</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425esp_websocket_client_initPK29esp_websocket_client_config_t" title="Permalink to this definition"></a><br /></dt>
@@ -507,7 +508,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 
 </section>
 <section id="structures">
-<h3>Structures<a class="headerlink" href="#structures" title="Permalink to this headline"></a></h3>
+<h3>Structures<a class="headerlink" href="#structures" title="Permalink to this heading"></a></h3>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv426esp_websocket_event_data_t">
 <span id="_CPPv326esp_websocket_event_data_t"></span><span id="_CPPv226esp_websocket_event_data_t"></span><span id="esp_websocket_event_data_t"></span><span class="target" id="structesp__websocket__event__data__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_event_data_t</span></span></span><a class="headerlink" href="#_CPPv426esp_websocket_event_data_t" title="Permalink to this definition"></a><br /></dt>
@@ -780,7 +781,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 
 </section>
 <section id="type-definitions">
-<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="Permalink to this headline"></a></h3>
+<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="Permalink to this heading"></a></h3>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv429esp_websocket_client_handle_t">
 <span id="_CPPv329esp_websocket_client_handle_t"></span><span id="_CPPv229esp_websocket_client_handle_t"></span><span id="esp_websocket_client_handle_t"></span><span class="target" id="esp__websocket__client_8h_1a495fdc2516a29dc75c569f7bb96259a1"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">esp_websocket_client</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_client_handle_t</span></span></span><a class="headerlink" href="#_CPPv429esp_websocket_client_handle_t" title="Permalink to this definition"></a><br /></dt>
@@ -788,7 +789,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 
 </section>
 <section id="enumerations">
-<h3>Enumerations<a class="headerlink" href="#enumerations" title="Permalink to this headline"></a></h3>
+<h3>Enumerations<a class="headerlink" href="#enumerations" title="Permalink to this heading"></a></h3>
 <dl class="cpp enum">
 <dt class="sig sig-object cpp" id="_CPPv424esp_websocket_event_id_t">
 <span id="_CPPv324esp_websocket_event_id_t"></span><span id="_CPPv224esp_websocket_event_id_t"></span><span class="target" id="esp__websocket__client_8h_1a781bbfb5f24162bd806d09cefe317b10"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_event_id_t</span></span></span><a class="headerlink" href="#_CPPv424esp_websocket_event_id_t" title="Permalink to this definition"></a><br /></dt>

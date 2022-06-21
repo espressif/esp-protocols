@@ -12,6 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -33,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="dce-internal-implementation">
-<h1>DCE Internal implementation<a class="headerlink" href="#dce-internal-implementation" title="Permalink to this headline">¶</a></h1>
+<h1>DCE Internal implementation<a class="headerlink" href="#dce-internal-implementation" title="Permalink to this heading">¶</a></h1>
 <p>This chapter provides a detailed description of the classes and building blocks of the esp-modem component and their responsibilities.</p>
 <p>The esp-modem actually implements the DCE class, which in turn aggregates these thee units:</p>
 <ul class="simple">
@@ -62,7 +63,7 @@
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN9esp_modem5DCE_TE">
-<span id="_CPPv3I0EN9esp_modem5DCE_TE"></span><span id="_CPPv2I0EN9esp_modem5DCE_TE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpecificModule</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1_d_c_e___t"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DCE_T</span></span></span><br /></dt>
+<span id="_CPPv3I0EN9esp_modem5DCE_TE"></span><span id="_CPPv2I0EN9esp_modem5DCE_TE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpecificModule</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1_d_c_e___t"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DCE_T</span></span></span><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce.hpp&gt;</em></div>
 <p>General <a class="reference internal" href="#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> class templated on a specific module. It is responsible for all the necessary transactions related to switching modes and consequent synergy with aggregated objects of <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>, <a class="reference internal" href="#classesp__modem_1_1_netif"><span class="std std-ref">Netif</span></a> and a specific Module. </p>
@@ -79,7 +80,7 @@
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCEE">
-<span id="_CPPv3N9esp_modem3DCEE"></span><span id="_CPPv2N9esp_modem3DCEE"></span><span id="esp_modem::DCE"></span><span class="target" id="classesp__modem_1_1_d_c_e"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DCE</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="cxx_api_docs.html#_CPPv4I0EN9esp_modem5DCE_TE" title="esp_modem::DCE_T"><span class="n"><span class="pre">DCE_T</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><span class="n"><span class="pre">GenericModule</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N9esp_modem3DCEE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem3DCEE"></span><span id="_CPPv2N9esp_modem3DCEE"></span><span id="esp_modem::DCE"></span><span class="target" id="classesp__modem_1_1_d_c_e"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DCE</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="cxx_api_docs.html#_CPPv4I0EN9esp_modem5DCE_TE" title="esp_modem::DCE_T"><span class="n"><span class="pre">DCE_T</span></span></a><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><span class="n"><span class="pre">GenericModule</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv4N9esp_modem3DCEE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce.hpp&gt;</em></div>
 <p>Common abstraction of the modem <a class="reference internal" href="#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a>, specialized by the <a class="reference internal" href="#classesp__modem_1_1_generic_module"><span class="std std-ref">GenericModule</span></a> which is a parent class for the supported devices and most common modems, as well. </p>
@@ -554,7 +555,7 @@
 </dd></dl>
 
 <section id="dte-abstraction">
-<span id="dte-impl"></span><h2>DTE abstraction<a class="headerlink" href="#dte-abstraction" title="Permalink to this headline">¶</a></h2>
+<span id="dte-impl"></span><h2>DTE abstraction<a class="headerlink" href="#dte-abstraction" title="Permalink to this heading">¶</a></h2>
 <p>DTE is a basic unit to talk to the module using a Terminal interface. It also implements and uses the CMUX to multiplex
 terminals. Besides the DTE documentation, this section also refers to the</p>
 <ul class="simple">
@@ -568,7 +569,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dd><p>Definition of <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> and related classes. </p>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DTEE">
-<span id="_CPPv3N9esp_modem3DTEE"></span><span id="_CPPv2N9esp_modem3DTEE"></span><span id="esp_modem::DTE"></span><span class="target" id="classesp__modem_1_1_d_t_e"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DTE</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13CommandableIfE" title="esp_modem::CommandableIf"><span class="n"><span class="pre">CommandableIf</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem3DTEE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem3DTEE"></span><span id="_CPPv2N9esp_modem3DTEE"></span><span id="esp_modem::DTE"></span><span class="target" id="classesp__modem_1_1_d_t_e"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DTE</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem13CommandableIfE" title="esp_modem::CommandableIf"><span class="n"><span class="pre">CommandableIf</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem3DTEE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dte.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> (Data <a class="reference internal" href="#classesp__modem_1_1_terminal"><span class="std std-ref">Terminal</span></a> Equipment) class </p>
@@ -677,7 +678,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 </dd></dl>
 
 <section id="terminal-interface">
-<span id="term-impl"></span><h3>Terminal interface<a class="headerlink" href="#terminal-interface" title="Permalink to this headline">¶</a></h3>
+<span id="term-impl"></span><h3>Terminal interface<a class="headerlink" href="#terminal-interface" title="Permalink to this heading">¶</a></h3>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___t_e_r_m_i_n_a_l"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_TERMINAL</span></span></dt>
@@ -709,7 +710,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 </div>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem8TerminalE">
-<span id="_CPPv3N9esp_modem8TerminalE"></span><span id="_CPPv2N9esp_modem8TerminalE"></span><span id="esp_modem::Terminal"></span><span class="target" id="classesp__modem_1_1_terminal"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Terminal</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem8TerminalE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem8TerminalE"></span><span id="_CPPv2N9esp_modem8TerminalE"></span><span id="esp_modem::Terminal"></span><span class="target" id="classesp__modem_1_1_terminal"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Terminal</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem8TerminalE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_terminal.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1_terminal"><span class="std std-ref">Terminal</span></a> interface. All communication interfaces must comply to this interface in order to be used as a <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>. </p>
@@ -757,7 +758,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 
 </section>
 <section id="cmux-implementation">
-<span id="cmux-impl"></span><h3>CMUX implementation<a class="headerlink" href="#cmux-implementation" title="Permalink to this headline">¶</a></h3>
+<span id="cmux-impl"></span><h3>CMUX implementation<a class="headerlink" href="#cmux-implementation" title="Permalink to this heading">¶</a></h3>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___c_m_u_x"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_CMUX</span></span></dt>
@@ -799,7 +800,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 </div>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem4CMuxE">
-<span id="_CPPv3N9esp_modem4CMuxE"></span><span id="_CPPv2N9esp_modem4CMuxE"></span><span id="esp_modem::CMux"></span><span class="target" id="classesp__modem_1_1_c_mux"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">CMux</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem4CMuxE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem4CMuxE"></span><span id="_CPPv2N9esp_modem4CMuxE"></span><span id="esp_modem::CMux"></span><span class="target" id="classesp__modem_1_1_c_mux"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CMux</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem4CMuxE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_cmux.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1_c_mux"><span class="std std-ref">CMux</span></a> class which consumes the original terminal and creates multiple virtual terminals from it. This class itself is not usable as a <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> terminal, only via its instances defined in <code class="docutils literal notranslate"><a class="reference internal" href="#classesp__modem_1_1_c_mux_instance"><span class="std std-ref"><span class="pre">CMuxInstance</span></span></a></code> </p>
@@ -812,6 +813,28 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>true on success </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem4CMux6deinitEv">
+<span id="_CPPv3N9esp_modem4CMux6deinitEv"></span><span id="_CPPv2N9esp_modem4CMux6deinitEv"></span><span id="esp_modem::CMux::deinit"></span><span class="target" id="classesp__modem_1_1_c_mux_1a0554bbcad822a194050cb9001012f21c"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">deinit</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem4CMux6deinitEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Closes and deinits <a class="reference internal" href="#classesp__modem_1_1_c_mux"><span class="std std-ref">CMux</span></a> protocol. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>true on success </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem4CMux6detachEv">
+<span id="_CPPv3N9esp_modem4CMux6detachEv"></span><span id="_CPPv2N9esp_modem4CMux6detachEv"></span><span id="esp_modem::CMux::detach"></span><span class="target" id="classesp__modem_1_1_c_mux_1a3ba702194bf013efe9dfe1dd63c3ee3f"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">pair</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N9esp_modem8TerminalE" title="esp_modem::Terminal"><span class="n"><span class="pre">Terminal</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">unique_buffer</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">detach</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem4CMux6detachEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Ejects the attached terminal and buffer, so they could be used as traditional command/data <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>’s. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pair of the original terminal and buffer </p>
 </dd>
 </dl>
 </dd></dl>
@@ -853,7 +876,7 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem12CMuxInstanceE">
-<span id="_CPPv3N9esp_modem12CMuxInstanceE"></span><span id="_CPPv2N9esp_modem12CMuxInstanceE"></span><span id="esp_modem::CMuxInstance"></span><span class="target" id="classesp__modem_1_1_c_mux_instance"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">CMuxInstance</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem8TerminalE" title="esp_modem::Terminal"><span class="n"><span class="pre">Terminal</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem12CMuxInstanceE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem12CMuxInstanceE"></span><span id="_CPPv2N9esp_modem12CMuxInstanceE"></span><span id="esp_modem::CMuxInstance"></span><span class="target" id="classesp__modem_1_1_c_mux_instance"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CMuxInstance</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem8TerminalE" title="esp_modem::Terminal"><span class="n"><span class="pre">Terminal</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem12CMuxInstanceE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_cmux.hpp&gt;</em></div>
 <p>This represents a specific instance of a CMUX virtual terminal. This class also implements <a class="reference internal" href="#classesp__modem_1_1_terminal"><span class="std std-ref">Terminal</span></a> interface and as such could be used as a <a class="reference internal" href="#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>’s terminal. </p>
@@ -901,14 +924,14 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 </section>
 </section>
 <section id="netif">
-<span id="netif-impl"></span><h2>Netif<a class="headerlink" href="#netif" title="Permalink to this headline">¶</a></h2>
+<span id="netif-impl"></span><h2>Netif<a class="headerlink" href="#netif" title="Permalink to this heading">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___n_e_t_i_f"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_NETIF</span></span></dt>
 <dd><p>Network interface layer of the esp-modem. </p>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem5NetifE">
-<span id="_CPPv3N9esp_modem5NetifE"></span><span id="_CPPv2N9esp_modem5NetifE"></span><span id="esp_modem::Netif"></span><span class="target" id="classesp__modem_1_1_netif"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Netif</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem5NetifE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem5NetifE"></span><span id="_CPPv2N9esp_modem5NetifE"></span><span id="esp_modem::Netif"></span><span class="target" id="classesp__modem_1_1_netif"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Netif</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem5NetifE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_netif.hpp&gt;</em></div>
 <p>Network interface class responsible to glue the esp-netif to the modem’s <a class="reference internal" href="#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a>. </p>
@@ -939,14 +962,14 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 
 </section>
 <section id="module-abstraction">
-<span id="module-impl"></span><h2>Module abstraction<a class="headerlink" href="#module-abstraction" title="Permalink to this headline">¶</a></h2>
+<span id="module-impl"></span><h2>Module abstraction<a class="headerlink" href="#module-abstraction" title="Permalink to this heading">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___m_o_d_u_l_e"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_MODULE</span></span></dt>
 <dd><p>Definition of modules representing specific modem devices. </p>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem13GenericModuleE">
-<span id="_CPPv3N9esp_modem13GenericModuleE"></span><span id="_CPPv2N9esp_modem13GenericModuleE"></span><span id="esp_modem::GenericModule"></span><span class="target" id="classesp__modem_1_1_generic_module"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">GenericModule</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem8ModuleIfE" title="esp_modem::ModuleIf"><span class="n"><span class="pre">ModuleIf</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem13GenericModuleE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem13GenericModuleE"></span><span id="_CPPv2N9esp_modem13GenericModuleE"></span><span id="esp_modem::GenericModule"></span><span class="target" id="classesp__modem_1_1_generic_module"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">GenericModule</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N9esp_modem8ModuleIfE" title="esp_modem::ModuleIf"><span class="n"><span class="pre">ModuleIf</span></span></a><a class="headerlink" href="#_CPPv4N9esp_modem13GenericModuleE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce_module.hpp&gt;</em></div>
 <p>This is a basic building block for custom modules as well as for the supported modules in the esp-modem component It derives from the <a class="reference internal" href="#classesp__modem_1_1_module_if"><span class="std std-ref">ModuleIf</span></a>. </p>
@@ -1023,13 +1046,13 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 </dd></dl>
 
 <section id="adding-new-devices">
-<span id="module-addition"></span><h3>Adding new devices<a class="headerlink" href="#adding-new-devices" title="Permalink to this headline">¶</a></h3>
+<span id="module-addition"></span><h3>Adding new devices<a class="headerlink" href="#adding-new-devices" title="Permalink to this heading">¶</a></h3>
 <p>To support a new module, developers would have to implement a new class derived from <a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">esp_modem::GenericModule</span></code></a> the same way
 as it is described in the  <a class="reference internal" href="advanced_api.html#create-custom-module"><span class="std std-ref">Advanced user manual</span></a>. The only difference is that the new class (and factory extension)
 would be available in the esp_modem code base.</p>
 </section>
 <section id="implement-a-new-generic-command">
-<h3>Implement a new generic command<a class="headerlink" href="#implement-a-new-generic-command" title="Permalink to this headline">¶</a></h3>
+<h3>Implement a new generic command<a class="headerlink" href="#implement-a-new-generic-command" title="Permalink to this heading">¶</a></h3>
 <p>Adding a generic command, i.e. the command that is shared for all modules and is included in the <a class="reference internal" href="#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">esp_modem::GenericModule</span></code></a>,
 has to be declared first in the <code class="docutils literal notranslate"><span class="pre">include/generate/esp_modem_command_declare.inc</span></code> file, which is the single source
 of supported command definitions, that is used in:</p>
@@ -1049,7 +1072,7 @@ of supported command definitions, that is used in:</p>
 human readable argument name is <code class="docutils literal notranslate"><span class="pre">baud</span></code>, it’s the first argument, so expands to <code class="docutils literal notranslate"><span class="pre">p1</span></code> (second argument would be <code class="docutils literal notranslate"><span class="pre">p2</span></code>, etc)</p>
 </section>
 <section id="command-library">
-<h3>Command library<a class="headerlink" href="#command-library" title="Permalink to this headline">¶</a></h3>
+<h3>Command library<a class="headerlink" href="#command-library" title="Permalink to this heading">¶</a></h3>
 <p>This is a namespace holding a library of typical AT commands used by supported devices.
 Please refer to the <a class="reference internal" href="api_docs.html#c-api"><span class="std std-ref">C API Documentation</span></a> for the list of supported commands.</p>
 <dl>
@@ -1109,7 +1132,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 </section>
 </section>
 <section id="modem-types">
-<h2>Modem types<a class="headerlink" href="#modem-types" title="Permalink to this headline">¶</a></h2>
+<h2>Modem types<a class="headerlink" href="#modem-types" title="Permalink to this heading">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___t_y_p_e_s"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_TYPES</span></span></dt>
@@ -1190,7 +1213,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem13CommandableIfE">
-<span id="_CPPv3N9esp_modem13CommandableIfE"></span><span id="_CPPv2N9esp_modem13CommandableIfE"></span><span id="esp_modem::CommandableIf"></span><span class="target" id="classesp__modem_1_1_commandable_if"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">CommandableIf</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem13CommandableIfE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem13CommandableIfE"></span><span id="_CPPv2N9esp_modem13CommandableIfE"></span><span id="esp_modem::CommandableIf"></span><span class="target" id="classesp__modem_1_1_commandable_if"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CommandableIf</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem13CommandableIfE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_types.hpp&gt;</em></div>
 <p>Interface for classes eligible to send AT commands (Modules, DCEs, DTEs) </p>
@@ -1220,7 +1243,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem8ModuleIfE">
-<span id="_CPPv3N9esp_modem8ModuleIfE"></span><span id="_CPPv2N9esp_modem8ModuleIfE"></span><span id="esp_modem::ModuleIf"></span><span class="target" id="classesp__modem_1_1_module_if"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">ModuleIf</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem8ModuleIfE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem8ModuleIfE"></span><span id="_CPPv2N9esp_modem8ModuleIfE"></span><span id="esp_modem::ModuleIf"></span><span class="target" id="classesp__modem_1_1_module_if"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ModuleIf</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem8ModuleIfE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_types.hpp&gt;</em></div>
 <p>Interface for classes implementing a module for the modem. </p>
@@ -1318,7 +1341,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -1335,7 +1358,7 @@ Please refer to the <a class="reference internal" href="api_docs.html#c-api"><sp
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

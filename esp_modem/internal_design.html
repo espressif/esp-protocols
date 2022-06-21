@@ -12,6 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -34,9 +35,9 @@
           <div class="body" role="main">
             
   <section id="internal-design">
-<h1>Internal design<a class="headerlink" href="#internal-design" title="Permalink to this headline">¶</a></h1>
+<h1>Internal design<a class="headerlink" href="#internal-design" title="Permalink to this heading">¶</a></h1>
 <section id="design-decisions">
-<h2>Design decisions<a class="headerlink" href="#design-decisions" title="Permalink to this headline">¶</a></h2>
+<h2>Design decisions<a class="headerlink" href="#design-decisions" title="Permalink to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>Use C++ with additional C API</p></li>
 <li><p>Use exceptions</p>
@@ -59,17 +60,17 @@ such as implantation of a minimal device (ModuleIf), add new AT commands (oOnly 
 </ul>
 </section>
 <section id="dce-collaboration-model">
-<h2>DCE collaboration model<a class="headerlink" href="#dce-collaboration-model" title="Permalink to this headline">¶</a></h2>
+<h2>DCE collaboration model<a class="headerlink" href="#dce-collaboration-model" title="Permalink to this heading">¶</a></h2>
 <p>The diagram describes how the DCE class collaborates with DTE, PPP and the device abstraction</p>
 <p><img alt="DCE_architecture" src="_images/DCE_DTE_collaboration.png" /></p>
 </section>
 <section id="terminal-inheritance">
-<h2>Terminal inheritance<a class="headerlink" href="#terminal-inheritance" title="Permalink to this headline">¶</a></h2>
+<h2>Terminal inheritance<a class="headerlink" href="#terminal-inheritance" title="Permalink to this heading">¶</a></h2>
 <p>Terminal is a class which can read or write data, and can handle callbacks when data are available. UART specialization
 is provided implementing these method using the uart driver.</p>
 </section>
 <section id="cmux-terminal">
-<h2>CMUX terminal<a class="headerlink" href="#cmux-terminal" title="Permalink to this headline">¶</a></h2>
+<h2>CMUX terminal<a class="headerlink" href="#cmux-terminal" title="Permalink to this heading">¶</a></h2>
 <p>The below diagram depicts the idea of using CMUX terminal mode using the CMuxInstance class which is a terminal
 (it implements the basic read/write methods) interfacing arbitrary number of virtual terminals,
 but at the same time it is also composed of CMux class, which consumes the original terminal and uses its read/write methods
@@ -128,7 +129,7 @@ to multiplex the terminal.</p>
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -145,7 +146,7 @@ to multiplex the terminal.</p>
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

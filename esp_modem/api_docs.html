@@ -12,6 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -34,7 +35,7 @@
           <div class="body" role="main">
             
   <section id="c-api-documentation">
-<span id="c-api"></span><h1>C API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this headline">¶</a></h1>
+<span id="c-api"></span><h1>C API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this heading">¶</a></h1>
 <p>The C API is very simple and consist of these two basic parts:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#lifecycle-api"><span class="std std-ref">Lifecycle API</span></a></p></li>
@@ -51,7 +52,7 @@
 </ul>
 <p>Note the configuration structures for DTE and DCE, needed for creating the DCE instance, is documented in <a class="reference internal" href="#api-config"><span class="std std-ref">Configuration structures</span></a></p>
 <section id="lifecycle-api">
-<span id="id1"></span><h2>Lifecycle API<a class="headerlink" href="#lifecycle-api" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Lifecycle API<a class="headerlink" href="#lifecycle-api" title="Permalink to this heading">¶</a></h2>
 <p>These functions are used to create, destroy and set modem working mode.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#_CPPv413esp_modem_newPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t" title="esp_modem_new"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem_new()</span></code></a></p></li>
@@ -94,6 +95,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N18esp_modem_dce_mode19ESP_MODEM_MODE_DATAE">
 <span id="_CPPv3N18esp_modem_dce_mode19ESP_MODEM_MODE_DATAE"></span><span id="_CPPv2N18esp_modem_dce_mode19ESP_MODEM_MODE_DATAE"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ggaf760e55ec8ab7da6d0bf0b10642510c5a86b7874c6ea985390d4b90381826c805"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ESP_MODEM_MODE_DATA</span></span></span><a class="headerlink" href="#_CPPv4N18esp_modem_dce_mode19ESP_MODEM_MODE_DATAE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Used for switching to PPP mode for the modem to connect to a network </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N18esp_modem_dce_mode19ESP_MODEM_MODE_CMUXE">
+<span id="_CPPv3N18esp_modem_dce_mode19ESP_MODEM_MODE_CMUXE"></span><span id="_CPPv2N18esp_modem_dce_mode19ESP_MODEM_MODE_CMUXE"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ggaf760e55ec8ab7da6d0bf0b10642510c5a52e6c1807d49e875c2597e9b7e9f0c58"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ESP_MODEM_MODE_CMUX</span></span></span><a class="headerlink" href="#_CPPv4N18esp_modem_dce_mode19ESP_MODEM_MODE_CMUXE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Multiplexed terminal mode </p>
 </dd></dl>
 
 </dd></dl>
@@ -209,7 +216,7 @@
 
 </section>
 <section id="modem-commands">
-<span id="id2"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this headline">¶</a></h2>
+<span id="id2"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this heading">¶</a></h2>
 <p>These functions are the actual commands to communicate with the modem using AT command interface.</p>
 <p>Note that the functions which implement AT commands returning textual values use plain <code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span></code>
 pointer as the return value. The API expects the output data to point to user allocated space of at least
@@ -682,7 +689,7 @@ pointer as the return value. The API expects the output data to point to user al
 </div>
 </section>
 <section id="configuration-structures">
-<span id="api-config"></span><h2>Configuration structures<a class="headerlink" href="#configuration-structures" title="Permalink to this headline">¶</a></h2>
+<span id="api-config"></span><h2>Configuration structures<a class="headerlink" href="#configuration-structures" title="Permalink to this heading">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___c_o_n_f_i_g"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_CONFIG</span></span></dt>
@@ -977,7 +984,7 @@ pointer as the return value. The API expects the output data to point to user al
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -994,7 +1001,7 @@ pointer as the return value. The API expects the output data to point to user al
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

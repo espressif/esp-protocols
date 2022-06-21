@@ -16,6 +16,7 @@
         <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="_static/doctools.js"></script>
         <script src="_static/clipboard.min.js"></script>
         <script src="_static/copybutton.js"></script>
@@ -113,7 +114,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>mDNS Service</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-protocols/blob/ebf122b/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-protocols/blob/609594a/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -122,14 +123,14 @@
            <div itemprop="articleBody">
              
   <section id="mdns-service">
-<h1>mDNS Service<a class="headerlink" href="#mdns-service" title="Permalink to this headline"></a></h1>
+<h1>mDNS Service<a class="headerlink" href="#mdns-service" title="Permalink to this heading"></a></h1>
 <p><a class="reference external" href="../../../zh_CN/latest/esp32/index.html">[中文]</a></p>
 <section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this heading"></a></h2>
 <p>mDNS is a multicast UDP service that is used to provide local network service and host discovery.</p>
 <p>mDNS is installed by default on most operating systems or is available as separate package. On <code class="docutils literal notranslate"><span class="pre">Mac</span> <span class="pre">OS</span></code> it is installed by default and is called <code class="docutils literal notranslate"><span class="pre">Bonjour</span></code>. Apple releases an installer for <code class="docutils literal notranslate"><span class="pre">Windows</span></code> that can be found <a class="reference external" href="https://support.apple.com/downloads/bonjour%2520for%2520windows">on Apple’s support page</a>. On <code class="docutils literal notranslate"><span class="pre">Linux</span></code>, mDNS is provided by <a class="reference external" href="https://github.com/lathiat/avahi">avahi</a> and is usually installed by default.</p>
 <section id="mdns-properties">
-<h3>mDNS Properties<a class="headerlink" href="#mdns-properties" title="Permalink to this headline"></a></h3>
+<h3>mDNS Properties<a class="headerlink" href="#mdns-properties" title="Permalink to this heading"></a></h3>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">hostname</span></code>: the hostname that the device will respond to. If not set, the <code class="docutils literal notranslate"><span class="pre">hostname</span></code> will be read from the interface. Example: <code class="docutils literal notranslate"><span class="pre">my-esp32</span></code> will resolve to <code class="docutils literal notranslate"><span class="pre">my-esp32.local</span></code></p></li>
@@ -155,7 +156,7 @@
 </div>
 </section>
 <section id="mdns-services">
-<h3>mDNS Services<a class="headerlink" href="#mdns-services" title="Permalink to this headline"></a></h3>
+<h3>mDNS Services<a class="headerlink" href="#mdns-services" title="Permalink to this heading"></a></h3>
 <p>mDNS can advertise information about network services that your device offers. Each service is defined by a few properties.</p>
 <blockquote>
 <div><ul class="simple">
@@ -193,7 +194,7 @@
 </div>
 </section>
 <section id="mdns-query">
-<h3>mDNS Query<a class="headerlink" href="#mdns-query" title="Permalink to this headline"></a></h3>
+<h3>mDNS Query<a class="headerlink" href="#mdns-query" title="Permalink to this heading"></a></h3>
 <p>mDNS provides methods for browsing for services and resolving host’s IP/IPv6 addresses.</p>
 <p>Results for services are returned as a linked list of <code class="docutils literal notranslate"><span class="pre">mdns_result_t</span></code> objects.</p>
 <p>Example method to resolve host IPs:</p>
@@ -295,10 +296,10 @@
 </div>
 </section>
 <section id="performance-optimization">
-<h3>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Permalink to this headline"></a></h3>
+<h3>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Permalink to this heading"></a></h3>
 </section>
 <section id="execution-speed">
-<h3>Execution Speed<a class="headerlink" href="#execution-speed" title="Permalink to this headline"></a></h3>
+<h3>Execution Speed<a class="headerlink" href="#execution-speed" title="Permalink to this heading"></a></h3>
 <blockquote>
 <div><ul class="simple">
 <li><p>mDNS creates a task with default low priority 1 <code class="docutils literal notranslate"><span class="pre">CONFIG_MDNS_TASK_PRIORITY</span></code> (If <code class="docutils literal notranslate"><span class="pre">CONFIG_FREERTOS_UNICORE</span></code> enabeled it pinned to CPU0 (<code class="docutils literal notranslate"><span class="pre">CONFIG_MDNS_TASK_AFFINITY</span></code>).</p></li>
@@ -307,7 +308,7 @@
 </div></blockquote>
 </section>
 <section id="minimizing-ram-usage">
-<h3>Minimizing RAM Usage<a class="headerlink" href="#minimizing-ram-usage" title="Permalink to this headline"></a></h3>
+<h3>Minimizing RAM Usage<a class="headerlink" href="#minimizing-ram-usage" title="Permalink to this heading"></a></h3>
 <ul class="simple">
 <li><p>mDNS creates a tasks with stack sizes configured by <code class="docutils literal notranslate"><span class="pre">CONFIG_MDNS_TASK_STACK_SIZE</span></code>.</p></li>
 </ul>
@@ -315,19 +316,19 @@
 </section>
 </section>
 <section id="application-example">
-<h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline"></a></h2>
-<p>mDNS server/scanner example: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/ebf122b/examples/../examples"></a>.</p>
+<h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this heading"></a></h2>
+<p>mDNS server/scanner example: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/609594a/examples/../examples"></a>.</p>
 </section>
 <section id="api-reference">
-<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline"></a></h2>
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this heading"></a></h2>
 <section id="header-file">
-<h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline"></a></h3>
+<h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this heading"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/ebf122b/include/mdns.h">include/mdns.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/609594a/include/mdns.h">include/mdns.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this headline"></a></h3>
+<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv49mdns_initv">
 <span id="_CPPv39mdns_initv"></span><span id="_CPPv29mdns_initv"></span><span id="mdns_init__void"></span><span class="target" id="mdns_8h_1ad323a4dfba3545c43ebda0f3f7c515e0"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_init</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv49mdns_initv" title="Permalink to this definition"></a><br /></dt>
@@ -1270,7 +1271,7 @@
 
 </section>
 <section id="structures">
-<h3>Structures<a class="headerlink" href="#structures" title="Permalink to this headline"></a></h3>
+<h3>Structures<a class="headerlink" href="#structures" title="Permalink to this heading"></a></h3>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv415mdns_txt_item_t">
 <span id="_CPPv315mdns_txt_item_t"></span><span id="_CPPv215mdns_txt_item_t"></span><span id="mdns_txt_item_t"></span><span class="target" id="structmdns__txt__item__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_txt_item_t</span></span></span><a class="headerlink" href="#_CPPv415mdns_txt_item_t" title="Permalink to this definition"></a><br /></dt>
@@ -1402,7 +1403,7 @@
 
 </section>
 <section id="macros">
-<h3>Macros<a class="headerlink" href="#macros" title="Permalink to this headline"></a></h3>
+<h3>Macros<a class="headerlink" href="#macros" title="Permalink to this heading"></a></h3>
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.MDNS_TYPE_A">
 <span class="target" id="mdns_8h_1aadb9a175b672893b350f1e7032009e00"></span><span class="sig-name descname"><span class="n"><span class="pre">MDNS_TYPE_A</span></span></span><a class="headerlink" href="#c.MDNS_TYPE_A" title="Permalink to this definition"></a><br /></dt>
@@ -1445,7 +1446,7 @@
 
 </section>
 <section id="type-definitions">
-<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="Permalink to this headline"></a></h3>
+<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="Permalink to this heading"></a></h3>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418mdns_search_once_t">
 <span id="_CPPv318mdns_search_once_t"></span><span id="_CPPv218mdns_search_once_t"></span><span id="mdns_search_once_t"></span><span class="target" id="mdns_8h_1a8815240672c5880e798ca6655309c589"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">mdns_search_once_s</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_search_once_t</span></span></span><a class="headerlink" href="#_CPPv418mdns_search_once_t" title="Permalink to this definition"></a><br /></dt>
@@ -1471,7 +1472,7 @@
 
 </section>
 <section id="enumerations">
-<h3>Enumerations<a class="headerlink" href="#enumerations" title="Permalink to this headline"></a></h3>
+<h3>Enumerations<a class="headerlink" href="#enumerations" title="Permalink to this heading"></a></h3>
 <dl class="cpp enum">
 <dt class="sig sig-object cpp" id="_CPPv420mdns_event_actions_t">
 <span id="_CPPv320mdns_event_actions_t"></span><span id="_CPPv220mdns_event_actions_t"></span><span class="target" id="mdns_8h_1a14279e8f2e7c65c12320222a55f09fdf"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_event_actions_t</span></span></span><a class="headerlink" href="#_CPPv420mdns_event_actions_t" title="Permalink to this definition"></a><br /></dt>
