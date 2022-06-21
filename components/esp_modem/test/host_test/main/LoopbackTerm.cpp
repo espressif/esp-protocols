@@ -25,7 +25,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         if (command == "+++") {
             response = "NO CARRIER\r\n";
         } else if (command == "ATE1\r" || command == "ATE0\r") {
-            response = "OK\r\n";
+            response = "OK\r\n ";
         } else if (command == "ATO\r") {
             response = "ERROR\r\n";
         } else if (command.find("ATD") != std::string::npos) {
@@ -43,7 +43,16 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         } else if (command.find("AT+CPIN?\r") != std::string::npos) {
             response = pin_ok ? "+CPIN: READY\r\nOK\r\n" : "+CPIN: SIM PIN\r\nOK\r\n";
         } else if (command.find("AT") != std::string::npos) {
-            response = "OK\r\n";
+            if (command.length() > 4) {
+                response = command;
+                response[0] = 'O';
+                response[1] = 'K';
+                response[2] = '\r';
+                response[3] = '\n';
+            } else {
+                response = "OK\r\n";
+            }
+
         }
         if (!response.empty()) {
             data_len = response.length();
@@ -55,7 +64,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     }
     if (len > 2 && data[0] == 0xf9) { // Simple CMUX responder
         // turn the request into a reply -> implements CMUX loopback
-        if (data[2] == 0x3f) {  // SABM command
+        if (data[2] == 0x3f || data[2] == 0x53) {  // SABM command
             data[2] = 0x73;
         } else if (data[2] == 0xef) { // Generic request
             data[2] = 0xff;         // generic reply

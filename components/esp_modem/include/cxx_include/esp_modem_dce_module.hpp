@@ -79,8 +79,17 @@ public:
             }
             return true;
         } else if (mode == modem_mode::COMMAND_MODE) {
-            Task::Delay(1000); // Mandatory 1s pause
-            return set_command_mode() == command_result::OK;
+            Task::Delay(1000); // Mandatory 1s pause before
+            int retry = 0;
+            while (retry++ < 3) {
+                if (set_command_mode() == command_result::OK)
+                    return true;
+                Task::Delay(1000); // Mandatory 1s pause after escape
+                if (sync() == command_result::OK)
+                    return true;
+                Task::Delay(1000); // Mandatory 1s pause before escape
+            }
+            return false;
         } else if (mode == modem_mode::CMUX_MODE) {
             return set_cmux() == command_result::OK;
         }

@@ -15,17 +15,19 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 #include <cstddef>
 #include <cstdint>
-#include <utility>
 #include "cxx_include/esp_modem_primitives.hpp"
 #include "cxx_include/esp_modem_terminal.hpp"
-#include "cxx_include/esp_modem_cmux.hpp"
 #include "cxx_include/esp_modem_types.hpp"
+#include "cxx_include/esp_modem_buffer.hpp"
 
 struct esp_modem_dte_config;
 
 namespace esp_modem {
+
+class CMux;
 
 /**
  * @defgroup ESP_MODEM_DTE
@@ -94,21 +96,27 @@ public:
      */
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, char separator) override;
 
+protected:
+    /**
+     * @brief Allows for locking the DTE
+     */
+    void lock()     { internal_lock.lock();   }
+    void unlock()   { internal_lock.unlock(); }
+    friend class Scoped<DTE>;                               /*!< Declaring "Scoped<DTE> lock(dte)" locks this instance */
 private:
     static const size_t GOT_LINE = SignalGroup::bit0;       /*!< Bit indicating response available */
 
-    [[nodiscard]] bool setup_cmux();                         /*!< Internal setup of CMUX mode */
+    [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
+    [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode */
 
-    Lock lock{};                                            /*!< Locks DTE operations */
-    size_t buffer_size;                                      /*!< Size of available DTE buffer */
-    size_t consumed;                                         /*!< Indication of already processed portion in DTE buffer */
-    std::unique_ptr<uint8_t[]> buffer;                       /*!< DTE buffer */
-    std::unique_ptr<Terminal> term;                          /*!< Primary terminal for this DTE */
-    Terminal *command_term;                                  /*!< Reference to the terminal used for sending commands */
-    std::unique_ptr<Terminal> other_term;                    /*!< Secondary terminal for this DTE */
-    modem_mode mode;                                         /*!< DTE operation mode */
+    Lock internal_lock{};                                   /*!< Locks DTE operations */
+    unique_buffer buffer;                                   /*!< DTE buffer */
+    std::shared_ptr<CMux> cmux_term;                        /*!< Primary terminal for this DTE */
+    std::shared_ptr<Terminal> command_term;                 /*!< Reference to the terminal used for sending commands */
+    std::shared_ptr<Terminal> data_term;                    /*!< Secondary terminal for this DTE */
+    modem_mode mode;                                        /*!< DTE operation mode */
     SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
-    std::function<bool(uint8_t *data, size_t len)> on_data;  /*!< on data callback for current terminal */
+    std::function<bool(uint8_t *data, size_t len)> on_data; /*!< on data callback for current terminal */
 };
 
 /**

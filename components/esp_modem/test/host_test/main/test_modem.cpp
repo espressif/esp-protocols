@@ -77,6 +77,7 @@ TEST_CASE("DTE send/receive command", "[esp_modem]")
     CHECK(ret == command_result::OK);
 }
 
+
 TEST_CASE("DCE commands", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>();
@@ -96,7 +97,6 @@ TEST_CASE("DCE commands", "[esp_modem]")
     }, 1000);
     CHECK(ret == command_result::OK);
 }
-
 TEST_CASE("DCE AT commands", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>();
@@ -128,9 +128,21 @@ TEST_CASE("DCE modes", "[esp_modem]")
     auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
     CHECK(dce != nullptr);
 
+    // UNDER -> CMD (OK)
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
+    // CMD -> CMD (Fail)
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == false);
+    // CMD -> DATA (OK)
     CHECK(dce->set_mode(esp_modem::modem_mode::DATA_MODE) == true);
+    // DATA -> CMUX (Fail)
+    CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == false);
+    // DATA back -> CMD (OK)
+    CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
+    // CMD -> CMUX (OK)
+    CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == true);
+    // CMUX -> DATA (Fail)
+    CHECK(dce->set_mode(esp_modem::modem_mode::DATA_MODE) == false);
+    // CMUX back -> CMD (OK)
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
 }
 
@@ -171,7 +183,7 @@ TEST_CASE("Test CMUX protocol by injecting payloads", "[esp_modem]")
     CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == true);
     const auto test_command = "Test\n";
     // 1 byte payload size
-    uint8_t test_payload[] = {0xf9, 0x05, 0xff, 0x0b, 0x54, 0x65, 0x73, 0x74, 0x0a, 0xbb, 0xf9 };
+    uint8_t test_payload[] = {0xf9, 0x09, 0xff, 0x0b, 0x54, 0x65, 0x73, 0x74, 0x0a, 0xbb, 0xf9 };
     loopback->inject(&test_payload[0], sizeof(test_payload), 1);
     auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
         std::string response((char *) data, len);
@@ -181,7 +193,7 @@ TEST_CASE("Test CMUX protocol by injecting payloads", "[esp_modem]")
     CHECK(ret == command_result::OK);
 
     // 2 byte payload size
-    uint8_t long_payload[453] = { 0xf9, 0x05, 0xef, 0x7c, 0x03, 0x7e }; // header
+    uint8_t long_payload[453] = { 0xf9, 0x09, 0xef, 0x7c, 0x03, 0x7e }; // header
     long_payload[5]   = 0x7e;   // payload to validate
     long_payload[449] = 0x7e;
     long_payload[450] = '\n';
