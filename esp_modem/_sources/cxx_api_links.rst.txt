@@ -3,6 +3,7 @@
 - :cpp:func:`esp_modem::DCE::get_operator_name` 
 - :cpp:func:`esp_modem::DCE::store_profile` 
 - :cpp:func:`esp_modem::DCE::set_pin` 
+- :cpp:func:`esp_modem::DCE::at` 
 - :cpp:func:`esp_modem::DCE::read_pin` 
 - :cpp:func:`esp_modem::DCE::set_echo` 
 - :cpp:func:`esp_modem::DCE::sms_txt_mode` 
