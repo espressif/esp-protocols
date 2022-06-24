@@ -50,7 +50,8 @@ struct esp_modem_uart_term_config {
     uart_stop_bits_t stop_bits;     /*!< Stop bits of UART */
     uart_parity_t parity;           /*!< Parity type */
     esp_modem_flow_ctrl_t flow_control; /*!< Flow control type */
-    int baud_rate;             /*!< Communication baud rate */
+    uart_sclk_t source_clk;         /*!< UART source clock selection */
+    int baud_rate;                  /*!< Communication baud rate */
     int tx_io_num;                  /*!< TXD Pin Number */
     int rx_io_num;                  /*!< RXD Pin Number */
     int rts_io_num;                 /*!< RTS Pin Number */
@@ -107,6 +108,7 @@ struct esp_modem_dte_config {
             .stop_bits = UART_STOP_BITS_1,          \
             .parity = UART_PARITY_DISABLE,          \
             .flow_control = ESP_MODEM_FLOW_CONTROL_NONE,\
+            .source_clk = UART_SCLK_APB,            \
             .baud_rate = 115200,                    \
             .tx_io_num = 25,                        \
             .rx_io_num = 26,                        \

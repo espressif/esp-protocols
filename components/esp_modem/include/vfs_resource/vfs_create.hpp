@@ -22,6 +22,7 @@
             .stop_bits = UART_STOP_BITS_1,          \
             .parity = UART_PARITY_DISABLE,          \
             .flow_control = ESP_MODEM_FLOW_CONTROL_NONE,\
+            .source_clk = UART_SCLK_APB,            \
             .baud_rate = 115200,                    \
             .tx_io_num = 25,                        \
             .rx_io_num = 26,                        \
