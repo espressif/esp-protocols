@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 jobs:
   host_test:
-    name: Build and test
+    name: Build and Test on Host
     runs-on: ubuntu-20.04
     container: espressif/idf:release-v4.3
     env:
