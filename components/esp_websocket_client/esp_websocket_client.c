@@ -82,13 +82,14 @@ typedef struct {
     int                         pingpong_timeout_sec;
     size_t                      ping_interval_sec;
     const char                  *cert;
-    size_t                      cert_len;                
+    size_t                      cert_len;
     const char                  *client_cert;
     size_t                      client_cert_len;
     const char                  *client_key;
     size_t                      client_key_len;
     bool                        use_global_ca_store;
     bool                        skip_cert_common_name_check;
+    bool                        skip_server_verification;
     esp_err_t                   (*crt_bundle_attach)(void *conf);
 } websocket_config_storage_t;
 
@@ -431,6 +432,9 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
         if (client->config->skip_cert_common_name_check) {
             esp_transport_ssl_skip_common_name_check(ssl);
         }
+        if (client->config->skip_server_verification) {
+            esp_transport_ssl_skip_server_verification(ssl);
+        }
 
         esp_transport_handle_t wss = esp_transport_ws_init(ssl);
         ESP_WS_CLIENT_MEM_CHECK(TAG, wss, return ESP_ERR_NO_MEM);
@@ -505,6 +509,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->client_key = config->client_key;
     client->config->client_key_len = config->client_key_len;
     client->config->skip_cert_common_name_check = config->skip_cert_common_name_check;
+    client->config->skip_server_verification = config->skip_server_verification;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
 
     if (config->uri) {
