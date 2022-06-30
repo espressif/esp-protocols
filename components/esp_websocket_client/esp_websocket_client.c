@@ -82,7 +82,7 @@ typedef struct {
     int                         pingpong_timeout_sec;
     size_t                      ping_interval_sec;
     const char                  *cert;
-    size_t                      cert_len;                
+    size_t                      cert_len;
     const char                  *client_cert;
     size_t                      client_cert_len;
     const char                  *client_key;
@@ -118,6 +118,8 @@ struct esp_websocket_client {
     bool                        wait_for_pong_resp;
     EventGroupHandle_t          status_bits;
     SemaphoreHandle_t            lock;
+    size_t                      errormsg_size;
+    char                        *errormsg_buffer;
     char                        *rx_buffer;
     char                        *tx_buffer;
     int                         buffer_size;
@@ -214,17 +216,31 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     return ESP_OK;
 }
 
-static esp_err_t esp_websocket_client_error_connection(esp_websocket_client_handle_t client)
+static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client, const char *format, ...)
 {
-    ESP_WS_CLIENT_STATE_CHECK(TAG, client, return ESP_FAIL);
-    esp_transport_close(client->transport);
+    va_list myargs;
+    va_start(myargs, format);
 
-    if (client->config->auto_reconnect) {
-        client->reconnect_tick_ms = _tick_get_ms();
-        ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+    size_t needed_size = vsnprintf(NULL, 0, format, myargs);
+    needed_size++; // null terminator
+
+    if (needed_size > client->errormsg_size) {
+        if (client->errormsg_buffer) {
+            free(client->errormsg_buffer);
+        }
+        client->errormsg_buffer = malloc(needed_size);
+        assert(client->errormsg_buffer);
+        client->errormsg_size = needed_size;
     }
-    client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
-    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_ERROR, NULL, 0);
+
+    needed_size = vsnprintf(client->errormsg_buffer, client->errormsg_size, format, myargs);
+
+    va_end(myargs);
+
+    ESP_LOGE(TAG, "%s", client->errormsg_buffer);
+
+    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_ERROR, client->errormsg_buffer, needed_size);
     return ESP_OK;
 }
 
@@ -533,6 +549,9 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     if (buffer_size <= 0) {
         buffer_size = WEBSOCKET_BUFFER_SIZE_BYTE;
     }
+    client->errormsg_size = 0;
+    client->errormsg_buffer = NULL;
+    client->errormsg_size = 0;
 #ifndef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
     client->rx_buffer = malloc(buffer_size);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, {
@@ -575,6 +594,9 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
     vQueueDelete(client->lock);
     free(client->tx_buffer);
     free(client->rx_buffer);
+    if (client->errormsg_buffer) {
+        free(client->errormsg_buffer);
+    }
     if (client->status_bits) {
         vEventGroupDelete(client->status_bits);
     }
@@ -658,8 +680,8 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     do {
         rlen = esp_transport_read(client->transport, client->rx_buffer, client->buffer_size, client->config->network_timeout_ms);
         if (rlen < 0) {
-            ESP_LOGE(TAG, "Error read data");
             esp_websocket_free_buf(client, false);
+            esp_websocket_client_error(client, "esp_transport_read() failed with %d", rlen);
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
@@ -735,8 +757,8 @@ static void esp_websocket_client_task(void *pv)
                                                    client->config->port,
                                                    client->config->network_timeout_ms);
                 if (result < 0) {
-                    ESP_LOGE(TAG, "Error transport connect %i", result);
-                    esp_websocket_client_error_connection(client);
+                    esp_websocket_client_error(client, "esp_transport_connect() failed with %d", result);
+                    esp_websocket_client_abort_connection(client);
                     break;
                 }
                 ESP_LOGD(TAG, "Transport connected to %s://%s:%d", client->config->scheme, client->config->host, client->config->port);
@@ -762,7 +784,7 @@ static void esp_websocket_client_task(void *pv)
 
                     if ( _tick_get_ms() - client->pingpong_tick_ms > client->config->pingpong_timeout_sec*1000 ) {
                         if (client->wait_for_pong_resp) {
-                            ESP_LOGE(TAG, "Error, no PONG received for more than %d seconds after PING", client->config->pingpong_timeout_sec);
+                            esp_websocket_client_error(client, "Error, no PONG received for more than %d seconds after PING", client->config->pingpong_timeout_sec);
                             esp_websocket_client_abort_connection(client);
                             break;
                         }
@@ -809,7 +831,7 @@ static void esp_websocket_client_task(void *pv)
         if (WEBSOCKET_STATE_CONNECTED == client->state) {
             read_select = esp_transport_poll_read(client->transport, 1000); //Poll every 1000ms
             if (read_select < 0) {
-                ESP_LOGE(TAG, "Network error: esp_transport_poll_read() returned %d, errno=%d", read_select, errno);
+                esp_websocket_client_error(client, "Network error: esp_transport_poll_read() returned %d, errno=%d", read_select, errno);
                 esp_websocket_client_abort_connection(client);
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
@@ -1003,8 +1025,8 @@ static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t c
                                         (timeout==portMAX_DELAY)? -1 : timeout * portTICK_PERIOD_MS);
         if (wlen < 0 || (wlen == 0 && need_write != 0)) {
             ret = wlen;
-            ESP_LOGE(TAG, "Network error: esp_transport_write() returned %d, errno=%d", ret, errno);
             esp_websocket_free_buf(client, true);
+            esp_websocket_client_error(client, "Network error: esp_transport_write() returned %d, errno=%d", ret, errno);
             esp_websocket_client_abort_connection(client);
             goto unlock_and_return;
         }
