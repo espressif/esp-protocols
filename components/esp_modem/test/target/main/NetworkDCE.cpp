@@ -87,7 +87,7 @@ esp_err_t modem_init_network(esp_netif_t *netif)
     return NetModule::init(netif);
 }
 
-void modem_start_network()
+esp_err_t modem_start_network()
 {
     NetModule::start();
 }

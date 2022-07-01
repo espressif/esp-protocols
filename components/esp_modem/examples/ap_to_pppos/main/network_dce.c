@@ -47,12 +47,31 @@ void modem_deinit_network(void)
     }
 }
 
-void modem_start_network()
+bool modem_start_network()
 {
-    esp_modem_set_mode(dce, ESP_MODEM_MODE_DATA);
+    return esp_modem_set_mode(dce, ESP_MODEM_MODE_DATA) == ESP_OK;
 }
 
-void modem_stop_network()
+bool modem_stop_network()
 {
-    esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+    return esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+}
+
+bool modem_check_sync()
+{
+    return esp_modem_sync(dce) == ESP_OK;
+}
+
+void modem_reset()
+{
+    esp_modem_reset(dce);
+}
+
+bool modem_check_signal()
+{
+    int rssi, ber;
+    if (esp_modem_get_signal_quality(dce, &rssi, &ber) == ESP_OK) {
+        return rssi != 99 && rssi > 5;
+    }
+    return false;
 }

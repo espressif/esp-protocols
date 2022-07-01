@@ -79,6 +79,24 @@ public:
         }
     }
 
+    bool sync()
+    {
+        return dce_commands::sync(dte.get()) == command_result::OK;
+    }
+
+    void reset()
+    {
+        dce_commands::reset(dte.get());
+    }
+
+    bool check_signal()
+    {
+        int rssi, ber;
+        if (dce_commands::get_signal_quality(dte.get(), rssi, ber) != command_result::OK)
+            return false;
+        return rssi != 99 && rssi > 5;
+    }
+
     [[maybe_unused]] bool init_sim(const std::string &pin)
     {
         // switch to command mode (in case we were in PPP mode)
@@ -166,20 +184,35 @@ extern "C" esp_err_t modem_init_network(esp_netif_t *netif)
     return ESP_OK;
 }
 
-extern "C" void modem_start_network()
+extern "C" bool modem_start_network()
 {
-    dce->set_mode(esp_modem::modem_mode::DATA_MODE);
+    return dce->set_mode(esp_modem::modem_mode::DATA_MODE);
 }
 
-extern "C" void modem_stop_network()
+extern "C" bool modem_stop_network()
 {
-    dce->set_mode(esp_modem::modem_mode::COMMAND_MODE);
+    return dce->set_mode(esp_modem::modem_mode::COMMAND_MODE);
 }
 
 extern "C" void modem_deinit_network()
 {
     free(dce);
     dce = nullptr;
+}
+
+extern "C" bool modem_check_sync()
+{
+    return dce->get_module()->sync();
+}
+
+extern "C" void modem_reset()
+{
+    dce->get_module()->reset();
+}
+
+extern "C" bool modem_check_signal()
+{
+    return dce->get_module()->check_signal();
 }
 
 }

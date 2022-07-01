@@ -31,13 +31,18 @@ void modem_deinit_network();
 /**
  * @brief Starts the PPP network
  */
-void modem_start_network();
+bool modem_start_network();
 
 /**
  * @brief Stops the PPP network
  */
-void modem_stop_network();
+bool modem_stop_network();
 
+bool modem_check_sync();
+
+void modem_reset();
+
+bool modem_check_signal();
 
 #ifdef __cplusplus
 }

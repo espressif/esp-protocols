@@ -122,20 +122,15 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce
         return ESP_ERR_INVALID_ARG;
     }
     if (mode == ESP_MODEM_MODE_DATA) {
-        dce_wrap->dce->set_data();
-    } else if (mode == ESP_MODEM_MODE_COMMAND) {
-        dce_wrap->dce->exit_data();
-    } else if (mode == ESP_MODEM_MODE_CMUX) {
-        if (dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) &&
-            // automatically switch to data mode for the primary terminal
-            dce_wrap->dce->set_mode(modem_mode::DATA_MODE)) {
-            return ESP_OK;
-        }
-        return ESP_FAIL;
-    } else {
-        return ESP_ERR_NOT_SUPPORTED;
+        return dce_wrap->dce->set_mode(modem_mode::DATA_MODE) ? ESP_OK : ESP_FAIL;
     }
-    return ESP_OK;
+    if (mode == ESP_MODEM_MODE_COMMAND) {
+       return dce_wrap->dce->set_mode(modem_mode::COMMAND_MODE) ? ESP_OK : ESP_FAIL;
+    }
+    if (mode == ESP_MODEM_MODE_CMUX) {
+        return dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) ? ESP_OK : ESP_FAIL;
+    }
+    return ESP_ERR_NOT_SUPPORTED;
 }
 
 extern "C" esp_err_t esp_modem_read_pin(esp_modem_dce_t *dce_wrap, bool *pin)
@@ -392,4 +387,9 @@ extern "C" esp_err_t esp_modem_set_gnss_power_mode(esp_modem_dce_t *dce_wrap, in
         return ESP_ERR_INVALID_ARG;
     }
     return command_response_to_esp_err(dce_wrap->dce->set_gnss_power_mode(mode));
+}
+
+extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
+{
+    return command_response_to_esp_err(dce_wrap->dce->reset());
 }
