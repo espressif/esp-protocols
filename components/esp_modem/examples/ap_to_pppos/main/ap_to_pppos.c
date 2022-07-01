@@ -124,6 +124,38 @@ void wifi_init_softap(void)
              EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS, EXAMPLE_ESP_WIFI_CHANNEL);
 }
 
+void start_network(void)
+{
+    EventBits_t bits = 0;
+    while ((bits & CONNECT_BIT) == 0) {
+        if (!modem_check_sync()) {
+            ESP_LOGE(TAG, "Modem does not respond, maybe in DATA mode? ...exiting network mode");
+            modem_stop_network();
+            if (!modem_check_sync()) {
+                ESP_LOGE(TAG, "Modem does not respond to AT ...restarting");
+                modem_reset();
+                ESP_LOGI(TAG, "Restarted");
+            }
+            continue;
+        }
+        if (!modem_check_signal()) {
+            ESP_LOGI(TAG, "Poor signal ...will check after 5s");
+            vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+        if (!modem_start_network()) {
+            ESP_LOGE(TAG, "Modem could not enter network mode ...will retry after 10s");
+            vTaskDelay(pdMS_TO_TICKS(10000));
+            continue;
+        }
+        bits = xEventGroupWaitBits(event_group, (DISCONNECT_BIT | CONNECT_BIT), pdTRUE, pdFALSE, pdMS_TO_TICKS(30000));
+        if (bits & DISCONNECT_BIT) {
+            ESP_LOGE(TAG, "Modem got disconnected ...retrying");
+            modem_stop_network();
+        }
+    }
+}
+
 void app_main(void)
 {
     // Initialize NVS
@@ -149,16 +181,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL));
 
     // Start the PPP network and wait for connection
-    modem_start_network();
-    EventBits_t bits;
-    do {
-        bits = xEventGroupWaitBits(event_group, (CONNECT_BIT | DISCONNECT_BIT), pdTRUE, pdFALSE, portMAX_DELAY);
-        if (bits & DISCONNECT_BIT) {
-            ESP_LOGW(TAG, "Modem got disconnected from the PPP server: retrying...");
-            modem_stop_network();
-            modem_start_network();
-        }
-    } while ((bits & CONNECT_BIT) == 0);
+    start_network();
 
     // Initialize the AP and setup the NAT
     esp_netif_t *ap_netif = esp_netif_create_default_wifi_ap();
@@ -172,11 +195,10 @@ void app_main(void)
 
     // Provide a recovery if disconnection of some kind registered
     while (true) {
-        bits = xEventGroupWaitBits(event_group, DISCONNECT_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+        EventBits_t bits = xEventGroupWaitBits(event_group, DISCONNECT_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
         if (bits & DISCONNECT_BIT) {
-            ESP_LOGW(TAG, "Modem got disconnected from the PPP server: restarting the network...");
             modem_stop_network();
-            modem_start_network();
+            start_network();
         }
     }
 }
