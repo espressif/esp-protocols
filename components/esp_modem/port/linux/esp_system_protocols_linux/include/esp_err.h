@@ -30,3 +30,6 @@ typedef int esp_err_t;
 extern "C" {
 #endif
 const char *esp_err_to_name(int code);
+#ifdef __cplusplus
+}
+#endif
