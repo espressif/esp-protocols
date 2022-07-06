@@ -26,5 +26,7 @@ typedef int esp_err_t;
 #define ESP_ERR_NOT_SUPPORTED       0x106
 #define ESP_ERR_TIMEOUT             0x107
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 const char *esp_err_to_name(int code);
