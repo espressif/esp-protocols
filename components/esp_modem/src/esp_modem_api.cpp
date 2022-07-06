@@ -14,6 +14,7 @@
 
 #include <cassert>
 #include "esp_log.h"
+#include "esp_err.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"
 #include "vfs_termial.hpp"
