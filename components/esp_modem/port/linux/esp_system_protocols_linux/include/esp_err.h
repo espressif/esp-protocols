@@ -27,4 +27,4 @@ typedef int esp_err_t;
 #define ESP_ERR_TIMEOUT             0x107
 
 
-const char *esp_err_to_name(esp_err_t code);
+const char *esp_err_to_name(int code);
