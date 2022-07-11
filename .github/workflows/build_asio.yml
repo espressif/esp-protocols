@@ -16,6 +16,7 @@ jobs:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
         with:
+          submodules: recursive
           path: esp-protocols
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
         env:
