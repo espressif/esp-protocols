@@ -56,6 +56,14 @@ TEST_CASE("DCE AT parser", "[esp_modem]")
     std::string model;
     CHECK(dce->get_module_name(model) == command_result::OK);
     CHECK(model == "0G Dummy Model");
+
+    std::string operator_name;
+    int act = 99;
+    CHECK(dce->get_operator_name(operator_name) == command_result::OK);
+    CHECK(operator_name == "OperatorName");
+    CHECK(dce->get_operator_name(operator_name, act) == command_result::OK);
+    CHECK(operator_name == "OperatorName");
+    CHECK(act == 5);
 }
 
 
