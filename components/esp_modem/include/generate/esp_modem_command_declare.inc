@@ -50,9 +50,10 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
 /**
  * @brief Reads the operator name
  * @param[out] operator name
+ * @param[out] access technology
  * @return OK, FAIL or TIMEOUT
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 1, STRING_OUT(p1, name)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 2, STRING_OUT(p1, name), INT_OUT(p2, act)) \
     \
 /**
  * @brief Stores current user profile
@@ -97,7 +98,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, BOOL_IN(p1, echo_on))
 ESP_MODEM_DECLARE_DCE_COMMAND(sms_txt_mode, command_result, 1, BOOL_IN(p1, txt)) \
     \
 /**
- * @brief Sets the default (GSM) charater set
+ * @brief Sets the default (GSM) character set
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(sms_character_set, command_result, 0) \

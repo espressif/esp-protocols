@@ -34,6 +34,8 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
             response = "+CSQ: 123,456\n\r\nOK\r\n";
         } else if (command.find("AT+CGMM\r") != std::string::npos) {
             response = "0G Dummy Model\n\r\nOK\r\n";
+        } else if (command.find("AT+COPS?\r") != std::string::npos) {
+            response = "+COPS: 0,0,\"OperatorName\",5\n\r\nOK\r\n";
         } else if (command.find("AT+CBC\r") != std::string::npos) {
             response = is_bg96 ? "+CBC: 1,20,123456\r\r\n\r\nOK\r\n\n\r\n" :
                        "+CBC: 123.456V\r\r\n\r\nOK\r\n\n\r\n";

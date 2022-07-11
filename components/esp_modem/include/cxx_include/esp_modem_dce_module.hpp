@@ -105,6 +105,15 @@ public:
     }
 
     /**
+     * @brief Simplified version of operator name (without the ACT, which is included in the command library)
+     */
+    command_result get_operator_name(std::string& name)
+    {
+        int dummy_act;
+        return get_operator_name(name, dummy_act);
+    }
+
+    /**
      * @brief Common DCE commands generated from the API AT list
      */
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
