@@ -228,7 +228,7 @@ command_result set_flow_control(CommandableIf *t, int dce_flow, int dte_flow)
     return generic_command_common(t, "AT+IFC=" + std::to_string(dce_flow) + ", " + std::to_string(dte_flow) + "\r");
 }
 
-command_result get_operator_name(CommandableIf *t, std::string &operator_name)
+command_result get_operator_name(CommandableIf *t, std::string &operator_name, int &act)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string_view out;
@@ -239,9 +239,19 @@ command_result get_operator_name(CommandableIf *t, std::string &operator_name)
     auto pos = out.find("+COPS");
     auto property = 0;
     while (pos != std::string::npos) {
-        // Looking for: +COPS: <mode>[, <format>[, <oper>]]
+        // Looking for: +COPS: <mode>[, <format>[, <oper>[, <act>]]]
         if (property++ == 2) {  // operator name is after second comma (as a 3rd property of COPS string)
             operator_name = out.substr(++pos);
+            auto additional_comma = operator_name.find(',');    // check for the optional ACT
+            if (additional_comma != std::string::npos && std::from_chars(operator_name.data() + additional_comma + 1,operator_name.data() + operator_name.length(), act).ec != std::errc::invalid_argument) {
+                operator_name = operator_name.substr(0, additional_comma);
+            }
+            // and strip quotes if present
+            auto quote1 = operator_name.find('"');
+            auto quote2 = operator_name.rfind('"');
+            if (quote1 != std::string::npos && quote2 != std::string::npos) {
+                operator_name = operator_name.substr(quote1+1, quote2-1);
+            }
             return command_result::OK;
         }
         pos = out.find(',', ++pos);
