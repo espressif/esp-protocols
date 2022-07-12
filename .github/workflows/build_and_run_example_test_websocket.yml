@@ -59,7 +59,7 @@ jobs:
       - ESP32-ETHERNET-KIT
     container:
       image: python:3.7-buster
-      options: --privileged # Privileged mode has access to serial ports
+      options: --privileged --network host # Privileged mode has access to serial ports
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v2
