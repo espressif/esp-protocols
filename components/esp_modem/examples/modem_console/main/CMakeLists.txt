@@ -4,3 +4,4 @@ idf_component_register(SRCS "modem_console_main.cpp"
                             "ping_handle.c"
                        REQUIRES console esp_http_client nvs_flash esp_modem esp_modem_usb_dte
                        INCLUDE_DIRS ".")
+target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")

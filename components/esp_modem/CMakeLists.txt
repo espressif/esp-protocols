@@ -44,3 +44,5 @@ if(${target} STREQUAL "linux")
     # This is needed for ESP_LOGx() macros, as integer formats differ on ESP32(..) and x64
     set_target_properties(${COMPONENT_LIB} PROPERTIES COMPILE_FLAGS -Wno-format)
 endif()
+
+target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
