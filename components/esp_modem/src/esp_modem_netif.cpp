@@ -82,11 +82,11 @@ Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
     driver.base.netif = ppp_netif;
     driver.ppp = this;
     driver.base.post_attach = esp_modem_post_attach;
-    throw_if_esp_fail(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, (void *) this));
-    throw_if_esp_fail(esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, ppp_netif));
-    throw_if_esp_fail(
+    ESP_MODEM_THROW_IF_ERROR(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, (void *) this));
+    ESP_MODEM_THROW_IF_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, ppp_netif));
+    ESP_MODEM_THROW_IF_ERROR(
         esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected, ppp_netif));
-    throw_if_esp_fail(esp_netif_attach(ppp_netif, &driver));
+    ESP_MODEM_THROW_IF_ERROR(esp_netif_attach(ppp_netif, &driver));
 }
 
 void Netif::start()

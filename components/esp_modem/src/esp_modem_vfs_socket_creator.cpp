@@ -91,7 +91,7 @@ bool vfs_create_socket(struct esp_modem_vfs_socket_creator *config, struct esp_m
     }
     TRY_CATCH_OR_DO(
         int fd = -1;
-        esp_modem::throw_if_esp_fail(hostname_to_fd(config->host_name, config->port, &fd));
+        ESP_MODEM_THROW_IF_ERROR(hostname_to_fd(config->host_name, config->port, &fd));
 
         // Set the FD to non-blocking mode
         int flags = fcntl(fd, F_GETFL, nullptr) | O_NONBLOCK;

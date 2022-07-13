@@ -70,9 +70,9 @@ public:
                 .skip_phy_setup = false,
                 .intr_flags = ESP_INTR_FLAG_LEVEL1,
             };
-            throw_if_esp_fail(usb_host_install(&host_config), "USB Host install failed");
+            ESP_MODEM_THROW_IF_ERROR(usb_host_install(&host_config), "USB Host install failed");
             ESP_LOGD(TAG, "USB Host installed");
-            throw_if_false(pdTRUE == xTaskCreatePinnedToCore(usb_host_task, "usb_host", 4096, NULL, config->task_priority + 1, NULL, usb_config->xCoreID), "USB host task failed");
+            ESP_MODEM_THROW_IF_FALSE(pdTRUE == xTaskCreatePinnedToCore(usb_host_task, "usb_host", 4096, NULL, config->task_priority + 1, NULL, usb_config->xCoreID), "USB host task failed");
         }
 
         // Install CDC-ACM driver
@@ -95,11 +95,11 @@ public:
         };
 
         if (usb_config->cdc_compliant) {
-            throw_if_esp_fail(this->CdcAcmDevice::open(usb_config->vid, usb_config->pid,
+            ESP_MODEM_THROW_IF_ERROR(this->CdcAcmDevice::open(usb_config->vid, usb_config->pid,
                             usb_config->interface_idx, &esp_modem_cdc_acm_device_config),
                             "USB Device open failed");
         } else {
-            throw_if_esp_fail(this->CdcAcmDevice::open_vendor_specific(usb_config->vid, usb_config->pid,
+            ESP_MODEM_THROW_IF_ERROR(this->CdcAcmDevice::open_vendor_specific(usb_config->vid, usb_config->pid,
                             usb_config->interface_idx, &esp_modem_cdc_acm_device_config),
                             "USB Device open failed");
         }
