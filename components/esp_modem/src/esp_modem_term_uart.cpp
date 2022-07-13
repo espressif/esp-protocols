@@ -40,7 +40,7 @@ uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHand
                             : UART_HW_FLOWCTRL_DISABLE;
     uart_config.source_clk = config->source_clk;
 
-    throw_if_esp_fail(uart_param_config(config->port_num, &uart_config), "config uart parameter failed");
+    ESP_MODEM_THROW_IF_ERROR(uart_param_config(config->port_num, &uart_config), "config uart parameter failed");
 
     if (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         res = uart_set_pin(config->port_num, config->tx_io_num, config->rx_io_num,
@@ -49,24 +49,24 @@ uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHand
         res = uart_set_pin(config->port_num, config->tx_io_num, config->rx_io_num,
                            UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     }
-    throw_if_esp_fail(res, "config uart gpio failed");
+    ESP_MODEM_THROW_IF_ERROR(res, "config uart gpio failed");
     /* Set flow control threshold */
     if (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         res = uart_set_hw_flow_ctrl(config->port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
     } else if (config->flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
         res = uart_set_sw_flow_ctrl(config->port_num, true, 8, UART_FIFO_LEN - 8);
     }
-    throw_if_esp_fail(res, "config uart flow control failed");
+    ESP_MODEM_THROW_IF_ERROR(res, "config uart flow control failed");
 
     /* Install UART driver and get event queue used inside driver */
     res = uart_driver_install(config->port_num,
                               config->rx_buffer_size, config->tx_buffer_size,
                               config->event_queue_size, config->event_queue_size ?  event_queue : nullptr,
                               0);
-    throw_if_esp_fail(res, "install uart driver failed");
-    throw_if_esp_fail(uart_set_rx_timeout(config->port_num, 1), "set rx timeout failed");
+    ESP_MODEM_THROW_IF_ERROR(res, "install uart driver failed");
+    ESP_MODEM_THROW_IF_ERROR(uart_set_rx_timeout(config->port_num, 1), "set rx timeout failed");
 
-    throw_if_esp_fail(uart_set_rx_full_threshold(config->port_num, 64), "config rx full threshold failed");
+    ESP_MODEM_THROW_IF_ERROR(uart_set_rx_full_threshold(config->port_num, 64), "config rx full threshold failed");
 
     /* mark UART as initialized */
     port = config->port_num;

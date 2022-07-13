@@ -56,7 +56,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     command_term->write((uint8_t *)command.c_str(), command.length());
     auto got_lf = signal.wait(GOT_LINE, time_ms);
     if (got_lf && res == command_result::TIMEOUT) {
-        throw_if_esp_fail(ESP_ERR_INVALID_STATE);
+        ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
     }
     buffer.consumed = 0;
     command_term->set_read_cb(nullptr);
