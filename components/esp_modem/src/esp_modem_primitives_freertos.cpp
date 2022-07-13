@@ -28,7 +28,7 @@ void Lock::unlock()
 Lock::Lock(): m(nullptr)
 {
     m = xSemaphoreCreateRecursiveMutex();
-    throw_if_false(m != nullptr, "create signal event group failed");
+    ESP_MODEM_THROW_IF_FALSE(m != nullptr, "create signal event group failed");
 }
 
 Lock::~Lock()
@@ -45,7 +45,7 @@ void Lock::lock()
 SignalGroup::SignalGroup(): event_group(nullptr)
 {
     event_group = xEventGroupCreate();
-    throw_if_false(event_group != nullptr, "create signal event group failed");
+    ESP_MODEM_THROW_IF_FALSE(event_group != nullptr, "create signal event group failed");
 }
 
 void SignalGroup::set(uint32_t bits)
@@ -86,7 +86,7 @@ Task::Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t 
     : task_handle(nullptr)
 {
     BaseType_t ret = xTaskCreate(task_function, "vfs_task", stack_size, task_param, priority, &task_handle);
-    throw_if_false(ret == pdTRUE, "create vfs task failed");
+    ESP_MODEM_THROW_IF_FALSE(ret == pdTRUE, "create vfs task failed");
 }
 
 Task::~Task()

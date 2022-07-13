@@ -69,12 +69,12 @@ class Creator {
 public:
     Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
     {
-        throw_if_false(netif != nullptr, "Null netif");
+        ESP_MODEM_THROW_IF_FALSE(netif != nullptr, "Null netif");
     }
 
     Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
     {
-        throw_if_false(netif != nullptr, "Null netif");
+        ESP_MODEM_THROW_IF_FALSE(netif != nullptr, "Null netif");
     }
 
     ~Creator()
