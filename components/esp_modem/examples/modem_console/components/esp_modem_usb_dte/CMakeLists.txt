@@ -6,7 +6,7 @@ if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER_EQUAL "4.4")
 if(("${target}" STREQUAL "esp32s2") OR ("${target}" STREQUAL "esp32s3"))
 
 idf_component_register(SRCS "esp_modem_usb.cpp" "esp_modem_usb_api_target.cpp"
-                       REQUIRES cdc_acm_host esp_modem
+                       REQUIRES esp_modem
                        REQUIRED_IDF_TARGETS esp32s2 esp32s3
                        PRIV_INCLUDE_DIRS "private_include"
                        INCLUDE_DIRS "include")
