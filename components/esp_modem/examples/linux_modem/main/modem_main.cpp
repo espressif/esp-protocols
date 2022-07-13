@@ -61,7 +61,7 @@ int main()
 
     bool pin_ok = true;
     if (dce->read_pin(pin_ok) == command_result::OK && !pin_ok) {
-        throw_if_false(dce->set_pin(CONFIG_EXAMPLE_SIM_PIN) == command_result::OK, "Cannot set PIN!");
+        ESP_MODEM_THROW_IF_FALSE(dce->set_pin(CONFIG_EXAMPLE_SIM_PIN) == command_result::OK, "Cannot set PIN!");
         usleep(1000000);
     }
     std::string str;
