@@ -98,12 +98,15 @@
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringE">
-<span id="_CPPv3N9esp_modem3DCE17get_operator_nameERNSt6stringE"></span><span id="_CPPv2N9esp_modem3DCE17get_operator_nameERNSt6stringE"></span><span id="esp_modem::DCE::get_operator_name__ssR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1aa05c40e6c6559f23de1d3905e63e0197"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_operator_name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringERi">
+<span id="_CPPv3N9esp_modem3DCE17get_operator_nameERNSt6stringERi"></span><span id="_CPPv2N9esp_modem3DCE17get_operator_nameERNSt6stringERi"></span><span id="esp_modem::DCE::get_operator_name__ssR.iR"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a091b5ab73c50e3e12beca98a4185c586"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_operator_name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">act</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringERi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the operator name. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>operator</strong> – <strong>[out]</strong> name </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>operator</strong> – <strong>[out]</strong> name </p></li>
+<li><p><strong>access</strong> – <strong>[out]</strong> technology </p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
@@ -198,7 +201,7 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem3DCE17sms_character_setEv">
 <span id="_CPPv3N9esp_modem3DCE17sms_character_setEv"></span><span id="_CPPv2N9esp_modem3DCE17sms_character_setEv"></span><span id="esp_modem::DCE::sms_character_set"></span><span class="target" id="classesp__modem_1_1_d_c_e_1a3b4b1fc2126e0d5c7926f87a64bac37d"></span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">sms_character_set</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem3DCE17sms_character_setEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Sets the default (GSM) charater set. </p>
+<dd><p>Sets the default (GSM) character set. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
@@ -1015,6 +1018,12 @@ terminals. Besides the DTE documentation, this section also refers to the</p>
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem13GenericModule21configure_pdp_contextENSt10unique_ptrI10PdpContextEE">
 <span id="_CPPv3N9esp_modem13GenericModule21configure_pdp_contextENSt10unique_ptrI10PdpContextEE"></span><span id="_CPPv2N9esp_modem13GenericModule21configure_pdp_contextENSt10unique_ptrI10PdpContextEE"></span><span id="esp_modem::GenericModule::configure_pdp_context__std::unique_ptr:PdpContext:"></span><span class="target" id="classesp__modem_1_1_generic_module_1afdf31de445b80670afff0253a3cabef4"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">configure_pdp_context</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv4N9esp_modem10PdpContextE" title="esp_modem::PdpContext"><span class="n"><span class="pre">PdpContext</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">new_pdp</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem13GenericModule21configure_pdp_contextENSt10unique_ptrI10PdpContextEE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Additional method providing runtime configuration of PDP context. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem13GenericModule17get_operator_nameERNSt6stringE">
+<span id="_CPPv3N9esp_modem13GenericModule17get_operator_nameERNSt6stringE"></span><span id="_CPPv2N9esp_modem13GenericModule17get_operator_nameERNSt6stringE"></span><span id="esp_modem::GenericModule::get_operator_name__ssR"></span><span class="target" id="classesp__modem_1_1_generic_module_1a56b7529540a2abc727232eeed81214cc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">get_operator_name</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem13GenericModule17get_operator_nameERNSt6stringE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Simplified version of operator name (without the ACT, which is included in the command library) </p>
 </dd></dl>
 
 </div>

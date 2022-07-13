@@ -235,12 +235,15 @@ pointer as the return value. The API expects the output data to point to user al
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv427esp_modem_get_operator_namePc">
-<span id="_CPPv327esp_modem_get_operator_namePc"></span><span id="_CPPv227esp_modem_get_operator_namePc"></span><span id="esp_modem_get_operator_name__cP"></span><span class="target" id="esp__modem__api__commands_8h_1a87b4aaa311dde2f8679fea2c58fa4f92"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_operator_name</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_get_operator_namePc" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv427esp_modem_get_operator_namePcPi">
+<span id="_CPPv327esp_modem_get_operator_namePcPi"></span><span id="_CPPv227esp_modem_get_operator_namePcPi"></span><span id="esp_modem_get_operator_name__cP.iP"></span><span class="target" id="esp__modem__api__commands_8h_1a5fac1591bf4e15d00ad3eb56c19aed21"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_operator_name</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">name</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">act</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_get_operator_namePcPi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the operator name. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>operator</strong> – <strong>[out]</strong> name </p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>operator</strong> – <strong>[out]</strong> name </p></li>
+<li><p><strong>access</strong> – <strong>[out]</strong> technology </p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
@@ -335,7 +338,7 @@ pointer as the return value. The API expects the output data to point to user al
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv427esp_modem_sms_character_setv">
 <span id="_CPPv327esp_modem_sms_character_setv"></span><span id="_CPPv227esp_modem_sms_character_setv"></span><span id="esp_modem_sms_character_set"></span><span class="target" id="esp__modem__api__commands_8h_1ae214058edfeecd33fb4e266247c5f9c2"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_sms_character_set</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_sms_character_setv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p>Sets the default (GSM) charater set. </p>
+<dd><p>Sets the default (GSM) character set. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
