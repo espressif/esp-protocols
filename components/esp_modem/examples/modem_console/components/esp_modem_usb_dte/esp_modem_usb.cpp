@@ -79,7 +79,8 @@ public:
         const cdc_acm_host_driver_config_t esp_modem_cdc_acm_driver_config = {
             .driver_task_stack_size = config->task_stack_size,
             .driver_task_priority = config->task_priority,
-            .xCoreID = (BaseType_t)usb_config->xCoreID
+            .xCoreID = (BaseType_t)usb_config->xCoreID,
+            .new_dev_cb = NULL,
         };
 
         // Silently continue of error: CDC-ACM driver might be already installed
@@ -154,7 +155,7 @@ private:
         }
     }
 
-    static void handle_notif(cdc_acm_dev_hdl_t cdc_hdl, const cdc_acm_host_dev_event_data_t *event, void *user_ctx)
+    static void handle_notif(const cdc_acm_host_dev_event_data_t *event, void *user_ctx)
     {
         UsbTerminal *this_terminal = static_cast<UsbTerminal *>(user_ctx);
         
@@ -165,7 +166,7 @@ private:
             break;
         case CDC_ACM_HOST_DEVICE_DISCONNECTED:
             ESP_LOGW(TAG, "USB terminal disconnected");
-            cdc_acm_host_close(cdc_hdl);
+            cdc_acm_host_close(event->data.cdc_hdl);
             if (this_terminal->on_error) {
                 this_terminal->on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
             }
