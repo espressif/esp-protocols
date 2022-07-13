@@ -18,7 +18,7 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
-#if defined(CONFIG_USB_OTG_SUPPORTED)
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
 #include "esp_modem_usb_config.h"
 #include "cxx_include/esp_modem_usb_api.hpp"
 #endif
@@ -56,6 +56,7 @@ static const char *TAG = "modem_console";
 static esp_console_repl_t *s_repl = nullptr;
 
 using namespace esp_modem;
+static SignalGroup exit_signal;
 
 
 extern "C" void app_main(void)
@@ -111,13 +112,19 @@ extern "C" void app_main(void)
 
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
-    struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296); // VID and PID of BG96 modem
-    // BG96 modem implements Vendor Specific class, that is CDC-ACM like. Interface for AT commands has index no. 2.
-    usb_config.interface_idx = 2;
-    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
-    ESP_LOGI(TAG, "Waiting for USB device connection...");
-    auto dte = create_usb_dte(&dte_config);
-    std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+    while (1) {
+        exit_signal.clear(1);
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
+        const esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
+        ESP_LOGI(TAG, "Waiting for USB device connection...");
+        auto dte = create_usb_dte(&dte_config);
+        dte->set_error_cb([&](terminal_error err) {
+            ESP_LOGI(TAG, "error handler %d", err);
+            if (err == terminal_error::DEVICE_GONE) {
+                exit_signal.set(1);
+            }
+        });
+        std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
 
 #else
 #error Invalid serial connection to modem.
@@ -277,16 +284,19 @@ extern "C" void app_main(void)
         return 0;
     });
 
-    SignalGroup exit_signal;
     const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Exiting...");
         exit_signal.set(1);
-        s_repl->del(s_repl);
         return 0;
     });
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
     // wait for exit
     exit_signal.wait_any(1, UINT32_MAX);
+    s_repl->del(s_repl);
     ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+    // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features. 
+    } // while (1)
+#endif
 }

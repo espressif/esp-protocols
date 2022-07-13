@@ -91,3 +91,6 @@ dependencies.lock
 
 # ignore generated docs
 docs/html
+
+# esp-idf managed components
+**/managed_components/**
