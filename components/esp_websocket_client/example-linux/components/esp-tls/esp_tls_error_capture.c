@@ -3,9 +3,16 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
+#include <stdlib.h>
 #include "esp_tls.h"
 #include "esp_tls_error_capture_internal.h"
+
+#ifndef __containerof
+// Copied from linux/kernel.h
+#define __containerof(ptr, type, member) ({                      \
+                const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+                (type *)( (char *)__mptr - offsetof(type,member) );})
+#endif
 
 typedef struct esp_tls_error_storage {
     struct esp_tls_last_error parent;   /*!< standard esp-tls last error container */

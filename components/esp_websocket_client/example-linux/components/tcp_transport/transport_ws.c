@@ -18,6 +18,9 @@
 #include "errno.h"
 #include "esp_tls_crypto.h"
 
+#include <arpa/inet.h>
+
+
 static const char *TAG = "TRANSPORT_WS";
 
 #define WS_BUFFER_SIZE              CONFIG_WS_BUFFER_SIZE

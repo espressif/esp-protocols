@@ -22,6 +22,8 @@
 extern "C" {
 #endif
 
+struct ifreq;
+
 /**
  * @brief      Set TCP keep-alive configuration
  *

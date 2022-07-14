@@ -8,6 +8,7 @@
 #define _ESP_TLS_ERRORS_H_
 
 #include "esp_err.h"
+#include "sdkconfig.h"
 #ifdef CONFIG_ESP_TLS_USING_MBEDTLS
 #include "mbedtls/error.h"
 #endif
