@@ -10,7 +10,7 @@ if(${target} STREQUAL "linux")
     set(srcs "mdns.c" ${MDNS_NETWORKING})
 else()
     set(dependencies lwip console esp_netif)
-    set(private_dependencies esp_timer)
+    set(private_dependencies esp_timer esp_wifi)
     set(srcs "mdns.c" ${MDNS_NETWORKING} "mdns_console.c")
 endif()
 

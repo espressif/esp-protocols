@@ -20,6 +20,8 @@
 #if CONFIG_ETH_ENABLED
 #include "esp_eth.h"
 #endif
+#include "esp_wifi.h"
+
 
 #ifdef MDNS_ENABLE_DEBUG
 void mdns_debug_packet(const uint8_t * data, size_t len);
