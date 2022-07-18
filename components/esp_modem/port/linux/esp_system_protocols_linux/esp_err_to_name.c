@@ -1,8 +1,7 @@
 /*
- * x.c
+ * SPDX-FileCopyrightText: Franz Hoepfinger
  *
- *  Created on: 06.07.2022
- *      Author: franz
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 
