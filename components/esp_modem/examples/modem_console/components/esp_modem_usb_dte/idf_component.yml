@@ -1,0 +1,8 @@
+
+## IDF Component Manager Manifest File
+dependencies:
+  usb_host_cdc_acm:
+    version: "~1.0"
+    rules:
+      - if: "idf_version >=4.4"
+      - if: "target in [esp32s2, esp32s3]"
