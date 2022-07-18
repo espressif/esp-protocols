@@ -22,7 +22,7 @@
         action; \
     } catch (::esp_modem::esp_err_exception& e) {    \
         esp_err_t err = e.get_err_t();  \
-        ESP_LOGE(TAG, "%s: Exception caught with ESP err_code=%d", __func__, err); \
+        ESP_LOGE(TAG, "%s: Exception caught with ESP err_code=%d %s", __func__, err, esp_err_to_name(err)); \
         ESP_LOGE(TAG, "%s", e.what());  \
         action; \
     }
