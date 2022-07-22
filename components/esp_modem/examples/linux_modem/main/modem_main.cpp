@@ -1,5 +1,6 @@
 #include <memory>
 #include <cassert>
+#include <cstdint>
 #include <unistd.h>
 #include <esp_log.h>
 #include "cxx_include/esp_modem_terminal.hpp"
