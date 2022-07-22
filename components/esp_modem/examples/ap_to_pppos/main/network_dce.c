@@ -10,6 +10,7 @@
 #include <string.h>
 #include "esp_netif.h"
 #include "esp_modem_api.h"
+#include "nmea_parser.h"
 
 
 static esp_modem_dce_t *dce = NULL;
