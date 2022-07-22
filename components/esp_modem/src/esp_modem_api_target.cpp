@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <cassert>
+#include <stdint.h>
+#include "nmea_parser.h"
 #include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"

@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <cstring>
 
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce.hpp"
 #include "esp_log.h"

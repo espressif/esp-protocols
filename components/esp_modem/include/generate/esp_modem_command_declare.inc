@@ -293,7 +293,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_network_system_mode, command_result, 1, INT_OU
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_gnss_power_mode, command_result, 1, INT_IN(p1, mode)) \
     \
-
+/**
+ * @brief GNSS Navigation Information Parsed From NMEA Sentences
+ * @param[out] TODO
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_gnss_information_sim70xx, command_result, 1, STRUCT_OUT(gps_s, p1)) \
+    \
 
 #ifdef GENERATE_DOCS
 // cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'
