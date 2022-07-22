@@ -3,13 +3,14 @@
 #include <cstdint>
 #include <unistd.h>
 #include <esp_log.h>
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_terminal.hpp"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "esp_netif.h"
 #include "vfs_resource/vfs_create.hpp"
-#include "nmea_parser.h"
+
 
 
 #define CONFIG_EXAMPLE_SIM_PIN "1234"
