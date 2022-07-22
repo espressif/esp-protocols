@@ -7,14 +7,16 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <string.h>
+#include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "nmea_parser.h"
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "mqtt_client.h"
 #include "esp_modem_api.h"
 #include "esp_log.h"
-#include "nmea_parser.h"
+
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 

@@ -7,11 +7,13 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 #include <cstring>
+#include <cstdint>
 #include <iostream>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_netif.h"
 #include "esp_log.h"
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"

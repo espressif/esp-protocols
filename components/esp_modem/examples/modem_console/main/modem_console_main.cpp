@@ -9,12 +9,14 @@
 
 #include <cstdio>
 #include <cstring>
+#include <cstdint>
 #include <map>
 #include <vector>
 #include "sdkconfig.h"
 #include "esp_console.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
