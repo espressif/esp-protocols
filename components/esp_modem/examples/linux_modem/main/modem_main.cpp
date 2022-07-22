@@ -8,6 +8,7 @@
 #include "esp_modem_config.h"
 #include "esp_netif.h"
 #include "vfs_resource/vfs_create.hpp"
+#include "nmea_parser.h"
 
 
 #define CONFIG_EXAMPLE_SIM_PIN "1234"
