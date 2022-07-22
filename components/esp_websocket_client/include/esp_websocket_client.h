@@ -22,6 +22,13 @@ extern "C" {
 
 typedef struct esp_websocket_client *esp_websocket_client_handle_t;
 
+
+// Event loop library types
+//typedef const char*  esp_event_base_t; /**< unique pointer to a subsystem that exposes events */
+
+// Defines for declaring and defining event base
+#define ESP_EVENT_DECLARE_BASE(id) extern esp_event_base_t id
+
 ESP_EVENT_DECLARE_BASE(WEBSOCKET_EVENTS);         // declaration of the task events family
 
 /**

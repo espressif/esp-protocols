@@ -3,4 +3,8 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
-#include_next <FreeRTOS.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include "esp_err.h"
+
+esp_err_t esp_netif_init(void);

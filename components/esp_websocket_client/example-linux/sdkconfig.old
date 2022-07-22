@@ -78,6 +78,12 @@ CONFIG_ESP_NETIF_TCPIP_LWIP=y
 # end of ESP NETIF Adapter
 
 #
+# FreeRTOS
+#
+CONFIG_FREERTOS_NO_AFFINITY=0x7FFFFFFF
+# end of FreeRTOS
+
+#
 # Log output
 #
 # CONFIG_LOG_DEFAULT_LEVEL_NONE is not set

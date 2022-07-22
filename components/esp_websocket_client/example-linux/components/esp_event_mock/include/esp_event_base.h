@@ -13,6 +13,15 @@
 // limitations under the License.
 #pragma once
 
+// Event loop library types
+typedef const char*  esp_event_base_t; /**< unique pointer to a subsystem that exposes events */
+
+// Defines for declaring and defining event base
+#define ESP_EVENT_DECLARE_BASE(id) extern esp_event_base_t id
+#define ESP_EVENT_DEFINE_BASE(id) esp_event_base_t id = #id
+
+#define ESP_EVENT_ANY_ID       (-1)
+
 typedef enum {
     WIFI_EVENT_STA_CONNECTED,            /**< ESP32 station connected to AP */
     WIFI_EVENT_STA_DISCONNECTED,         /**< ESP32 station disconnected from AP */

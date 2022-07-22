@@ -3,4 +3,6 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
-#include_next <FreeRTOS.h>
+#include "esp_err.h"
+
+esp_err_t example_connect(void);
