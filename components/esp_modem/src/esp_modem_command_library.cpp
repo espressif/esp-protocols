@@ -14,6 +14,7 @@
 
 #include <charconv>
 #include <list>
+#include <cstdint>
 #include "esp_log.h"
 #include "nmea_parser.h"
 #include "cxx_include/esp_modem_dte.hpp"
