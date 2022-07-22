@@ -14,6 +14,7 @@
 #include "mqtt_client.h"
 #include "esp_modem_api.h"
 #include "esp_log.h"
+#include "nmea_parser.h"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
