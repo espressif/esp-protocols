@@ -1,7 +1,9 @@
 #define CATCH_CONFIG_MAIN // This tells the catch header to generate a main
 #include <memory>
 #include <future>
+#include <cstdint>
 #include "catch.hpp"
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "LoopbackTerm.h"
 
