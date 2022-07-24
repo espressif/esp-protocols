@@ -209,10 +209,11 @@ void app_main(void)
             .broker = {
                 .address.uri = BROKER_URL
             },
+			//TODO !! Event Handler !
 #else
             .uri = BROKER_URL,
-#endif
             .event_handle = mqtt_event_handler,
+#endif
     };
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_start(mqtt_client);
