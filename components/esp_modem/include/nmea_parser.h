@@ -97,7 +97,7 @@ typedef enum {
  * @brief GPS object
  *
  */
-typedef struct gps_s {
+struct gps_s {
     float latitude;                                                /*!< Latitude (degrees) */
     float longitude;                                               /*!< Longitude (degrees) */
     float altitude;                                                /*!< Altitude (meters) */
@@ -115,7 +115,10 @@ typedef struct gps_s {
     float cog;                                                     /*!< Course over ground */
     float hpa;                                                     /*!< Horizontal Position Accuracy  */
     float vpa;                                                     /*!< Vertical Position Accuracy  */
-} gps_t;
+};
+
+typedef struct gps_s gps_t;
+typedef struct gps_s esp_modem_gps_s_t;
 
 
 
