@@ -16,6 +16,7 @@
 #include "mqtt_client.h"
 #include "esp_modem_api.h"
 #include "esp_log.h"
+#include "esp_idf_version.h"
 
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
@@ -204,9 +205,13 @@ void app_main(void)
     xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     /* Config MQTT */
     esp_mqtt_client_config_t mqtt_config = {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
             .broker = {
                 .address.uri = BROKER_URL
             },
+#else
+            .uri = BROKER_URL,
+#endif
             .event_handle = mqtt_event_handler,
     };
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
