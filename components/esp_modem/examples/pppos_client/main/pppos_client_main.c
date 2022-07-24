@@ -204,7 +204,9 @@ void app_main(void)
     xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
     /* Config MQTT */
     esp_mqtt_client_config_t mqtt_config = {
-            .uri = BROKER_URL,
+            .broker = {
+                .address.uri = BROKER_URL
+            },
             .event_handle = mqtt_event_handler,
     };
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
