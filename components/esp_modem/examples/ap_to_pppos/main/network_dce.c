@@ -8,7 +8,7 @@
 */
 
 #include <string.h>
-#include <cstddint.h>
+#include <stddint.h>
 #include "nmea_parser.h"
 #include "esp_netif.h"
 #include "esp_modem_api.h"
