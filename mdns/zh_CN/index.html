@@ -113,7 +113,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>mDNS 服务</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-protocols/blob/d1129f3/docs/zh_CN/index.rst" class="fa fa-github"> 在 GitHub 上修改</a>
+              <a href="https://github.com/espressif/esp-protocols/blob/b6852a0/docs/zh_CN/index.rst" class="fa fa-github"> 在 GitHub 上修改</a>
       </li>
   </ul>
   <hr/>
@@ -122,14 +122,14 @@
            <div itemprop="articleBody">
              
   <section id="mdns">
-<h1>mDNS 服务<a class="headerlink" href="#mdns" title="Permalink to this heading"></a></h1>
+<h1>mDNS 服务<a class="headerlink" href="#mdns" title="此标题的永久链接"></a></h1>
 <p><a class="reference external" href="../../../en/latest/esp32/index.html">[English]</a></p>
 <section id="id1">
-<h2>概述<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<h2>概述<a class="headerlink" href="#id1" title="此标题的永久链接"></a></h2>
 <p>mDNS 是一种组播 UDP 服务，用来提供本地网络服务和主机发现。</p>
 <p>绝大多数的操作系统默认都会安装 mDNS 服务，或者提供单独的安装包。<code class="docutils literal notranslate"><span class="pre">Mac</span> <span class="pre">OS</span></code> 默认会安装名为 <code class="docutils literal notranslate"><span class="pre">Bonjour</span></code> 的服务（该服务基于 mDNS），此外 Apple 还发布了适用于 Windows 系统的安装程序，可以在 <a class="reference external" href="https://support.apple.com/downloads/bonjour%2520for%2520windows">官方支持</a> 找到。在 <code class="docutils literal notranslate"><span class="pre">Linux</span></code> 上，mDNS 服务由 <a class="reference external" href="https://github.com/lathiat/avahi">avahi</a> 提供，通常也会被默认安装。</p>
 <section id="id3">
-<h3>mDNS 属性<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
+<h3>mDNS 属性<a class="headerlink" href="#id3" title="此标题的永久链接"></a></h3>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">hostname</span></code>：设备会去响应的主机名，如果没有设置，会根据设备的网络接口名定义 <code class="docutils literal notranslate"><span class="pre">hostname</span></code> 。例如，<code class="docutils literal notranslate"><span class="pre">my-esp32</span></code> 会被解析为 <code class="docutils literal notranslate"><span class="pre">my-esp32.local</span></code>。</p></li>
@@ -155,7 +155,7 @@
 </div>
 </section>
 <section id="id4">
-<h3>mDNS 服务<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
+<h3>mDNS 服务<a class="headerlink" href="#id4" title="此标题的永久链接"></a></h3>
 <p>mDNS 可以广播设备能够提供的网络服务的相关信息，每个服务会由以下属性构成。</p>
 <blockquote>
 <div><ul class="simple">
@@ -193,7 +193,7 @@
 </div>
 </section>
 <section id="id6">
-<h3>mDNS 查询<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
+<h3>mDNS 查询<a class="headerlink" href="#id6" title="此标题的永久链接"></a></h3>
 <p>mDNS 提供查询服务和解析主机 IP/IPv6 地址的方法。</p>
 <p>服务查询的结果会作为 <code class="docutils literal notranslate"><span class="pre">mdns_result_t</span></code> 类型对象的链表返回。</p>
 <p>解析主机 IP 地址的示例方法:</p>
@@ -296,19 +296,19 @@
 </section>
 </section>
 <section id="id7">
-<h2>应用示例<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h2>
-<p>有关 mDNS 服务器和查询器的应用示例请参考 <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/d1129f3/examples/../examples"></a>。</p>
+<h2>应用示例<a class="headerlink" href="#id7" title="此标题的永久链接"></a></h2>
+<p>有关 mDNS 服务器和查询器的应用示例请参考 <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/b6852a0/examples/../examples"></a>。</p>
 </section>
 <section id="api">
-<h2>API 参考<a class="headerlink" href="#api" title="Permalink to this heading"></a></h2>
+<h2>API 参考<a class="headerlink" href="#api" title="此标题的永久链接"></a></h2>
 <section id="header-file">
-<h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this heading"></a></h3>
+<h3>Header File<a class="headerlink" href="#header-file" title="此标题的永久链接"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/d1129f3/include/mdns.h">include/mdns.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/b6852a0/include/mdns.h">include/mdns.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
-<h3>Functions<a class="headerlink" href="#functions" title="Permalink to this heading"></a></h3>
+<h3>Functions<a class="headerlink" href="#functions" title="此标题的永久链接"></a></h3>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv49mdns_initv">
 <span id="_CPPv39mdns_initv"></span><span id="_CPPv29mdns_initv"></span><span id="mdns_init__void"></span><span class="target" id="mdns_8h_1ad323a4dfba3545c43ebda0f3f7c515e0"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_init</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv49mdns_initv" title="永久链接至目标"></a><br /></dt>
@@ -1251,7 +1251,7 @@
 
 </section>
 <section id="structures">
-<h3>Structures<a class="headerlink" href="#structures" title="Permalink to this heading"></a></h3>
+<h3>Structures<a class="headerlink" href="#structures" title="此标题的永久链接"></a></h3>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv415mdns_txt_item_t">
 <span id="_CPPv315mdns_txt_item_t"></span><span id="_CPPv215mdns_txt_item_t"></span><span id="mdns_txt_item_t"></span><span class="target" id="structmdns__txt__item__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_txt_item_t</span></span></span><a class="headerlink" href="#_CPPv415mdns_txt_item_t" title="永久链接至目标"></a><br /></dt>
@@ -1383,7 +1383,7 @@
 
 </section>
 <section id="macros">
-<h3>Macros<a class="headerlink" href="#macros" title="Permalink to this heading"></a></h3>
+<h3>Macros<a class="headerlink" href="#macros" title="此标题的永久链接"></a></h3>
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.MDNS_TYPE_A">
 <span class="target" id="mdns_8h_1aadb9a175b672893b350f1e7032009e00"></span><span class="sig-name descname"><span class="n"><span class="pre">MDNS_TYPE_A</span></span></span><a class="headerlink" href="#c.MDNS_TYPE_A" title="永久链接至目标"></a><br /></dt>
@@ -1426,7 +1426,7 @@
 
 </section>
 <section id="type-definitions">
-<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="Permalink to this heading"></a></h3>
+<h3>Type Definitions<a class="headerlink" href="#type-definitions" title="此标题的永久链接"></a></h3>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418mdns_search_once_t">
 <span id="_CPPv318mdns_search_once_t"></span><span id="_CPPv218mdns_search_once_t"></span><span id="mdns_search_once_t"></span><span class="target" id="mdns_8h_1a8815240672c5880e798ca6655309c589"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">mdns_search_once_s</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_search_once_t</span></span></span><a class="headerlink" href="#_CPPv418mdns_search_once_t" title="永久链接至目标"></a><br /></dt>
@@ -1452,7 +1452,7 @@
 
 </section>
 <section id="enumerations">
-<h3>Enumerations<a class="headerlink" href="#enumerations" title="Permalink to this heading"></a></h3>
+<h3>Enumerations<a class="headerlink" href="#enumerations" title="此标题的永久链接"></a></h3>
 <dl class="cpp enum">
 <dt class="sig sig-object cpp" id="_CPPv420mdns_event_actions_t">
 <span id="_CPPv320mdns_event_actions_t"></span><span id="_CPPv220mdns_event_actions_t"></span><span class="target" id="mdns_8h_1a14279e8f2e7c65c12320222a55f09fdf"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">mdns_event_actions_t</span></span></span><a class="headerlink" href="#_CPPv420mdns_event_actions_t" title="永久链接至目标"></a><br /></dt>
