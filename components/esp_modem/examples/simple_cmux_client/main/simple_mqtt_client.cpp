@@ -11,6 +11,7 @@
 #include "mqtt_client.h"
 #include "esp_event_cxx.hpp"
 #include "simple_mqtt_client.hpp"
+#include "esp_idf_version.h"
 
 using namespace idf::event;
 
@@ -26,7 +27,11 @@ struct MqttClientHandle {
     explicit MqttClientHandle(const std::string &uri)
     {
         esp_mqtt_client_config_t config = { };
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+        config.broker.address.uri = uri.c_str();
+#else
         config.uri = uri.c_str();
+#endif
         client = esp_mqtt_client_init(&config);
         esp_mqtt_client_register_event(client, MQTT_EVENT_ANY, mqtt_event_handler, this);
     }
