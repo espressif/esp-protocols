@@ -1686,7 +1686,7 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
     if (!packet) {
         return;
     }
-    packet->flags = MDNS_FLAGS_AUTHORITATIVE;
+    packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
     packet->distributed = parsed_packet->distributed;
     packet->id = parsed_packet->id;
 
@@ -1935,7 +1935,7 @@ static mdns_tx_packet_t * _mdns_create_announce_packet(mdns_if_t tcpip_if, mdns_
     if (!packet) {
         return NULL;
     }
-    packet->flags = MDNS_FLAGS_AUTHORITATIVE;
+    packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
 
     uint8_t i;
     for (i=0; i<len; i++) {
@@ -1965,7 +1965,7 @@ static mdns_tx_packet_t * _mdns_create_announce_from_probe(mdns_tx_packet_t * pr
     if (!packet) {
         return NULL;
     }
-    packet->flags = MDNS_FLAGS_AUTHORITATIVE;
+    packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
 
     mdns_out_answer_t * s = probe->servers;
     while (s) {
@@ -2005,7 +2005,7 @@ static void _mdns_pcb_send_bye(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protoco
     if (!packet) {
         return;
     }
-    packet->flags = MDNS_FLAGS_AUTHORITATIVE;
+    packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
     size_t i;
     for (i=0; i<len; i++) {
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, services[i]->service, NULL, true, true)) {
@@ -3342,13 +3342,13 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
     memset(name, 0, sizeof(mdns_name_t));
 
     header.id = _mdns_read_u16(data, MDNS_HEAD_ID_OFFSET);
-    header.flags.value = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
+    header.flags = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
     header.questions = _mdns_read_u16(data, MDNS_HEAD_QUESTIONS_OFFSET);
     header.answers = _mdns_read_u16(data, MDNS_HEAD_ANSWERS_OFFSET);
     header.servers = _mdns_read_u16(data, MDNS_HEAD_SERVERS_OFFSET);
     header.additional = _mdns_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
 
-    if (header.flags.value == MDNS_FLAGS_AUTHORITATIVE && packet->src_port != MDNS_SERVICE_PORT) {
+    if (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE && packet->src_port != MDNS_SERVICE_PORT) {
         free(parsed_packet);
         return;
     }
@@ -3362,8 +3362,8 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
     parsed_packet->tcpip_if = packet->tcpip_if;
     parsed_packet->ip_protocol = packet->ip_protocol;
     parsed_packet->multicast = packet->multicast;
-    parsed_packet->authoritative = header.flags.value == MDNS_FLAGS_AUTHORITATIVE;
-    parsed_packet->distributed = header.flags.value == MDNS_FLAGS_DISTRIBUTED;
+    parsed_packet->authoritative = (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE);
+    parsed_packet->distributed = header.flags == MDNS_FLAGS_DISTRIBUTED;
     parsed_packet->id = header.id;
     esp_netif_ip_addr_copy(&parsed_packet->src, &packet->src);
     parsed_packet->src_port = packet->src_port;
@@ -3499,7 +3499,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                     service = _mdns_get_service_item(name->service, name->proto, NULL);
                 }
             } else {
-                if (!header.flags.qr || record_type == MDNS_NS) {
+                if ((header.flags & MDNS_FLAGS_QUERY_REPSONSE) == 0 || record_type == MDNS_NS) {
                     //skip this record
                     continue;
                 }
@@ -6075,11 +6075,11 @@ void mdns_debug_packet(const uint8_t * data, size_t len)
     header.additional = _mdns_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
 
     _mdns_dbg_printf("%s",
-        (header.flags.value == MDNS_FLAGS_AUTHORITATIVE)?"AUTHORITATIVE\n":
+        (header.flags.value == MDNS_FLAGS_QR_AUTHORITATIVE)?"AUTHORITATIVE\n":
         (header.flags.value == MDNS_FLAGS_DISTRIBUTED)?"DISTRIBUTED\n":
         (header.flags.value == 0)?"\n":" "
     );
-    if (header.flags.value && header.flags.value != MDNS_FLAGS_AUTHORITATIVE) {
+    if (header.flags.value && header.flags.value != MDNS_FLAGS_QR_AUTHORITATIVE) {
         _mdns_dbg_printf("0x%04X\n", header.flags.value);
     }
 
