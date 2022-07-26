@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdint.h>
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"

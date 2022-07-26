@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <functional>
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_types.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"

@@ -1,6 +1,8 @@
 #include <memory>
 #include <future>
 #include <cstring>
+#include <cstdint>
+#include "nmea_parser.h"
 #include "LoopbackTerm.h"
 
 void LoopbackTerm::start()

@@ -15,6 +15,7 @@
 #pragma once
 
 #include "esp_err.h"
+#include "nmea_parser.h"
 #include "generate/esp_modem_command_declare.inc"
 #include "esp_modem_c_api_types.h"
 

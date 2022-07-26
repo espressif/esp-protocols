@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <cassert>
+#include <stdint.h>
+#include "nmea_parser.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"
 #include "esp_log.h"
@@ -403,4 +405,12 @@ extern "C" esp_err_t esp_modem_set_pdp_context(esp_modem_dce_t *dce_wrap, esp_mo
     pdp.context_id = c_api_pdp->context_id;
     pdp.protocol_type = c_api_pdp->protocol_type;
     return command_response_to_esp_err(dce_wrap->dce->set_pdp_context(pdp));
+}
+
+extern "C" esp_err_t esp_modem_get_gnss_information_sim70xx(esp_modem_dce_t *dce_wrap, struct gps_s *gps)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->get_gnss_information_sim70xx(*gps));
 }

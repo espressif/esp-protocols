@@ -8,8 +8,11 @@
 */
 
 #include <string.h>
+#include <stdint.h>
+#include "nmea_parser.h"
 #include "esp_netif.h"
 #include "esp_modem_api.h"
+
 
 
 static esp_modem_dce_t *dce = NULL;
