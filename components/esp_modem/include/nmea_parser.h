@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  *
- * Origin: https://github.com/espressif/esp-idf/blob/master/examples/peripherals/uart/nmea0183_parser/main/nmea_parser.h
+ * Origin: https://github.com/espressif/esp-idf/blob/36f49f36/examples/peripherals/uart/nmea0183_parser/main/nmea_parser.h
  */
 
 #pragma once
