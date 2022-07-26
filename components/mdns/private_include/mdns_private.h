@@ -71,7 +71,9 @@
 #define MDNS_ANSWER_A_TTL           120
 #define MDNS_ANSWER_AAAA_TTL        120
 
-#define MDNS_FLAGS_AUTHORITATIVE    0x8400
+#define MDNS_FLAGS_QUERY_REPSONSE   0x8000
+#define MDNS_FLAGS_AUTHORITATIVE    0x0400
+#define MDNS_FLAGS_QR_AUTHORITATIVE (MDNS_FLAGS_QUERY_REPSONSE | MDNS_FLAGS_AUTHORITATIVE)
 #define MDNS_FLAGS_DISTRIBUTED      0x0200
 
 #define MDNS_NAME_REF               0xC000
@@ -212,18 +214,6 @@ typedef enum {
 typedef struct {
     uint16_t id;
     union {
-        struct {
-            uint16_t qr :1;
-            uint16_t opCode :4;
-            uint16_t aa :1;
-            uint16_t tc :1;
-            uint16_t rd :1;
-            uint16_t ra :1;
-            uint16_t z :1;
-            uint16_t ad :1;
-            uint16_t cd :1;
-            uint16_t rCode :4;//response/error code
-        };
         uint16_t value;
     } flags;
     uint16_t questions; //QDCOUNT
