@@ -48,7 +48,7 @@ bool vfs_create_uart(struct esp_modem_vfs_uart_creator *config, struct esp_modem
     }
     TRY_CATCH_OR_DO(
         int fd = open(config->dev_name, O_RDWR);
-        esp_modem::throw_if_false(fd >= 0, "Cannot open the fd");
+        ESP_MODEM_THROW_IF_FALSE(fd >= 0, "Cannot open the fd");
 
         created_config->resource = new esp_modem_vfs_resource(&config->uart, fd);
         created_config->fd = fd;

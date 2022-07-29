@@ -17,13 +17,19 @@
 #include <string>
 #include "esp_err.h"
 
+#ifndef __FILENAME__
+#define __FILENAME__    __FILE__
+#endif
+#define ESP_MODEM_THROW_IF_FALSE(...) esp_modem::throw_if_false(__FILENAME__, __LINE__, __VA_ARGS__)
+#define ESP_MODEM_THROW_IF_ESP_FAIL(...) esp_modem::throw_if_esp_fail(__FILENAME__, __LINE__, __VA_ARGS__)
+
 namespace esp_modem {
 
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
-#define THROW(exception) throw(exception)
+#define ESP_MODEM_THROW(exception) throw(exception)
+
 class esp_err_exception: virtual public std::exception {
 public:
-    explicit esp_err_exception(esp_err_t err): esp_err(err) {}
     explicit esp_err_exception(std::string msg): esp_err(ESP_FAIL), message(std::move(msg)) {}
     explicit esp_err_exception(std::string msg, esp_err_t err): esp_err(err), message(std::move(msg)) {}
     virtual esp_err_t get_err_t()
@@ -31,7 +37,7 @@ public:
         return esp_err;
     }
     ~esp_err_exception() noexcept override = default;
-    virtual const char *what() const noexcept
+    [[nodiscard]] const char *what() const noexcept override
     {
         return message.c_str();
     }
@@ -40,27 +46,33 @@ private:
     std::string message;
 };
 #else
-#define THROW(exception) abort()
+#define ESP_MODEM_THROW(exception) abort()
 #endif
 
-static inline void throw_if_false(bool condition, std::string message)
+static inline std::string make_message(const std::string& filename, int line, const std::string& message = "ERROR")
+{
+    std::string text = filename + ":" + std::to_string(line) + " " + message;
+    return text;
+}
+
+static inline void throw_if_false(const std::string& filename, int line, bool condition, const std::string& message)
 {
     if (!condition) {
-        THROW(esp_err_exception(std::move(message)));
+        ESP_MODEM_THROW(esp_err_exception(make_message(filename, line, message)));
     }
 }
 
-static inline void throw_if_esp_fail(esp_err_t err, std::string message)
+static inline void throw_if_esp_fail(const std::string& filename, int line, esp_err_t err, const std::string& message)
 {
     if (err != ESP_OK) {
-        THROW(esp_err_exception(std::move(message), err));
+        ESP_MODEM_THROW(esp_err_exception(make_message(filename, line, message), err));
     }
 }
 
-static inline void throw_if_esp_fail(esp_err_t err)
+static inline void throw_if_esp_fail(const std::string& filename, int line, esp_err_t err)
 {
     if (err != ESP_OK) {
-        THROW(esp_err_exception(err));
+        ESP_MODEM_THROW(esp_err_exception(make_message(filename, line), err));
     }
 }
 

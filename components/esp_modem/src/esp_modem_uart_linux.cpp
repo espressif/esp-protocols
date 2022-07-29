@@ -27,7 +27,7 @@ uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHand
 {
     ESP_LOGD(TAG, "Creating uart resource" );
     struct termios tty = {};
-    throw_if_false(tcgetattr(fd, &tty) == 0, "Failed to tcgetattr()");
+    ESP_MODEM_THROW_IF_FALSE(tcgetattr(fd, &tty) == 0, "Failed to tcgetattr()");
 
     tty.c_cflag &= ~PARENB;
     tty.c_cflag &= ~CSTOPB;
