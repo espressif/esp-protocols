@@ -2,44 +2,44 @@ name: Build and Run Target tests
 
 on: [push, pull_request]
 
+#  build_esp_modem:
+#    strategy:
+#      matrix:
+#        idf_ver: ["latest", "release-v4.1", "release-v4.2", "release-v4.3", "release-v4.4"]
+#        example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
+#        idf_target: ["esp32"]        
+#        exclude:
+#          - idf_ver: "release-v4.1"
+#            example: modem_console
+#          - idf_ver: "release-v4.1"
+#            example: ap_to_pppos
+#          - idf_ver: "release-v4.1"
+#            example: simple_cmux_client
+#          - idf_ver: "release-v4.2"
+#            example: simple_cmux_client
+#
+#    runs-on: ubuntu-20.04
+#    container: espressif/idf:${{ matrix.idf_ver }}
+#    steps:
+#      - name: Checkout esp-protocols
+#        uses: actions/checkout@master
+#        with:
+#          path: esp-protocols
+#      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+#        env:
+#          IDF_TARGET: ${{ matrix.idf_target }}
+#        shell: bash
+#        run: |
+#          . ${IDF_PATH}/export.sh
+#          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/${{ matrix.example }}
+#          idf.py build
+
 jobs:
-  build_esp_modem:
-    strategy:
-      matrix:
-        idf_ver: ["latest", "release-v4.1", "release-v4.2", "release-v4.3", "release-v4.4"]
-        example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
-        idf_target: ["esp32"]        
-        exclude:
-          - idf_ver: "release-v4.1"
-            example: modem_console
-          - idf_ver: "release-v4.1"
-            example: ap_to_pppos
-          - idf_ver: "release-v4.1"
-            example: simple_cmux_client
-          - idf_ver: "release-v4.2"
-            example: simple_cmux_client
-
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@master
-        with:
-          path: esp-protocols
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/${{ matrix.example }}
-          idf.py build
-
   build_mdns: 
     strategy: 
       matrix: 
         idf_ver: ["latest"] 
-        idf_target: ["esp32", "esp32s2", "esp32c3"] 
+        idf_target: ["esp32"] 
  
     runs-on: ubuntu-20.04 
     container: espressif/idf:${{ matrix.idf_ver }} 
@@ -48,76 +48,18 @@ jobs:
         uses: actions/checkout@v3 
         with: 
           submodules: recursive 
-          path: esp-protocols 
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} 
         env: 
           IDF_TARGET: ${{ matrix.idf_target }} 
         shell: bash 
+        working-directory: components/mdns/examples/
         run: | 
           . ${IDF_PATH}/export.sh 
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/ 
           idf.py set-target ${{ matrix.idf_target }}  
           cat sdkconfig.ci.eth_def >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults 
-          cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults 
-          idf.py build 
-          rm sdkconfig.defaults 
-          cat sdkconfig.ci.eth_socket >> sdkconfig.defaults 
-          idf.py build 
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/ 
-          idf.py set-target ${{ matrix.idf_target }}  
-          idf.py build 
-
-  build_asio:
-    strategy:
-      matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32", "esp32s2"]
-        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
-
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive 
-          path: esp-protocols
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/${{ matrix.example }}
-          idf.py set-target ${{ matrix.idf_target }}
-          idf.py build
-
-  build_websocket:
-    strategy:
-      matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32"]
-
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        working-directory: components/esp_websocket_client/examples/
-        run: |
-          . ${IDF_PATH}/export.sh
-          cat sdkconfig.ci >> sdkconfig.defaults
-          idf.py build
       - name: Merge binaries
-        working-directory: components/esp_websocket_client/examples/build
+        working-directory: components/mdns/examples/build
         env:
           IDF_TARGET: ${{ matrix.idf_target }}
         shell: bash
@@ -127,17 +69,115 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: components/esp_websocket_client/examples/build/
+          path: components/mdns/examples/build/
           if-no-files-found: error
 
-  run-target:
-    name: Run Websocket Example Test on target
-    needs: build_websocket
-    strategy:
-      fail-fast: false
-      matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32"]
+#  build_asio:
+#    strategy:
+#      matrix:
+#        idf_ver: ["latest"]
+#        idf_target: ["esp32", "esp32s2"]
+#        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
+#
+#    runs-on: ubuntu-20.04
+#    container: espressif/idf:${{ matrix.idf_ver }}
+#    steps:
+#      - name: Checkout esp-protocols
+#        uses: actions/checkout@v3
+#        with:
+#          submodules: recursive 
+#          path: esp-protocols
+#      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+#        env:
+#          IDF_TARGET: ${{ matrix.idf_target }}
+#        shell: bash
+#        run: |
+#          . ${IDF_PATH}/export.sh
+#          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/${{ matrix.example }}
+#          idf.py set-target ${{ matrix.idf_target }}
+#          idf.py build
+#
+#  build_websocket:
+#    strategy:
+#      matrix:
+#        idf_ver: ["latest"]
+#        idf_target: ["esp32"]
+#
+#    runs-on: ubuntu-20.04
+#    container: espressif/idf:${{ matrix.idf_ver }}
+#    steps:
+#      - name: Checkout esp-protocols
+#        uses: actions/checkout@v3
+#        with:
+#          submodules: recursive
+#      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+#        env:
+#          IDF_TARGET: ${{ matrix.idf_target }}
+#        shell: bash
+#        working-directory: components/esp_websocket_client/examples/
+#        run: |
+#          . ${IDF_PATH}/export.sh
+#          cat sdkconfig.ci >> sdkconfig.defaults
+#          idf.py build
+#      - name: Merge binaries
+#        working-directory: components/esp_websocket_client/examples/build
+#        env:
+#          IDF_TARGET: ${{ matrix.idf_target }}
+#        shell: bash
+#        run: |
+#          . ${IDF_PATH}/export.sh
+#          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+#          path: components/esp_websocket_client/examples/build/
+#          if-no-files-found: error
+
+#  run-target:
+#    name: Run Websocket Example Test on target
+#    needs: build_websocket
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        idf_ver: ["latest"]
+#        idf_target: ["esp32"]
+#    runs-on:
+#      - self-hosted
+#      - ESP32-ETHERNET-KIT
+#    container:
+#      image: python:3.7-buster
+#      options: --privileged # Privileged mode has access to serial ports
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: actions/download-artifact@v2
+#        with:
+#          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+#          path: components/esp_websocket_client/examples/build/
+#      - name: Install Python packages
+#        env:
+#          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+#        run: |
+#          pip install -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
+#      - name: Download Example Test to target
+#        run: python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/esp_websocket_client/examples/build/flash_image.bin
+#      - name: Run Example Test on target
+#        working-directory: components/esp_websocket_client/examples
+#        run: |
+#          cp sdkconfig.ci sdkconfig.defaults
+#          pytest --log-cli-level DEBUG --junit-xml=./test_app_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
+#      - uses: actions/upload-artifact@v2
+#        if: always()
+#        with:
+#          name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+#          path: examples/*.xml
+
+  run-target-mdns:
+    strategy: 
+      matrix: 
+        idf_ver: ["latest"] 
+        idf_target: ["esp32"] 
+    name: Run mDNS Example Test on target
+    needs: build_mdns
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
@@ -149,18 +189,19 @@ jobs:
       - uses: actions/download-artifact@v2
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: components/esp_websocket_client/examples/build/
+          path: components/mdns/examples/build/
       - name: Install Python packages
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
-          pip install -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
+          pip install dpkt pytest-embedded-serial-esp pytest-embedded-idf junit_xml
       - name: Download Example Test to target
-        run: python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/esp_websocket_client/examples/build/flash_image.bin
+        run: python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/mdns/examples/build/flash_image.bin
       - name: Run Example Test on target
-        working-directory: components/esp_websocket_client/examples
+        working-directory: components/mdns/examples
         run: |
-          cp sdkconfig.ci sdkconfig.defaults
+          cp sdkconfig.ci.eth_def sdkconfig.defaults
+          ls -la
           pytest --log-cli-level DEBUG --junit-xml=./test_app_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v2
         if: always()
