@@ -6,6 +6,8 @@ import string
 from threading import Event, Thread
 import pytest
 import sys
+import json
+import time
 
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
 from pytest_embedded import Dut
@@ -81,8 +83,33 @@ def test_examples_protocol_websocket(dut):
     def test_close(dut):
         code = dut.expect(re.compile(b'WEBSOCKET: Received closed message with code=(\\d*)'))[0]
         print('Received close frame with code {}'.format(code))
+
+    def test_json(dut, websocket):
+        json_string = """
+            [
+               {
+                  "id":"1",
+                  "name":"user1"
+               },
+               {
+                  "id":"2",
+                  "name":"user2"
+               }
+            ]
+        """
+        websocket.send_data(json_string)
+        data = json.loads(json_string)
+
+        match = dut.expect(re.compile(b'Json=([a-zA-Z0-9]*).*')).group(0).decode()[5:]
+        if match == str(data[0]):
+            print('Sent message and received message are equal')
+        else:
+            raise ValueError('DUT received string do not match sent string, \nexpected: {}\nwith length {}\
+                                 \nreceived: {}\nwith length {}'.format(data[0], len(data[0]), match, len(match)))
+
  
     def test_recv_long_msg(dut, websocket, msg_len, repeats):
+
         send_msg = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(msg_len))
 
         for _ in range(repeats):
@@ -121,6 +148,7 @@ def test_examples_protocol_websocket(dut):
             test_echo(dut)
             # Message length should exceed DUT's buffer size to test fragmentation, default is 1024 byte
             test_recv_long_msg(dut, ws, 2000, 3)
+            test_json(dut, ws)
             test_close(dut)
     else:
         print('DUT connecting to {}'.format(uri))
