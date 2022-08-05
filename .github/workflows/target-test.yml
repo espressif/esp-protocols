@@ -183,6 +183,8 @@ jobs:
       - ESP32-ETHERNET-KIT
     container:
       image: python:3.7-buster
+      ports: 
+        - 5353:5353/udp
       options: --privileged # Privileged mode has access to serial ports
     steps:
       - uses: actions/checkout@v3
