@@ -3499,7 +3499,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                     service = _mdns_get_service_item(name->service, name->proto, NULL);
                 }
             } else {
-                if (!header.flags.qr || record_type == MDNS_NS) {
+                if (!parsed_packet->authoritative || record_type == MDNS_NS) {
                     //skip this record
                     continue;
                 }

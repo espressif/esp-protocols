@@ -51,7 +51,7 @@ def mdns_server(esp_host, events):
     UDP_IP = '0.0.0.0'
     UDP_PORT = 5353
     MCAST_GRP = '224.0.0.251'
-    TESTER_NAME = u'tinytester'
+    TESTER_NAME = u'tinytester.local'
     TESTER_NAME_LWIP = u'tinytester-lwip.local'
     QUERY_TIMEOUT = 0.2
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -106,16 +106,7 @@ def test_examples_protocol_mdns(dut):
       3. check the mdns name is accessible
       4. check DUT output if mdns advertized host is resolved
     """
-    #dut1 = env.get_dut('mdns-test', 'examples/protocols/mdns', dut_class=ttfw_idf.ESP32DUT, app_config_name=config)
-    # check and log bin size
-    #binary_file = os.path.join(dut1.app.binary_path, 'mdns_test.bin')
-    #bin_size = os.path.getsize(binary_file)
-    #ttfw_idf.log_performance('mdns-test_bin_size', '{}KB'.format(bin_size // 1024))
-    # 1. start mdns application
-    #dut1.start_app()
-    # 2. get the dut host name (and IP address)
     specific_host = dut.expect(re.compile(b'mdns hostname set to:([a-zA-Z0-9]*).*')).group(0).decode()[23:-6]
-    print('============host==========')
     print(specific_host)
 
     mdns_server_events = {'stop': Event(), 'esp_answered': Event(), 'esp_delegated_answered': Event()}
@@ -130,7 +121,7 @@ def test_examples_protocol_mdns(dut):
         if not mdns_server_events['esp_delegated_answered'].wait(timeout=30):
             raise ValueError('Test has failed: did not receive mdns answer for delegated host within timeout')
         # 4. check DUT output if mdns advertized host is resolved
-        #dut.expect(re.compile(b'mdns-test: Query A: tinytester.local resolved to: 127.0.0.1'), timeout=30)
+        dut.expect(re.compile(b'mdns-test: Query A: tinytester.local resolved to: 127.0.0.1'), timeout=30)
         dut.expect(re.compile(b'mdns-test: gethostbyname: tinytester-lwip.local resolved to: 127.0.0.1'), timeout=30)
         dut.expect(re.compile(b'mdns-test: getaddrinfo: tinytester-lwip.local resolved to: 127.0.0.1'), timeout=30)
         # 5. check the DUT answers to `dig` command
