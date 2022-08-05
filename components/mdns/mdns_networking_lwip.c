@@ -338,11 +338,15 @@ size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, c
     }
     memcpy((uint8_t *)pbt->payload, data, len);
 
+    ip_addr_t ip_add_copy;
+    ip_add_copy.type = ip->type;
+    memcpy(&(ip_add_copy.u_addr),&(ip->u_addr),sizeof(ip_add_copy.u_addr));
+
     mdns_api_call_t msg = {
         .tcpip_if = tcpip_if,
         .ip_protocol = ip_protocol,
         .pbt = pbt,
-        .ip = (ip_addr_t *)ip,
+        .ip = &ip_add_copy,
         .port = port
     };
     tcpip_api_call(_mdns_udp_pcb_write_api, &msg.call);
