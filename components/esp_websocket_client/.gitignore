@@ -2,7 +2,7 @@
 *.o
 *.pyc
 
-# gtags
+# gtags 
 GTAGS
 GRTAGS
 GPATH
