@@ -5,6 +5,9 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <inttypes.h>
 #include "esp_mac.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
@@ -92,7 +95,7 @@ static void initialise_mdns(void)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
 
     ESP_ERROR_CHECK(nvs_flash_init());
