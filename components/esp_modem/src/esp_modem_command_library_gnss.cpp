@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <charconv>
+#include <list>
 #include <cstdint>
 #include "nmea_parser.h"
+#include "cxx_include/esp_modem_types.hpp"
 #include "esp_log.h"
+#include "command_library.hpp"
 
 namespace esp_modem::dce_commands {
 

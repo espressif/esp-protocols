@@ -18,6 +18,8 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
+#include "command_library.hpp"
+
 
 namespace esp_modem::dce_commands {
 
@@ -48,7 +50,7 @@ command_result generic_command(CommandableIf *t, const std::string &command,
 
 }
 
-static inline command_result generic_command(CommandableIf *t, const std::string &command,
+command_result generic_command(CommandableIf *t, const std::string &command,
         const std::string &pass_phrase,
         const std::string &fail_phrase, uint32_t timeout_ms)
 {
@@ -58,7 +60,7 @@ static inline command_result generic_command(CommandableIf *t, const std::string
     return generic_command(t, command, pass, fail, timeout_ms);
 }
 
-static inline command_result generic_get_string(CommandableIf *t, const std::string &command, std::string_view &output, uint32_t timeout_ms = 500)
+command_result generic_get_string(CommandableIf *t, const std::string &command, std::string_view &output, uint32_t timeout_ms)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     return t->command(command, [&](uint8_t *data, size_t len) {
@@ -85,7 +87,7 @@ static inline command_result generic_get_string(CommandableIf *t, const std::str
     }, timeout_ms);
 }
 
-static inline command_result generic_get_string(CommandableIf *t, const std::string &command, std::string &output, uint32_t timeout_ms = 500)
+command_result generic_get_string(CommandableIf *t, const std::string &command, std::string &output, uint32_t timeout_ms)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string_view out;
@@ -97,7 +99,7 @@ static inline command_result generic_get_string(CommandableIf *t, const std::str
 }
 
 
-static inline command_result generic_command_common(CommandableIf *t, const std::string &command, uint32_t timeout = 500)
+command_result generic_command_common(CommandableIf *t, const std::string &command, uint32_t timeout)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     return generic_command(t, command, "OK", "ERROR", timeout);
