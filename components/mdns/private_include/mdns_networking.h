@@ -19,6 +19,8 @@
  */
 esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet);
 
+bool mdns_is_netif_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+
 /**
  * @brief  Start PCB
  */
