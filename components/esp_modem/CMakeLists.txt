@@ -14,6 +14,7 @@ else()
     set(dependencies driver esp_event esp_netif)
 endif()
 
+
 set(srcs ${platform_srcs}
         "src/esp_modem_dte.cpp"
         "src/esp_modem_dce.cpp"
@@ -34,11 +35,13 @@ idf_component_register(SRCS "${srcs}"
                     PRIV_INCLUDE_DIRS private_include
                     REQUIRES ${dependencies})
 
+
 set_target_properties(${COMPONENT_LIB} PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS ON
 )
+
 
 if(${target} STREQUAL "linux")
     # This is needed for ESP_LOGx() macros, as integer formats differ on ESP32(..) and x64
