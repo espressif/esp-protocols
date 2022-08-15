@@ -23,6 +23,7 @@
 #include "esp_log.h"
 #include "esp_websocket_client.h"
 #include "esp_event.h"
+#include <cJSON.h>
 
 #define NO_DATA_TIMEOUT_SEC 5
 
@@ -74,6 +75,19 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         } else {
             ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
         }
+ 
+        // If received data contains json structure it succeed to parse
+        cJSON *root = cJSON_Parse(data->data_ptr);
+        if (root) {
+            for (int i = 0 ; i < cJSON_GetArraySize(root) ; i++) {
+                cJSON *elem = cJSON_GetArrayItem(root, i);
+                cJSON *id = cJSON_GetObjectItem(elem, "id");
+                cJSON *name = cJSON_GetObjectItem(elem, "name");
+                ESP_LOGW(TAG, "Json={'id': '%s', 'name': '%s'}", id->valuestring, name->valuestring);
+            }
+            cJSON_Delete(root);
+        }
+
         ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
 
         xTimerReset(shutdown_signal_timer, portMAX_DELAY);
