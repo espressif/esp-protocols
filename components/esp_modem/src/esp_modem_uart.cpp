@@ -33,7 +33,7 @@ struct uart_task {
         task_handle(nullptr)
     {
         BaseType_t ret = xTaskCreate(task_function, "uart_task", stack_size, task_param, priority, &task_handle);
-        throw_if_false(ret == pdTRUE, "create uart event task failed");
+        ESP_MODEM_THROW_IF_FALSE(ret == pdTRUE, "create uart event task failed");
     }
 
     ~uart_task()
