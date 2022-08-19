@@ -82,7 +82,7 @@ void CMux::send_disconnect(size_t i)
 {
     if (i == 0) {   // control terminal
         uint8_t frame[] = {
-                SOF_MARKER, 0x3, 0xFF, 0x5, 0xC3, 0x1, 0xE7, SOF_MARKER };
+                SOF_MARKER, 0x3, 0xEF, 0x5, 0xC3, 0x1, 0xF2, SOF_MARKER };
         term->write(frame, 8);
     } else {        // separate virtual terminal
         uint8_t frame[] = {
@@ -142,7 +142,7 @@ void CMux::data_available(uint8_t *data, size_t len)
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif
         }
-    } else if (type == 0xFF && dlci == 0) { // notify the internal DISC command
+    } else if ((type&FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
         Scoped<Lock> l(lock);
         sabm_ack = dlci;
     }
@@ -325,11 +325,12 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
 
 bool CMux::deinit()
 {
-    int timeout = 0;
+    int timeout;
     sabm_ack = -1;
     // First disconnect all (2) virtual terminals
     for (size_t i = 1; i < 3; i++) {
         send_disconnect(i);
+        timeout = 0;
         while (true) {
             usleep(10'000);
             Scoped<Lock> l(lock);
@@ -345,6 +346,7 @@ bool CMux::deinit()
     sabm_ack = -1;
     // Then disconnect the control terminal
     send_disconnect(0);
+    timeout = 0;
     while (true) {
         usleep(10'000);
         Scoped<Lock> l(lock);
