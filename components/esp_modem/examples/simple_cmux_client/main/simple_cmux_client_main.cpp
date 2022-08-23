@@ -39,6 +39,12 @@ extern "C" void app_main(void)
 
     /* Configure and create the DTE */
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    /* setup UART specific configuration based on kconfig options */
+    dte_config.uart_config.tx_io_num = CONFIG_EXAMPLE_MODEM_UART_TX_PIN;
+    dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
+    dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
+    dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
+    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
 #if CONFIG_EXAMPLE_USE_VFS_TERM == 1
     /* The VFS terminal is just a demonstration of using an abstract file descriptor
      * which implements non-block reads, writes and selects to communicate with esp-modem.
@@ -71,12 +77,27 @@ extern "C" void app_main(void)
     std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
     std::unique_ptr<DCE> dce = create_SIM800_dce(&dce_config, dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
+    std::unique_ptr<DCE> dce = create_SIM7000_dce(&dce_config, dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+    std::unique_ptr<DCE> dce = create_SIM7070_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
     std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
 #else
 #error "Unsupported device"
 #endif
     assert(dce);
+
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW)
+    {
+        if (command_result::OK != dce->set_flow_control(2, 2)) {
+            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+            return;
+        }
+        ESP_LOGI(TAG, "set_flow_control OK");
+    } else {
+        ESP_LOGI(TAG, "not set_flow_control, because 2-wire mode active.");
+    }
 
     /* Setup basic operation mode for the DCE (pin if used, CMUX mode) */
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
