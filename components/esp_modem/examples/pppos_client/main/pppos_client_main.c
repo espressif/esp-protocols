@@ -127,6 +127,7 @@ void app_main(void)
     dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
     dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
     dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
+    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
     dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
     dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
     dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
@@ -151,6 +152,12 @@ void app_main(void)
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
     esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM800, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7000 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7000, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7070, &dte_config, &dce_config, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
     esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7600, &dte_config, &dce_config, esp_netif);
@@ -159,6 +166,16 @@ void app_main(void)
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 #endif
     assert(dce);
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW)
+    {
+        if (command_result::OK != dce->set_flow_control(2, 2)) {
+            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+            return;
+        }
+        ESP_LOGI(TAG, "set_flow_control OK");
+    } else {
+        ESP_LOGI(TAG, "not set_flow_control, because 2-wire mode active.");
+    }
 
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
@@ -175,7 +192,7 @@ void app_main(void)
     int rssi, ber;
     esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d", err);
+        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d %s", err, esp_err_to_name(err));
         return;
     }
     ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
