@@ -22,6 +22,10 @@ menu "Example Configuration"
             bool "SIM7070"
             help
                 SIM7070 is Multi-Band xxxxxxxxxxxxxxxxx
+        config EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
+            bool "SIM7070_GNSS"
+            help
+                SIM7070 is Multi-Band xxxxxxxxxxxxxxxxx with Support for GNSS Location API
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
