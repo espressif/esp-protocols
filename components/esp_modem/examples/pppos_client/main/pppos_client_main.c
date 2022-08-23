@@ -170,7 +170,6 @@ void app_main(void)
     {
         esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
         if (err != ESP_OK) {
-        if (command_result::OK != esp_modem_set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
         }
