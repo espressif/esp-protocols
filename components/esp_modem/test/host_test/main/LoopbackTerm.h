@@ -17,7 +17,7 @@ public:
      * inject_by defines batch sizes: the read callback is called multiple times
      * with partial data of `inject_by` size
      */
-    int inject(uint8_t *data, size_t len, size_t inject_by);
+    int inject(uint8_t *data, size_t len, size_t inject_by,size_t delay_before=0, size_t delay_after=1);
 
     void start() override;
     void stop() override;
@@ -25,6 +25,12 @@ public:
     int write(uint8_t *data, size_t len) override;
 
     int read(uint8_t *data, size_t len) override;
+
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
+    {
+        Scoped<Lock> lock(on_read_guard);
+        on_read = std::move(f);
+    }
 
 private:
     enum class status_t {
@@ -39,4 +45,9 @@ private:
     bool pin_ok;
     bool is_bg96;
     size_t inject_by;
+    size_t delay_before_inject;
+    size_t delay_after_inject;
+    std::vector<std::future<void>> async_results;
+    Lock on_read_guard;
+
 };
