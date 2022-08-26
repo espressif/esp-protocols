@@ -151,6 +151,8 @@ jobs:
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
+    # Skip running on forks since it won't have access to secrets
+    if: github.repository == 'espressif/esp-protocols'
     container:
       image: python:3.7-buster
       options: --privileged # Privileged mode has access to serial ports
