@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <utility>
 #include "esp_err.h"
+#include "esp_modem_config.h"
 #include "esp_modem_primitives.hpp"
 
 namespace esp_modem {
@@ -79,6 +80,8 @@ public:
     virtual void start() = 0;
 
     virtual void stop() = 0;
+
+    virtual void set_flow_control(esp_modem_flow_ctrl_t flow_control){}
 
 protected:
     std::function<bool(uint8_t *data, size_t len)> on_read;

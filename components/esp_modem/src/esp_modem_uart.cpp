@@ -70,6 +70,8 @@ public:
 
     int read(uint8_t *data, size_t len) override;
 
+    void set_flow_control(esp_modem_flow_ctrl_t flow_control) override;
+
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
         on_read = std::move(f);
@@ -196,6 +198,24 @@ int UartTerminal::write(uint8_t *data, size_t len)
 {
     return uart_write_bytes_compat(uart.port, data, len);
 }
+
+void UartTerminal::set_flow_control(esp_modem_flow_ctrl_t flow_control)
+{
+
+    esp_err_t res = ESP_FAIL;
+    /* Set flow control threshold */
+    if (flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        res = uart_set_hw_flow_ctrl(uart.port, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
+    } else if (flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
+        res = uart_set_sw_flow_ctrl(uart.port, true, 8, UART_FIFO_LEN - 8);
+    } else if  (flow_control == ESP_MODEM_FLOW_CONTROL_NONE) {
+    	res = uart_set_hw_flow_ctrl(uart.port, UART_HW_FLOWCTRL_DISABLE, 0);
+    }
+    ESP_MODEM_THROW_IF_ERROR(res, "config uart flow control failed");
+
+}
+
+
 
 } // namespace esp_modem
 

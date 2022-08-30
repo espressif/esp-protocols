@@ -18,6 +18,7 @@
 #include <utility>
 #include <cstddef>
 #include <cstdint>
+#include "esp_modem_config.h"
 #include "cxx_include/esp_modem_primitives.hpp"
 #include "cxx_include/esp_modem_terminal.hpp"
 #include "cxx_include/esp_modem_types.hpp"
@@ -74,6 +75,9 @@ public:
      * @param f Function to be called on data available
      */
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f);
+
+
+    void set_flow_control(esp_modem_flow_ctrl_t flow_control);
 
     /**
      * @brief Sets the DTE to desired mode (Command/Data/Cmux)
