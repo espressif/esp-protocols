@@ -64,6 +64,7 @@ extern "C" void app_main(void)
 
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
     auto uart_dte = create_uart_dte(&dte_config);
     auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
 
@@ -81,6 +82,43 @@ extern "C" void app_main(void)
 #endif
     
     assert(dce != nullptr);
+
+
+    //now we want to go back to 2-Wire mode:
+    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_NONE);
+
+
+    for (int i = 0; i < 15; ++i) {
+        if (command_result::OK != dce->sync()) {
+            ESP_LOGW(TAG, "sync no Success after %i try", i);
+        } else {
+            ESP_LOGI(TAG, "sync Success after %i try", i);
+            break; //exit the Loop.
+        }
+    }
+
+
+    //now we want to go back to 4-Wire mode:
+    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_HW);
+
+    //set this mode also to the DCE.
+    if (command_result::OK != dce->set_flow_control(2, 2)) {
+        ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+        return;
+    }
+    ESP_LOGI(TAG, "set_flow_control OK");
+
+
+    //sync
+    for (int i = 0; i < 15; ++i) {
+        if (command_result::OK != dce->sync()) {
+            ESP_LOGE(TAG, "sync no Success after %i try", i);
+        } else {
+            ESP_LOGI(TAG, "sync Success after %i try", i);
+            break; //exit the Loop.
+        }
+    }
+
 
     // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
