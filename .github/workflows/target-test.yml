@@ -59,13 +59,13 @@ jobs:
           idf.py set-target ${{ matrix.idf_target }}  
           cat sdkconfig.ci.eth_def >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults 
+          rm sdkconfig sdkconfig.defaults
           cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults 
+          rm sdkconfig sdkconfig.defaults
           cat sdkconfig.ci.eth_socket >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults
+          rm sdkconfig sdkconfig.defaults
           cat sdkconfig.ci.eth_no_ipv6 >> sdkconfig.defaults
           idf.py build
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/ 
