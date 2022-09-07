@@ -332,10 +332,15 @@ static void  query_mdns_host_with_getaddrinfo(char * host)
 
     if (!getaddrinfo(host, NULL, &hints, &res)) {
         while (res) {
-            ESP_LOGI(TAG, "getaddrinfo: %s resolved to: %s", host,
-                     res->ai_family == AF_INET?
-                     inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr):
-                     inet_ntoa(((struct sockaddr_in6 *) res->ai_addr)->sin6_addr));
+            char *resolved_addr;
+#if CONFIG_LWIP_IPV6
+            resolved_addr = res->ai_family == AF_INET ?
+                inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr) :
+                inet_ntoa(((struct sockaddr_in6 *) res->ai_addr)->sin6_addr);
+#else
+            resolved_addr = inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr);
+#endif // CONFIG_LWIP_IPV6
+            ESP_LOGI(TAG, "getaddrinfo: %s resolved to: %s", host, resolved_addr);
             res = res->ai_next;
         }
     }
