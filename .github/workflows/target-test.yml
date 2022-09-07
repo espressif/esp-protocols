@@ -56,16 +56,23 @@ jobs:
         run: | 
           . ${IDF_PATH}/export.sh 
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/ 
-          idf.py set-target ${{ matrix.idf_target }}  
+          idf.py set-target ${{ matrix.idf_target }}
+          echo "Building for default configuration"
+          idf.py build
+          rm sdkconfig
+          echo "Building for sdkconfig.ci.eth_def"
           cat sdkconfig.ci.eth_def >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults 
+          rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_custom_netif"
           cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults 
+          rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_socket"
           cat sdkconfig.ci.eth_socket >> sdkconfig.defaults 
           idf.py build 
-          rm sdkconfig.defaults
+          rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_no_ipv6"
           cat sdkconfig.ci.eth_no_ipv6 >> sdkconfig.defaults
           idf.py build
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/ 
@@ -154,10 +161,8 @@ jobs:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
           path: components/esp_websocket_client/examples/build/
       - name: Install Python packages
-        env:
-          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
-          pip install -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
+          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
       - name: Download Example Test to target
         run: python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/esp_websocket_client/examples/build/flash_image.bin
       - name: Run Example Test on target
