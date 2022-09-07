@@ -56,16 +56,23 @@ jobs:
         run: | 
           . ${IDF_PATH}/export.sh 
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/ 
-          idf.py set-target ${{ matrix.idf_target }}  
+          idf.py set-target ${{ matrix.idf_target }}
+          echo "Building for default configuration"
+          idf.py build
+          rm sdkconfig
+          echo "Building for sdkconfig.ci.eth_def"
           cat sdkconfig.ci.eth_def >> sdkconfig.defaults 
           idf.py build 
           rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_custom_netif"
           cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults 
           idf.py build 
           rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_socket"
           cat sdkconfig.ci.eth_socket >> sdkconfig.defaults 
           idf.py build 
           rm sdkconfig sdkconfig.defaults
+          echo "Building for sdkconfig.ci.eth_no_ipv6"
           cat sdkconfig.ci.eth_no_ipv6 >> sdkconfig.defaults
           idf.py build
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/ 
