@@ -396,7 +396,9 @@ static esp_netif_t *eth_start(void)
 #endif
 #elif CONFIG_EXAMPLE_USE_SPI_ETHERNET
     gpio_install_isr_service(0);
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
     spi_device_handle_t spi_handle = NULL;
+#endif
     spi_bus_config_t buscfg = {
         .miso_io_num = CONFIG_EXAMPLE_ETH_SPI_MISO_GPIO,
         .mosi_io_num = CONFIG_EXAMPLE_ETH_SPI_MOSI_GPIO,
@@ -414,9 +416,14 @@ static esp_netif_t *eth_start(void)
         .spics_io_num = CONFIG_EXAMPLE_ETH_SPI_CS_GPIO,
         .queue_size = 20
     };
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
     ESP_ERROR_CHECK(spi_bus_add_device(CONFIG_EXAMPLE_ETH_SPI_HOST, &devcfg, &spi_handle));
     /* dm9051 ethernet driver is based on spi driver */
     eth_dm9051_config_t dm9051_config = ETH_DM9051_DEFAULT_CONFIG(spi_handle);
+#else
+    eth_dm9051_config_t dm9051_config = ETH_DM9051_DEFAULT_CONFIG(CONFIG_EXAMPLE_ETH_SPI_HOST, &devcfg);
+#endif // ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
+
     dm9051_config.int_gpio_num = CONFIG_EXAMPLE_ETH_SPI_INT_GPIO;
     s_mac = esp_eth_mac_new_dm9051(&dm9051_config, &mac_config);
     s_phy = esp_eth_phy_new_dm9051(&phy_config);
@@ -429,9 +436,13 @@ static esp_netif_t *eth_start(void)
         .spics_io_num = CONFIG_EXAMPLE_ETH_SPI_CS_GPIO,
         .queue_size = 20
     };
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
     ESP_ERROR_CHECK(spi_bus_add_device(CONFIG_EXAMPLE_ETH_SPI_HOST, &devcfg, &spi_handle));
     /* w5500 ethernet driver is based on spi driver */
     eth_w5500_config_t w5500_config = ETH_W5500_DEFAULT_CONFIG(spi_handle);
+#else
+    eth_w5500_config_t w5500_config = ETH_W5500_DEFAULT_CONFIG(CONFIG_EXAMPLE_ETH_SPI_HOST, &devcfg);
+#endif // ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
     w5500_config.int_gpio_num = CONFIG_EXAMPLE_ETH_SPI_INT_GPIO;
     s_mac = esp_eth_mac_new_w5500(&w5500_config, &mac_config);
     s_phy = esp_eth_phy_new_w5500(&phy_config);
