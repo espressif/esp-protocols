@@ -80,6 +80,12 @@ public:
     void set_flow_control(esp_modem_flow_ctrl_t flow_control);
 
     /**
+     * @brief Sets DTE error callback
+     * @param f Function to be called on DTE error
+     */
+    void set_error_cb(std::function<void(terminal_error err)> f);
+
+    /**
      * @brief Sets the DTE to desired mode (Command/Data/Cmux)
      * @param m Desired operation mode
      * @return true on success

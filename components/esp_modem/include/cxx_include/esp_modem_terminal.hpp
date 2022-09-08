@@ -42,6 +42,7 @@ enum class terminal_error {
     BUFFER_OVERFLOW,
     CHECKSUM_ERROR,
     UNEXPECTED_CONTROL_FLOW,
+    DEVICE_GONE,
 };
 
 /**
