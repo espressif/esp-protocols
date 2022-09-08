@@ -554,6 +554,27 @@ command_result set_gnss_power_mode(CommandableIf *t, int mode)
     return generic_command_common(t, "AT+CGNSPWR=" + std::to_string(mode) + "\r");
 }
 
+command_result get_gnss_power_mode(CommandableIf *t, int &mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string_view out;
+    auto ret = generic_get_string(t, "AT+CGNSPWR?\r", out);
+    if (ret != command_result::OK) {
+        return ret;
+    }
+    constexpr std::string_view pattern = "+CGNSPWR: ";
+    constexpr int pos = pattern.size();
+    if (out.find(pattern) == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    if (std::from_chars(out.data() + pos, out.data() + out.size(), mode).ec == std::errc::invalid_argument) {
+        return command_result::FAIL;
+    }
+
+    return command_result::OK;
+}
+
 command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
 {
     ESP_LOGV(TAG, "%s", __func__ );
