@@ -243,15 +243,17 @@ extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
     return ret;
 }
 
-extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name)
+extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name, int *p_act)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_name == nullptr || p_act == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string name;
-    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name));
+    int act;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name, act));
     if (ret == ESP_OK && !name.empty()) {
         strlcpy(p_name, name.c_str(), ESP_MODEM_C_API_STR_MAX);
+        *p_act = act;
     }
     return ret;
 }
