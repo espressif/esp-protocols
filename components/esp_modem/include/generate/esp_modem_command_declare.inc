@@ -72,9 +72,10 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
  * @brief Execute the supplied AT command
  * @param[in] at AT command
  * @param[out] out Command output string
+ * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
  */\
-ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, 2, STRING_IN(p1, cmd), STRING_OUT(p2, out)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, 3, STRING_IN(p1, cmd), STRING_OUT(p2, out), INT_IN(p3, timeout)) \
     \
 /**
  * @brief Checks if the SIM needs a PIN
