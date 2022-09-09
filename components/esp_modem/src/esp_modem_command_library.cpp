@@ -273,7 +273,7 @@ command_result set_pdp_context(CommandableIf *t, PdpContext &pdp)
     ESP_LOGV(TAG, "%s", __func__ );
     std::string pdp_command = "AT+CGDCONT=" + std::to_string(pdp.context_id) +
                               ",\"" + pdp.protocol_type + "\",\"" + pdp.apn + "\"\r";
-    return generic_command_common(t, pdp_command);
+    return generic_command_common(t, pdp_command, 150000);
 }
 
 command_result set_data_mode(CommandableIf *t)
@@ -389,11 +389,11 @@ command_result set_pin(CommandableIf *t, const std::string &pin)
     return generic_command_common(t, set_pin_command);
 }
 
-command_result at(CommandableIf *t, const std::string &cmd, std::string &out)
+command_result at(CommandableIf *t, const std::string &cmd, std::string &out, int timeout = 500)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string at_command = cmd + "\r";
-    return generic_get_string(t, at_command, out);
+    return generic_get_string(t, at_command, out, timeout);
 }
 
 command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
@@ -458,7 +458,7 @@ command_result get_network_attachment_state(CommandableIf *t, int &state)
 command_result set_radio_state(CommandableIf *t, int state)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    return generic_command_common(t, "AT+CFUN=" + std::to_string(state) + "\r");
+    return generic_command_common(t, "AT+CFUN=" + std::to_string(state) + "\r", 15000);
 }
 
 command_result get_radio_state(CommandableIf *t, int &state)
