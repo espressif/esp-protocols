@@ -18,6 +18,16 @@ ConsoleCommand::ConsoleCommand(const char *command, const char *help, const std:
     RegisterCommand(command, help, args);
 }
 
+ConsoleCommand::~ConsoleCommand()
+{
+    // Find this command in static list of commands and remove it
+    auto cmd = std::find(console_commands.begin(), console_commands.end(), this);
+    if (cmd != console_commands.end()) {
+        console_commands.erase(cmd);
+        last_command--;
+    }
+}
+
 void ConsoleCommand::RegisterCommand(const char *command, const char *help, const std::vector<CommandArgs> &args)
 {
     assert(last_command <= MAX_REPEAT_NR);

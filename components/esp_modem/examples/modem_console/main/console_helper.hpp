@@ -93,6 +93,11 @@ public:
     explicit ConsoleCommand(const char *command, const char *help, const std::vector<CommandArgs> &args, std::function<bool(ConsoleCommand *)> f);
 
     /**
+     * @brief Destructor of ConsoleCommand
+     */
+    ~ConsoleCommand();
+
+    /**
      * @brief Utility getters of various params from the argument list
      */
     template<typename T> int get_count_of(CommandArgs T::*member)
