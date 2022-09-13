@@ -15,6 +15,7 @@
 #pragma once
 
 #include "esp_log.h"
+#include "esp_idf_version.h"
 #include "driver/uart.h"
 
 /**
@@ -23,7 +24,7 @@
  */
 static inline int uart_write_bytes_compat(uart_port_t uart_num, const void* src, size_t size)
 {
-#if ESP_IDF_VERSION_MAJOR >= 4 && ESP_IDF_VERSION_MINOR >= 3
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
     const void *data = src;
 #else
     auto *data = reinterpret_cast<const char*>(src);

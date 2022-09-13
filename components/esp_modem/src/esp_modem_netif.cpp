@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <esp_log.h>
 #include <esp_event.h>
+#include "esp_idf_version.h"
 #include "cxx_include/esp_modem_netif.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_netif_ppp.h"
@@ -59,7 +60,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
     esp_netif_ppp_config_t ppp_config = { .ppp_phase_event_enabled = true,    // assuming phase enabled, as earlier IDFs
                                           .ppp_error_event_enabled = false
                                         }; // don't provide cfg getters so we enable both events
-#if ESP_IDF_VERSION_MAJOR >= 4 && ESP_IDF_VERSION_MINOR >= 4
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
     esp_netif_ppp_get_params(esp_netif, &ppp_config);
 #endif // ESP-IDF >= v4.4
     if (!ppp_config.ppp_error_event_enabled) {

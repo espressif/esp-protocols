@@ -11,12 +11,13 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_idf_version.h"
 #include "nvs_flash.h"
 #include "lwip/lwip_napt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "network_dce.h"
-#if ESP_IDF_VERSION_MAJOR >= 5
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     #include "esp_mac.h"
     #include "dhcpserver/dhcpserver.h"
 #endif
