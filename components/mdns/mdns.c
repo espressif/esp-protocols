@@ -3520,7 +3520,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                         _mdns_remove_parsed_question(parsed_packet, type, service);
                     } else if (service) {
                         //check if TTL is more than half of the full TTL value (4500)
-                        if (ttl > 2250) {
+                        if (ttl > (MDNS_ANSWER_PTR_TTL/2)) {
                             _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
                         }
                     }
@@ -3675,7 +3675,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                     if (col && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running && service) {
                         do_not_reply = true;
                         _mdns_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, true);
-                    } else if (ttl > 2250 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running) {
+                    } else if (ttl > (MDNS_ANSWER_TXT_TTL/2) && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
                     }
                 }
