@@ -155,6 +155,12 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
     });
 }
 
+void DTE::set_error_cb(std::function<void(terminal_error err)> f)
+{
+    data_term->set_error_cb(f);
+    command_term->set_error_cb(f);
+}
+
 int DTE::read(uint8_t **d, size_t len)
 {
     auto data_to_read = std::min(len, buffer.size);
