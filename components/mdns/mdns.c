@@ -232,7 +232,7 @@ static char * _mdns_mangle_name(char* in) {
 static bool _mdns_service_match(const mdns_service_t * srv, const char * service, const char * proto,
                                 const char * hostname)
 {
-    if (!service || !proto) {
+    if (!service || !proto || !srv->hostname) {
         return false;
     }
     return !strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) &&
@@ -3520,7 +3520,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                         _mdns_remove_parsed_question(parsed_packet, type, service);
                     } else if (service) {
                         //check if TTL is more than half of the full TTL value (4500)
-                        if (ttl > 2250) {
+                        if (ttl > (MDNS_ANSWER_PTR_TTL/2)) {
                             _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
                         }
                     }
@@ -3675,7 +3675,7 @@ void mdns_parse_packet(mdns_rx_packet_t * packet)
                     if (col && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running && service) {
                         do_not_reply = true;
                         _mdns_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, true);
-                    } else if (ttl > 2250 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running) {
+                    } else if (ttl > (MDNS_ANSWER_TXT_TTL/2) && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !_mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
                     }
                 }
@@ -4558,7 +4558,8 @@ static void _mdns_remap_self_service_hostname(const char * old_hostname, const c
     mdns_srv_item_t * service = _mdns_server->services;
 
     while (service) {
-        if (strcmp(service->service->hostname, old_hostname) == 0) {
+        if (service->service->hostname &&
+            strcmp(service->service->hostname, old_hostname) == 0) {
             free((char *)service->service->hostname);
             service->service->hostname = strdup(new_hostname);
         }
@@ -5430,7 +5431,7 @@ esp_err_t mdns_instance_name_set(const char * instance)
 esp_err_t mdns_service_add_for_host(const char * instance, const char * service, const char * proto, const char * hostname,
                                     uint16_t port, mdns_txt_item_t txt[], size_t num_items)
 {
-    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port) {
+    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port || !hostname) {
         return ESP_ERR_INVALID_ARG;
     }
 

@@ -76,6 +76,12 @@ public:
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f);
 
     /**
+     * @brief Sets DTE error callback
+     * @param f Function to be called on DTE error
+     */
+    void set_error_cb(std::function<void(terminal_error err)> f);
+
+    /**
      * @brief Sets the DTE to desired mode (Command/Data/Cmux)
      * @param m Desired operation mode
      * @return true on success
