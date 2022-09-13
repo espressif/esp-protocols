@@ -117,8 +117,7 @@ extern "C" void app_main(void)
     
     assert(dce != nullptr);
 
-    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW)
-    {
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
