@@ -123,8 +123,6 @@ extern "C" void app_main(void)
             return;
         }
         ESP_LOGI(TAG, "set_flow_control OK");
-    } else {
-        ESP_LOGI(TAG, "not set_flow_control, because 2-wire mode active.");
     }
 
     // init console REPL environment
