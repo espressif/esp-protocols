@@ -119,21 +119,21 @@ esp_err_t udp_rx_tx_init(void)
 static void slip_set_prefix(slip_modem_t *slip)
 {
     uint8_t buff[10] = {0};
-    const esp_ip6_addr_t *addr = slip_modem_get_ipv6_address(slip);
+    const esp_ip6_addr_t addr = slip_modem_get_ipv6_address(slip);
     ESP_LOGI(TAG, "%s: prefix set (%08x:%08x)", __func__,
-             lwip_ntohl(addr->addr[0]), lwip_ntohl(addr->addr[1]));
+             lwip_ntohl(addr.addr[0]), lwip_ntohl(addr.addr[1]));
 
     // Build slip set message
     buff[0] = '!';
     buff[1] = 'P';
     for (int i = 0; i < 2; i++) {
         for (int j = 0; j < 4; j++) {
-            buff[2 + i * 4 + j] = addr->addr[i] >> (j * 8);
+            buff[2 + i * 4 + j] = addr.addr[i] >> (j * 8);
         }
     }
 
     // Write raw data out the slip interface
-    slip_modem_raw_output(slip, buff, 2 + 8);
+    slip_modem_raw_write(slip, buff, 2 + 8);
 }
 
 // slip_rx_filter filters incoming commands from the slip interface

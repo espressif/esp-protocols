@@ -64,12 +64,11 @@ struct slip_modem {
 };
 
 
-// Forward function declaration
 static void slip_modem_uart_rx_task(void *arg);
 static esp_err_t slip_modem_post_attach(esp_netif_t *esp_netif, void *args);
 
 // Create a new slip modem
-slip_modem_t *slip_modem_create(esp_netif_t *slip_netif, slip_modem_config_t *modem_config)
+slip_modem_t *slip_modem_create(esp_netif_t *slip_netif, const slip_modem_config_t *modem_config)
 {
     ESP_LOGI(TAG, "%s: Creating slip modem (netif: %p)", __func__, slip_netif);
 
@@ -228,7 +227,7 @@ static void slip_modem_uart_rx_task(void *arg)
             esp_netif_receive(slip_modem->base.netif, slip_modem->buffer, len, NULL);
         }
 
-        // Yeild to allow other tasks to progress
+        // Yield to allow other tasks to progress
         vTaskDelay(1 * portTICK_PERIOD_MS);
     }
 }
@@ -236,12 +235,12 @@ static void slip_modem_uart_rx_task(void *arg)
 /**
  * @brief Gets the internally configured ipv6 address
  */
-const esp_ip6_addr_t *slip_modem_get_ipv6_address(slip_modem_t *slip)
+esp_ip6_addr_t slip_modem_get_ipv6_address(slip_modem_t *slip)
 {
-    return &slip->addr;
+    return slip->addr;
 }
 
-void slip_modem_raw_output(slip_modem_t *slip, void *buffer, size_t len)
+void slip_modem_raw_write(slip_modem_t *slip, void *buffer, size_t len)
 {
-    slip_modem_netif_raw_output(slip->base.netif, buffer, len);
+    slip_modem_netif_raw_write(slip->base.netif, buffer, len);
 }

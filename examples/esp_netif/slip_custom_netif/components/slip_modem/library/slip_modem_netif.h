@@ -39,4 +39,4 @@ esp_err_t slip_modem_netif_start(esp_netif_t *esp_netif, esp_ip6_addr_t *addr);
  * @return
  *         - ESP_OK on success
  */
-void slip_modem_netif_raw_output(esp_netif_t *netif, void *buffer, size_t len);
+void slip_modem_netif_raw_write(esp_netif_t *netif, void *buffer, size_t len);
