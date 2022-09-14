@@ -277,14 +277,15 @@ pointer as the return value. The API expects the output data to point to user al
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv412esp_modem_atPKcPc">
-<span id="_CPPv312esp_modem_atPKcPc"></span><span id="_CPPv212esp_modem_atPKcPc"></span><span id="esp_modem_at__cCP.cP"></span><span class="target" id="esp__modem__api__commands_8h_1a256fbe280b71485f00699b2df9e59760"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_at</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cmd</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv412esp_modem_atPKcPc" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object cpp" id="_CPPv412esp_modem_atPKcPci">
+<span id="_CPPv312esp_modem_atPKcPci"></span><span id="_CPPv212esp_modem_atPKcPci"></span><span id="esp_modem_at__cCP.cP.i"></span><span class="target" id="esp__modem__api__commands_8h_1a4400ba1800003b088a62b7302d3bb186"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_at</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cmd</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">timeout</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv412esp_modem_atPKcPci" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Execute the supplied AT command. </p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>at</strong> – <strong>[in]</strong> AT command </p></li>
 <li><p><strong>out</strong> – <strong>[out]</strong> Command output string </p></li>
+<li><p><strong>timeout</strong> – <strong>[in]</strong> AT command timeout in milliseconds </p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
