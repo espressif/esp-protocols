@@ -7,6 +7,28 @@
 
 using namespace esp_modem;
 
+TEST_CASE("DTE command races", "[esp_modem]") {
+    auto term = std::make_unique<LoopbackTerm>(true);
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_BG96_dce(&dce_config, dte, &netif);
+    CHECK(dce != nullptr);
+    uint8_t resp[] = {'O', 'K', '\n'};
+    // run many commands in succession with the timeout set exactly to the timespan of injected reply
+    // (checks for potential exception, data races, recycled local variables, etc.)
+    for (int i=0; i<1000; ++i) {
+        loopback->inject(&resp[0], sizeof(resp), sizeof(resp), /* 1ms before injecting reply */1, 0);
+        auto ret = dce->command("AT\n", [&](uint8_t *data, size_t len) {
+            return command_result::OK;
+        }, 1);
+        // this command should either timeout or finish successfully
+        CHECK((ret == command_result::TIMEOUT || ret == command_result::OK));
+    }
+}
+
 TEST_CASE("Test polymorphic delete for custom device/dte", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>(true);
