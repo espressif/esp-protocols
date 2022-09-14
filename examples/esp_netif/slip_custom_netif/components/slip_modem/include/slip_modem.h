@@ -29,7 +29,6 @@
 
 extern esp_netif_netstack_config_t *netstack_default_slip;
 
-// Forward declare modem object
 typedef struct slip_modem slip_modem_t;
 
 // Filter callbacks for handling application specific slip messages
@@ -64,7 +63,7 @@ typedef struct {
  * @returns
  *          - slip modem driver glue object
  */
-slip_modem_t *slip_modem_create(esp_netif_t *slip_netif, slip_modem_config_t *modem_config);
+slip_modem_t *slip_modem_create(esp_netif_t *slip_netif, const slip_modem_config_t *modem_config);
 
 /** @brief Destroy a slip modem
  *
@@ -81,9 +80,9 @@ esp_err_t slip_modem_destroy(slip_modem_t *slip);
  * @param[in]    slip modem object
  *
  * @returns
- *          - ipv6 address
+ *          - ipv6 address returned by copy
  */
-const esp_ip6_addr_t *slip_modem_get_ipv6_address(slip_modem_t *slip);
+esp_ip6_addr_t slip_modem_get_ipv6_address(slip_modem_t *slip);
 
 /**
  * @brief  Data path API that forward the supplied data to the attached network interface
@@ -93,4 +92,4 @@ const esp_ip6_addr_t *slip_modem_get_ipv6_address(slip_modem_t *slip);
  * @param[in]    len length of the data
  *
  */
-void slip_modem_raw_output(slip_modem_t *slip, void *buffer, size_t len);
+void slip_modem_raw_write(slip_modem_t *slip, void *buffer, size_t len);
