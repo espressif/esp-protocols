@@ -81,7 +81,7 @@ void esp_netif_lwip_slip_input(void *h, void *buffer, unsigned int len, void *eb
 /**
  * @brief Write raw data out the SLIP interface
  */
-void slip_modem_netif_raw_output(esp_netif_t *netif, void *buffer, size_t len)
+void slip_modem_netif_raw_write(esp_netif_t *netif, void *buffer, size_t len)
 {
     struct netif *lwip_netif = esp_netif_get_netif_impl(netif);
 
