@@ -143,6 +143,10 @@ void CMux::data_available(uint8_t *data, size_t len)
 #endif
         }
     } else if ((type&FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
+        if (len > 0 && (data[0] & 0xE1) == 0xE1) {
+            // Not a DISC, ignore (MSC frame)
+            return;
+        }
         Scoped<Lock> l(lock);
         sabm_ack = dlci;
     }
@@ -384,6 +388,9 @@ bool CMux::init()
             if (timeout++ > 100) {
                 return false;
             }
+        }
+        if (i > 1) {    // wait for each virtual terminal to settle MSC (no need for control term, DLCI=0)
+            usleep(100'000);
         }
     }
     return true;
