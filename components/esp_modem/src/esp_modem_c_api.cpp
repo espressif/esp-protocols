@@ -21,6 +21,7 @@
 #include "esp_modem_c_api_types.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "esp_private/c_api_wrapper.hpp"
 #include "cstring"
 
 #ifndef ESP_MODEM_C_API_STR_MAX
@@ -35,12 +36,6 @@ size_t strlcpy(char *dest, const char *src, size_t len);
 // C API definitions
 using namespace esp_modem;
 
-struct esp_modem_dce_wrap { // need to mimic the polymorphic dispatch as CPP uses templated dispatch
-    enum class modem_wrap_dte_type { UART, } dte_type;
-    dce_factory::ModemType modem_type;
-    DCE *dce;
-};
-
 static inline esp_err_t command_response_to_esp_err(command_result res)
 {
     switch (res) {
@@ -52,25 +47,6 @@ static inline esp_err_t command_response_to_esp_err(command_result res)
         return ESP_ERR_TIMEOUT;
     }
     return ESP_ERR_INVALID_ARG;
-}
-
-static inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t module)
-{
-    switch (module) {
-    case ESP_MODEM_DCE_SIM7600:
-        return esp_modem::dce_factory::ModemType::SIM7600;
-    case ESP_MODEM_DCE_SIM7070:
-        return esp_modem::dce_factory::ModemType::SIM7070;
-    case ESP_MODEM_DCE_SIM7000:
-        return esp_modem::dce_factory::ModemType::SIM7000;
-    case ESP_MODEM_DCE_BG96:
-        return esp_modem::dce_factory::ModemType::BG96;
-    case ESP_MODEM_DCE_SIM800:
-        return esp_modem::dce_factory::ModemType::SIM800;
-    default:
-    case ESP_MODEM_DCE_GENETIC:
-        return esp_modem::dce_factory::ModemType::GenericModule;
-    }
 }
 
 extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif)
