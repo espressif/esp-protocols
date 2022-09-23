@@ -36,19 +36,6 @@ size_t strlcpy(char *dest, const char *src, size_t len);
 // C API definitions
 using namespace esp_modem;
 
-static inline esp_err_t command_response_to_esp_err(command_result res)
-{
-    switch (res) {
-    case command_result::OK:
-        return ESP_OK;
-    case command_result::FAIL:
-        return ESP_FAIL;
-    case command_result::TIMEOUT:
-        return ESP_ERR_TIMEOUT;
-    }
-    return ESP_ERR_INVALID_ARG;
-}
-
 extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif)
 {
     auto dce_wrap = new (std::nothrow) esp_modem_dce_wrap;
@@ -60,6 +47,7 @@ extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, con
         delete dce_wrap;
         return nullptr;
     }
+    dce_wrap->dte = dte;
     dce_factory::Factory f(convert_modem_enum(module));
     dce_wrap->dce = f.build(dce_config, std::move(dte), netif);
     if (dce_wrap->dce == nullptr) {
@@ -82,6 +70,22 @@ extern "C" void esp_modem_destroy(esp_modem_dce_t *dce_wrap)
         delete dce_wrap->dce;
         delete dce_wrap;
     }
+}
+
+extern "C" esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce_wrap, esp_modem_terminal_error_cbt err_cb)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (err_cb) {
+        dce_wrap->dte->set_error_cb([err_cb](terminal_error err) {
+            err_cb(convert_terminal_error_enum(err));
+        });
+    } else {
+        dce_wrap->dte->set_error_cb(nullptr);
+    }
+    return ESP_OK;
 }
 
 extern "C" esp_err_t esp_modem_sync(esp_modem_dce_t *dce_wrap)
