@@ -1,6 +1,21 @@
 menu "Example Configuration"
 
+    choice EXAMPLE_SERIAL_CONFIG
+        prompt "Type of serial connection to the modem"
+        default EXAMPLE_SERIAL_CONFIG_UART
+        config EXAMPLE_SERIAL_CONFIG_UART
+            bool "UART"
+            help
+                Connect to modem via UART.
+        config EXAMPLE_SERIAL_CONFIG_USB
+            bool "USB"
+            depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+            help
+                Connect to modem via USB (CDC-ACM class). For IDF version >= 4.4.
+    endchoice
+
     choice EXAMPLE_MODEM_DEVICE
+        depends on EXAMPLE_SERIAL_CONFIG_UART
         prompt "Choose supported modem device (DCE)"
         default EXAMPLE_MODEM_DEVICE_BG96
         help
@@ -74,6 +89,7 @@ menu "Example Configuration"
             Pin to unlock the SIM
 
     menu "UART Configuration"
+        depends on EXAMPLE_SERIAL_CONFIG_UART
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
             default 25
