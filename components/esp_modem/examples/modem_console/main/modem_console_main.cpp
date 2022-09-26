@@ -26,6 +26,14 @@
 #include "console_helper.hpp"
 #include "my_module_dce.hpp"
 
+#if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_SW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_SW
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_HW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
+#endif
+
 #define CHECK_ERR(cmd, success_action)  do { \
         auto err = cmd; \
         if (err == command_result::OK) {     \
@@ -69,7 +77,7 @@ extern "C" void app_main(void)
     dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
     dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
     dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
-    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
+    dte_config.uart_config.flow_control = EXAMPLE_FLOW_CONTROL;
     dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
     dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
     dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
