@@ -17,15 +17,15 @@ menu "Example Configuration"
         config EXAMPLE_MODEM_DEVICE_SIM7000
             bool "SIM7000"
             help
-                SIM7000 is Multi-Band xxxxxxxxxxxxxxxxx
+                SIM7000 is a Multi-Band LTE-FDD and GSM/GPRS/EDGE module.
         config EXAMPLE_MODEM_DEVICE_SIM7070
             bool "SIM7070"
             help
-                SIM7070 is Multi-Band xxxxxxxxxxxxxxxxx
+                SIM7070 is Multi-Band CAT M and NB IoT module.
         config EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
             bool "SIM7070_GNSS"
             help
-                SIM7070 is Multi-Band xxxxxxxxxxxxxxxxx with Support for GNSS Location API
+                SIM7070 is Multi-Band CAT M and NB IoT module with Support for GNSS Location API
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
