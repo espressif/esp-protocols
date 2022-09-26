@@ -64,8 +64,43 @@ extern "C" void app_main(void)
 
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
+    /* setup UART specific configuration based on kconfig options */
+    dte_config.uart_config.tx_io_num = CONFIG_EXAMPLE_MODEM_UART_TX_PIN;
+    dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
+    dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
+    dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
+    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
+    dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
+    dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
+    dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
+    dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
+    dte_config.task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
+    dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
     auto uart_dte = create_uart_dte(&dte_config);
+
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SHINY == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SHINY module...");
     auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
+    auto dce = create_BG96_dce(&dce_config, uart_dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
+    auto dce = create_SIM800_dce(&dce_config, uart_dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7000 module...");
+    auto dce = create_SIM7000_dce(&dce_config, uart_dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
+    auto dce = create_SIM7070_dce(&dce_config, uart_dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
+    auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
+#else
+    ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
+    auto dce = create_generic_dce(&dce_config, uart_dte, esp_netif);
+#endif
+
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296); // VID and PID of BG96 modem
@@ -81,6 +116,14 @@ extern "C" void app_main(void)
 #endif
     
     assert(dce != nullptr);
+
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        if (command_result::OK != dce->set_flow_control(2, 2)) {
+            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+            return;
+        }
+        ESP_LOGI(TAG, "set_flow_control OK");
+    }
 
     // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
