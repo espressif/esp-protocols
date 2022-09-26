@@ -77,15 +77,15 @@ extern "C" void app_main(void)
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
     auto dce = create_SIM7070_GNSS_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
-    std::unique_ptr<DCE> dce = create_SIM800_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM800_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
-    std::unique_ptr<DCE> dce = create_SIM7000_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7000_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
-    std::unique_ptr<DCE> dce = create_SIM7070_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7070_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
-    std::unique_ptr<DCE> dce = create_SIM7070_GNSS_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7070_GNSS_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
-    std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
 #else
 #error "Unsupported device"
 #endif
