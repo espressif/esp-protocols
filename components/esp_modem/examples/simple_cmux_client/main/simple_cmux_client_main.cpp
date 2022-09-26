@@ -181,7 +181,6 @@ extern "C" void app_main(void)
         std::cout << "Modem IMSI number:" << str << std::endl;
     }
 
-#if 1
     gps_t gps;
 
     for (int i = 0; i < 200; ++i) {
@@ -214,7 +213,6 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(1000)); //Wait
 
     }
-#endif
 
 
 #if CONFIG_EXAMPLE_PERFORM_OTA == 1
