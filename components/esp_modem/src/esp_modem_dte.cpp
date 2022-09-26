@@ -36,6 +36,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
 {
     Scoped<Lock> l(internal_lock);
     command_result res = command_result::TIMEOUT;
+    signal.clear(GOT_LINE);
     command_term->set_read_cb([&](uint8_t *data, size_t len) {
         if (!data) {
             data = buffer.get();
