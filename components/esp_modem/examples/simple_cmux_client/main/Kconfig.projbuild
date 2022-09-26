@@ -99,4 +99,10 @@ menu "Example Configuration"
         help
             HTTPS address of the update binary.
 
+    config EXAMPLE_CLOSE_CMUX_AT_END
+        bool "Close multiplexed mode at the end of the example"
+        default n
+        help
+            Close the multiplexed mode at the end of the example and rollback to command mode.
+
 endmenu

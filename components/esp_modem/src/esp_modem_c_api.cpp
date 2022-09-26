@@ -179,14 +179,14 @@ extern "C" esp_err_t esp_modem_set_pin(esp_modem_dce_t *dce_wrap, const char *pi
     return command_response_to_esp_err(dce_wrap->dce->set_pin(pin_str));
 }
 
-extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, char *p_out)
+extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, char *p_out, int timeout)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string out;
     std::string at_str(at);
-    auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out));
+    auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out, timeout));
     if ((p_out != NULL) && (!out.empty())) {
         strlcpy(p_out, out.c_str(), ESP_MODEM_C_API_STR_MAX);
     }
@@ -243,15 +243,17 @@ extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
     return ret;
 }
 
-extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name)
+extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name, int *p_act)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_name == nullptr || p_act == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string name;
-    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name));
+    int act;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name, act));
     if (ret == ESP_OK && !name.empty()) {
         strlcpy(p_name, name.c_str(), ESP_MODEM_C_API_STR_MAX);
+        *p_act = act;
     }
     return ret;
 }
