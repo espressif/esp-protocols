@@ -47,6 +47,7 @@
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
+    \
 /**
  * @brief Reads the operator name
  * @param[out] operator name
@@ -72,9 +73,10 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
  * @brief Execute the supplied AT command
  * @param[in] at AT command
  * @param[out] out Command output string
+ * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
  */\
-ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, 2, STRING_IN(p1, cmd), STRING_OUT(p2, out)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, 3, STRING_IN(p1, cmd), STRING_OUT(p2, out), INT_IN(p3, timeout)) \
     \
 /**
  * @brief Checks if the SIM needs a PIN
@@ -112,7 +114,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sms_character_set, command_result, 0) \
 ESP_MODEM_DECLARE_DCE_COMMAND(send_sms, command_result, 2, STRING_IN(p1, number), STRING_IN(p2, message)) \
     \
 /**
- * @brief Resumes data mode (Switches back to th data mode, which was temporarily suspended)
+ * @brief Resumes data mode (Switches back to the data mode, which was temporarily suspended)
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, 0) \
