@@ -75,7 +75,7 @@ extern "C" void app_main(void)
     assert(esp_netif);
 
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
-    std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7070_GNSS_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
     std::unique_ptr<DCE> dce = create_SIM800_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
@@ -181,7 +181,7 @@ extern "C" void app_main(void)
         std::cout << "Modem IMSI number:" << str << std::endl;
     }
 
-#if 0
+#if 1
     gps_t gps;
 
     for (int i = 0; i < 200; ++i) {

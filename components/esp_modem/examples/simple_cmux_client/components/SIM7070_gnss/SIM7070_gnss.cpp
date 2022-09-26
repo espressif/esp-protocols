@@ -26,6 +26,7 @@
 #include "sdkconfig.h"
 #include "esp_event.h"
 #include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_dce.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/command_library.hpp"
@@ -36,18 +37,26 @@
 const static char * const TAG = "SIM7070_gnss";
 
 
+class LocalFactory: public esp_modem::dce_factory::Factory {
+public:
+    static std::unique_ptr<DCE_gnss> create(const esp_modem::dce_config *config, std::shared_ptr<esp_modem::DTE> dte, esp_netif_t *netif)
+    {
+        return esp_modem::dce_factory::Factory::build_generic_DCE<SIM7070_gnss, DCE_gnss, std::unique_ptr<DCE_gnss>>(config, dte, netif);
+    }
+
+};
 /**
  * @brief Helper create method which employs the DCE factory for creating DCE objects templated by a custom module
  * @return unique pointer of the resultant DCE
  */
-std::unique_ptr<esp_modem::DCE> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
+std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
         std::shared_ptr<esp_modem::DTE> dte,
         esp_netif_t *netif)
 {
-    return esp_modem::dce_factory::Factory::build_unique<SIM7070_gnss>(config, std::move(dte), netif);
+    return LocalFactory::create(config, std::move(dte), netif);
 }
 
-esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem::CommandableIf *t, gps_t &gps) {
+esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, gps_t &gps) {
 
 	ESP_LOGV(TAG, "%s", __func__ );
 	std::string_view out;
@@ -321,4 +330,14 @@ esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem::
 	} //clean up VPA
 
 	return esp_modem::command_result::OK;
+}
+
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(gps_t &gps)
+{
+    return get_gnss_information_sim70xx_lib(dte.get(), gps);
+}
+
+esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(gps_t &gps)
+{
+    return device->get_gnss_information_sim70xx(gps);
 }
