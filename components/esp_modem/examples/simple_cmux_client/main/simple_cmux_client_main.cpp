@@ -21,6 +21,14 @@
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
 
+#if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_SW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_SW
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_HW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
+#endif
+
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
 
@@ -44,7 +52,7 @@ extern "C" void app_main(void)
     dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
     dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
     dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
-    dte_config.uart_config.flow_control = ESP_MODEM_FLOW_CONTROL_HW;
+    dte_config.uart_config.flow_control = EXAMPLE_FLOW_CONTROL;
 #if CONFIG_EXAMPLE_USE_VFS_TERM == 1
     /* The VFS terminal is just a demonstration of using an abstract file descriptor
      * which implements non-block reads, writes and selects to communicate with esp-modem.
