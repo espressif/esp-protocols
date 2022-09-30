@@ -66,7 +66,7 @@ static void udp_rx_tx_task(void *arg)
     vTaskDelete(NULL);
 }
 
-esp_err_t udp_rx_tx_init(void)
+static esp_err_t udp_rx_tx_start(void)
 {
     // Setup bind address
     struct sockaddr_in6 dest_addr;
@@ -116,7 +116,7 @@ esp_err_t udp_rx_tx_init(void)
 }
 
 // Write a prefix to the contiki slip device
-static void slip_set_prefix(slip_modem_t *slip)
+static void slip_set_prefix(slip_modem_handle slip)
 {
     uint8_t buff[10] = {0};
     const esp_ip6_addr_t addr = slip_modem_get_ipv6_address(slip);
@@ -138,7 +138,7 @@ static void slip_set_prefix(slip_modem_t *slip)
 
 // slip_rx_filter filters incoming commands from the slip interface
 // this implementation is designed for use with contiki slip devices
-static bool slip_rx_filter(slip_modem_t *slip, uint8_t *data, uint32_t len)
+static bool slip_rx_filter(slip_modem_handle slip, uint8_t *data, uint32_t len)
 {
     if (data[1] == '?') {
         switch (data[2]) {
@@ -229,8 +229,9 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // Setup slip interface
-    slip_if_init();
+    esp_netif_t* esp_netif = slip_if_init();
+    assert(esp_netif);
 
-    // Setup UDP loopback service
-    udp_rx_tx_init();
+    // Start the UDP user application
+    udp_rx_tx_start();
 }
