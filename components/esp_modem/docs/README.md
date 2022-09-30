@@ -69,10 +69,24 @@ after creating multiple virtual terminals, designating some of them solely to da
 
 ### DTE's
 
-Currently we support only UART, but modern modules support other communication interfaces, such as USB, SPI.
+Currently, we support only UART (and USB as a preview feature), but modern modules support other communication interfaces, such as USB, SPI.
 
 ### Other devices
 
 Adding a new device is a must-have requirement for the esp-modem component. Different modules support different commands,
 or some commands might have a different implementation. Adding a new device means to provide a new implementation
 as a class derived from `GenericModule`, where we could add new commands or modify the existing ones.
+
+## Configuration
+
+Modem abstraction is configurable both compile-time and run-time.
+
+### Component Kconfig
+
+Compile-time configuration is provided using menuconfig. Please check the description for the CMUX mode configuration options.
+
+### Runtime configuration
+
+Is defined using standard configuration structures for `DTE` and `DCE` objects separately. Please find documentation of
+* :cpp:class:`esp_modem_dte_config_t`
+* :cpp:class:`esp_modem_dce_config_t`
