@@ -29,10 +29,10 @@
 
 extern esp_netif_netstack_config_t *netstack_default_slip;
 
-typedef struct slip_modem slip_modem_t;
+typedef struct slip_modem* slip_modem_handle;
 
 // Filter callbacks for handling application specific slip messages
-typedef bool slip_rx_filter_cb_t(slip_modem_t *slip, uint8_t *data, uint32_t len);
+typedef bool slip_rx_filter_cb_t(slip_modem_handle slip, uint8_t *data, uint32_t len);
 
 
 /** @brief Configuration structure for SLIP modem interface
@@ -63,26 +63,26 @@ typedef struct {
  * @returns
  *          - slip modem driver glue object
  */
-slip_modem_t *slip_modem_create(esp_netif_t *slip_netif, const slip_modem_config_t *modem_config);
+slip_modem_handle slip_modem_create(esp_netif_t *slip_netif, const slip_modem_config_t *modem_config);
 
 /** @brief Destroy a slip modem
  *
- * @param[in]    slip modem object for destruction
+ * @param[in]    slip modem handle for destruction
  *
  * @return
  *          - ESP_OK on success
  */
-esp_err_t slip_modem_destroy(slip_modem_t *slip);
+esp_err_t slip_modem_destroy(slip_modem_handle slip);
 
 /**
  * @brief Getter for the internally configured IPv6 address
  *
- * @param[in]    slip modem object
+ * @param[in]    slip modem handle
  *
  * @returns
- *          - ipv6 address returned by copy
+ *          - ipv6 address
  */
-esp_ip6_addr_t slip_modem_get_ipv6_address(slip_modem_t *slip);
+esp_ip6_addr_t slip_modem_get_ipv6_address(slip_modem_handle slip);
 
 /**
  * @brief  Data path API that forward the supplied data to the attached network interface
@@ -92,4 +92,4 @@ esp_ip6_addr_t slip_modem_get_ipv6_address(slip_modem_t *slip);
  * @param[in]    len length of the data
  *
  */
-void slip_modem_raw_write(slip_modem_t *slip, void *buffer, size_t len);
+void slip_modem_raw_write(slip_modem_handle slip, void *buffer, size_t len);

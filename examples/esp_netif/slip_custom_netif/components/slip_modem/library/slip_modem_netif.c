@@ -133,8 +133,11 @@ static int get_esp_netif_index(esp_netif_t * esp_netif)
     return -1;
 }
 
-err_t esp_slipif_init(struct netif *netif)
+static err_t esp_slipif_init(struct netif *netif)
 {
+    if (netif == NULL) {
+        return ERR_IF;
+    }
     esp_netif_t *esp_netif = netif->state;
     int esp_index = get_esp_netif_index(esp_netif);
     if (esp_index < 0) {
