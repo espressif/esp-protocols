@@ -21,7 +21,7 @@
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
 
-#define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
+#define BROKER_URL CONFIG_BROKER_URI
 
 
 using namespace esp_modem;
