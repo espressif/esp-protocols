@@ -10,8 +10,7 @@ from threading import Event, Thread
 
 import dpkt
 import dpkt.dns
-import ttfw_idf
-from tiny_test_fw.Utility import console_log
+import pytest
 
 UDP_PORT = 5353
 MCAST_GRP = '224.0.0.251'
@@ -37,6 +36,7 @@ esp_host_answered = Event()
 esp_delegated_host_answered = Event()
 
 
+@pytest.mark.skip
 # Get query of ESP32-WebServer._http._tcp.local service
 def get_mdns_service_query(service):  # type:(str) -> dpkt.dns.Msg
     dns = dpkt.dns.DNS()
@@ -49,10 +49,11 @@ def get_mdns_service_query(service):  # type:(str) -> dpkt.dns.Msg
     arr.target = socket.inet_aton('127.0.0.1')
     arr.srvname = service
     dns.qd.append(arr)
-    console_log('Created mdns service query: {} '.format(dns.__repr__()))
+    print('Created mdns service query: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
+@pytest.mark.skip
 # Get query of _server_.sub._http._tcp.local sub service
 def get_mdns_sub_service_query(sub_service):  # type:(str) -> dpkt.dns.Msg
     dns = dpkt.dns.DNS()
@@ -65,11 +66,11 @@ def get_mdns_sub_service_query(sub_service):  # type:(str) -> dpkt.dns.Msg
     arr.target = socket.inet_aton('127.0.0.1')
     arr.ptrname = sub_service
     dns.qd.append(arr)
-    console_log('Created mdns subtype service query: {} '.format(
-        dns.__repr__()))
+    print('Created mdns subtype service query: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
+@pytest.mark.skip
 # Get query for host resolution
 def get_dns_query_for_esp(esp_host):  # type:(str) -> dpkt.dns.Msg
     dns = dpkt.dns.DNS()
@@ -77,10 +78,11 @@ def get_dns_query_for_esp(esp_host):  # type:(str) -> dpkt.dns.Msg
     arr.cls = dpkt.dns.DNS_IN
     arr.name = esp_host + u'.local'
     dns.qd.append(arr)
-    console_log('Created query for esp host: {} '.format(dns.__repr__()))
+    print('Created query for esp host: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
+@pytest.mark.skip
 # Get mdns answer for host resoloution
 def get_dns_answer_to_mdns(tester_host):  # type:(str) -> dpkt.dns.Msg
     dns = dpkt.dns.DNS()
@@ -92,10 +94,11 @@ def get_dns_answer_to_mdns(tester_host):  # type:(str) -> dpkt.dns.Msg
     arr.name = tester_host
     arr.ip = socket.inet_aton('127.0.0.1')
     dns.an.append(arr)
-    console_log('Created answer to mdns query: {} '.format(dns.__repr__()))
+    print('Created answer to mdns query: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
+@pytest.mark.skip
 # Get mdns answer for service query
 def get_dns_answer_to_service_query(
         mdns_service):  # type:(str) -> dpkt.dns.Msg
@@ -112,10 +115,11 @@ def get_dns_answer_to_service_query(
     arr.srvname = mdns_service
     arr.ip = socket.inet_aton('127.0.0.1')
     dns.an.append(arr)
-    console_log('Created answer to mdns query: {} '.format(dns.__repr__()))
+    print('Created answer to mdns query: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
+@pytest.mark.skip
 def mdns_listener(esp_host):  # type:(str) -> None
     print('mdns_listener thread started')
 
@@ -145,41 +149,37 @@ def mdns_listener(esp_host):  # type:(str) -> None
             # Receives queries from esp board and sends answers
             if len(dns.qd) > 0:
                 if dns.qd[0].name == HOST_NAME:
-                    console_log('Received query: {} '.format(dns.__repr__()))
+                    print('Received query: {} '.format(dns.__repr__()))
                     sock.sendto(get_dns_answer_to_mdns(HOST_NAME),
                                 (MCAST_GRP, UDP_PORT))
                 if dns.qd[0].name == HOST_NAME:
-                    console_log('Received query: {} '.format(dns.__repr__()))
+                    print('Received query: {} '.format(dns.__repr__()))
                     sock.sendto(get_dns_answer_to_mdns(HOST_NAME),
                                 (MCAST_GRP, UDP_PORT))
                 if dns.qd[0].name == MDNS_HOST_SERVICE:
-                    print(dns.qd[0].name)
-                    console_log('Received query: {} '.format(dns.__repr__()))
+                    print('Received query: {} '.format(dns.__repr__()))
                     sock.sendto(
                         get_dns_answer_to_service_query(MDNS_HOST_SERVICE),
                         (MCAST_GRP, UDP_PORT))
             # Receives answers from esp board and sets event flags for python test cases
             if len(dns.an) == 1:
                 if dns.an[0].name.startswith(SERVICE_NAME):
-                    console_log('Received answer to service query: {}'.format(
+                    print('Received answer to service query: {}'.format(
                         dns.__repr__()))
                     esp_service_answered.set()
             if len(dns.an) > 1:
                 if dns.an[1].name.startswith(SUB_SERVICE_NAME):
-                    console_log(
-                        'Received answer for sub service query: {}'.format(
-                            dns.__repr__()))
+                    print('Received answer for sub service query: {}'.format(
+                        dns.__repr__()))
                     esp_sub_service_answered.set()
             if len(dns.an) > 0 and dns.an[0].type == dpkt.dns.DNS_A:
                 if dns.an[0].name == esp_host + u'.local':
-                    console_log(
-                        'Received answer to esp32-mdns query: {}'.format(
-                            dns.__repr__()))
+                    print('Received answer to esp32-mdns query: {}'.format(
+                        dns.__repr__()))
                     esp_host_answered.set()
                 if dns.an[0].name == esp_host + u'-delegated.local':
-                    console_log(
-                        'Received answer to esp32-mdns-delegate query: {}'.
-                        format(dns.__repr__()))
+                    print('Received answer to esp32-mdns-delegate query: {}'.
+                          format(dns.__repr__()))
                     esp_delegated_host_answered.set()
         except socket.timeout:
             break
@@ -187,6 +187,7 @@ def mdns_listener(esp_host):  # type:(str) -> None
             continue
 
 
+@pytest.mark.skip
 def create_socket():  # type:() -> socket.socket
     UDP_IP = '0.0.0.0'
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -199,6 +200,7 @@ def create_socket():  # type:() -> socket.socket
     return sock
 
 
+@pytest.mark.skip
 def test_query_dns_http_service(service):  # type: (str) -> None
     print('SRV: Query {}'.format(service))
     sock = create_socket()
@@ -212,6 +214,7 @@ def test_query_dns_http_service(service):  # type: (str) -> None
             'Test has failed: did not receive mdns answer within timeout')
 
 
+@pytest.mark.skip
 def test_query_dns_sub_service(sub_service):  # type: (str) -> None
     print('PTR: Query {}'.format(sub_service))
     sock = create_socket()
@@ -225,6 +228,7 @@ def test_query_dns_sub_service(sub_service):  # type: (str) -> None
             'Test has failed: did not receive mdns answer within timeout')
 
 
+@pytest.mark.skip
 def test_query_dns_host(esp_host):  # type: (str) -> None
     print('A: {}'.format(esp_host))
     sock = create_socket()
@@ -238,6 +242,7 @@ def test_query_dns_host(esp_host):  # type: (str) -> None
             'Test has failed: did not receive mdns answer within timeout')
 
 
+@pytest.mark.skip
 def test_query_dns_host_delegated(esp_host):  # type: (str) -> None
     print('A: {}'.format(esp_host))
     sock = create_socket()
@@ -251,29 +256,30 @@ def test_query_dns_host_delegated(esp_host):  # type: (str) -> None
             'Test has failed: did not receive mdns answer within timeout')
 
 
-@ttfw_idf.idf_custom_test(env_tag='Example_WIFI', group='test-apps')
-def test_app_esp_mdns(env, _):  # type: (ttfw_idf.TinyFW.Env, None) -> None
-    dut1 = env.get_dut('mdns',
-                       'tools/test_apps/protocols/mdns',
-                       dut_class=ttfw_idf.ESP32DUT)
+@pytest.mark.esp32
+@pytest.mark.esp32s2
+@pytest.mark.esp32c3
+@pytest.mark.generic
+def test_app_esp_mdns(dut):
 
-    # 1. start mdns application
-    dut1.start_app()
-    # 2. get the dut host name (and IP address)
-    specific_host = dut1.expect(
-        re.compile(r'mdns hostname set to: \[([^\]]+)\]'), timeout=30)[0]
+    # 1. get the dut host name (and IP address)
+    specific_host = dut.expect(
+        re.compile(b'mdns hostname set to: \[([^\]]+)\]'),  # noqa: W605
+        timeout=30).group(1).decode()
 
-    esp_ip = dut1.expect(
-        re.compile(r' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'),
-        timeout=30)
-    print('Got IP={}'.format(esp_ip[0]))
+    esp_ip = dut.expect(
+        re.compile(
+            b' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'),  # noqa: W605
+        timeout=30).group(1).decode()
+    print('Got IP={}'.format(esp_ip))
 
     mdns_responder = Thread(target=mdns_listener, args=(str(specific_host), ))
 
     def start_case(case, desc, result):  # type: (str, str, str) -> None
         print('Starting {}: {}'.format(case, desc))
-        dut1.write(case)
-        dut1.expect(re.compile(result), timeout=30)
+        dut.write(case)
+        res = bytes(result, encoding='utf8')
+        dut.expect(re.compile(res), timeout=30)
 
     try:
         # start dns listener thread
@@ -312,7 +318,3 @@ def test_app_esp_mdns(env, _):  # type: (ttfw_idf.TinyFW.Env, None) -> None
     finally:
         stop_mdns_listener.set()
         mdns_responder.join()
-
-
-if __name__ == '__main__':
-    test_app_esp_mdns()
