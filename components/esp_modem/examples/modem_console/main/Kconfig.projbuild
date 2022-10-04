@@ -74,33 +74,6 @@ menu "Example Configuration"
         help
             Set to true for the PPP client to skip authentication
 
-    config EXAMPLE_SEND_MSG
-        bool "Short message (SMS)"
-        default n
-        help
-            Select this, the modem will send a short message before power off.
-
-    if EXAMPLE_SEND_MSG
-        config EXAMPLE_SEND_MSG_PEER_PHONE_NUMBER
-            string "Peer Phone Number (with area code)"
-            default "+8610086"
-            help
-                Enter the peer phone number that you want to send message to.
-    endif
-
-    config EXAMPLE_NEED_SIM_PIN
-        bool "SIM PIN needed"
-        default n
-        help
-            Enable to set SIM PIN before starting the example
-
-    config EXAMPLE_SIM_PIN
-        string "Set SIM PIN"
-        default "1234"
-        depends on EXAMPLE_NEED_SIM_PIN
-        help
-            Pin to unlock the SIM
-
     choice EXAMPLE_FLOW_CONTROL
         bool "Set preferred modem control flow"
         default EXAMPLE_FLOW_CONTROL_NONE
