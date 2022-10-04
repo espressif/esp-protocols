@@ -66,5 +66,11 @@ menu "Example Configuration"
         default n
         help
             Close the multiplexed mode at the end of the example and rollback to command mode.
+            
+    config BROKER_URI
+        string "Broker URL"
+        default "mqtts://mqtt.eclipseprojects.io:8883"
+        help
+            URL of an mqtt broker which this example connects to.
 
 endmenu
