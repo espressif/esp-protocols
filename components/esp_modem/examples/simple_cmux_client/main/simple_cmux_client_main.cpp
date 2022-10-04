@@ -20,9 +20,7 @@
 #include "esp_vfs_dev.h"        // For optional VFS support
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
 #include "SIM7070_gnss.hpp"
-#endif  // CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
