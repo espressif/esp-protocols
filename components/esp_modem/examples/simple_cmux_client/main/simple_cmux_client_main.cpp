@@ -34,7 +34,7 @@
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
 #endif
 
-#define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
+#define BROKER_URL CONFIG_BROKER_URI
 
 
 using namespace esp_modem;

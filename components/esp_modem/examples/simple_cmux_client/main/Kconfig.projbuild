@@ -119,4 +119,10 @@ menu "Example Configuration"
         help
             Close the multiplexed mode at the end of the example and rollback to command mode.
 
+    config BROKER_URI
+        string "Broker URL"
+        default "mqtt://test.mosquitto.org"
+        help
+            URL of an mqtt broker which this example connects to.
+
 endmenu
