@@ -101,6 +101,20 @@ menu "Example Configuration"
         help
             Pin to unlock the SIM
 
+    choice EXAMPLE_FLOW_CONTROL
+        bool "Set preferred modem control flow"
+        default EXAMPLE_FLOW_CONTROL_NONE
+        help
+            Set the modem's preferred control flow
+
+        config EXAMPLE_FLOW_CONTROL_NONE
+            bool "No control flow"
+        config EXAMPLE_FLOW_CONTROL_SW
+            bool "SW control flow"
+        config EXAMPLE_FLOW_CONTROL_HW
+            bool "HW control flow"
+    endchoice
+
     menu "UART Configuration"
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
