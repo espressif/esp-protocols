@@ -61,6 +61,23 @@ typedef enum esp_modem_dce_device
 } esp_modem_dce_device_t;
 
 /**
+ * @brief Terminal errors
+ */
+typedef enum esp_modem_terminal_error
+{
+    ESP_MODEM_TERMINAL_BUFFER_OVERFLOW,
+    ESP_MODEM_TERMINAL_CHECKSUM_ERROR,
+    ESP_MODEM_TERMINAL_UNEXPECTED_CONTROL_FLOW,
+    ESP_MODEM_TERMINAL_DEVICE_GONE,
+    ESP_MODEM_TERMINAL_UNKNOWN_ERROR,
+} esp_modem_terminal_error_t;
+
+/**
+ * @brief Terminal error callback
+ */
+typedef void (*esp_modem_terminal_error_cbt)(esp_modem_terminal_error_t);
+
+/**
  * @brief Create a generic DCE handle for new modem API
  *
  * @param dte_config DTE configuration (UART config for now)
@@ -89,6 +106,15 @@ esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_mode
  * @param dce DCE to destroy
  */
 void esp_modem_destroy(esp_modem_dce_t * dce);
+
+/**
+ * @brief Set DTE's error callback
+ * 
+ * @param dce Modem DCE handle
+ * @param[in] err_cb Error callback
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce, esp_modem_terminal_error_cbt err_cb);
 
 /**
  * @brief Set operation mode for this DCE
