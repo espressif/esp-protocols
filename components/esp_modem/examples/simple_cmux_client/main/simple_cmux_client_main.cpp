@@ -136,7 +136,7 @@ extern "C" void app_main(void)
     }
     std::cout << "Operator name:" << str << std::endl;
 
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
     if (dce->set_gnss_power_mode(1) == esp_modem::command_result::OK) {
         std::cout << "Modem set_gnss_power_mode: OK" << std::endl;
     }
