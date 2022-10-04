@@ -20,7 +20,9 @@
 #include "esp_vfs_dev.h"        // For optional VFS support
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
 #include "SIM7070_gnss.hpp"
+#endif  // CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
@@ -189,6 +191,8 @@ extern "C" void app_main(void)
         std::cout << "Modem IMSI number:" << str << std::endl;
     }
 
+
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
     gps_t gps;
 
     for (int i = 0; i < 200; ++i) {
@@ -221,6 +225,7 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(1000)); //Wait
 
     }
+#endif  // CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
 
 
 #if CONFIG_EXAMPLE_PERFORM_OTA == 1
