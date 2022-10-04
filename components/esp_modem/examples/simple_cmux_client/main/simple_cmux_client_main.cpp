@@ -164,4 +164,14 @@ extern "C" void app_main(void)
         return;
     }
 #endif // CONFIG_EXAMPLE_PERFORM_OTA
+
+    /* Close multiplexed command/data mode */
+#if CONFIG_EXAMPLE_CLOSE_CMUX_AT_END == 1
+    if (dce->set_mode(esp_modem::modem_mode::COMMAND_MODE)) {
+        std::cout << "Modem has correctly entered command mode" << std::endl;
+    } else {
+        ESP_LOGE(TAG, "Failed to configure desired mode... exiting");
+        return;
+    }
+#endif
 }

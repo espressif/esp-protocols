@@ -23,7 +23,7 @@ jobs:
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@master
         with:
           path: esp-protocols
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
@@ -39,8 +39,8 @@ jobs:
     strategy: 
       matrix: 
         idf_ver: ["latest"] 
-        idf_target: ["esp32", "esp32s2", "esp32c3"] 
- 
+        idf_target: ["esp32", "esp32s2", "esp32c3"]
+        config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
     runs-on: ubuntu-20.04 
     container: espressif/idf:${{ matrix.idf_ver }} 
     steps: 
@@ -48,36 +48,41 @@ jobs:
         uses: actions/checkout@v3 
         with: 
           submodules: recursive 
-          path: esp-protocols 
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} 
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.config }} 
         env: 
           IDF_TARGET: ${{ matrix.idf_target }} 
         shell: bash 
+        working-directory: components/mdns/examples/
         run: | 
           . ${IDF_PATH}/export.sh 
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/examples/ 
-          idf.py set-target ${{ matrix.idf_target }}
-          echo "Building for default configuration"
-          idf.py build
-          rm sdkconfig
-          echo "Building for sdkconfig.ci.eth_def"
-          cat sdkconfig.ci.eth_def >> sdkconfig.defaults 
-          idf.py build 
-          rm sdkconfig sdkconfig.defaults
-          echo "Building for sdkconfig.ci.eth_custom_netif"
-          cat sdkconfig.ci.eth_custom_netif >> sdkconfig.defaults 
-          idf.py build 
-          rm sdkconfig sdkconfig.defaults
-          echo "Building for sdkconfig.ci.eth_socket"
-          cat sdkconfig.ci.eth_socket >> sdkconfig.defaults 
-          idf.py build 
-          rm sdkconfig sdkconfig.defaults
-          echo "Building for sdkconfig.ci.eth_no_ipv6"
-          cat sdkconfig.ci.eth_no_ipv6 >> sdkconfig.defaults
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_apps/ 
+          rm -rf sdkconfig sdkconfig.defaults build build_${{ matrix.config }}
+          cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults  
           idf.py set-target ${{ matrix.idf_target }}  
           idf.py build 
+          mv build build_${{ matrix.config }}
+      - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.config }}
+        working-directory: components/mdns/examples
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd build_${{ matrix.config }}
+          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+          cd ../
+          cat build_${{ matrix.config }}/config/sdkconfig.json
+      - uses: actions/upload-artifact@v2
+        with:
+          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
+          path: |
+            components/mdns/examples/build_${{ matrix.config }}/bootloader/bootloader.bin
+            components/mdns/examples/build_${{ matrix.config }}/partition_table/partition-table.bin
+            components/mdns/examples/build_${{ matrix.config }}/*.bin
+            components/mdns/examples/build_${{ matrix.config }}/*.elf
+            components/mdns/examples/build_${{ matrix.config }}/flasher_args.json
+            components/mdns/examples/build_${{ matrix.config }}/config/sdkconfig.h
+            components/mdns/examples/build_${{ matrix.config }}/config/sdkconfig.json
+          if-no-files-found: error
 
   build_asio:
     strategy:
@@ -85,7 +90,6 @@ jobs:
         idf_ver: ["latest"]
         idf_target: ["esp32", "esp32s2"]
         example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
-
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -93,23 +97,43 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive 
-          path: esp-protocols
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        working-directory: components/asio/examples/${{ matrix.example }}
         env:
           IDF_TARGET: ${{ matrix.idf_target }}
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/asio/examples/${{ matrix.example }}
+          test -f sdkconfig.ci && cat sdkconfig.ci >> sdkconfig.defaults || echo "No sdkconfig.ci"
           idf.py set-target ${{ matrix.idf_target }}
           idf.py build
+      - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.example }}
+        working-directory: components/asio/examples/${{ matrix.example }}/build
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+      - uses: actions/upload-artifact@v3
+        with:
+          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
+          path: |
+            components/asio/examples/${{ matrix.example }}/build/bootloader/bootloader.bin
+            components/asio/examples/${{ matrix.example }}/build//partition_table/partition-table.bin
+            components/asio/examples/${{ matrix.example }}/build/*.bin
+            components/asio/examples/${{ matrix.example }}/build/*.elf
+            components/asio/examples/${{ matrix.example }}/build/flasher_args.json
+            components/asio/examples/${{ matrix.example }}/build/config/sdkconfig.h
+            components/asio/examples/${{ matrix.example }}/build/config/sdkconfig.json
+          if-no-files-found: error
+
 
   build_websocket:
     strategy:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
-
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -137,7 +161,14 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: components/esp_websocket_client/examples/build/
+          path: |
+            components/esp_websocket_client/examples/build/bootloader/bootloader.bin
+            components/esp_websocket_client/examples/build/partition_table/partition-table.bin
+            components/esp_websocket_client/examples/build/*.bin
+            components/esp_websocket_client/examples/build/*.elf
+            components/esp_websocket_client/examples/build/flasher_args.json
+            components/esp_websocket_client/examples/build/config/sdkconfig.h
+            components/esp_websocket_client/examples/build/config/sdkconfig.json
           if-no-files-found: error
 
   run-target:
@@ -163,6 +194,8 @@ jobs:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
           path: components/esp_websocket_client/examples/build/
       - name: Install Python packages
+        env:
+          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
           pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
       - name: Download Example Test to target
@@ -171,9 +204,91 @@ jobs:
         working-directory: components/esp_websocket_client/examples
         run: |
           cp sdkconfig.ci sdkconfig.defaults
-          pytest --log-cli-level DEBUG --junit-xml=./test_app_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
+          pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v2
         if: always()
         with:
           name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: examples/*.xml
+          path: components/esp_websocket_client/examples/*.xml
+
+  run-target-mdns:
+    strategy: 
+      matrix: 
+        idf_ver: ["latest"] 
+        idf_target: ["esp32"]
+        config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
+    name: Run mDNS Example Test on target
+    needs: build_mdns
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    # Skip running on forks since it won't have access to secrets
+    if: github.repository == 'espressif/esp-protocols'
+    steps:
+      - name: Clear repository
+        run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v2
+        with:
+          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
+          path: components/mdns/examples/build_${{ matrix.config }}
+      - name: Install Python packages
+        env:
+          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+        run: |
+            sudo apt-get install -y dnsutils
+      - name: Download Example Test to target ${{ matrix.config }}
+        run: |
+            python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/mdns/examples/build_${{ matrix.config }}/flash_image.bin
+      - name: Run Example Test on target ${{ matrix.config }}
+        working-directory: components/mdns/examples
+        run: |
+            rm -rf build
+            mv build_${{ matrix.config }} build
+            cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults  
+            python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
+            rm -rf build sdkconfig.defaults
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
+          path: components/mdns/examples/*.xml
+
+  run-target-asio:
+    strategy: 
+      matrix: 
+        idf_ver: ["latest"] 
+        idf_target: ["esp32"]
+        example: ["asio_chat", "tcp_echo_server", "udp_echo_server", "ssl_client_server"]
+    name: Run ASIO Example Test on target
+    needs: build_asio
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    # Skip running on forks since it won't have access to secrets
+    if: github.repository == 'espressif/esp-protocols'
+    steps:
+      - name: Clear repository
+        run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v2
+        with:
+          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
+          path: components/asio/examples/${{ matrix.example }}/build
+      - name: Install Python packages
+        env:
+          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+        run: |
+            sudo apt-get install -y dnsutils
+      - name: Download Example Test to target ${{ matrix.config }}
+        run: |
+            python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/asio/examples/${{ matrix.example }}/build/flash_image.bin
+      - name: Run Example Test ${{ matrix.example }} on target
+        working-directory: components/asio/examples/${{ matrix.example }}
+        run: |
+            python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
+          path: components/asio/examples/${{ matrix.example }}/*.xml

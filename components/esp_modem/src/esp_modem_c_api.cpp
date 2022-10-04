@@ -21,6 +21,7 @@
 #include "esp_modem_c_api_types.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "esp_private/c_api_wrapper.hpp"
 #include "cstring"
 
 #ifndef ESP_MODEM_C_API_STR_MAX
@@ -35,44 +36,6 @@ size_t strlcpy(char *dest, const char *src, size_t len);
 // C API definitions
 using namespace esp_modem;
 
-struct esp_modem_dce_wrap { // need to mimic the polymorphic dispatch as CPP uses templated dispatch
-    enum class modem_wrap_dte_type { UART, } dte_type;
-    dce_factory::ModemType modem_type;
-    DCE *dce;
-};
-
-static inline esp_err_t command_response_to_esp_err(command_result res)
-{
-    switch (res) {
-    case command_result::OK:
-        return ESP_OK;
-    case command_result::FAIL:
-        return ESP_FAIL;
-    case command_result::TIMEOUT:
-        return ESP_ERR_TIMEOUT;
-    }
-    return ESP_ERR_INVALID_ARG;
-}
-
-static inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t module)
-{
-    switch (module) {
-    case ESP_MODEM_DCE_SIM7600:
-        return esp_modem::dce_factory::ModemType::SIM7600;
-    case ESP_MODEM_DCE_SIM7070:
-        return esp_modem::dce_factory::ModemType::SIM7070;
-    case ESP_MODEM_DCE_SIM7000:
-        return esp_modem::dce_factory::ModemType::SIM7000;
-    case ESP_MODEM_DCE_BG96:
-        return esp_modem::dce_factory::ModemType::BG96;
-    case ESP_MODEM_DCE_SIM800:
-        return esp_modem::dce_factory::ModemType::SIM800;
-    default:
-    case ESP_MODEM_DCE_GENETIC:
-        return esp_modem::dce_factory::ModemType::GenericModule;
-    }
-}
-
 extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif)
 {
     auto dce_wrap = new (std::nothrow) esp_modem_dce_wrap;
@@ -84,6 +47,7 @@ extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, con
         delete dce_wrap;
         return nullptr;
     }
+    dce_wrap->dte = dte;
     dce_factory::Factory f(convert_modem_enum(module));
     dce_wrap->dce = f.build(dce_config, std::move(dte), netif);
     if (dce_wrap->dce == nullptr) {
@@ -106,6 +70,22 @@ extern "C" void esp_modem_destroy(esp_modem_dce_t *dce_wrap)
         delete dce_wrap->dce;
         delete dce_wrap;
     }
+}
+
+extern "C" esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce_wrap, esp_modem_terminal_error_cbt err_cb)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (err_cb) {
+        dce_wrap->dte->set_error_cb([err_cb](terminal_error err) {
+            err_cb(convert_terminal_error_enum(err));
+        });
+    } else {
+        dce_wrap->dte->set_error_cb(nullptr);
+    }
+    return ESP_OK;
 }
 
 extern "C" esp_err_t esp_modem_sync(esp_modem_dce_t *dce_wrap)
@@ -179,14 +159,14 @@ extern "C" esp_err_t esp_modem_set_pin(esp_modem_dce_t *dce_wrap, const char *pi
     return command_response_to_esp_err(dce_wrap->dce->set_pin(pin_str));
 }
 
-extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, char *p_out)
+extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, char *p_out, int timeout)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string out;
     std::string at_str(at);
-    auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out));
+    auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out, timeout));
     if ((p_out != NULL) && (!out.empty())) {
         strlcpy(p_out, out.c_str(), ESP_MODEM_C_API_STR_MAX);
     }
@@ -243,15 +223,17 @@ extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
     return ret;
 }
 
-extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name)
+extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name, int *p_act)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_name == nullptr || p_act == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string name;
-    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name));
+    int act;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name, act));
     if (ret == ESP_OK && !name.empty()) {
         strlcpy(p_name, name.c_str(), ESP_MODEM_C_API_STR_MAX);
+        *p_act = act;
     }
     return ret;
 }
