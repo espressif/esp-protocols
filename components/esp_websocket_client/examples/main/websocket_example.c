@@ -37,6 +37,13 @@ static const char *TAG = "websocket";
 static TimerHandle_t shutdown_signal_timer;
 static SemaphoreHandle_t shutdown_sema;
 
+static void log_error_if_nonzero(const char *message, int error_code)
+{
+    if (error_code != 0) {
+        ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
+    }
+}
+
 static void shutdown_signaler(TimerHandle_t xTimer)
 {
     ESP_LOGI(TAG, "No data received for %d seconds, signaling shutdown", NO_DATA_TIMEOUT_SEC);
@@ -71,6 +78,12 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DISCONNECTED");
+        log_error_if_nonzero("HTTP status code",  data->error_handle.esp_ws_handshake_status_code);
+        if (data->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
+            log_error_if_nonzero("reported from esp-tls", data->error_handle.esp_tls_last_esp_err);
+            log_error_if_nonzero("reported from tls stack", data->error_handle.esp_tls_stack_err);
+            log_error_if_nonzero("captured as transport's socket errno",  data->error_handle.esp_transport_sock_errno);
+        }
         break;
     case WEBSOCKET_EVENT_DATA:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
@@ -99,6 +112,12 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         break;
     case WEBSOCKET_EVENT_ERROR:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_ERROR");
+        log_error_if_nonzero("HTTP status code",  data->error_handle.esp_ws_handshake_status_code);
+        if (data->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
+            log_error_if_nonzero("reported from esp-tls", data->error_handle.esp_tls_last_esp_err);
+            log_error_if_nonzero("reported from tls stack", data->error_handle.esp_tls_stack_err);
+            log_error_if_nonzero("captured as transport's socket errno",  data->error_handle.esp_transport_sock_errno);
+        }
         break;
     }
 }
