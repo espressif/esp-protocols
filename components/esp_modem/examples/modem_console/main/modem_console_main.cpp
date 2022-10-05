@@ -89,6 +89,14 @@ void wakeup_modem(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
 }
 
+#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+command_result handle_urc(uint8_t *data, size_t len)
+{
+    ESP_LOG_BUFFER_HEXDUMP("on_read", data, len, ESP_LOG_INFO);
+    return command_result::TIMEOUT;
+}
+#endif
+
 extern "C" void app_main(void)
 {
     static RTC_RODATA_ATTR char apn_rtc[20] = DEFAULT_APN;
@@ -122,19 +130,19 @@ extern "C" void app_main(void)
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
     auto uart_dte = create_uart_dte(&dte_config);
 
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SHINY == 1
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
     ESP_LOGI(TAG, "Initializing esp_modem for the SHINY module...");
     auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_BG96)
     ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
     auto dce = create_BG96_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM800)
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
     auto dce = create_SIM800_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000)
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7000 module...");
     auto dce = create_SIM7000_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070)
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
     auto dce = create_SIM7070_dce(&dce_config, uart_dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
@@ -303,8 +311,9 @@ extern "C" void app_main(void)
 
     const ConsoleCommand GetOperatorName("get_operator_name", "reads the operator name", no_args, [&](ConsoleCommand * c) {
         std::string operator_name;
+        int act;
         ESP_LOGI(TAG, "Reading operator name...");
-        CHECK_ERR(dce->get_operator_name(operator_name), ESP_LOGI(TAG, "OK. Operator name: %s", operator_name.c_str()));
+        CHECK_ERR(dce->get_operator_name(operator_name, act), ESP_LOGI(TAG, "OK. Operator name: %s", operator_name.c_str()));
     });
 
     const struct GenericCommandArgs {
@@ -356,6 +365,20 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Resetting the module...");
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
+#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+    const ConsoleCommand HandleURC("urc", "toggle urc handling", no_args, [&](ConsoleCommand * c) {
+        static int cnt = 0;
+        if (++cnt % 2) {
+            ESP_LOGI(TAG, "Adding URC handler");
+            dce->set_on_read(handle_urc);
+        } else {
+            ESP_LOGI(TAG, "URC removed");
+            dce->set_on_read(nullptr);
+        }
+        return 0;
+    });
+#endif
+
     const struct SetApn {
         SetApn(): apn(STR1, nullptr, nullptr, "<apn>", "APN (Access Point Name)") {}
         CommandArgs apn;
