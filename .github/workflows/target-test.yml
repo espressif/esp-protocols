@@ -35,6 +35,28 @@ jobs:
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/${{ matrix.example }}
           idf.py build
 
+  build_esp_modem_usb:
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v4.4", "release-v5.0"]
+        example: ["modem_console", "pppos_client"]
+        idf_target: ["esp32s2", "esp32s3"]
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        working-directory: components/esp_modem/examples/${{ matrix.example }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cat sdkconfig.ci.usb >> sdkconfig.defaults
+          idf.py build
+
   build_mdns: 
     strategy: 
       matrix: 
