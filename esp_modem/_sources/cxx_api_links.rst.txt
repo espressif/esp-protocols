@@ -33,4 +33,5 @@
 - :cpp:func:`esp_modem::DCE::set_preferred_mode` 
 - :cpp:func:`esp_modem::DCE::set_network_bands` 
 - :cpp:func:`esp_modem::DCE::get_network_system_mode` 
-- :cpp:func:`esp_modem::DCE::set_gnss_power_mode`
+- :cpp:func:`esp_modem::DCE::set_gnss_power_mode` 
+- :cpp:func:`esp_modem::DCE::get_gnss_power_mode`
