@@ -371,6 +371,19 @@ extern "C" esp_err_t esp_modem_set_gnss_power_mode(esp_modem_dce_t *dce_wrap, in
     return command_response_to_esp_err(dce_wrap->dce->set_gnss_power_mode(mode));
 }
 
+extern "C" esp_err_t esp_modem_get_gnss_power_mode(esp_modem_dce_t *dce_wrap, int *p_mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int mode;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_gnss_power_mode(mode));
+    if (ret == ESP_OK) {
+        *p_mode = mode;
+    }
+    return ret;
+}
+
 extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
 {
     return command_response_to_esp_err(dce_wrap->dce->reset());
