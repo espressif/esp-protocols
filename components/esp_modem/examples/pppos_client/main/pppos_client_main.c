@@ -14,6 +14,7 @@
 #include "mqtt_client.h"
 #include "esp_modem_api.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
@@ -21,6 +22,28 @@ static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int GOT_DATA_BIT = BIT2;
+static const int USB_DISCONNECTED_BIT = BIT3; // Used only with USB DTE but we define it unconditionally, to avoid too many #ifdefs in the code
+
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+#include "esp_modem_usb_c_api.h"
+#include "esp_modem_usb_config.h"
+#include "freertos/task.h"
+static void usb_terminal_error_handler(esp_modem_terminal_error_t err)
+{
+    if (err == ESP_MODEM_TERMINAL_DEVICE_GONE) {
+        ESP_LOGI(TAG, "USB modem disconnected");
+        assert(event_group);
+        xEventGroupSetBits(event_group, USB_DISCONNECTED_BIT);
+    }
+}
+#define CHECK_USB_DISCONNECTION(event_group) \
+if ((xEventGroupGetBits(event_group) & USB_DISCONNECTED_BIT) == USB_DISCONNECTED_BIT) { \
+    esp_modem_destroy(dce); \
+    continue; \
+}
+#else
+#define CHECK_USB_DISCONNECTION(event_group)
+#endif
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -111,16 +134,22 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 
 void app_main(void)
 {
-
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &on_ip_event, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, NULL));
 
+    /* Configure the PPP netif */
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
+    esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
+    esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
+    assert(esp_netif);
+
     event_group = xEventGroupCreate();
 
     /* Configure the DTE */
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
     /* setup UART specific configuration based on kconfig options */
     dte_config.uart_config.tx_io_num = CONFIG_EXAMPLE_MODEM_UART_TX_PIN;
@@ -133,17 +162,6 @@ void app_main(void)
     dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
     dte_config.task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
-
-    /* Configure the DCE */
-    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
-
-    /* Configure the PPP netif */
-    esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
-
-    /* Run the modem demo app */
-    // Init netif object
-    esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
-    assert(esp_netif);
 
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
     ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
@@ -158,8 +176,24 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 #endif
-    assert(dce);
 
+#elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+    while (1) {
+        ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
+        const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
+        ESP_LOGI(TAG, "Waiting for USB device connection...");
+        esp_modem_dce_t *dce = esp_modem_new_dev_usb(ESP_MODEM_DCE_BG96, &dte_usb_config, &dce_config, esp_netif);
+        esp_modem_set_error_cb(dce, usb_terminal_error_handler);
+        vTaskDelay(pdMS_TO_TICKS(1000)); // Although the DTE should be ready after USB enumeration, sometimes it fails to respond without this delay
+
+#else
+#error Invalid serial connection to modem.
+#endif
+    assert(dce);
+    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT);
+
+    /* Run the modem demo app */
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
     bool pin_ok = false;
@@ -199,7 +233,10 @@ void app_main(void)
         return;
     }
     /* Wait for IP address */
-    xEventGroupWaitBits(event_group, CONNECT_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    ESP_LOGI(TAG, "Waiting for IP address");
+    xEventGroupWaitBits(event_group, CONNECT_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    CHECK_USB_DISCONNECTION(event_group);
+
     /* Config MQTT */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     esp_mqtt_client_config_t mqtt_config = {
@@ -213,7 +250,10 @@ void app_main(void)
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
-    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
+    ESP_LOGI(TAG, "Waiting for MQTT data");
+    xEventGroupWaitBits(event_group, GOT_DATA_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    CHECK_USB_DISCONNECTION(event_group);
+
     esp_mqtt_client_destroy(mqtt_client);
     err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
     if (err != ESP_OK) {
@@ -228,6 +268,15 @@ void app_main(void)
     }
     ESP_LOGI(TAG, "IMSI=%s", imsi);
 
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+        // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features. 
+        ESP_LOGI(TAG, "USB demo finished. Disconnect and connect the modem to run it again");
+        xEventGroupWaitBits(event_group, USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+        CHECK_USB_DISCONNECTION(event_group); // dce will be destroyed here
+    } // while (1)
+#else
+    // UART DTE clean-up
     esp_modem_destroy(dce);
     esp_netif_destroy(esp_netif);
+#endif
 }
