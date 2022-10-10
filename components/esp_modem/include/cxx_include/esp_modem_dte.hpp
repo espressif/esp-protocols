@@ -122,6 +122,7 @@ private:
     std::shared_ptr<Terminal> data_term;                    /*!< Secondary terminal for this DTE */
     modem_mode mode;                                        /*!< DTE operation mode */
     SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
+    command_result result;                                  /*!< Command result of the currently exectuted command */
     std::function<bool(uint8_t *data, size_t len)> on_data; /*!< on data callback for current terminal */
 };
 
