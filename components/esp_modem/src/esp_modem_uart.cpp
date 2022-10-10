@@ -72,8 +72,8 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
+        ESP_MODEM_THROW_IF_FALSE(signal.wait(TASK_PARAMS, 1000), "Failed to set UART task params");
         on_read = std::move(f);
-        signal.set(TASK_PARAMS);
     }
 
 private:
@@ -118,7 +118,6 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 
 void UartTerminal::task()
 {
-    std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     uart_event_t event;
     size_t len;
     signal.set(TASK_INIT);
@@ -127,17 +126,15 @@ void UartTerminal::task()
         return; // exits to the static method where the task gets deleted
     }
     while (signal.is_any(TASK_START)) {
+        signal.set(TASK_PARAMS);
         if (get_event(event, 100)) {
-            if (signal.is_any(TASK_PARAMS)) {
-                on_read_priv = on_read;
-                signal.clear(TASK_PARAMS);
-            }
+            signal.clear(TASK_PARAMS);
             switch (event.type) {
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);
-                if (len && on_read_priv) {
-                    if (on_read_priv(nullptr, len)) {
-                        on_read_priv = nullptr;
+                if (len && on_read) {
+                    if (on_read(nullptr, len)) {
+                        on_read = nullptr;
                     }
                 }
                 break;
