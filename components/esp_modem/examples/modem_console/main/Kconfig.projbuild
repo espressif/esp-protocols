@@ -163,4 +163,10 @@ menu "Example Configuration"
                 Buffer size of UART RX buffer.
     endmenu
 
+    config EXAMPLE_MODEM_PWRKEY_PIN
+        int "PWRKEY Pin Number"
+        default 18
+        range 0 31
+        help
+            Pin number connected to modem's power key pin.
 endmenu
