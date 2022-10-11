@@ -18,4 +18,4 @@ Also, to demonstrate the dce_factory functionality, a new `NetDCE_Factory` is im
 
 ### Supported IDF versions
 
-This example is only supported from `v4.2`, since is uses NAPT feature. 
+This example is only supported from `v4.2`, since is uses NAPT feature.

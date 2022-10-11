@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 #include "test_utils.h"
 #include "mdns.h"
 #include "esp_event.h"
@@ -48,7 +53,7 @@ TEST_CASE("mdns api return expected err-code and do not leak memory", "[mdns][le
     addr.addr.type = ESP_IPADDR_TYPE_V4;
     addr.addr.u_addr.ip4.addr = esp_ip4addr_aton("127.0.0.1");
     addr.next = NULL;
-    for (int i=0; i<CONFIG_MDNS_MAX_SERVICES; ++i) {
+    for (int i = 0; i < CONFIG_MDNS_MAX_SERVICES; ++i) {
         serviceTxtData[i].key = "Key";
         serviceTxtData[i].value = "Value";
     }
@@ -64,7 +69,7 @@ TEST_CASE("mdns api return expected err-code and do not leak memory", "[mdns][le
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_add(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT, serviceTxtData, CONFIG_MDNS_MAX_SERVICES) );
     TEST_ASSERT_FALSE(mdns_service_exists(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_DELEGATE_HOSTNAME) );
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_add_for_host(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_DELEGATE_HOSTNAME,
-                                                        MDNS_SERVICE_PORT, serviceTxtData, CONFIG_MDNS_MAX_SERVICES) );
+                      MDNS_SERVICE_PORT, serviceTxtData, CONFIG_MDNS_MAX_SERVICES) );
     TEST_ASSERT_TRUE(mdns_service_exists(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_DELEGATE_HOSTNAME) );
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_txt_set(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, serviceTxtData, CONFIG_MDNS_MAX_SERVICES) );
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_txt_item_set(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, "key1", "value1") );
@@ -88,7 +93,7 @@ TEST_CASE("mdns api return expected err-code and do not leak memory", "[mdns][le
 
 TEST_CASE("mdns query api return expected err-code and do not leak memory", "[leaks=64]")
 {
-    mdns_result_t * results = NULL;
+    mdns_result_t *results = NULL;
     esp_ip6_addr_t addr6;
     esp_ip4_addr_t addr4;
     test_case_uses_tcpip();

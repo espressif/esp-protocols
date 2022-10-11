@@ -46,9 +46,19 @@ asio_component:
     - Apache-2.0
     - BSL-1.0
 
+slim_modem_examples:
+  include:
+    - 'examples/esp_netif/slip_custom_netif/**'
+  allowed_licenses:
+    - Apache-2.0
+    - Unlicense
+    - CC0-1.0
+
 ignore:
   perform_check: no
   include:
    - 'components/**/docs/**'
    - 'components/esp_modem/port/linux/**'
-   - 'components/asio/examples/asio_chat/main/*'
+   - 'components/asio/examples/**'
+   - 'components/mdns/**/esp_system_protocols_linux/**'
+   - 'common_components/protocol_examples_common/**'

@@ -29,7 +29,7 @@
 
 extern esp_netif_netstack_config_t *netstack_default_slip;
 
-typedef struct slip_modem* slip_modem_handle;
+typedef struct slip_modem *slip_modem_handle;
 
 // Filter callbacks for handling application specific slip messages
 typedef bool slip_rx_filter_cb_t(slip_modem_handle slip, uint8_t *data, uint32_t len);

@@ -2,11 +2,6 @@
 #
 # English Language RTD & Sphinx config file
 #
-import os
-import os.path
-import re
-import subprocess
-import sys
 
 # General information about the project.
 project = u'esp-modem'
@@ -18,11 +13,12 @@ language = 'en'
 
 extensions = ['breathe', 'recommonmark']
 
-
 breathe_projects = {'esp_modem': 'xml'}
 
-breathe_default_project = "esp_modem"
+breathe_default_project = 'esp_modem'
 
 source_suffix = ['.rst', '.md']
 
-source_parsers = {'.md': 'recommonmark.parser.CommonMarkParser', }
+source_parsers = {
+    '.md': 'recommonmark.parser.CommonMarkParser',
+}

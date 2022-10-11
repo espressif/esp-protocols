@@ -77,7 +77,7 @@
 #define PPP_DEBUG                   LWIP_DBG_ON
 #define LWIP_DEBUG                  LWIP_DBG_ON
 
-#define PPP_IPV6_SUPPORT				0
+#define PPP_IPV6_SUPPORT                0
 
 #define PPP_NOTIFY_PHASE                1
 

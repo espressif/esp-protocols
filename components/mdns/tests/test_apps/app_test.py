@@ -65,7 +65,8 @@ def get_mdns_sub_service_query(sub_service):  # type:(str) -> dpkt.dns.Msg
     arr.target = socket.inet_aton('127.0.0.1')
     arr.ptrname = sub_service
     dns.qd.append(arr)
-    console_log('Created mdns subtype service query: {} '.format(dns.__repr__()))
+    console_log('Created mdns subtype service query: {} '.format(
+        dns.__repr__()))
     return dns.pack()
 
 
@@ -90,13 +91,14 @@ def get_dns_answer_to_mdns(tester_host):  # type:(str) -> dpkt.dns.Msg
     arr.type = dpkt.dns.DNS_A
     arr.name = tester_host
     arr.ip = socket.inet_aton('127.0.0.1')
-    dns. an.append(arr)
+    dns.an.append(arr)
     console_log('Created answer to mdns query: {} '.format(dns.__repr__()))
     return dns.pack()
 
 
 # Get mdns answer for service query
-def get_dns_answer_to_service_query(mdns_service):  # type:(str) -> dpkt.dns.Msg
+def get_dns_answer_to_service_query(
+        mdns_service):  # type:(str) -> dpkt.dns.Msg
     dns = dpkt.dns.DNS()
     dns.op = dpkt.dns.DNS_QR | dpkt.dns.DNS_AA
     dns.rcode = dpkt.dns.DNS_RCODE_NOERR
@@ -109,7 +111,7 @@ def get_dns_answer_to_service_query(mdns_service):  # type:(str) -> dpkt.dns.Msg
     arr.port = 100
     arr.srvname = mdns_service
     arr.ip = socket.inet_aton('127.0.0.1')
-    dns. an.append(arr)
+    dns.an.append(arr)
     console_log('Created answer to mdns query: {} '.format(dns.__repr__()))
     return dns.pack()
 
@@ -122,7 +124,7 @@ def mdns_listener(esp_host):  # type:(str) -> None
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.setblocking(False)
-    sock.bind((UDP_IP,UDP_PORT))
+    sock.bind((UDP_IP, UDP_PORT))
     mreq = struct.pack('4sl', socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
     last_query_timepoint = time.time()
@@ -133,7 +135,8 @@ def mdns_listener(esp_host):  # type:(str) -> None
             current_time = time.time()
             if current_time - last_query_timepoint > QUERY_TIMEOUT:
                 last_query_timepoint = current_time
-            timeout = max(0, QUERY_TIMEOUT - (current_time - last_query_timepoint))
+            timeout = max(
+                0, QUERY_TIMEOUT - (current_time - last_query_timepoint))
             read_socks, _, _ = select.select([sock], [], [], timeout)
             if not read_socks:
                 continue
@@ -143,29 +146,40 @@ def mdns_listener(esp_host):  # type:(str) -> None
             if len(dns.qd) > 0:
                 if dns.qd[0].name == HOST_NAME:
                     console_log('Received query: {} '.format(dns.__repr__()))
-                    sock.sendto(get_dns_answer_to_mdns(HOST_NAME), (MCAST_GRP,UDP_PORT))
+                    sock.sendto(get_dns_answer_to_mdns(HOST_NAME),
+                                (MCAST_GRP, UDP_PORT))
                 if dns.qd[0].name == HOST_NAME:
                     console_log('Received query: {} '.format(dns.__repr__()))
-                    sock.sendto(get_dns_answer_to_mdns(HOST_NAME), (MCAST_GRP,UDP_PORT))
+                    sock.sendto(get_dns_answer_to_mdns(HOST_NAME),
+                                (MCAST_GRP, UDP_PORT))
                 if dns.qd[0].name == MDNS_HOST_SERVICE:
                     print(dns.qd[0].name)
                     console_log('Received query: {} '.format(dns.__repr__()))
-                    sock.sendto(get_dns_answer_to_service_query(MDNS_HOST_SERVICE), (MCAST_GRP,UDP_PORT))
+                    sock.sendto(
+                        get_dns_answer_to_service_query(MDNS_HOST_SERVICE),
+                        (MCAST_GRP, UDP_PORT))
             # Receives answers from esp board and sets event flags for python test cases
             if len(dns.an) == 1:
                 if dns.an[0].name.startswith(SERVICE_NAME):
-                    console_log('Received answer to service query: {}'.format(dns.__repr__()))
+                    console_log('Received answer to service query: {}'.format(
+                        dns.__repr__()))
                     esp_service_answered.set()
             if len(dns.an) > 1:
                 if dns.an[1].name.startswith(SUB_SERVICE_NAME):
-                    console_log('Received answer for sub service query: {}'.format(dns.__repr__()))
+                    console_log(
+                        'Received answer for sub service query: {}'.format(
+                            dns.__repr__()))
                     esp_sub_service_answered.set()
             if len(dns.an) > 0 and dns.an[0].type == dpkt.dns.DNS_A:
                 if dns.an[0].name == esp_host + u'.local':
-                    console_log('Received answer to esp32-mdns query: {}'.format(dns.__repr__()))
+                    console_log(
+                        'Received answer to esp32-mdns query: {}'.format(
+                            dns.__repr__()))
                     esp_host_answered.set()
                 if dns.an[0].name == esp_host + u'-delegated.local':
-                    console_log('Received answer to esp32-mdns-delegate query: {}'.format(dns.__repr__()))
+                    console_log(
+                        'Received answer to esp32-mdns-delegate query: {}'.
+                        format(dns.__repr__()))
                     esp_delegated_host_answered.set()
         except socket.timeout:
             break
@@ -179,7 +193,7 @@ def create_socket():  # type:() -> socket.socket
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.setblocking(False)
-    sock.bind((UDP_IP,UDP_PORT))
+    sock.bind((UDP_IP, UDP_PORT))
     mreq = struct.pack('4sl', socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
     return sock
@@ -192,9 +206,10 @@ def test_query_dns_http_service(service):  # type: (str) -> None
     for _ in range(RETRY_COUNT):
         if esp_service_answered.wait(timeout=25):
             break
-        sock.sendto(packet, (MCAST_GRP,UDP_PORT))
+        sock.sendto(packet, (MCAST_GRP, UDP_PORT))
     else:
-        raise RuntimeError('Test has failed: did not receive mdns answer within timeout')
+        raise RuntimeError(
+            'Test has failed: did not receive mdns answer within timeout')
 
 
 def test_query_dns_sub_service(sub_service):  # type: (str) -> None
@@ -204,9 +219,10 @@ def test_query_dns_sub_service(sub_service):  # type: (str) -> None
     for _ in range(RETRY_COUNT):
         if esp_sub_service_answered.wait(timeout=25):
             break
-        sock.sendto(packet, (MCAST_GRP,UDP_PORT))
+        sock.sendto(packet, (MCAST_GRP, UDP_PORT))
     else:
-        raise RuntimeError('Test has failed: did not receive mdns answer within timeout')
+        raise RuntimeError(
+            'Test has failed: did not receive mdns answer within timeout')
 
 
 def test_query_dns_host(esp_host):  # type: (str) -> None
@@ -216,9 +232,10 @@ def test_query_dns_host(esp_host):  # type: (str) -> None
     for _ in range(RETRY_COUNT):
         if esp_host_answered.wait(timeout=25):
             break
-        sock.sendto(packet, (MCAST_GRP,UDP_PORT))
+        sock.sendto(packet, (MCAST_GRP, UDP_PORT))
     else:
-        raise RuntimeError('Test has failed: did not receive mdns answer within timeout')
+        raise RuntimeError(
+            'Test has failed: did not receive mdns answer within timeout')
 
 
 def test_query_dns_host_delegated(esp_host):  # type: (str) -> None
@@ -228,24 +245,30 @@ def test_query_dns_host_delegated(esp_host):  # type: (str) -> None
     for _ in range(RETRY_COUNT):
         if esp_delegated_host_answered.wait(timeout=25):
             break
-        sock.sendto(packet, (MCAST_GRP,UDP_PORT))
+        sock.sendto(packet, (MCAST_GRP, UDP_PORT))
     else:
-        raise RuntimeError('Test has failed: did not receive mdns answer within timeout')
+        raise RuntimeError(
+            'Test has failed: did not receive mdns answer within timeout')
 
 
 @ttfw_idf.idf_custom_test(env_tag='Example_WIFI', group='test-apps')
 def test_app_esp_mdns(env, _):  # type: (ttfw_idf.TinyFW.Env, None) -> None
-    dut1 = env.get_dut('mdns', 'tools/test_apps/protocols/mdns', dut_class=ttfw_idf.ESP32DUT)
+    dut1 = env.get_dut('mdns',
+                       'tools/test_apps/protocols/mdns',
+                       dut_class=ttfw_idf.ESP32DUT)
 
     # 1. start mdns application
     dut1.start_app()
     # 2. get the dut host name (and IP address)
-    specific_host = dut1.expect(re.compile(r'mdns hostname set to: \[([^\]]+)\]'), timeout=30)[0]
+    specific_host = dut1.expect(
+        re.compile(r'mdns hostname set to: \[([^\]]+)\]'), timeout=30)[0]
 
-    esp_ip = dut1.expect(re.compile(r' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'), timeout=30)
+    esp_ip = dut1.expect(
+        re.compile(r' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'),
+        timeout=30)
     print('Got IP={}'.format(esp_ip[0]))
 
-    mdns_responder = Thread(target=mdns_listener, args=(str(specific_host),))
+    mdns_responder = Thread(target=mdns_listener, args=(str(specific_host), ))
 
     def start_case(case, desc, result):  # type: (str, str, str) -> None
         print('Starting {}: {}'.format(case, desc))
@@ -258,7 +281,8 @@ def test_app_esp_mdns(env, _):  # type: (ttfw_idf.TinyFW.Env, None) -> None
 
         # wait untill mdns listener thred started
         if not start_mdns_listener.wait(timeout=5):
-            raise ValueError('Test has failed: mdns listener thread did not start')
+            raise ValueError(
+                'Test has failed: mdns listener thread did not start')
 
         # query dns service from host, answer should be received from esp board
         test_query_dns_http_service(SERVICE_NAME)
@@ -273,13 +297,17 @@ def test_app_esp_mdns(env, _):  # type: (ttfw_idf.TinyFW.Env, None) -> None
         test_query_dns_host_delegated(specific_host)
 
         # query service from esp board, answer should be received from host
-        start_case('CONFIG_TEST_QUERY_SERVICE', 'Query SRV ESP32._http._tcp.local', 'SRV:ESP32')
+        start_case('CONFIG_TEST_QUERY_SERVICE',
+                   'Query SRV ESP32._http._tcp.local', 'SRV:ESP32')
 
         # query dns-host from esp board, answer should be received from host
-        start_case('CONFIG_TEST_QUERY_HOST', 'Query tinytester.local', 'tinytester.local resolved to: 127.0.0.1')
+        start_case('CONFIG_TEST_QUERY_HOST', 'Query tinytester.local',
+                   'tinytester.local resolved to: 127.0.0.1')
 
         # query dns-host aynchrounusely from esp board, answer should be received from host
-        start_case('CONFIG_TEST_QUERY_HOST_ASYNC', 'Query tinytester.local async', 'Async query resolved to A:127.0.0.1')
+        start_case('CONFIG_TEST_QUERY_HOST_ASYNC',
+                   'Query tinytester.local async',
+                   'Async query resolved to A:127.0.0.1')
 
     finally:
         stop_mdns_listener.set()

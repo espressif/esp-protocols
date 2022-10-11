@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 #include <memory>
 #include <future>
 #include <cstring>
@@ -83,8 +88,9 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
 int LoopbackTerm::read(uint8_t *data, size_t len)
 {
     size_t read_len = std::min(data_len, len);
-    if (inject_by && read_len > inject_by)
+    if (inject_by && read_len > inject_by) {
         read_len = inject_by;
+    }
     if (read_len) {
         if (loopback_data.capacity() < len) {
             loopback_data.reserve(len);

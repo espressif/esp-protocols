@@ -136,6 +136,5 @@ show_source = True
 
 statistics = True
 
-per-file-ignores =
-    # Sphinx conf.py files use star imports to setup config variables
-        docs/conf_common.py: F405
+exclude =
+        components/asio/docs/conf_common.py

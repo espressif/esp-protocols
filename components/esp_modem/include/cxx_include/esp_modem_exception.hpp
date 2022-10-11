@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 
@@ -51,35 +43,44 @@ private:
 #define ESP_MODEM_THROW(exception) do { exception; abort(); } while(0)
 
 class esp_err_exception {
-    void print(std::string msg) { ESP_LOGE("ESP_MODEM_THROW", "%s\n", msg.c_str()); }
+    void print(std::string msg)
+    {
+        ESP_LOGE("ESP_MODEM_THROW", "%s\n", msg.c_str());
+    }
 public:
-    explicit esp_err_exception(std::string msg) { print(std::move(msg)); }
-    explicit esp_err_exception(std::string msg, esp_err_t err) { print(std::move(msg)); }
+    explicit esp_err_exception(std::string msg)
+    {
+        print(std::move(msg));
+    }
+    explicit esp_err_exception(std::string msg, esp_err_t err)
+    {
+        print(std::move(msg));
+    }
 };
 
 #endif
 
-static inline std::string make_message(const std::string& filename, int line, const std::string& message = "ERROR")
+static inline std::string make_message(const std::string &filename, int line, const std::string &message = "ERROR")
 {
     std::string text = filename + ":" + std::to_string(line) + " " + message;
     return text;
 }
 
-static inline void throw_if_false(const std::string& filename, int line, bool condition, const std::string& message)
+static inline void throw_if_false(const std::string &filename, int line, bool condition, const std::string &message)
 {
     if (!condition) {
         ESP_MODEM_THROW(esp_err_exception(make_message(filename, line, message)));
     }
 }
 
-static inline void throw_if_error(const std::string& filename, int line, esp_err_t err, const std::string& message)
+static inline void throw_if_error(const std::string &filename, int line, esp_err_t err, const std::string &message)
 {
     if (err != ESP_OK) {
         ESP_MODEM_THROW(esp_err_exception(make_message(filename, line, message), err));
     }
 }
 
-static inline void throw_if_error(const std::string& filename, int line, esp_err_t err)
+static inline void throw_if_error(const std::string &filename, int line, esp_err_t err)
 {
     if (err != ESP_OK) {
         ESP_MODEM_THROW(esp_err_exception(make_message(filename, line), err));

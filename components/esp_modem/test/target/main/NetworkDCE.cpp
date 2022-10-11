@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
+
 /*  softAP to PPPoS Example (modem_board)
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)

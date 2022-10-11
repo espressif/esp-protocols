@@ -1,10 +1,11 @@
-/*  softAP to PPPoS Example (network_dce)
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ *  softAP to PPPoS Example (network_dce)
 */
 
 #include "cxx_include/esp_modem_dte.hpp"
@@ -92,8 +93,9 @@ public:
     bool check_signal()
     {
         int rssi, ber;
-        if (dce_commands::get_signal_quality(dte.get(), rssi, ber) != command_result::OK)
+        if (dce_commands::get_signal_quality(dte.get(), rssi, ber) != command_result::OK) {
             return false;
+        }
         return rssi != 99 && rssi > 5;
     }
 

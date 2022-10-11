@@ -23,7 +23,7 @@ const char *error_message(int error_code)
     return error_buf;
 }
 
-void throw_alloc_failure(const char* location)
+void throw_alloc_failure(const char *location)
 {
     asio::error_code ec( MBEDTLS_ERR_SSL_ALLOC_FAILED, asio::error::get_mbedtls_category());
     asio::detail::throw_error(ec, location);
@@ -62,7 +62,7 @@ public:
         verify_mode_ = mode;
     }
 
-    bio* ext_bio() const
+    bio *ext_bio() const
     {
         return bio_.second.get();
     }
@@ -95,14 +95,14 @@ public:
     int write(const void *buffer, int len)
     {
         int ret = impl_.write(buffer, len);
-        state_ = ret == len ? IDLE: WRITING;
+        state_ = ret == len ? IDLE : WRITING;
         return ret;
     }
 
     int read(void *buffer, int len)
     {
         int ret = impl_.read(buffer, len);
-        state_ = ret == len ? IDLE: READING;
+        state_ = ret == len ? IDLE : READING;
         return ret;
     }
 
@@ -117,7 +117,7 @@ private:
 
     static int bio_read(void *ctx, unsigned char *buf, size_t len)
     {
-        auto bio = static_cast<BIO*>(ctx);
+        auto bio = static_cast<BIO *>(ctx);
         int read = bio->read(buf, len);
         if (read <= 0 && bio->should_read()) {
             return MBEDTLS_ERR_SSL_WANT_READ;
@@ -127,7 +127,7 @@ private:
 
     static int bio_write(void *ctx, const unsigned char *buf, size_t len)
     {
-        auto bio = static_cast<BIO*>(ctx);
+        auto bio = static_cast<BIO *>(ctx);
         int written = bio->write(buf, len);
         if (written <= 0 && bio->should_write()) {
             return MBEDTLS_ERR_SSL_WANT_WRITE;
@@ -163,25 +163,27 @@ private:
     {
         int mode = MBEDTLS_SSL_VERIFY_UNSET;
         if (is_client_not_server) {
-            if (verify_mode_ & SSL_VERIFY_PEER)
+            if (verify_mode_ & SSL_VERIFY_PEER) {
                 mode = MBEDTLS_SSL_VERIFY_REQUIRED;
-            else if (verify_mode_ == SSL_VERIFY_NONE)
+            } else if (verify_mode_ == SSL_VERIFY_NONE) {
                 mode = MBEDTLS_SSL_VERIFY_NONE;
+            }
         } else {
-            if (verify_mode_ & SSL_VERIFY_FAIL_IF_NO_PEER_CERT)
+            if (verify_mode_ & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
                 mode = MBEDTLS_SSL_VERIFY_REQUIRED;
-            else if (verify_mode_ & SSL_VERIFY_PEER)
+            } else if (verify_mode_ & SSL_VERIFY_PEER) {
                 mode = MBEDTLS_SSL_VERIFY_OPTIONAL;
-            else if (verify_mode_ == SSL_VERIFY_NONE)
+            } else if (verify_mode_ == SSL_VERIFY_NONE) {
                 mode = MBEDTLS_SSL_VERIFY_NONE;
+            }
         }
         return mode;
     }
 
     struct impl {
-        static void print_error(const char* function, int error_code)
+        static void print_error(const char *function, int error_code)
         {
-            constexpr const char *TAG="mbedtls-engine-impl";
+            constexpr const char *TAG = "mbedtls-engine-impl";
             ESP_LOGE(TAG, "%s() returned -0x%04X", function, -error_code);
             ESP_LOGI(TAG, "-0x%04X: %s", -error_code, error_message(error_code));
         }
@@ -230,7 +232,7 @@ private:
             mbedtls_x509_crt_init(&public_cert_);
             mbedtls_pk_init(&pk_key_);
             mbedtls_x509_crt_init(&ca_cert_);
-            int ret = mbedtls_ssl_config_defaults(&conf_, is_client_not_server ? MBEDTLS_SSL_IS_CLIENT: MBEDTLS_SSL_IS_SERVER,
+            int ret = mbedtls_ssl_config_defaults(&conf_, is_client_not_server ? MBEDTLS_SSL_IS_CLIENT : MBEDTLS_SSL_IS_SERVER,
                                                   MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
             if (ret) {
                 print_error("mbedtls_ssl_config_defaults", ret);
@@ -290,4 +292,6 @@ private:
     asio::ssl::verify_mode verify_mode_;
 };
 
-} } } // namespace asio::ssl::mbedtls
+}
+}
+} // namespace asio::ssl::mbedtls

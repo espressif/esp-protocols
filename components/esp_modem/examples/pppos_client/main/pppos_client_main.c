@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 /* PPPoS Client Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
@@ -181,7 +186,7 @@ void app_main(void)
     while (1) {
         ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
         struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
-        const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
+        const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
         ESP_LOGI(TAG, "Waiting for USB device connection...");
         esp_modem_dce_t *dce = esp_modem_new_dev_usb(ESP_MODEM_DCE_BG96, &dte_usb_config, &dce_config, esp_netif);
         esp_modem_set_error_cb(dce, usb_terminal_error_handler);
@@ -244,7 +249,7 @@ void app_main(void)
     };
 #else
     esp_mqtt_client_config_t mqtt_config = {
-            .uri = BROKER_URL,
+        .uri = BROKER_URL,
     };
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
@@ -269,11 +274,11 @@ void app_main(void)
     ESP_LOGI(TAG, "IMSI=%s", imsi);
 
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
-        // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features. 
-        ESP_LOGI(TAG, "USB demo finished. Disconnect and connect the modem to run it again");
-        xEventGroupWaitBits(event_group, USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
-        CHECK_USB_DISCONNECTION(event_group); // dce will be destroyed here
-    } // while (1)
+    // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features.
+    ESP_LOGI(TAG, "USB demo finished. Disconnect and connect the modem to run it again");
+    xEventGroupWaitBits(event_group, USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    CHECK_USB_DISCONNECTION(event_group); // dce will be destroyed here
+} // while (1)
 #else
     // UART DTE clean-up
     esp_modem_destroy(dce);

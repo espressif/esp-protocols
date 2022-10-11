@@ -324,7 +324,7 @@ public:
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) return_type esp_modem_ ## name (__VA_ARGS__);
 #endif
 
-DECLARE_ALL_COMMAND_APIS()
+    DECLARE_ALL_COMMAND_APIS()
 
 #ifdef __cplusplus
 };

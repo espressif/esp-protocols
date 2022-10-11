@@ -1,7 +1,6 @@
+# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Unlicense OR CC0-1.0
 from __future__ import unicode_literals
-
-import pytest
-from pytest_embedded import Dut
 
 
 def test_examples_asio_ssl(dut):

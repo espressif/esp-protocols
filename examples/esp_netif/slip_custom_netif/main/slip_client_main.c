@@ -1,10 +1,11 @@
-/* SLIP Client Example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * SLIP Client Example
 */
 #include <string.h>
 #include <sys/socket.h>
@@ -168,7 +169,7 @@ static bool slip_rx_filter(slip_modem_handle slip, uint8_t *data, uint32_t len)
 
 #if CONFIG_EXAMPLE_IPV4
 static const esp_netif_ip_info_t s_slip_ip4 = {
-        .ip = { .addr = ESP_IP4TOADDR( 10, 0, 0, 2) },
+    .ip = { .addr = ESP_IP4TOADDR( 10, 0, 0, 2) },
 };
 #endif
 
@@ -179,11 +180,12 @@ esp_netif_t *slip_if_init(void)
 
     esp_netif_inherent_config_t base_cfg = ESP_NETIF_INHERENT_DEFAULT_SLIP()
 #if CONFIG_EXAMPLE_IPV4
-    base_cfg.ip_info = &s_slip_ip4;
+                                           base_cfg.ip_info = &s_slip_ip4;
 #endif
     esp_netif_config_t cfg = {          .base = &base_cfg,
                                         .driver = NULL,
-                                        .stack = netstack_default_slip };
+                                        .stack = netstack_default_slip
+                             };
 
     esp_netif_t *slip_netif = esp_netif_new(&cfg);
 
@@ -229,7 +231,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // Setup slip interface
-    esp_netif_t* esp_netif = slip_if_init();
+    esp_netif_t *esp_netif = slip_if_init();
     assert(esp_netif);
 
     // Start the UDP user application

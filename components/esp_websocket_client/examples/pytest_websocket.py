@@ -1,16 +1,13 @@
-import os
+# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Unlicense OR CC0-1.0
+import json
 import random
 import re
 import socket
 import string
 from threading import Event, Thread
-import pytest
-import sys
-import json
-import time
 
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket
-from pytest_embedded import Dut
 
 
 def get_my_ip():
@@ -64,7 +61,7 @@ class Websocket(object):
         self.exit_event.set()
         self.thread.join(10)
         if self.thread.is_alive():
-            Utility.console_log('Thread cannot be joined', 'orange')
+            print('Thread cannot be joined', 'orange')
 
 
 def test_examples_protocol_websocket(dut):
@@ -74,6 +71,7 @@ def test_examples_protocol_websocket(dut):
       2. connect to uri specified in the config
       3. send and receive data
     """
+
     def test_echo(dut):
         dut.expect('WEBSOCKET_EVENT_CONNECTED')
         for i in range(0, 5):
@@ -81,7 +79,9 @@ def test_examples_protocol_websocket(dut):
         print('All echos received')
 
     def test_close(dut):
-        code = dut.expect(re.compile(b'WEBSOCKET: Received closed message with code=(\\d*)'))[0]
+        code = dut.expect(
+            re.compile(
+                b'WEBSOCKET: Received closed message with code=(\\d*)'))[0]
         print('Received close frame with code {}'.format(code))
 
     def test_json(dut, websocket):
@@ -100,32 +100,39 @@ def test_examples_protocol_websocket(dut):
         websocket.send_data(json_string)
         data = json.loads(json_string)
 
-        match = dut.expect(re.compile(b'Json=([a-zA-Z0-9]*).*')).group(0).decode()[5:]
+        match = dut.expect(
+            re.compile(b'Json=([a-zA-Z0-9]*).*')).group(0).decode()[5:]
         if match == str(data[0]):
             print('Sent message and received message are equal')
         else:
-            raise ValueError('DUT received string do not match sent string, \nexpected: {}\nwith length {}\
-                                 \nreceived: {}\nwith length {}'.format(data[0], len(data[0]), match, len(match)))
+            raise ValueError(
+                'DUT received string do not match sent string, \nexpected: {}\nwith length {}\
+                                 \nreceived: {}\nwith length {}'.format(
+                    data[0], len(data[0]), match, len(match)))
 
- 
     def test_recv_long_msg(dut, websocket, msg_len, repeats):
 
-        send_msg = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(msg_len))
+        send_msg = ''.join(
+            random.choice(string.ascii_uppercase + string.ascii_lowercase +
+                          string.digits) for _ in range(msg_len))
 
         for _ in range(repeats):
             websocket.send_data(send_msg)
-    
+
             recv_msg = ''
             while len(recv_msg) < msg_len:
-                match = dut.expect(re.compile(b'Received=([a-zA-Z0-9]*).*')).group(1).decode()
+                match = dut.expect(re.compile(
+                    b'Received=([a-zA-Z0-9]*).*')).group(1).decode()
                 recv_msg += match
-    
+
             if recv_msg == send_msg:
                 print('Sent message and received message are equal')
             else:
-                raise ValueError('DUT received string do not match sent string, \nexpected: {}\nwith length {}\
-                                \nreceived: {}\nwith length {}'.format(send_msg, len(send_msg), recv_msg, len(recv_msg)))
-    
+                raise ValueError(
+                    'DUT received string do not match sent string, \nexpected: {}\nwith length {}\
+                                \nreceived: {}\nwith length {}'.format(
+                        send_msg, len(send_msg), recv_msg, len(recv_msg)))
+
     # Starting of the test
     try:
         if dut.app.sdkconfig.get('WEBSOCKET_URI_FROM_STDIN') is True:
@@ -153,4 +160,3 @@ def test_examples_protocol_websocket(dut):
     else:
         print('DUT connecting to {}'.format(uri))
         test_echo(dut)
-

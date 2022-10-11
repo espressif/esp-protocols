@@ -1,10 +1,10 @@
-/* Ping handle example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
+/*
+ * Ping handle example
 */
 
 #include <stdio.h>
@@ -29,7 +29,7 @@ static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args)
     esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
     esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
     ESP_LOGI(TAG, "%d bytes from %s icmp_seq=%d ttl=%d time=%d ms\n",
-           recv_len, inet_ntoa(target_addr.u_addr.ip4), seqno, ttl, elapsed_time);
+             recv_len, inet_ntoa(target_addr.u_addr.ip4), seqno, ttl, elapsed_time);
 }
 
 static void cmd_ping_on_ping_timeout(esp_ping_handle_t hdl, void *args)
@@ -58,7 +58,7 @@ static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args)
         ESP_LOGI(TAG, "\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
     }
     ESP_LOGI(TAG, "%d packets transmitted, %d received, %d%% packet loss, time %dms\n",
-           transmitted, received, loss, total_time_ms);
+             transmitted, received, loss, total_time_ms);
     // delete the ping sessions, so that we clean up all resources and can create a new ping session
     // we don't have to call delete function in the callback, instead we can call delete function from other tasks
     esp_ping_delete_session(hdl);
@@ -112,10 +112,10 @@ static int do_ping_cmd(int argc, char **argv)
 
     /* set callback functions */
     esp_ping_callbacks_t cbs = {
-            .on_ping_success = cmd_ping_on_ping_success,
-            .on_ping_timeout = cmd_ping_on_ping_timeout,
-            .on_ping_end = cmd_ping_on_ping_end,
-            .cb_args = NULL
+        .on_ping_success = cmd_ping_on_ping_success,
+        .on_ping_timeout = cmd_ping_on_ping_timeout,
+        .on_ping_end = cmd_ping_on_ping_end,
+        .cb_args = NULL
     };
     esp_ping_handle_t ping;
     esp_ping_new_session(&config, &cbs, &ping);
@@ -131,11 +131,11 @@ void modem_console_register_ping(void)
     ping_args.host = arg_str1(NULL, NULL, "<host>", "Host address");
     ping_args.end = arg_end(1);
     const esp_console_cmd_t ping_cmd = {
-            .command = "ping",
-            .help = "send ICMP ECHO_REQUEST to network hosts",
-            .hint = NULL,
-            .func = &do_ping_cmd,
-            .argtable = &ping_args
+        .command = "ping",
+        .help = "send ICMP ECHO_REQUEST to network hosts",
+        .hint = NULL,
+        .func = &do_ping_cmd,
+        .argtable = &ping_args
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&ping_cmd));
 }

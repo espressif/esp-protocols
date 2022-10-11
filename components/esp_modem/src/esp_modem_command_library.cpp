@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <charconv>
 #include <list>
@@ -243,14 +235,14 @@ command_result get_operator_name(CommandableIf *t, std::string &operator_name, i
         if (property++ == 2) {  // operator name is after second comma (as a 3rd property of COPS string)
             operator_name = out.substr(++pos);
             auto additional_comma = operator_name.find(',');    // check for the optional ACT
-            if (additional_comma != std::string::npos && std::from_chars(operator_name.data() + additional_comma + 1,operator_name.data() + operator_name.length(), act).ec != std::errc::invalid_argument) {
+            if (additional_comma != std::string::npos && std::from_chars(operator_name.data() + additional_comma + 1, operator_name.data() + operator_name.length(), act).ec != std::errc::invalid_argument) {
                 operator_name = operator_name.substr(0, additional_comma);
             }
             // and strip quotes if present
             auto quote1 = operator_name.find('"');
             auto quote2 = operator_name.rfind('"');
             if (quote1 != std::string::npos && quote2 != std::string::npos) {
-                operator_name = operator_name.substr(quote1+1, quote2-1);
+                operator_name = operator_name.substr(quote1 + 1, quote2 - 1);
             }
             return command_result::OK;
         }
@@ -422,7 +414,7 @@ command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
     return command_result::OK;
 }
 
-command_result set_operator(CommandableIf *t, int mode, int format, const std::string& oper)
+command_result set_operator(CommandableIf *t, int mode, int format, const std::string &oper)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     return generic_command_common(t, "AT+COPS=" + std::to_string(mode) + "," + std::to_string(format) + ",\"" + oper + "\"\r", 90000);
@@ -494,34 +486,34 @@ command_result set_preferred_mode(CommandableIf *t, int mode)
     return generic_command_common(t, "AT+CMNB=" + std::to_string(mode) + "\r");
 }
 
-command_result set_network_bands(CommandableIf *t, const std::string& mode, const int* bands, int size)
+command_result set_network_bands(CommandableIf *t, const std::string &mode, const int *bands, int size)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string band_string = "";
-    for (int i = 0; i<size-1; ++i){
+    for (int i = 0; i < size - 1; ++i) {
         band_string += std::to_string(bands[i]) + ",";
     }
-    band_string += std::to_string(bands[size-1]);
-    
+    band_string += std::to_string(bands[size - 1]);
+
     return generic_command_common(t, "AT+CBANDCFG=\"" + mode + "\"," + band_string + "\r");
 }
 
 // mode is expected to be 64bit string (in hex)
 // any_mode = "0xFFFFFFFF7FFFFFFF";
-command_result set_network_bands_sim76xx(CommandableIf *t, const std::string& mode, const int* bands, int size)
+command_result set_network_bands_sim76xx(CommandableIf *t, const std::string &mode, const int *bands, int size)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     static const char *hexDigits = "0123456789ABCDEF";
     uint64_t band_bits = 0;
     int hex_len = 16;
     std::string band_string(hex_len, '0');
-    for (int i = 0; i<size; ++i) {
+    for (int i = 0; i < size; ++i) {
         // OR-operation to add bands
-        auto band = bands[i]-1; // Sim7600 has 0-indexed band selection (band 20 has to be shifted 19 places)
+        auto band = bands[i] - 1; // Sim7600 has 0-indexed band selection (band 20 has to be shifted 19 places)
         band_bits |= 1 << band;
     }
-    for(int i=hex_len; i>0; i--){
-        band_string[i-1] = hexDigits[(band_bits >> ((hex_len-i)*4)) & 0xF];
+    for (int i = hex_len; i > 0; i--) {
+        band_string[i - 1] = hexDigits[(band_bits >> ((hex_len - i) * 4)) & 0xF];
     }
     return generic_command_common(t, "AT+CNBP=" + mode + ",0x" + band_string + "\r");
 }

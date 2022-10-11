@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <cstring>
 #include <unistd.h>
@@ -85,11 +77,13 @@ void CMux::send_disconnect(size_t i)
 {
     if (i == 0) {   // control terminal
         uint8_t frame[] = {
-                SOF_MARKER, 0x3, 0xEF, 0x5, 0xC3, 0x1, 0xF2, SOF_MARKER };
+            SOF_MARKER, 0x3, 0xEF, 0x5, 0xC3, 0x1, 0xF2, SOF_MARKER
+        };
         term->write(frame, 8);
     } else {        // separate virtual terminal
         uint8_t frame[] = {
-                SOF_MARKER, 0x3, FT_DISC | PF, 0x1, 0, SOF_MARKER };
+            SOF_MARKER, 0x3, FT_DISC | PF, 0x1, 0, SOF_MARKER
+        };
         frame[1] |= i << 2;
         frame[4] = 0xFF - fcs_crc(frame);
         term->write(frame, sizeof(frame));
@@ -121,7 +115,7 @@ struct CMux::CMuxFrame {
 
 void CMux::data_available(uint8_t *data, size_t len)
 {
-    if (data && (type&FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
+    if (data && (type & FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
         int virtual_term = dlci - 1;
         if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
             // Post partial data (or defragment to post on CMUX footer)
@@ -145,7 +139,7 @@ void CMux::data_available(uint8_t *data, size_t len)
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif
         }
-    } else if ((type&FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
+    } else if ((type & FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
         if (len > 0 && (data[0] & 0xE1) == 0xE1) {
             // Not a DISC, ignore (MSC frame)
             return;

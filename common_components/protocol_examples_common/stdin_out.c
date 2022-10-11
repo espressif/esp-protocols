@@ -1,10 +1,11 @@
-/* Common functions for protocol examples, to configure stdin and stdout.
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * Common functions for protocol examples, to configure stdin and stdout.
  */
 
 #include "protocol_examples_common.h"
@@ -19,7 +20,7 @@ esp_err_t example_configure_stdin_stdout(void)
     setvbuf(stdin, NULL, _IONBF, 0);
     /* Install UART driver for interrupt-driven reads and writes */
     ESP_ERROR_CHECK( uart_driver_install( (uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM,
-            256, 0, 0, NULL, 0) );
+                                          256, 0, 0, NULL, 0) );
     /* Tell VFS to use UART driver */
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
     esp_vfs_dev_uart_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CR);
