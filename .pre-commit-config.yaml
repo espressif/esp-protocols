@@ -20,6 +20,10 @@ repos:
     rev: v0.981
     hooks:
       - id: mypy
+        exclude: >
+           (?x)^(
+               .*.py
+           )$
   - repo: https://github.com/myint/unify
     rev: v0.5
     hooks:

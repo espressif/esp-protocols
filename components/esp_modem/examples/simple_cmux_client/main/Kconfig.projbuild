@@ -90,7 +90,7 @@ menu "Example Configuration"
             help
                 Pin number of UART CTS.
     endmenu
-    
+
     config EXAMPLE_USE_VFS_TERM
         bool "Use VFS terminal"
         default n

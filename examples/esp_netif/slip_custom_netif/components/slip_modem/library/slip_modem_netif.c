@@ -66,9 +66,9 @@ void esp_netif_lwip_slip_input(void *h, void *buffer, unsigned int len, void *eb
     // Update slip netif with data
     const int max_batch = 255;
     int sent = 0;
-    while(sent < len) {
+    while (sent < len) {
         int batch = (len - sent) > max_batch ? max_batch : (len - sent);
-        slipif_received_bytes(netif, buffer+sent, batch);
+        slipif_received_bytes(netif, buffer + sent, batch);
         sent += batch;
     }
 
@@ -105,7 +105,7 @@ void slip_modem_netif_raw_write(esp_netif_t *netif, void *buffer, size_t len)
 
 /** @brief Get esp-netif object corresponding to registration index
  */
-static esp_netif_t * get_netif_with_esp_index(int index)
+static esp_netif_t *get_netif_with_esp_index(int index)
 {
     esp_netif_t *netif = NULL;
     int counter = 0;
@@ -120,7 +120,7 @@ static esp_netif_t * get_netif_with_esp_index(int index)
 
 /** @brief Return list registration index of the supplied netif ptr
  */
-static int get_esp_netif_index(esp_netif_t * esp_netif)
+static int get_esp_netif_index(esp_netif_t *esp_netif)
 {
     esp_netif_t *netif = NULL;
     int counter = 0;
@@ -151,10 +151,10 @@ static err_t esp_slipif_init(struct netif *netif)
 }
 
 const struct esp_netif_netstack_config s_netif_config_slip = {
-        .lwip = {
-                .init_fn = esp_slipif_init,
-                .input_fn = esp_netif_lwip_slip_input,
-        }
+    .lwip = {
+        .init_fn = esp_slipif_init,
+        .input_fn = esp_netif_lwip_slip_input,
+    }
 };
 
 const esp_netif_netstack_config_t *netstack_default_slip = &s_netif_config_slip;

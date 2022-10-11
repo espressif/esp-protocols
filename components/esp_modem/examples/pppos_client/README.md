@@ -21,6 +21,6 @@ This example supports USB modem hot-plugging and reconnection.
 
 ### Supported IDF versions
 
-This example is only supported from `v4.1`, as this is the default dependency of `esp-modem` component. 
+This example is only supported from `v4.1`, as this is the default dependency of `esp-modem` component.
 
 USB example is supported from `v4.4`.

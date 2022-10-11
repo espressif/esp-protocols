@@ -18,10 +18,10 @@
 #include "esp_err.h"
 
 
-typedef void * system_event_t;
+typedef void *system_event_t;
 
-extern const char * WIFI_EVENT;
-extern const char * IP_EVENT;
+extern const char *WIFI_EVENT;
+extern const char *IP_EVENT;
 
 #define ESP_EVENT_ANY_BASE     NULL             /**< register handler for any event base */
 #define ESP_EVENT_ANY_ID       -1               /**< register handler for any event id */
@@ -33,8 +33,8 @@ typedef struct {
     int ip_index;                    /*!< IPv6 address index */
 } ip_event_got_ip6_t;
 
-esp_err_t esp_event_handler_register(const char * event_base, int32_t event_id, void* event_handler, void* event_handler_arg);
+esp_err_t esp_event_handler_register(const char *event_base, int32_t event_id, void *event_handler, void *event_handler_arg);
 
-esp_err_t esp_event_handler_unregister(const char * event_base, int32_t event_id, void* event_handler);
+esp_err_t esp_event_handler_unregister(const char *event_base, int32_t event_id, void *event_handler);
 
-typedef void * QueueHandle_t;
+typedef void *QueueHandle_t;

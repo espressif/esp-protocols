@@ -9,7 +9,7 @@ The application aims to show how to compose async operations using ASIO to build
 
 # Configure and Building example
 
-This example doesn't require any configuration, just build it with 
+This example doesn't require any configuration, just build it with
 
 ```
 idf.py build
@@ -17,12 +17,12 @@ idf.py build
 
 # Async operations composition and automatic lifetime control
 
-On this example we compose the operation by starting the next step in the chain inside the completion handler of the 
-previous operation. Also we pass the `Connection` class itself as the parameter of its final handler to be owned by 
+On this example we compose the operation by starting the next step in the chain inside the completion handler of the
+previous operation. Also we pass the `Connection` class itself as the parameter of its final handler to be owned by
 the following operation. This is possible due to the control of lifetime by the usage of `std::shared_ptr`.
 
-The control of lifetime of the class, done by `std::shared_ptr` usage, guarantee that the data will be available for 
-async operations until it's not needed any more. This makes necessary that all of the async operation class must start 
+The control of lifetime of the class, done by `std::shared_ptr` usage, guarantee that the data will be available for
+async operations until it's not needed any more. This makes necessary that all of the async operation class must start
 its lifetime as a `std::shared_ptr` due to the usage of `std::enable_shared_from_this`.
 
 
@@ -48,5 +48,5 @@ its lifetime as a `std::shared_ptr` due to the usage of `std::enable_shared_from
                                                              └────►Completion Handler()
 
 
-The previous diagram shows the process and the life span of each of the tasks in this examples. At each stage the 
+The previous diagram shows the process and the life span of each of the tasks in this examples. At each stage the
 object responsible for the last action inject itself to the completion handler of the next stage for reuse.

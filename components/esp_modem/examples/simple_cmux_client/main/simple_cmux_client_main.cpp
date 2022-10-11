@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 /* PPPoS Client Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
@@ -96,8 +101,7 @@ extern "C" void app_main(void)
 #endif
     assert(dce);
 
-    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW)
-    {
+    if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
