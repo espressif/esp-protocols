@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -62,7 +62,7 @@ void config_broker(esp_mqtt_client_config_t &mqtt_client_cfg, BrokerConfiguratio
             std::visit(overloaded{
                 [&mqtt_client_cfg](PEM const & pem)
                 {
-                    mqtt_client_cfg.broker.verification.certificate= pem.data;
+                    mqtt_client_cfg.broker.verification.certificate = pem.data;
                 }, [&mqtt_client_cfg](DER const & der)
                 {
                     mqtt_client_cfg.broker.verification.certificate = der.data;
@@ -278,15 +278,15 @@ const std::string &Filter::get()
     return filter;
 }
 
-[[nodiscard]] bool Filter::match(char const *const first, int size) const noexcept
+[[nodiscard]] bool Filter::match(char *const begin, int size) const noexcept
 {
-    auto it = static_cast<std::string::const_iterator>(first);
+    auto it = static_cast<std::string::const_iterator>(begin);
     return match(it, it + size);
 }
-std::string::const_iterator Filter::advance(std::string::const_iterator first, std::string::const_iterator last) const
+std::string::const_iterator Filter::advance(std::string::const_iterator begin, std::string::const_iterator end) const
 {
     constexpr auto separator = '/';
-    return std::find(first, last, separator);
+    return std::find(begin, end, separator);
 }
 
 }

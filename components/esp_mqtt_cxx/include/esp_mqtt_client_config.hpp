@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) CO LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//         http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #pragma once
 
 #include <cstddef>
@@ -53,8 +45,8 @@ struct URI {
  *
  */
 struct BrokerAddress {
-  std::variant<Host, URI> address; /*!< Address, defined by URI or Host struct */
-  uint32_t port = 0; /*!< Port used, defaults to 0 to select common port for the scheme used */
+    std::variant<Host, URI> address; /*!< Address, defined by URI or Host struct */
+    uint32_t port = 0; /*!< Port used, defaults to 0 to select common port for the scheme used */
 };
 
 /**
@@ -135,9 +127,9 @@ struct Password {
  *
  */
 struct ClientCertificate {
-  CryptographicInformation certificate; /*!< Certificate in PEM or DER format.*/
-  CryptographicInformation key; /*!< Key data in PEM or DER format.*/
-  std::optional<Password> key_password = std::nullopt; /*!< Optional password for key */
+    CryptographicInformation certificate; /*!< Certificate in PEM or DER format.*/
+    CryptographicInformation key; /*!< Key data in PEM or DER format.*/
+    std::optional<Password> key_password = std::nullopt; /*!< Optional password for key */
 };
 
 /**

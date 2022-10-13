@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 /* C++ MQTT (over TCP) Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
@@ -7,29 +12,26 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#include <cstdint>
-#include <string>
-#include "esp_mqtt_client_config.hpp"
 #include "nvs_flash.h"
 #include "protocol_examples_common.h"
 
-
 #include "esp_log.h"
 #include "esp_mqtt.hpp"
+#include "esp_mqtt_client_config.hpp"
+
+namespace mqtt = idf::mqtt;
 
 namespace {
 constexpr auto *TAG = "MQTT_EXAMPLE";
 
-extern const char mqtt_eclipse_org_pem_start[]   asm("_binary_mqtt_eclipseprojects_io_pem_start");
-extern const char mqtt_eclipse_org_pem_end[]   asm("_binary_mqtt_eclipseprojects_io_pem_end");
-
-class MyClient final : public idf::mqtt::Client {
+class MyClient final : public mqtt::Client {
 public:
-    using idf::mqtt::Client::Client;
+    using mqtt::Client::Client;
+
 private:
     void on_connected(esp_mqtt_event_handle_t const event) override
     {
-        using idf::mqtt::QoS;
+        using mqtt::QoS;
         subscribe(messages.get());
         subscribe(sent_load.get(), QoS::AtMostOnce);
     }
@@ -39,12 +41,10 @@ private:
             ESP_LOGI(TAG, "Received in the messages topic");
         }
     }
-    idf::mqtt::Filter messages{std::string{"$SYS/broker/messages/received"}};
-    idf::mqtt::Filter sent_load{std::string{"$SYS/broker/load/+/sent"}};
+    mqtt::Filter messages{"$SYS/broker/messages/received"};
+    mqtt::Filter sent_load{"$SYS/broker/load/+/sent"};
 };
 }
-
-namespace mqtt = idf::mqtt;
 
 extern "C" void app_main(void)
 {
@@ -71,15 +71,16 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     mqtt::BrokerConfiguration broker{
-        .address = {mqtt::URI{std::string{CONFIG_BROKER_URI}}},
-        .security = mqtt::CryptographicInformation{mqtt::PEM{mqtt_eclipse_org_pem_start}}
+        .address = {mqtt::URI{std::string{CONFIG_BROKER_URL}}},
+        .security =  mqtt::Insecure{}
     };
-    idf::mqtt::ClientCredentials credentials{};
-    idf::mqtt::Configuration config{};
+    mqtt::ClientCredentials credentials{};
+    mqtt::Configuration config{};
 
     MyClient client{broker, credentials, config};
+
     while (true) {
         constexpr TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-        vTaskDelay( xDelay );
+        vTaskDelay(xDelay);
     }
 }
