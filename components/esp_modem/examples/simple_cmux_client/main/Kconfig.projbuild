@@ -14,6 +14,14 @@ menu "Example Configuration"
             bool "BG96"
             help
                 Quectel BG96 is a series of LTE Cat M1/Cat NB1/EGPRS module.
+        config EXAMPLE_MODEM_DEVICE_SIM7000
+            bool "SIM7000"
+            help
+                SIM7000 is a Multi-Band LTE-FDD and GSM/GPRS/EDGE module.
+        config EXAMPLE_MODEM_DEVICE_SIM7070
+            bool "SIM7070"
+            help
+                SIM7070 is Multi-Band CAT M and NB IoT module.
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
@@ -39,6 +47,50 @@ menu "Example Configuration"
         help
             Pin to unlock the SIM
 
+    choice EXAMPLE_FLOW_CONTROL
+        bool "Set preferred modem control flow"
+        default EXAMPLE_FLOW_CONTROL_NONE
+        help
+            Set the modem's preferred control flow
+
+        config EXAMPLE_FLOW_CONTROL_NONE
+            bool "No control flow"
+        config EXAMPLE_FLOW_CONTROL_SW
+            bool "SW control flow"
+        config EXAMPLE_FLOW_CONTROL_HW
+            bool "HW control flow"
+    endchoice
+
+    menu "UART Configuration"
+        config EXAMPLE_MODEM_UART_TX_PIN
+            int "TXD Pin Number"
+            default 25
+            range 0 31
+            help
+                Pin number of UART TX.
+
+        config EXAMPLE_MODEM_UART_RX_PIN
+            int "RXD Pin Number"
+            default 26
+            range 0 31
+            help
+                Pin number of UART RX.
+
+        config EXAMPLE_MODEM_UART_RTS_PIN
+            int "RTS Pin Number"
+            default 27
+            range 0 31
+            help
+                Pin number of UART RTS.
+
+        config EXAMPLE_MODEM_UART_CTS_PIN
+            int "CTS Pin Number"
+            default 23
+            range 0 31
+            help
+                Pin number of UART CTS.
+    endmenu
+    
     config EXAMPLE_USE_VFS_TERM
         bool "Use VFS terminal"
         default n
