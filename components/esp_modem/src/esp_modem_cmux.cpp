@@ -17,15 +17,18 @@
 #include <cxx_include/esp_modem_cmux.hpp>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_log.h"
+#include "sdkconfig.h"
 
 using namespace esp_modem;
 
+#ifdef CONFIG_ESP_MODEM_CMUX_DEFRAGMENT_PAYLOAD
 /**
  * @brief Define this to defragment partially received data of CMUX payload
  *        This is useful if upper layers expect the entire payload available
  *        for parsing.
  */
 #define DEFRAGMENT_CMUX_PAYLOAD
+#endif
 
 #define EA 0x01  /* Extension bit      */
 #define CR 0x02  /* Command / Response */
@@ -143,6 +146,10 @@ void CMux::data_available(uint8_t *data, size_t len)
 #endif
         }
     } else if ((type&FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
+        if (len > 0 && (data[0] & 0xE1) == 0xE1) {
+            // Not a DISC, ignore (MSC frame)
+            return;
+        }
         Scoped<Lock> l(lock);
         sabm_ack = dlci;
     }
@@ -286,7 +293,7 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
         actual_len = term->read(data, data_to_read);
 #else
         data = buffer.get();
-        actual_len = term->read(data, buffer_size);
+        actual_len = term->read(data, buffer.size);
 #endif
     }
     ESP_LOG_BUFFER_HEXDUMP("CMUX Received", data, actual_len, ESP_LOG_VERBOSE);
@@ -384,6 +391,9 @@ bool CMux::init()
             if (timeout++ > 100) {
                 return false;
             }
+        }
+        if (i > 1) {    // wait for each virtual terminal to settle MSC (no need for control term, DLCI=0)
+            usleep(CONFIG_ESP_MODEM_CMUX_DELAY_AFTER_DLCI_SETUP * 1'000);
         }
     }
     return true;
