@@ -114,13 +114,29 @@ after creating multiple virtual terminals, designating some of them solely to da
 </section>
 <section id="dte-s">
 <h3>DTE’s<a class="headerlink" href="#dte-s" title="Permalink to this heading">¶</a></h3>
-<p>Currently we support only UART, but modern modules support other communication interfaces, such as USB, SPI.</p>
+<p>Currently, we support only UART (and USB as a preview feature), but modern modules support other communication interfaces, such as USB, SPI.</p>
 </section>
 <section id="other-devices">
 <h3>Other devices<a class="headerlink" href="#other-devices" title="Permalink to this heading">¶</a></h3>
 <p>Adding a new device is a must-have requirement for the esp-modem component. Different modules support different commands,
 or some commands might have a different implementation. Adding a new device means to provide a new implementation
 as a class derived from <code class="docutils literal notranslate"><span class="pre">GenericModule</span></code>, where we could add new commands or modify the existing ones.</p>
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this heading">¶</a></h2>
+<p>Modem abstraction is configurable both compile-time and run-time.</p>
+<section id="component-kconfig">
+<h3>Component Kconfig<a class="headerlink" href="#component-kconfig" title="Permalink to this heading">¶</a></h3>
+<p>Compile-time configuration is provided using menuconfig. Please check the description for the CMUX mode configuration options.</p>
+</section>
+<section id="runtime-configuration">
+<h3>Runtime configuration<a class="headerlink" href="#runtime-configuration" title="Permalink to this heading">¶</a></h3>
+<p>Is defined using standard configuration structures for <code class="docutils literal notranslate"><span class="pre">DTE</span></code> and <code class="docutils literal notranslate"><span class="pre">DCE</span></code> objects separately. Please find documentation of</p>
+<ul class="simple">
+<li><p>:cpp:class:<code class="docutils literal notranslate"><span class="pre">esp_modem_dte_config_t</span></code></p></li>
+<li><p>:cpp:class:<code class="docutils literal notranslate"><span class="pre">esp_modem_dce_config_t</span></code></p></li>
+</ul>
 </section>
 </section>
 </section>
@@ -156,6 +172,11 @@ as a class derived from <code class="docutils literal notranslate"><span class="
 <li class="toctree-l3"><a class="reference internal" href="#cmux">CMUX</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#dte-s">DTE’s</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#other-devices">Other devices</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#component-kconfig">Component Kconfig</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#runtime-configuration">Runtime configuration</a></li>
 </ul>
 </li>
 </ul>
