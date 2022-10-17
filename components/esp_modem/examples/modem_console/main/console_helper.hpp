@@ -1,10 +1,11 @@
-/* Modem console example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * Modem console example
 */
 
 #pragma once
@@ -91,6 +92,11 @@ public:
      * @brief Another method of Console command definitions using vector arg struct
      */
     explicit ConsoleCommand(const char *command, const char *help, const std::vector<CommandArgs> &args, std::function<bool(ConsoleCommand *)> f);
+
+    /**
+     * @brief Destructor of ConsoleCommand
+     */
+    ~ConsoleCommand();
 
     /**
      * @brief Utility getters of various params from the argument list

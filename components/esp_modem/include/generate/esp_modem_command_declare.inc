@@ -295,6 +295,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_network_system_mode, command_result, 1, INT_OU
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_gnss_power_mode, command_result, 1, INT_IN(p1, mode)) \
     \
+/**
+ * @brief GNSS power control
+ * @param[out] mode power mode (0 - off, 1 - on)
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_gnss_power_mode, command_result, 1, INT_OUT(p1, mode)) \
+    \
 
 
 #ifdef GENERATE_DOCS
@@ -317,7 +324,7 @@ public:
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) return_type esp_modem_ ## name (__VA_ARGS__);
 #endif
 
-DECLARE_ALL_COMMAND_APIS()
+    DECLARE_ALL_COMMAND_APIS()
 
 #ifdef __cplusplus
 };

@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -87,7 +87,7 @@ public:
         return flags_ & BIO_FLAGS_READ;
     }
 
-    static std::pair<std::shared_ptr<bio>, std::shared_ptr<bio>>  new_pair(const char* error_location)
+    static std::pair<std::shared_ptr<bio>, std::shared_ptr<bio>>  new_pair(const char *error_location)
     {
         auto b1 = std::shared_ptr<bio>(new (std::nothrow) bio);
         auto b2 = std::shared_ptr<bio>(new (std::nothrow) bio);
@@ -110,4 +110,6 @@ private:
     size_t flags_ {0};
 };
 
-} } } // namespace asio::ssl::mbedtls
+}
+}
+} // namespace asio::ssl::mbedtls

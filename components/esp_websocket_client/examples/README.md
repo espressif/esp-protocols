@@ -86,4 +86,3 @@ if __name__ == '__main__':
     # gunicorn -b 0.0.0.0:5000 --workers 4 --threads 100 module:app
     app.run(host="0.0.0.0", debug=True)
 ```
-

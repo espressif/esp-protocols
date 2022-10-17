@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 /* ESP HTTP Client Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
@@ -71,11 +76,11 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
         ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
         if (data->op_code == 0x08 && data->data_len == 2) {
-            ESP_LOGW(TAG, "Received closed message with code=%d", 256*data->data_ptr[0] + data->data_ptr[1]);
+            ESP_LOGW(TAG, "Received closed message with code=%d", 256 * data->data_ptr[0] + data->data_ptr[1]);
         } else {
             ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
         }
- 
+
         // If received data contains json structure it succeed to parse
         cJSON *root = cJSON_Parse(data->data_ptr);
         if (root) {

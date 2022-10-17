@@ -1,10 +1,11 @@
-/* Modem console example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * Modem console example
 */
 
 #include "console_helper.hpp"
@@ -16,6 +17,16 @@ ConsoleCommand::ConsoleCommand(const char *command, const char *help, const std:
     func(std::move(f))
 {
     RegisterCommand(command, help, args);
+}
+
+ConsoleCommand::~ConsoleCommand()
+{
+    // Find this command in static list of commands and remove it
+    auto cmd = std::find(console_commands.begin(), console_commands.end(), this);
+    if (cmd != console_commands.end()) {
+        console_commands.erase(cmd);
+        last_command--;
+    }
 }
 
 void ConsoleCommand::RegisterCommand(const char *command, const char *help, const std::vector<CommandArgs> &args)

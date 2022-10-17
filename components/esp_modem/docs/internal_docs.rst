@@ -115,8 +115,3 @@ Modem types
 
 .. doxygengroup:: ESP_MODEM_TYPES
    :members:
-
-
-
-
-

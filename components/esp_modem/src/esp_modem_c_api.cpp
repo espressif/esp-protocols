@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <cassert>
 #include "cxx_include/esp_modem_dte.hpp"
@@ -72,7 +64,7 @@ extern "C" void esp_modem_destroy(esp_modem_dce_t *dce_wrap)
     }
 }
 
-extern "C" esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce_wrap, esp_modem_terminal_error_cbt err_cb)
+extern "C" esp_err_t esp_modem_set_error_cb(esp_modem_dce_t *dce_wrap, esp_modem_terminal_error_cbt err_cb)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->dte == nullptr) {
         return ESP_ERR_INVALID_ARG;
@@ -105,7 +97,7 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce
         return dce_wrap->dce->set_mode(modem_mode::DATA_MODE) ? ESP_OK : ESP_FAIL;
     }
     if (mode == ESP_MODEM_MODE_COMMAND) {
-       return dce_wrap->dce->set_mode(modem_mode::COMMAND_MODE) ? ESP_OK : ESP_FAIL;
+        return dce_wrap->dce->set_mode(modem_mode::COMMAND_MODE) ? ESP_OK : ESP_FAIL;
     }
     if (mode == ESP_MODEM_MODE_CMUX) {
         return dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) ? ESP_OK : ESP_FAIL;
@@ -274,7 +266,7 @@ extern "C" esp_err_t esp_modem_power_down(esp_modem_dce_t *dce_wrap)
     return command_response_to_esp_err(dce_wrap->dce->power_down());
 }
 
-extern "C" esp_err_t esp_modem_set_operator(esp_modem_dce_t *dce_wrap, int mode, int format, const char* oper)
+extern "C" esp_err_t esp_modem_set_operator(esp_modem_dce_t *dce_wrap, int mode, int format, const char *oper)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
@@ -341,7 +333,7 @@ extern "C" esp_err_t esp_modem_set_preferred_mode(esp_modem_dce_t *dce_wrap, int
     return command_response_to_esp_err(dce_wrap->dce->set_preferred_mode(mode));
 }
 
-extern "C" esp_err_t esp_modem_set_network_bands(esp_modem_dce_t *dce_wrap, const char* mode, const int* bands, int size)
+extern "C" esp_err_t esp_modem_set_network_bands(esp_modem_dce_t *dce_wrap, const char *mode, const int *bands, int size)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
@@ -350,7 +342,7 @@ extern "C" esp_err_t esp_modem_set_network_bands(esp_modem_dce_t *dce_wrap, cons
     return command_response_to_esp_err(dce_wrap->dce->set_network_bands(mode, bands, size));
 }
 
-extern "C" esp_err_t esp_modem_get_network_system_mode(esp_modem_dce_t *dce_wrap, int* p_mode)
+extern "C" esp_err_t esp_modem_get_network_system_mode(esp_modem_dce_t *dce_wrap, int *p_mode)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
@@ -369,6 +361,19 @@ extern "C" esp_err_t esp_modem_set_gnss_power_mode(esp_modem_dce_t *dce_wrap, in
         return ESP_ERR_INVALID_ARG;
     }
     return command_response_to_esp_err(dce_wrap->dce->set_gnss_power_mode(mode));
+}
+
+extern "C" esp_err_t esp_modem_get_gnss_power_mode(esp_modem_dce_t *dce_wrap, int *p_mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    int mode;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_gnss_power_mode(mode));
+    if (ret == ESP_OK) {
+        *p_mode = mode;
+    }
+    return ret;
 }
 
 extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)

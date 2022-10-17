@@ -124,4 +124,3 @@ API Reference
 -------------
 
 .. include-build-file:: inc/esp_websocket_client.inc
-
