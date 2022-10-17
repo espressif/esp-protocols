@@ -45,7 +45,7 @@ The modem device is modeled with a DCE (Data Communication Equipment) object, wh
 <li><p>PPP Netif representing a network interface communicating with the DTE using PPP protocol.</p></li>
 <li><p>Module abstracting the specific device model and its commands.</p></li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>   <span class="o">+-----+</span>   
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>   <span class="o">+-----+</span>
    <span class="o">|</span> <span class="n">DTE</span> <span class="o">|--+</span>
    <span class="o">+-----+</span>  <span class="o">|</span>   <span class="o">+-------+</span>
             <span class="o">+--&gt;|</span>   <span class="n">DCE</span> <span class="o">|</span>
@@ -53,10 +53,10 @@ The modem device is modeled with a DCE (Data Communication Equipment) object, wh
    <span class="o">|</span> <span class="n">Module</span><span class="o">|---&gt;|</span>       <span class="o">|</span>
    <span class="o">+-------+</span>    <span class="o">|</span>       <span class="o">|</span><span class="n">o</span><span class="o">---</span> <span class="n">send_commands</span>
              <span class="o">+-&gt;|</span>       <span class="o">|</span>
-   <span class="o">+------+</span>  <span class="o">|</span>  <span class="o">+-------+</span> 
-   <span class="o">|</span> <span class="n">PPP</span>  <span class="o">|--+</span> 
+   <span class="o">+------+</span>  <span class="o">|</span>  <span class="o">+-------+</span>
+   <span class="o">|</span> <span class="n">PPP</span>  <span class="o">|--+</span>
    <span class="o">|</span> <span class="n">netif</span><span class="o">|------------------&gt;</span> <span class="n">network</span> <span class="n">events</span>
-   <span class="o">+------+</span> 
+   <span class="o">+------+</span>
 </pre></div>
 </div>
 <section id="modem-components">
