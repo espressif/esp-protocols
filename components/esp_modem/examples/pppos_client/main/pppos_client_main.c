@@ -175,16 +175,13 @@ void app_main(void)
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 #endif
     assert(dce);
-    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW)
-    {
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
         }
         ESP_LOGI(TAG, "set_flow_control OK");
-    } else {
-    }
 
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
