@@ -1,10 +1,11 @@
-/* MDNS-SD Query and advertise Example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * MDNS-SD Query and advertise Example
 */
 #include <string.h>
 #include "freertos/FreeRTOS.h"
@@ -24,17 +25,17 @@
 #define EXAMPLE_MDNS_INSTANCE CONFIG_MDNS_INSTANCE
 #define EXAMPLE_BUTTON_GPIO   CONFIG_MDNS_BUTTON_GPIO
 
-static const char * TAG = "mdns-test";
-static char * generate_hostname(void);
+static const char *TAG = "mdns-test";
+static char *generate_hostname(void);
 
 #if CONFIG_MDNS_RESOLVE_TEST_SERVICES == 1
-static void  query_mdns_host_with_gethostbyname(char * host);
-static void  query_mdns_host_with_getaddrinfo(char * host);
+static void  query_mdns_host_with_gethostbyname(char *host);
+static void  query_mdns_host_with_getaddrinfo(char *host);
 #endif
 
 static void initialise_mdns(void)
 {
-    char * hostname = generate_hostname();
+    char *hostname = generate_hostname();
 
     //initialize mDNS
     ESP_ERROR_CHECK( mdns_init() );
@@ -84,7 +85,7 @@ static void initialise_mdns(void)
 }
 
 /* these strings match mdns_ip_protocol_t enumeration */
-static const char * ip_protocol_str[] = {"V4", "V6", "MAX"};
+static const char *ip_protocol_str[] = {"V4", "V6", "MAX"};
 
 static void mdns_print_results(mdns_result_t *results)
 {
@@ -120,17 +121,17 @@ static void mdns_print_results(mdns_result_t *results)
     }
 }
 
-static void query_mdns_service(const char * service_name, const char * proto)
+static void query_mdns_service(const char *service_name, const char *proto)
 {
     ESP_LOGI(TAG, "Query PTR: %s.%s.local", service_name, proto);
 
-    mdns_result_t * results = NULL;
+    mdns_result_t *results = NULL;
     esp_err_t err = mdns_query_ptr(service_name, proto, 3000, 20,  &results);
-    if(err){
+    if (err) {
         ESP_LOGE(TAG, "Query Failed: %s", esp_err_to_name(err));
         return;
     }
-    if(!results){
+    if (!results) {
         ESP_LOGW(TAG, "No results found!");
         return;
     }
@@ -142,7 +143,7 @@ static void query_mdns_service(const char * service_name, const char * proto)
 static bool check_and_print_result(mdns_search_once_t *search)
 {
     // Check if any result is available
-    mdns_result_t * result = NULL;
+    mdns_result_t *result = NULL;
     if (!mdns_query_async_get_results(search, 0, &result, NULL)) {
         return false;
     }
@@ -152,9 +153,9 @@ static bool check_and_print_result(mdns_search_once_t *search)
     }
 
     // If yes, print the result
-    mdns_ip_addr_t * a = result->addr;
+    mdns_ip_addr_t *a = result->addr;
     while (a) {
-        if(a->addr.type == ESP_IPADDR_TYPE_V6){
+        if (a->addr.type == ESP_IPADDR_TYPE_V6) {
             printf("  AAAA: " IPV6STR "\n", IPV62STR(a->addr.u_addr.ip6));
         } else {
             printf("  A   : " IPSTR "\n", IP2STR(&(a->addr.u_addr.ip4)));
@@ -166,7 +167,7 @@ static bool check_and_print_result(mdns_search_once_t *search)
     return true;
 }
 
-static void query_mdns_hosts_async(const char * host_name)
+static void query_mdns_hosts_async(const char *host_name)
 {
     ESP_LOGI(TAG, "Query both A and AAA: %s.local", host_name);
 
@@ -187,7 +188,7 @@ static void query_mdns_hosts_async(const char * host_name)
     }
 }
 
-static void query_mdns_host(const char * host_name)
+static void query_mdns_host(const char *host_name)
 {
     ESP_LOGI(TAG, "Query A: %s.local", host_name);
 
@@ -195,8 +196,8 @@ static void query_mdns_host(const char * host_name)
     addr.addr = 0;
 
     esp_err_t err = mdns_query_a(host_name, 2000,  &addr);
-    if(err){
-        if(err == ESP_ERR_NOT_FOUND){
+    if (err) {
+        if (err == ESP_ERR_NOT_FOUND) {
             ESP_LOGW(TAG, "%s: Host was not found!", esp_err_to_name(err));
             return;
         }
@@ -285,7 +286,7 @@ void app_main(void)
 /** Generate host name based on sdkconfig, optionally adding a portion of MAC address to it.
  *  @return host name string allocated from the heap
  */
-static char* generate_hostname(void)
+static char *generate_hostname(void)
 {
 #ifndef CONFIG_MDNS_ADD_MAC_TO_HOSTNAME
     return strdup(CONFIG_MDNS_HOSTNAME);
@@ -305,7 +306,7 @@ static char* generate_hostname(void)
  *  @brief Executes gethostbyname and displays list of resolved addresses.
  *  Note: This function is used only to test advertised mdns hostnames resolution
  */
-static void  query_mdns_host_with_gethostbyname(char * host)
+static void  query_mdns_host_with_gethostbyname(char *host)
 {
     struct hostent *res = gethostbyname(host);
     if (res) {
@@ -321,10 +322,10 @@ static void  query_mdns_host_with_gethostbyname(char * host)
  *  @brief Executes getaddrinfo and displays list of resolved addresses.
  *  Note: This function is used only to test advertised mdns hostnames resolution
  */
-static void  query_mdns_host_with_getaddrinfo(char * host)
+static void  query_mdns_host_with_getaddrinfo(char *host)
 {
     struct addrinfo hints;
-    struct addrinfo * res;
+    struct addrinfo *res;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
@@ -335,8 +336,8 @@ static void  query_mdns_host_with_getaddrinfo(char * host)
             char *resolved_addr;
 #if CONFIG_LWIP_IPV6
             resolved_addr = res->ai_family == AF_INET ?
-                inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr) :
-                inet_ntoa(((struct sockaddr_in6 *) res->ai_addr)->sin6_addr);
+                            inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr) :
+                            inet_ntoa(((struct sockaddr_in6 *) res->ai_addr)->sin6_addr);
 #else
             resolved_addr = inet_ntoa(((struct sockaddr_in *) res->ai_addr)->sin_addr);
 #endif // CONFIG_LWIP_IPV6

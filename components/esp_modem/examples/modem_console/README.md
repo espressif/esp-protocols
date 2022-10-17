@@ -20,7 +20,11 @@ For USB enabled targets (ESP32-S2 and ESP32-S3), it is possible to connect to th
 1. In menuconfig, navigate to `Example Configuration->Type of serial connection to the modem` and choose `USB`.
 2. Connect the modem USB signals to pin 19 (DATA-) and 20 (DATA+) on your ESP chip.
 
-USB example uses Quactel BG96 modem device.
+USB example uses Quactel BG96 modem device. BG96 needs a positive pulse on its PWK pin to boot-up.
+
+This example supports USB modem hot-plugging and reconnection. There is one limitation coming from esp_console component:
+When esp_console REPL is being destroyed (after USB mode disconnection or after `exit` command), it will block on UART read.
+You must send a character to it (via idf.py monitor), so it unblocks and properly exits.
 
 ### Supported IDF versions
 

@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <cassert>
 #include "esp_log.h"
@@ -31,8 +23,8 @@ static const char *TAG = "modem_api_target";
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config)
 {
     TRY_CATCH_RET_NULL(
-            auto term = create_uart_terminal(config);
-    return std::make_shared<DTE>(config, std::move(term));
+        auto term = create_uart_terminal(config);
+        return std::make_shared<DTE>(config, std::move(term));
     )
 }
 

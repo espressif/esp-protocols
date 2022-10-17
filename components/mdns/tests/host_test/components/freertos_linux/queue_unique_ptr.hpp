@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 
@@ -22,31 +14,30 @@
 #include <atomic>
 
 template <class T>
-class QueueMock
-{
+class QueueMock {
 public:
     QueueMock(void): q(), m(), c() {}
     ~QueueMock(void) {}
 
-void send(std::unique_ptr<T> t)
-{
-    std::lock_guard<std::mutex> lock(m);
-    q.push(std::move(t));
-    c.notify_one();
-}
-
-std::unique_ptr<T> receive(uint32_t ms)
-{
-    std::unique_lock<std::mutex> lock(m);
-    while(q.empty()) {
-        if (c.wait_for(lock, std::chrono::milliseconds(ms)) == std::cv_status::timeout) {
-            return nullptr;
-        }
+    void send(std::unique_ptr<T> t)
+    {
+        std::lock_guard<std::mutex> lock(m);
+        q.push(std::move(t));
+        c.notify_one();
     }
-    std::unique_ptr<T> val = std::move(q.front());
-    q.pop();
-    return val;
-}
+
+    std::unique_ptr<T> receive(uint32_t ms)
+    {
+        std::unique_lock<std::mutex> lock(m);
+        while (q.empty()) {
+            if (c.wait_for(lock, std::chrono::milliseconds(ms)) == std::cv_status::timeout) {
+                return nullptr;
+            }
+        }
+        std::unique_ptr<T> val = std::move(q.front());
+        q.pop();
+        return val;
+    }
 
 private:
     std::queue<std::unique_ptr<T>> q;

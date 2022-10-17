@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -16,9 +16,9 @@
 #define SSL_OP_SINGLE_DH_USE 0
 #define SSL_OP_NO_COMPRESSION 0
 
-#define SSL_OP_NO_SSLv2					0x01000000L
-#define SSL_OP_NO_SSLv3					0x02000000L
-#define SSL_OP_NO_TLSv1					0x04000000L
+#define SSL_OP_NO_SSLv2                 0x01000000L
+#define SSL_OP_NO_SSLv3                 0x02000000L
+#define SSL_OP_NO_TLSv1                 0x04000000L
 
 #define SSL_VERIFY_NONE                 0x00
 #define SSL_VERIFY_PEER                 0x01
@@ -35,12 +35,14 @@ namespace mbedtls {
 class engine;
 class bio;
 class shared_ctx;
-} } } // namespace asio::ssl::mbedtls
+}
+}
+} // namespace asio::ssl::mbedtls
 
 //
 // Supply OpenSSL types as aliases to mbedtls classes
 //
-using X509_STORE_CTX=void;
-using BIO=asio::ssl::mbedtls::bio;
-using SSL_CTX=asio::ssl::mbedtls::shared_ctx;
-using SSL=asio::ssl::mbedtls::engine;
+using X509_STORE_CTX = void;
+using BIO = asio::ssl::mbedtls::bio;
+using SSL_CTX = asio::ssl::mbedtls::shared_ctx;
+using SSL = asio::ssl::mbedtls::engine;
