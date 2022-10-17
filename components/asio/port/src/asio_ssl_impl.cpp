@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,4 +17,6 @@ asio::detail::shared_ptr<openssl_init_base::do_init> openssl_init_base::instance
     return nullptr;
 }
 
-} } } // namespace asio::ssl::detail
+}
+}
+} // namespace asio::ssl::detail

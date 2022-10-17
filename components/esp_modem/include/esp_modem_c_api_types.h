@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 
@@ -40,8 +32,7 @@ typedef struct esp_modem_PdpContext_t {
 /**
  * @brief DCE mode: This enum is used to set desired operation mode of the DCE
  */
-typedef enum esp_modem_dce_mode
-{
+typedef enum esp_modem_dce_mode {
     ESP_MODEM_MODE_COMMAND,  /**< Default mode after modem startup, used for sending AT commands */
     ESP_MODEM_MODE_DATA,     /**< Used for switching to PPP mode for the modem to connect to a network */
     ESP_MODEM_MODE_CMUX,     /**< Multiplexed terminal mode */
@@ -50,8 +41,7 @@ typedef enum esp_modem_dce_mode
 /**
  * @brief DCE devices: Enum list of supported devices
  */
-typedef enum esp_modem_dce_device
-{
+typedef enum esp_modem_dce_device {
     ESP_MODEM_DCE_GENETIC,  /**< The most generic device */
     ESP_MODEM_DCE_SIM7600,
     ESP_MODEM_DCE_SIM7070,
@@ -63,8 +53,7 @@ typedef enum esp_modem_dce_device
 /**
  * @brief Terminal errors
  */
-typedef enum esp_modem_terminal_error
-{
+typedef enum esp_modem_terminal_error {
     ESP_MODEM_TERMINAL_BUFFER_OVERFLOW,
     ESP_MODEM_TERMINAL_CHECKSUM_ERROR,
     ESP_MODEM_TERMINAL_UNEXPECTED_CONTROL_FLOW,
@@ -105,16 +94,16 @@ esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_mode
  *
  * @param dce DCE to destroy
  */
-void esp_modem_destroy(esp_modem_dce_t * dce);
+void esp_modem_destroy(esp_modem_dce_t *dce);
 
 /**
  * @brief Set DTE's error callback
- * 
+ *
  * @param dce Modem DCE handle
  * @param[in] err_cb Error callback
  * @return ESP_OK on success, ESP_FAIL on failure
  */
-esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce, esp_modem_terminal_error_cbt err_cb);
+esp_err_t esp_modem_set_error_cb(esp_modem_dce_t *dce, esp_modem_terminal_error_cbt err_cb);
 
 /**
  * @brief Set operation mode for this DCE
@@ -122,7 +111,7 @@ esp_err_t esp_modem_set_error_cb(esp_modem_dce_t * dce, esp_modem_terminal_error
  * @param mode Desired MODE
  * @return ESP_OK on success, ESP_FAIL on failure
  */
-esp_err_t esp_modem_set_mode(esp_modem_dce_t * dce, esp_modem_dce_mode_t mode);
+esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce, esp_modem_dce_mode_t mode);
 
 /**
  * @}

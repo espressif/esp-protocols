@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 #include <stdio.h>
 #include "mdns.h"
 #include "esp_log.h"
@@ -6,7 +11,7 @@
 
 static const char *TAG = "mdns-test";
 
-static void query_mdns_host(const char * host_name)
+static void query_mdns_host(const char *host_name)
 {
     ESP_LOGI(TAG, "Query A: %s.local", host_name);
 
@@ -14,8 +19,8 @@ static void query_mdns_host(const char * host_name)
     addr.addr = 0;
 
     esp_err_t err = mdns_query_a(host_name, 2000,  &addr);
-    if(err){
-        if(err == ESP_ERR_NOT_FOUND){
+    if (err) {
+        if (err == ESP_ERR_NOT_FOUND) {
             ESP_LOGW(TAG, "%x: Host was not found!", (err));
             return;
         }
@@ -26,7 +31,7 @@ static void query_mdns_host(const char * host_name)
     ESP_LOGI(TAG, "Query A: %s.local resolved to: " IPSTR, host_name, IP2STR(&addr));
 }
 
-int main(int argc , char *argv[])
+int main(int argc, char *argv[])
 {
 
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -42,9 +47,9 @@ int main(int argc , char *argv[])
     mdns_instance_name_set("myesp-inst");
     //structure with TXT records
     mdns_txt_item_t serviceTxtData[3] = {
-            {"board","esp32"},
-            {"u","user"},
-            {"p","password"}
+        {"board", "esp32"},
+        {"u", "user"},
+        {"p", "password"}
     };
     vTaskDelay(1000);
     ESP_ERROR_CHECK(mdns_service_add("myesp-service2", "_http", "_tcp", 80, serviceTxtData, 3));

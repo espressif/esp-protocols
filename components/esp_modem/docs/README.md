@@ -1,14 +1,14 @@
 # ESP MODEM
 
 This component is used to communicate with modems in the command mode (using AT commands), as well as the data mode
-(over PPPoS protocol). 
+(over PPPoS protocol).
 The modem device is modeled with a DCE (Data Communication Equipment) object, which is composed of:
 * DTE (Data Terminal Equipment), which abstracts the terminal (currently only UART implemented).
 * PPP Netif representing a network interface communicating with the DTE using PPP protocol.
 * Module abstracting the specific device model and its commands.
 
 ```
-   +-----+   
+   +-----+
    | DTE |--+
    +-----+  |   +-------+
             +-->|   DCE |
@@ -16,17 +16,17 @@ The modem device is modeled with a DCE (Data Communication Equipment) object, wh
    | Module|--->|       |
    +-------+    |       |o--- send_commands
              +->|       |
-   +------+  |  +-------+ 
-   | PPP  |--+ 
+   +------+  |  +-------+
+   | PPP  |--+
    | netif|------------------> network events
-   +------+ 
+   +------+
 ```
 
 ## Modem components
 ### DCE
 
 This is the basic operational unit of the esp_modem component, abstracting a specific module in software,
-which is basically configured by 
+which is basically configured by
 * the I/O communication media (UART), defined by the DTE configuration
 * the specific command library supported by the device model, defined with the module type
 * network interface configuration (PPPoS config in lwip)
@@ -52,7 +52,7 @@ Users interact with the esp-modem using the DCE's interface, to basically
 * Switch between command and data mode to connect to the internet via cellular network.
 * Send various commands to the device (e.g. send SMS)
 
-The applications typically register handlers for network events to receive notification on the network availability and 
+The applications typically register handlers for network events to receive notification on the network availability and
 IP address changes.
 
 Common use cases of the esp-modem are also listed as the examples:

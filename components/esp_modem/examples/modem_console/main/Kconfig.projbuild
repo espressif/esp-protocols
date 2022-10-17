@@ -83,7 +83,7 @@ menu "Example Configuration"
             default EXAMPLE_FLOW_CONTROL_NONE
             help
                 Set the modem's preferred control flow
-    
+
             config EXAMPLE_FLOW_CONTROL_NONE
                 bool "No control flow"
             config EXAMPLE_FLOW_CONTROL_SW

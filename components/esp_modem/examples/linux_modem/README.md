@@ -20,4 +20,4 @@ over PPPoS, i.e. over the modem serial line.
 
 ### Supported IDF versions
 
-This example (using the default CMake IDF build system) is only supported from `v4.4`, since is uses `idf.py`'s linux target.  
+This example (using the default CMake IDF build system) is only supported from `v4.4`, since is uses `idf.py`'s linux target.

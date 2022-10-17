@@ -8,7 +8,7 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v4.1", "release-v4.2", "release-v4.3", "release-v4.4"]
         example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
-        idf_target: ["esp32"]        
+        idf_target: ["esp32"]
         exclude:
           - idf_ver: "release-v4.1"
             example: modem_console
@@ -57,30 +57,30 @@ jobs:
           cat sdkconfig.ci.usb >> sdkconfig.defaults
           idf.py build
 
-  build_mdns: 
-    strategy: 
-      matrix: 
-        idf_ver: ["latest"] 
+  build_mdns:
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
         idf_target: ["esp32", "esp32s2", "esp32c3"]
         config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
-    runs-on: ubuntu-20.04 
-    container: espressif/idf:${{ matrix.idf_ver }} 
-    steps: 
-      - name: Checkout esp-protocols 
-        uses: actions/checkout@v3 
-        with: 
-          submodules: recursive 
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.config }} 
-        env: 
-          IDF_TARGET: ${{ matrix.idf_target }} 
-        shell: bash 
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.config }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
         working-directory: components/mdns/examples/
-        run: | 
-          . ${IDF_PATH}/export.sh 
+        run: |
+          . ${IDF_PATH}/export.sh
           rm -rf sdkconfig sdkconfig.defaults build build_${{ matrix.config }}
-          cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults  
-          idf.py set-target ${{ matrix.idf_target }}  
-          idf.py build 
+          cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults
+          idf.py set-target ${{ matrix.idf_target }}
+          idf.py build
           mv build build_${{ matrix.config }}
       - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.config }}
         working-directory: components/mdns/examples
@@ -118,7 +118,7 @@ jobs:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
         with:
-          submodules: recursive 
+          submodules: recursive
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
         working-directory: components/asio/examples/${{ matrix.example }}
         env:
@@ -234,9 +234,9 @@ jobs:
           path: components/esp_websocket_client/examples/*.xml
 
   run-target-mdns:
-    strategy: 
-      matrix: 
-        idf_ver: ["latest"] 
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
         idf_target: ["esp32"]
         config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
     name: Run mDNS Example Test on target
@@ -267,7 +267,7 @@ jobs:
         run: |
             rm -rf build
             mv build_${{ matrix.config }} build
-            cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults  
+            cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults
             python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
             rm -rf build sdkconfig.defaults
       - uses: actions/upload-artifact@v2
@@ -277,9 +277,9 @@ jobs:
           path: components/mdns/examples/*.xml
 
   run-target-asio:
-    strategy: 
-      matrix: 
-        idf_ver: ["latest"] 
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
         idf_target: ["esp32"]
         example: ["asio_chat", "tcp_echo_server", "udp_echo_server", "ssl_client_server"]
     name: Run ASIO Example Test on target
