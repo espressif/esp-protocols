@@ -16,15 +16,19 @@
 #include "nmea_parser.h"
 
 /**
- * @brief Definition of a custom modem which inherits from the GenericModule, uses all its methods
- * and could override any of them. Here, for demonstration purposes only, we redefine just `get_module_name()`
+ * @brief Definition of a custom SIM7070 class with GNSS capabilities.
+ * This inherits from the official esp-modem's SIM7070 device which contains all common library methods.
+ * On top of that, the SIM7070_gnss adds reading GNSS information, which is implemented in a private component.
  */
 class SIM7070_gnss: public esp_modem::SIM7070 {
     using SIM7070::SIM7070;
 public:
-    esp_modem::command_result get_gnss_information_sim70xx(gps_t &gps);
+    esp_modem::command_result get_gnss_information_sim70xx(esp_modem_gps_t &gps);
 };
 
+/**
+ * @brief DCE for the SIM7070_gnss. Here we've got to forward the general commands, aa well as the GNSS one.
+ */
 class DCE_gnss : public esp_modem::DCE_T<SIM7070_gnss> {
 public:
 
@@ -43,14 +47,14 @@ public:
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
-    esp_modem::command_result get_gnss_information_sim70xx(gps_t &gps);
+    esp_modem::command_result get_gnss_information_sim70xx(esp_modem_gps_t &gps);
 
 };
 
 
 /**
- * @brief Helper create method which employs the DCE factory for creating DCE objects templated by a custom module
- * @return unique pointer of the resultant DCE
+ * @brief Helper create method which employs the customized DCE factory for building DCE_gnss objects
+ * @return unique pointer of the specific DCE
  */
 std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
         std::shared_ptr<esp_modem::DTE> dte,

@@ -195,7 +195,7 @@ extern "C" void app_main(void)
 
 
 #if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
-    gps_t gps;
+    esp_modem_gps_t gps;
 
     for (int i = 0; i < 200; ++i) {
         if (dce->get_gnss_information_sim70xx(gps) == esp_modem::command_result::OK) {

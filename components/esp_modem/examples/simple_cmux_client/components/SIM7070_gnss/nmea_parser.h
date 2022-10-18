@@ -97,7 +97,7 @@ typedef enum {
  * @brief GPS object
  *
  */
-struct gps_s {
+struct esp_modem_gps {
     float latitude;                                                /*!< Latitude (degrees) */
     float longitude;                                               /*!< Longitude (degrees) */
     float altitude;                                                /*!< Altitude (meters) */
@@ -117,11 +117,7 @@ struct gps_s {
     float vpa;                                                     /*!< Vertical Position Accuracy  */
 };
 
-typedef struct gps_s gps_t;
-typedef struct gps_s esp_modem_gps_s_t;
-
-
-
+typedef struct esp_modem_gps esp_modem_gps_t;
 
 /**
  * @brief NMEA Parser Event ID

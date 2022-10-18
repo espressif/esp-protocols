@@ -197,6 +197,15 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 #endif
+    assert(dce);
+    if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+            return;
+        }
+        ESP_LOGI(TAG, "HW set_flow_control OK");
+    }
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     while (1) {
@@ -205,26 +214,17 @@ void app_main(void)
         const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
         ESP_LOGI(TAG, "Waiting for USB device connection...");
         esp_modem_dce_t *dce = esp_modem_new_dev_usb(ESP_MODEM_DCE_BG96, &dte_usb_config, &dce_config, esp_netif);
+        assert(dce);
         esp_modem_set_error_cb(dce, usb_terminal_error_handler);
         vTaskDelay(pdMS_TO_TICKS(1000)); // Although the DTE should be ready after USB enumeration, sometimes it fails to respond without this delay
 
 #else
 #error Invalid serial connection to modem.
 #endif
-    assert(dce);
+
     xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT);
 
     /* Run the modem demo app */
-
-    if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
-        esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
-            return;
-        }
-        ESP_LOGI(TAG, "set_flow_control OK");
-    }
-
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
     bool pin_ok = false;

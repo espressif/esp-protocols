@@ -7,36 +7,37 @@
 // Created on: 23.08.2022
 // Author: franz
 
-
-#include <cstdio>
-#include <cstring>
-#include <map>
 #include <string_view>
-#include <vector>
 #include <charconv>
 #include <list>
 #include "sdkconfig.h"
-#include "esp_event.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
-#include "cxx_include/command_library.hpp"
+#include "cxx_include/esp_modem_command_library_utils.hpp"
 #include "esp_log.h"
 #include "SIM7070_gnss.hpp"
 
+constexpr auto const TAG = "SIM7070_gnss";
 
-const static char *const TAG = "SIM7070_gnss";
 
+namespace gnss_factory {
+using namespace esp_modem;
+using namespace dce_factory;
 
-class LocalFactory: public esp_modem::dce_factory::Factory {
+class LocalFactory: public Factory {
+    using DCE_gnss_ret = std::unique_ptr<DCE_gnss>;   // this custom Factory manufactures only unique_ptr<DCE>'s
 public:
-    static std::unique_ptr<DCE_gnss> create(const esp_modem::dce_config *config, std::shared_ptr<esp_modem::DTE> dte, esp_netif_t *netif)
+    static DCE_gnss_ret create(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
     {
-        return esp_modem::dce_factory::Factory::build_generic_DCE<SIM7070_gnss, DCE_gnss, std::unique_ptr<DCE_gnss>>(config, dte, netif);
+        return Factory::build_generic_DCE<SIM7070_gnss, DCE_gnss, DCE_gnss_ret>
+               (config, std::move(dte), netif);
     }
-
 };
+
+} // namespace gnss_factory
+
 /**
  * @brief Helper create method which employs the DCE factory for creating DCE objects templated by a custom module
  * @return unique pointer of the resultant DCE
@@ -45,19 +46,19 @@ std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *c
         std::shared_ptr<esp_modem::DTE> dte,
         esp_netif_t *netif)
 {
-    return LocalFactory::create(config, std::move(dte), netif);
+    return gnss_factory::LocalFactory::create(config, std::move(dte), netif);
 }
 
-esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, gps_t &gps)
+esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, esp_modem_gps_t &gps)
 {
 
     ESP_LOGV(TAG, "%s", __func__ );
-    std::string_view out;
-    auto ret = esp_modem::dce_commands::generic_get_string(t, "AT+CGNSINF\r", out);
+    std::string str_out;
+    auto ret = esp_modem::dce_commands::generic_get_string(t, "AT+CGNSINF\r", str_out);
     if (ret != esp_modem::command_result::OK) {
         return ret;
     }
-
+    std::string_view out(str_out);
 
 
     constexpr std::string_view pattern = "+CGNSINF: ";
@@ -329,12 +330,12 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     return esp_modem::command_result::OK;
 }
 
-esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(gps_t &gps)
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
 {
     return get_gnss_information_sim70xx_lib(dte.get(), gps);
 }
 
-esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(gps_t &gps)
+esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
 {
     return device->get_gnss_information_sim70xx(gps);
 }
