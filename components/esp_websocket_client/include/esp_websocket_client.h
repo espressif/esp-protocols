@@ -194,34 +194,6 @@ int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const ch
 int esp_websocket_client_send_text(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
 
 /**
- * @brief      Send PING data to the WebSocket connection (data send with WS OPCODE=0x9, i.e. text)
- *
- * @param[in]  client  The client
- * @param[in]  data    The data
- * @param[in]  len     The length
- * @param[in]  timeout Write data timeout in RTOS ticks
- *
- * @return
- *     - Number of data was sent
- *     - (-1) if any errors
- */
-int esp_websocket_client_send_ping(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
-
-/**
- * @brief      Send PONG data to the WebSocket connection (data send with WS OPCODE=0xA, i.e. text)
- *
- * @param[in]  client  The client
- * @param[in]  data    The data
- * @param[in]  len     The length
- * @param[in]  timeout Write data timeout in RTOS ticks
- *
- * @return
- *     - Number of data was sent
- *     - (-1) if any errors
- */
-int esp_websocket_client_send_pong(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
-
-/**
  * @brief      Close the WebSocket connection in a clean way
  *
  * Sequence of clean close initiated by client:

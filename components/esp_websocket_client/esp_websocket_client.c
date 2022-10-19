@@ -960,16 +960,6 @@ int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const ch
     return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_BINARY, (const uint8_t *)data, len, timeout);
 }
 
-int esp_websocket_client_send_ping(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
-{
-    return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_PING, (const uint8_t *)data, len, timeout);
-}
-
-int esp_websocket_client_send_pong(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
-{
-    return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_PONG, (const uint8_t *)data, len, timeout);
-}
-
 static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
     int need_write = len;
