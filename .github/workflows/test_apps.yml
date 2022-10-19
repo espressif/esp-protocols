@@ -25,7 +25,7 @@ jobs:
         working-directory: components/mdns/tests/test_apps
         run: |
           . ${IDF_PATH}/export.sh
-          pip install dpkt pytest idf_build_apps pytest-embedded-serial-esp
+          pip install -r $GITHUB_WORKSPACE/ci/requirements.txt
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
         env:
           IDF_TARGET: ${{ matrix.idf_target }}

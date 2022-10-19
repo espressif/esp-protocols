@@ -219,7 +219,7 @@ jobs:
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
-          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/components/esp_websocket_client/examples/requirements.txt
+          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
       - name: Download Example Test to target
         run: python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/esp_websocket_client/examples/build/flash_image.bin
       - name: Run Example Test on target
