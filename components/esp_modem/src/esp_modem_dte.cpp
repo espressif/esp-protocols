@@ -15,24 +15,24 @@ using namespace esp_modem;
 static const size_t dte_default_buffer_size = 1000;
 
 DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
-        buffer(config->dte_buffer_size),
-        cmux_term(nullptr), term(std::move(terminal)), other_term(term),
-        mode(modem_mode::UNDEF) {}
+    buffer(config->dte_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
+    mode(modem_mode::UNDEF) {}
 
 DTE::DTE(std::unique_ptr<Terminal> terminal):
-        buffer(dte_default_buffer_size),
-        cmux_term(nullptr), term(std::move(terminal)), other_term(term),
-        mode(modem_mode::UNDEF) {}
+    buffer(dte_default_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
+    mode(modem_mode::UNDEF) {}
 
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l(internal_lock);
     result = command_result::TIMEOUT;
     signal.clear(GOT_LINE);
-    term->set_read_cb([this, got_line, separator](uint8_t *data, size_t len) {
+    primary_term->set_read_cb([this, got_line, separator](uint8_t *data, size_t len) {
         if (!data) {
             data = buffer.get();
-            len = term->read(data + buffer.consumed, buffer.size - buffer.consumed);
+            len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
         } else {
             buffer.consumed = 0; // if the underlying terminal contains data, we cannot fragment
         }
@@ -46,13 +46,13 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         buffer.consumed += len;
         return false;
     });
-    term->write((uint8_t *)command.c_str(), command.length());
+    primary_term->write((uint8_t *)command.c_str(), command.length());
     auto got_lf = signal.wait(GOT_LINE, time_ms);
     if (got_lf && result == command_result::TIMEOUT) {
         ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
     }
     buffer.consumed = 0;
-    term->set_read_cb(nullptr);
+    primary_term->set_read_cb(nullptr);
     return result;
 }
 
@@ -68,26 +68,26 @@ bool DTE::exit_cmux()
     }
     auto ejected = cmux_term->detach();
     // return the ejected terminal and buffer back to this DTE
-    term = std::move(ejected.first);
+    primary_term = std::move(ejected.first);
     buffer = std::move(ejected.second);
-    other_term = term;
+    secondary_term = primary_term;
     return true;
 }
 
 bool DTE::setup_cmux()
 {
-    cmux_term = std::make_shared<CMux>(term, std::move(buffer));
+    cmux_term = std::make_shared<CMux>(primary_term, std::move(buffer));
     if (cmux_term == nullptr) {
         return false;
     }
     if (!cmux_term->init()) {
         return false;
     }
-    term = std::make_unique<CMuxInstance>(cmux_term, 0);
-    if (term == nullptr) {
+    primary_term = std::make_unique<CMuxInstance>(cmux_term, 0);
+    if (primary_term == nullptr) {
         return false;
     }
-    other_term = std::make_unique<CMuxInstance>(cmux_term, 1);
+    secondary_term = std::make_unique<CMuxInstance>(cmux_term, 1);
     return true;
 }
 
@@ -108,7 +108,7 @@ bool DTE::set_mode(modem_mode m)
     if (m == modem_mode::DATA_MODE) {
         if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE) {
             // mode stays the same, but need to swap terminals (as command has been switched)
-            other_term.swap(term);
+            secondary_term.swap(primary_term);
         } else {
             mode = m;
         }
@@ -150,19 +150,20 @@ bool DTE::set_mode(modem_mode m)
     }
     // manual CMUX transitions: Swap terminals
     if (m == modem_mode::CMUX_MANUAL_SWAP && mode == modem_mode::CMUX_MANUAL_MODE) {
-        other_term.swap(term);
+        secondary_term.swap(primary_term);
         return true;
     }
-    return true;
+    mode = modem_mode::UNDEF;
+    return false;
 }
 
 void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
 {
     on_data = std::move(f);
-    other_term->set_read_cb([this](uint8_t *data, size_t len) {
+    secondary_term->set_read_cb([this](uint8_t *data, size_t len) {
         if (!data) { // if no data available from terminal callback -> need to explicitly read some
             data = buffer.get();
-            len = other_term->read(buffer.get(), buffer.size);
+            len = secondary_term->read(buffer.get(), buffer.size);
         }
         if (on_data) {
             return on_data(data, len);
@@ -173,22 +174,22 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
 
 void DTE::set_error_cb(std::function<void(terminal_error err)> f)
 {
-    other_term->set_error_cb(f);
-    term->set_error_cb(f);
+    secondary_term->set_error_cb(f);
+    primary_term->set_error_cb(f);
 }
 
 int DTE::read(uint8_t **d, size_t len)
 {
     auto data_to_read = std::min(len, buffer.size);
     auto data = buffer.get();
-    auto actual_len = other_term->read(data, data_to_read);
+    auto actual_len = secondary_term->read(data, data_to_read);
     *d = data;
     return actual_len;
 }
 
 int DTE::write(uint8_t *data, size_t len)
 {
-    return other_term->write(data, len);
+    return secondary_term->write(data, len);
 }
 
 /**

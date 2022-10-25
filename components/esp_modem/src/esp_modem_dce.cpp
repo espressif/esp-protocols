@@ -130,7 +130,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
         mode = modem_mode::CMUX_MODE;
         return transitions::enter_data(*dte, *device, netif);
     case modem_mode::CMUX_MANUAL_MODE:
-        if (mode != modem_mode::COMMAND_MODE) {
+        if (mode != modem_mode::COMMAND_MODE && mode != modem_mode::UNDEF) {
             return false;
         }
         device->set_mode(modem_mode::CMUX_MODE);
