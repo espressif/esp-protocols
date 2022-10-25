@@ -116,8 +116,8 @@ private:
     Lock internal_lock{};                                   /*!< Locks DTE operations */
     unique_buffer buffer;                                   /*!< DTE buffer */
     std::shared_ptr<CMux> cmux_term;                        /*!< Primary terminal for this DTE */
-    std::shared_ptr<Terminal> command_term;                 /*!< Reference to the terminal used for sending commands */
-    std::shared_ptr<Terminal> data_term;                    /*!< Secondary terminal for this DTE */
+    std::shared_ptr<Terminal> term;                         /*!< Reference to the primary terminal (mostly for sending commands) */
+    std::shared_ptr<Terminal> other_term;                   /*!< Secondary terminal for this DTE */
     modem_mode mode;                                        /*!< DTE operation mode */
     SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
     command_result result;                                  /*!< Command result of the currently exectuted command */

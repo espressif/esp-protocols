@@ -93,14 +93,23 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (mode == ESP_MODEM_MODE_DATA) {
-        return dce_wrap->dce->set_mode(modem_mode::DATA_MODE) ? ESP_OK : ESP_FAIL;
-    }
-    if (mode == ESP_MODEM_MODE_COMMAND) {
-        return dce_wrap->dce->set_mode(modem_mode::COMMAND_MODE) ? ESP_OK : ESP_FAIL;
-    }
-    if (mode == ESP_MODEM_MODE_CMUX) {
-        return dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) ? ESP_OK : ESP_FAIL;
+    switch (mode) {
+        case ESP_MODEM_MODE_DATA:
+            return dce_wrap->dce->set_mode(modem_mode::DATA_MODE) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_COMMAND:
+            return dce_wrap->dce->set_mode(modem_mode::COMMAND_MODE) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MODE) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX_MANUAL:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_MODE) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX_MANUAL_EXIT:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_EXIT) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX_MANUAL_SWAP:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_SWAP) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX_MANUAL_DATA:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_DATA) ? ESP_OK : ESP_FAIL;
+        case ESP_MODEM_MODE_CMUX_MANUAL_COMMAND:
+            return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_COMMAND) ? ESP_OK : ESP_FAIL;
     }
     return ESP_ERR_NOT_SUPPORTED;
 }

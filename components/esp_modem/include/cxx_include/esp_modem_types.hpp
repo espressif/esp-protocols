@@ -29,8 +29,13 @@ enum class modem_mode {
     UNDEF,
     COMMAND_MODE, /*!< Command mode -- the modem is supposed to send AT commands in this mode  */
     DATA_MODE,    /*!< Data mode -- the modem communicates with network interface on PPP protocol */
-    CMUX_MODE     /*!< CMUX (Multiplex mode) -- Simplified CMUX mode, which creates two virtual terminals,
+    CMUX_MODE,    /*!< CMUX (Multiplex mode) -- Simplified CMUX mode, which creates two virtual terminals,
                    *  assigning one solely to command interface and the other  to the data mode */
+    CMUX_MANUAL_MODE,    /*!< Enter CMUX mode manually -- just creates two virtual terminals */
+    CMUX_MANUAL_EXIT,    /*!< Exits CMUX mode manually -- just destroys two virtual terminals */
+    CMUX_MANUAL_DATA,    /*!< Sets the primary terminal to DATA mode in manual CMUX */
+    CMUX_MANUAL_COMMAND, /*!< Sets the primary terminal to COMMAND mode in manual CMUX */
+    CMUX_MANUAL_SWAP,    /*!< Swaps virtual terminals in manual CMUX mode (primary <-> secondary) */
 };
 
 /**
