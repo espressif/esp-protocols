@@ -193,7 +193,7 @@ jobs:
             components/esp_websocket_client/examples/build/config/sdkconfig.json
           if-no-files-found: error
 
-  run-target:
+  run-target-websocket:
     name: Run Websocket Example Test on target
     needs: build_websocket
     strategy:
@@ -206,9 +206,6 @@ jobs:
       - ESP32-ETHERNET-KIT
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
-    container:
-      image: python:3.7-buster
-      options: --privileged # Privileged mode has access to serial ports
     steps:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v2
@@ -225,8 +222,7 @@ jobs:
       - name: Run Example Test on target
         working-directory: components/esp_websocket_client/examples
         run: |
-          cp sdkconfig.ci sdkconfig.defaults
-          pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
+          python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v2
         if: always()
         with:

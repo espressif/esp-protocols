@@ -101,7 +101,7 @@ def test_examples_protocol_websocket(dut):
         data = json.loads(json_string)
 
         match = dut.expect(
-            re.compile(b'Json=([a-zA-Z0-9]*).*')).group(0).decode()[5:]
+            re.compile(b'Json=({[a-zA-Z0-9]*).*}')).group(0).decode()[5:]
         if match == str(data[0]):
             print('Sent message and received message are equal')
         else:
@@ -122,7 +122,7 @@ def test_examples_protocol_websocket(dut):
             recv_msg = ''
             while len(recv_msg) < msg_len:
                 match = dut.expect(re.compile(
-                    b'Received=([a-zA-Z0-9]*).*')).group(1).decode()
+                    b'Received=([a-zA-Z0-9]*).*\n')).group(1).decode()
                 recv_msg += match
 
             if recv_msg == send_msg:
