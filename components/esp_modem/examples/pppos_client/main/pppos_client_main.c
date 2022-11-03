@@ -21,6 +21,15 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 
+
+#if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_SW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_SW
+#elif defined(CONFIG_EXAMPLE_FLOW_CONTROL_HW)
+#define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
+#endif
+
 #define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
 
 static const char *TAG = "pppos_example";
@@ -161,6 +170,7 @@ void app_main(void)
     dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
     dte_config.uart_config.rts_io_num = CONFIG_EXAMPLE_MODEM_UART_RTS_PIN;
     dte_config.uart_config.cts_io_num = CONFIG_EXAMPLE_MODEM_UART_CTS_PIN;
+    dte_config.uart_config.flow_control = EXAMPLE_FLOW_CONTROL;
     dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
     dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
     dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
@@ -174,6 +184,12 @@ void app_main(void)
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
     esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM800, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7000 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7000, &dte_config, &dce_config, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
+    esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7070, &dte_config, &dce_config, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
     esp_modem_dce_t *dce = esp_modem_new_dev(ESP_MODEM_DCE_SIM7600, &dte_config, &dce_config, esp_netif);
@@ -181,6 +197,15 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
     esp_modem_dce_t *dce = esp_modem_new(&dte_config, &dce_config, esp_netif);
 #endif
+    assert(dce);
+    if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+        esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+            return;
+        }
+        ESP_LOGI(TAG, "HW set_flow_control OK");
+    }
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     while (1) {
@@ -189,13 +214,14 @@ void app_main(void)
         const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
         ESP_LOGI(TAG, "Waiting for USB device connection...");
         esp_modem_dce_t *dce = esp_modem_new_dev_usb(ESP_MODEM_DCE_BG96, &dte_usb_config, &dce_config, esp_netif);
+        assert(dce);
         esp_modem_set_error_cb(dce, usb_terminal_error_handler);
         vTaskDelay(pdMS_TO_TICKS(1000)); // Although the DTE should be ready after USB enumeration, sometimes it fails to respond without this delay
 
 #else
 #error Invalid serial connection to modem.
 #endif
-    assert(dce);
+
     xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT);
 
     /* Run the modem demo app */
@@ -214,7 +240,7 @@ void app_main(void)
     int rssi, ber;
     esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d", err);
+        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d %s", err, esp_err_to_name(err));
         return;
     }
     ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);

@@ -22,6 +22,10 @@ menu "Example Configuration"
             bool "SIM7070"
             help
                 SIM7070 is Multi-Band CAT M and NB IoT module.
+        config EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
+            bool "SIM7070_GNSS"
+            help
+                SIM7070 is Multi-Band CAT M and NB IoT module with Support for GNSS Location API
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
@@ -118,5 +122,11 @@ menu "Example Configuration"
         default n
         help
             Close the multiplexed mode at the end of the example and rollback to command mode.
+
+    config BROKER_URI
+        string "Broker URL"
+        default "mqtt://test.mosquitto.org"
+        help
+            URL of an mqtt broker which this example connects to.
 
 endmenu

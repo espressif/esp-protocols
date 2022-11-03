@@ -25,6 +25,7 @@
 #include "esp_vfs_dev.h"        // For optional VFS support
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
+#include "SIM7070_gnss.hpp"
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
@@ -34,7 +35,7 @@
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
 #endif
 
-#define BROKER_URL "mqtt://mqtt.eclipseprojects.io"
+#define BROKER_URL CONFIG_BROKER_URI
 
 
 using namespace esp_modem;
@@ -87,15 +88,17 @@ extern "C" void app_main(void)
     assert(esp_netif);
 
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
-    std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+    auto dce = create_BG96_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM800 == 1
-    std::unique_ptr<DCE> dce = create_SIM800_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM800_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000 == 1
-    std::unique_ptr<DCE> dce = create_SIM7000_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7000_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070 == 1
-    std::unique_ptr<DCE> dce = create_SIM7070_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7070_dce(&dce_config, dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
+    auto dce = create_SIM7070_GNSS_dce(&dce_config, dte, esp_netif);
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
-    std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
+    auto dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
 #else
 #error "Unsupported device"
 #endif
@@ -134,6 +137,12 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
     std::cout << "Operator name:" << str << std::endl;
+
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
+    if (dce->set_gnss_power_mode(1) == esp_modem::command_result::OK) {
+        std::cout << "Modem set_gnss_power_mode: OK" << std::endl;
+    }
+#endif
 
     /* Try to connect to the network and publish an mqtt topic */
     ESPEventHandlerSync event_handler(loop);
@@ -183,6 +192,43 @@ extern "C" void app_main(void)
     if (dce->get_imsi(str) == esp_modem::command_result::OK) {
         std::cout << "Modem IMSI number:" << str << std::endl;
     }
+
+
+#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
+    esp_modem_gps_t gps;
+
+    for (int i = 0; i < 200; ++i) {
+        if (dce->get_gnss_information_sim70xx(gps) == esp_modem::command_result::OK) {
+            ESP_LOGI(TAG, "gps.run  %i",
+                     gps.run);
+            ESP_LOGI(TAG, "gps.fix  %i",
+                     gps.fix);
+            ESP_LOGI(TAG, "gps.date.year %i gps.date.month %i gps.date.day %i",
+                     gps.date.year,   gps.date.month,   gps.date.day);
+            ESP_LOGI(TAG, "gps.tim.hour %i gps.tim.minute %i   gps.tim.second %i   gps.tim.thousand %i",
+                     gps.tim.hour,   gps.tim.minute,     gps.tim.second,     gps.tim.thousand);
+            ESP_LOGI(TAG, "gps.latitude %f gps.longitude %f ",
+                     gps.latitude,   gps.longitude );
+            ESP_LOGI(TAG, "gps.altitude  %f",
+                     gps.altitude);
+            ESP_LOGI(TAG, "gps.speed  %f",
+                     gps.speed);
+            ESP_LOGI(TAG, "gps.cog  %f",
+                     gps.cog);
+            ESP_LOGI(TAG, "gps.fix_mode  %i",
+                     gps.fix_mode);
+            ESP_LOGI(TAG, "gps.dop_h %f gps.dop_p %f gps.dop_v %f ",
+                     gps.dop_h,   gps.dop_p,   gps.dop_v );
+            ESP_LOGI(TAG, "gps.sats_in_view  %i",
+                     gps.sats_in_view);
+            ESP_LOGI(TAG, "gps.hpa  %f gps.vpa  %f",
+                     gps.hpa, gps.vpa);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000)); //Wait
+
+    }
+#endif  // CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
+
 
 #if CONFIG_EXAMPLE_PERFORM_OTA == 1
     esp_http_client_config_t config = { };
