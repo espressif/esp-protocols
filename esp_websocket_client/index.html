@@ -119,7 +119,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>ESP WebSocket Client</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-docs/blob/1547aa8/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/79c11e9/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -236,7 +236,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 <section id="application-example">
 <h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this heading"></a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/1547aa8/examples/../examples">example </a>.</p>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/79c11e9/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
 <h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this heading"></a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
@@ -250,7 +250,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="header-file">
 <h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this heading"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/1547aa8/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/79c11e9/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
@@ -372,6 +372,30 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>client</strong> – <strong>[in]</strong> The client </p></li>
+<li><p><strong>data</strong> – <strong>[in]</strong> The data </p></li>
+<li><p><strong>len</strong> – <strong>[in]</strong> The length </p></li>
+<li><p><strong>timeout</strong> – <strong>[in]</strong> Write data timeout in RTOS ticks</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>Number of data was sent</p></li>
+<li><p>(-1) if any errors </p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv437esp_websocket_client_send_with_opcode29esp_websocket_client_handle_t22ws_transport_opcodes_tPK7uint8_ti10TickType_t">
+<span id="_CPPv337esp_websocket_client_send_with_opcode29esp_websocket_client_handle_t22ws_transport_opcodes_tPK7uint8_ti10TickType_t"></span><span id="_CPPv237esp_websocket_client_send_with_opcode29esp_websocket_client_handle_t22ws_transport_opcodes_tPK7uint8_ti10TickType_t"></span><span id="esp_websocket_client_send_with_opcode__esp_websocket_client_handle_t.ws_transport_opcodes_t.uint8_tCP.i.TickType_t"></span><span class="target" id="esp__websocket__client_8h_1a5d2d11b117224eff0381fa60ae513862"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_client_send_with_opcode</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv429esp_websocket_client_handle_t" title="esp_websocket_client_handle_t"><span class="n"><span class="pre">esp_websocket_client_handle_t</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">client</span></span>, <span class="n"><span class="pre">ws_transport_opcodes_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">opcode</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">len</span></span>, <span class="n"><span class="pre">TickType_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">timeout</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv437esp_websocket_client_send_with_opcode29esp_websocket_client_handle_t22ws_transport_opcodes_tPK7uint8_ti10TickType_t" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Write opcode data to the WebSocket connection. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> – <strong>[in]</strong> The client </p></li>
+<li><p><strong>opcode</strong> – <strong>[in]</strong> The opcode </p></li>
 <li><p><strong>data</strong> – <strong>[in]</strong> The data </p></li>
 <li><p><strong>len</strong> – <strong>[in]</strong> The length </p></li>
 <li><p><strong>timeout</strong> – <strong>[in]</strong> Write data timeout in RTOS ticks</p></li>
