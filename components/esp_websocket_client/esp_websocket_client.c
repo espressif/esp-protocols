@@ -10,7 +10,6 @@
 #include "esp_transport.h"
 #include "esp_transport_tcp.h"
 #include "esp_transport_ssl.h"
-#include "esp_transport_ws.h"
 /* using uri parser */
 #include "http_parser.h"
 #include "freertos/task.h"
@@ -693,8 +692,6 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     return ESP_OK;
 }
 
-static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout);
-
 static int esp_websocket_client_send_close(esp_websocket_client_handle_t client, int code, const char *additional_data, int total_len, TickType_t timeout);
 
 static void esp_websocket_client_task(void *pv)
@@ -960,7 +957,7 @@ int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const ch
     return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_BINARY, (const uint8_t *)data, len, timeout);
 }
 
-static int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
+int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
     int need_write = len;
     int wlen = 0, widx = 0;

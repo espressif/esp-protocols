@@ -15,6 +15,7 @@
 #include "esp_err.h"
 #include "esp_event.h"
 #include <sys/socket.h>
+#include "esp_transport_ws.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,6 +193,21 @@ int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const ch
  *     - (-1) if any errors
  */
 int esp_websocket_client_send_text(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
+
+/**
+ * @brief      Write opcode data to the WebSocket connection
+ *
+ * @param[in]  client  The client
+ * @param[in]  opcode  The opcode
+ * @param[in]  data    The data
+ * @param[in]  len     The length
+ * @param[in]  timeout Write data timeout in RTOS ticks
+ *
+ * @return
+ *     - Number of data was sent
+ *     - (-1) if any errors
+ */
+int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout);
 
 /**
  * @brief      Close the WebSocket connection in a clean way
