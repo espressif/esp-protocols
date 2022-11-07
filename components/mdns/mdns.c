@@ -2936,10 +2936,10 @@ static bool _mdns_delegate_hostname_remove(const char *hostname)
 static bool _mdns_name_is_discovery(mdns_name_t *name, uint16_t type)
 {
     return (
-               (name->host && name->host[0] && !strcasecmp(name->host, "_services"))
-               && (name->service && name->service[0] && !strcasecmp(name->service, "_dns-sd"))
-               && (name->proto && name->proto[0] && !strcasecmp(name->proto, "_udp"))
-               && (name->domain && name->domain[0] && !strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN))
+               (name->host[0] && !strcasecmp(name->host, "_services"))
+               && (name->service[0] && !strcasecmp(name->service, "_dns-sd"))
+               && (name->proto[0] && !strcasecmp(name->proto, "_udp"))
+               && (name->domain[0] && !strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN))
                && type == MDNS_TYPE_PTR
            );
 }
@@ -3496,7 +3496,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 discovery = true;
             } else if (!name->sub && _mdns_name_is_ours(name)) {
                 ours = true;
-                if (name->service && name->service[0] && name->proto && name->proto[0]) {
+                if (name->service[0] && name->proto[0]) {
                     service = _mdns_get_service_item(name->service, name->proto, NULL);
                 }
             } else {
@@ -3660,7 +3660,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         }
                     }
                 } else if (ours) {
-                    if (parsed_packet->questions && !parsed_packet->probe) {
+                    if (parsed_packet->questions && !parsed_packet->probe && service) {
                         _mdns_remove_parsed_question(parsed_packet, type, service);
                         continue;
                     }
@@ -4941,7 +4941,7 @@ static void _mdns_service_task(void *pvParameters)
     for (;;) {
         if (_mdns_server && _mdns_server->action_queue) {
             if (xQueueReceive(_mdns_server->action_queue, &a, portMAX_DELAY) == pdTRUE) {
-                if (a->type == ACTION_TASK_STOP) {
+                if (a && a->type == ACTION_TASK_STOP) {
                     break;
                 }
                 MDNS_SERVICE_LOCK();
