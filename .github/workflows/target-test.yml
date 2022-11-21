@@ -289,7 +289,7 @@ jobs:
       - name: Clear repository
         run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
           path: components/asio/examples/${{ matrix.example }}/build
