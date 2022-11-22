@@ -22,5 +22,4 @@ typedef enum {
     IP_EVENT_GOT_IP6
 } mdns_used_event_t;
 
-typedef void * esp_event_base_t;
-
+typedef void *esp_event_base_t;

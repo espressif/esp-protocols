@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include <cstring>
 #include "esp_log.h"
@@ -35,9 +27,9 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l(internal_lock);
-    command_result res = command_result::TIMEOUT;
+    result = command_result::TIMEOUT;
     signal.clear(GOT_LINE);
-    command_term->set_read_cb([&](uint8_t *data, size_t len) {
+    command_term->set_read_cb([this, got_line, separator](uint8_t *data, size_t len) {
         if (!data) {
             data = buffer.get();
             len = command_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
@@ -45,8 +37,8 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
             buffer.consumed = 0; // if the underlying terminal contains data, we cannot fragment
         }
         if (memchr(data + buffer.consumed, separator, len)) {
-            res = got_line(data, buffer.consumed + len);
-            if (res == command_result::OK || res == command_result::FAIL) {
+            result = got_line(data, buffer.consumed + len);
+            if (result == command_result::OK || result == command_result::FAIL) {
                 signal.set(GOT_LINE);
                 return true;
             }
@@ -56,12 +48,12 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     });
     command_term->write((uint8_t *)command.c_str(), command.length());
     auto got_lf = signal.wait(GOT_LINE, time_ms);
-    if (got_lf && res == command_result::TIMEOUT) {
+    if (got_lf && result == command_result::TIMEOUT) {
         ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
     }
     buffer.consumed = 0;
     command_term->set_read_cb(nullptr);
-    return res;
+    return result;
 }
 
 command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)

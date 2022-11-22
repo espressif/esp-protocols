@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: BSL-1.0
 //
-// SPDX-FileContributor: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileContributor: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 
 #include "asio/detail/config.hpp"
@@ -22,19 +22,19 @@ namespace ssl {
 
 
 context::context(context::method m)
-        : handle_(0)
+    : handle_(0)
 {
     handle_ = mbedtls::shared_ctx::create("mbedtls-context", m);
     set_options(no_compression);
 }
 
-context::context(context&& other)
+context::context(context &&other)
 {
     handle_ = other.handle_;
     other.handle_ = 0;
 }
 
-context& context::operator=(context&& other)
+context &context::operator=(context &&other)
 {
     context tmp(ASIO_MOVE_CAST(context)(*this));
     handle_ = other.handle_;
@@ -60,14 +60,14 @@ void context::set_options(context::options o)
 }
 
 ASIO_SYNC_OP_VOID context::set_options(
-        context::options o, asio::error_code& ec)
+    context::options o, asio::error_code &ec)
 {
     handle_->get()->options_ = o;
     ec = asio::error_code();
     ASIO_SYNC_OP_VOID_RETURN(ec);
 }
 
-void context::add_certificate_authority(const const_buffer& ca)
+void context::add_certificate_authority(const const_buffer &ca)
 {
     asio::error_code ec;
     add_certificate_authority(ca, ec);
@@ -75,13 +75,13 @@ void context::add_certificate_authority(const const_buffer& ca)
 }
 
 ASIO_SYNC_OP_VOID context::add_certificate_authority(
-        const const_buffer& ca, asio::error_code& ec)
+    const const_buffer &ca, asio::error_code &ec)
 {
     handle_->get()->ca_cert_ = ca;
     ASIO_SYNC_OP_VOID_RETURN(asio::error_code());
 }
 
-void context::use_certificate_chain(const const_buffer& chain)
+void context::use_certificate_chain(const const_buffer &chain)
 {
     asio::error_code ec;
     use_certificate_chain(chain, ec);
@@ -89,14 +89,14 @@ void context::use_certificate_chain(const const_buffer& chain)
 }
 
 ASIO_SYNC_OP_VOID context::use_certificate_chain(
-        const const_buffer& chain, asio::error_code& ec)
+    const const_buffer &chain, asio::error_code &ec)
 {
     handle_->get()->cert_chain_ = chain;
     ASIO_SYNC_OP_VOID_RETURN(asio::error_code());
 }
 
 void context::use_private_key(
-        const const_buffer& private_key, context::file_format format)
+    const const_buffer &private_key, context::file_format format)
 {
     asio::error_code ec;
     use_private_key(private_key, format, ec);
@@ -104,8 +104,8 @@ void context::use_private_key(
 }
 
 ASIO_SYNC_OP_VOID context::use_private_key(
-        const const_buffer& private_key, context::file_format format,
-        asio::error_code& ec)
+    const const_buffer &private_key, context::file_format format,
+    asio::error_code &ec)
 {
     handle_->get()->private_key_ = private_key;
     ASIO_SYNC_OP_VOID_RETURN(asio::error_code());

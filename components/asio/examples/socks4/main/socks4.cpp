@@ -183,7 +183,7 @@ void async_connect(asio::io_context &context, std::string proxy, std::string pro
             std::make_shared<Connection>(context)->start(proxy_resolution,
             [resolver, host_resolution, completion_handler](std::shared_ptr<Connection> connection) {
                 auto connect_data = std::make_shared<ConnectionData>(socks4::request::connect, *host_resolution, "");
-            ESP_LOGI(TAG, "Sending Request to proxy for host connection.");
+                ESP_LOGI(TAG, "Sending Request to proxy for host connection.");
                 connection->write_async(connect_data->request.buffers(), [connection, connect_data, completion_handler](std::error_code error, std::size_t bytes_received) {
                     if (error) {
                         ESP_LOGE(TAG, "Proxy request write error: %s", error.message().c_str());

@@ -1,6 +1,21 @@
 menu "Example Configuration"
 
+    choice EXAMPLE_SERIAL_CONFIG
+        prompt "Type of serial connection to the modem"
+        default EXAMPLE_SERIAL_CONFIG_UART
+        config EXAMPLE_SERIAL_CONFIG_UART
+            bool "UART"
+            help
+                Connect to modem via UART.
+        config EXAMPLE_SERIAL_CONFIG_USB
+            bool "USB"
+            depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+            help
+                Connect to modem via USB (CDC-ACM class). For IDF version >= 4.4.
+    endchoice
+
     choice EXAMPLE_MODEM_DEVICE
+        depends on EXAMPLE_SERIAL_CONFIG_UART
         prompt "Choose supported modem device (DCE)"
         default EXAMPLE_MODEM_DEVICE_BG96
         help
@@ -14,10 +29,18 @@ menu "Example Configuration"
             bool "BG96"
             help
                 Quectel BG96 is a series of LTE Cat M1/Cat NB1/EGPRS module.
+        config EXAMPLE_MODEM_DEVICE_SIM7000
+            bool "SIM7000"
+            help
+                SIM7000 is a Multi-Band LTE-FDD and GSM/GPRS/EDGE module.
+        config EXAMPLE_MODEM_DEVICE_SIM7070
+            bool "SIM7070"
+            help
+                SIM7070 is Multi-Band CAT M and NB IoT module.
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
-                SIM7600 is Multi-Band LTE-TDD/LTE-FDD/HSPA+ and GSM/GPRS/EDGE module
+                SIM7600 is a Multi-Band LTE-TDD/LTE-FDD/HSPA+ and GSM/GPRS/EDGE module.
     endchoice
 
     config EXAMPLE_MODEM_PPP_APN
@@ -74,6 +97,7 @@ menu "Example Configuration"
             Pin to unlock the SIM
 
     menu "UART Configuration"
+        depends on EXAMPLE_SERIAL_CONFIG_UART
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
             default 25
@@ -143,6 +167,21 @@ menu "Example Configuration"
             default 1024
             help
                 Buffer size of UART RX buffer.
+
+        choice EXAMPLE_FLOW_CONTROL
+            bool "Set preferred modem control flow"
+            default EXAMPLE_FLOW_CONTROL_NONE
+            help
+                Set the modem's preferred control flow
+
+            config EXAMPLE_FLOW_CONTROL_NONE
+                bool "No control flow"
+            config EXAMPLE_FLOW_CONTROL_SW
+                bool "SW control flow"
+            config EXAMPLE_FLOW_CONTROL_HW
+                bool "HW control flow"
+        endchoice
+
     endmenu
 
 endmenu

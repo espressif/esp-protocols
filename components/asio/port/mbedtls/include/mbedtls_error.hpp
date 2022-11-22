@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -14,30 +14,29 @@ namespace asio {
 namespace error {
 namespace detail {
 
-class mbedtls_category : public asio::error_category
-{
+class mbedtls_category : public asio::error_category {
 public:
-    const char* name() const ASIO_ERROR_CATEGORY_NOEXCEPT
+    const char *name() const ASIO_ERROR_CATEGORY_NOEXCEPT
     {
         return "asio.ssl";
     }
 
     std::string message(int value) const
     {
-        const char* s = asio::ssl::mbedtls::error_message(value);
+        const char *s = asio::ssl::mbedtls::error_message(value);
         return s ? s : "asio.mbedtls error";
     }
 };
 
 } // namespace detail
 
-const asio::error_category& get_mbedtls_category()
+const asio::error_category &get_mbedtls_category()
 {
     static detail::mbedtls_category instance;
     return instance;
 }
 
-const asio::error_category& get_ssl_category()
+const asio::error_category &get_ssl_category()
 {
     return asio::error::get_mbedtls_category();
 }
@@ -47,9 +46,11 @@ const asio::error_category& get_ssl_category()
 namespace ssl {
 namespace error {
 
-const asio::error_category& get_stream_category()
+const asio::error_category &get_stream_category()
 {
     return asio::error::get_mbedtls_category();
 }
 
-} } } // namespace asio::ssl::error
+}
+}
+} // namespace asio::ssl::error

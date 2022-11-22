@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  *
@@ -17,7 +17,7 @@
 #include "unity.h"
 #include "memory_checks.h"
 
-static void test_leak_setup(const char * file, long line)
+static void test_leak_setup(const char *file, long line)
 {
     printf("%s:%ld\n", file, line);
     test_utils_record_free_mem();
@@ -27,8 +27,8 @@ TEST_CASE("websocket init and deinit", "[websocket][leaks=0]")
 {
     test_leak_setup(__FILE__, __LINE__);
     const esp_websocket_client_config_t websocket_cfg = {
-            // no connection takes place, but the uri has to be valid for init() to succeed
-            .uri = "ws://echo.websocket.org",
+        // no connection takes place, but the uri has to be valid for init() to succeed
+        .uri = "ws://echo.websocket.org",
     };
     esp_websocket_client_handle_t client = esp_websocket_client_init(&websocket_cfg);
     TEST_ASSERT_NOT_EQUAL(NULL, client);
@@ -39,7 +39,7 @@ TEST_CASE("websocket init with invalid url", "[websocket][leaks=0]")
 {
     test_leak_setup(__FILE__, __LINE__);
     const esp_websocket_client_config_t websocket_cfg = {
-            .uri = "INVALID",
+        .uri = "INVALID",
     };
     esp_websocket_client_handle_t client = esp_websocket_client_init(&websocket_cfg);
     TEST_ASSERT_NULL(client);

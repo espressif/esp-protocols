@@ -1,10 +1,12 @@
-/* Modem console example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * Modem console example
+ *
 */
 
 #include <stdio.h>
@@ -19,34 +21,34 @@ static const char *TAG = "modem_console_httpget";
 
 static esp_err_t http_event_handler(esp_http_client_event_t *evt)
 {
-    switch(evt->event_id) {
-        case HTTP_EVENT_ERROR:
-            ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
-            break;
-        case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
-            break;
-        case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
-            break;
-        case HTTP_EVENT_ON_HEADER:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
-            break;
-        case HTTP_EVENT_ON_DATA:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            if ((bool)evt->user_data &&
+    switch (evt->event_id) {
+    case HTTP_EVENT_ERROR:
+        ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+        break;
+    case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+        break;
+    case HTTP_EVENT_HEADER_SENT:
+        ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
+        break;
+    case HTTP_EVENT_ON_HEADER:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        break;
+    case HTTP_EVENT_ON_DATA:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+        if ((bool)evt->user_data &&
                 !esp_http_client_is_chunked_response(evt->client)) {
-                ESP_LOG_BUFFER_HEXDUMP(TAG, evt->data, evt->data_len, ESP_LOG_INFO);
-            }
+            ESP_LOG_BUFFER_HEXDUMP(TAG, evt->data, evt->data_len, ESP_LOG_INFO);
+        }
 
-            break;
-        case HTTP_EVENT_ON_FINISH:
-            ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
-            break;
-        case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
-            break;
-        default: break;
+        break;
+    case HTTP_EVENT_ON_FINISH:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+        break;
+    case HTTP_EVENT_DISCONNECTED:
+        ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+        break;
+    default: break;
     }
     return ESP_OK;
 }
@@ -65,7 +67,7 @@ static int do_http_client(int argc, char **argv)
         return 1;
     }
     esp_http_client_config_t config = {
-            .event_handler = http_event_handler,
+        .event_handler = http_event_handler,
     };
 
     if (http_args.host->count > 0) {
@@ -76,11 +78,11 @@ static int do_http_client(int argc, char **argv)
 
     if (http_args.hex->count > 0) {
         // show hex data from http-get
-        config.user_data = (void*)true;
+        config.user_data = (void *)true;
     }
 
 
-        esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_http_client_handle_t client = esp_http_client_init(&config);
 
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
@@ -99,11 +101,11 @@ void modem_console_register_http(void)
     http_args.hex = arg_litn("p", "print-hex", 0, 1, "print hex output"),
     http_args.end = arg_end(1);
     const esp_console_cmd_t http_cmd = {
-            .command = "httpget",
-            .help = "http get command to test data mode",
-            .hint = NULL,
-            .func = &do_http_client,
-            .argtable = &http_args
+        .command = "httpget",
+        .help = "http get command to test data mode",
+        .hint = NULL,
+        .func = &do_http_client,
+        .argtable = &http_args
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&http_cmd));
 }

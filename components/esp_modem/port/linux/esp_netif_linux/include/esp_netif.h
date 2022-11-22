@@ -39,8 +39,8 @@ struct esp_netif_driver_ifconfig {
 };
 
 struct esp_netif_config {
-    const char * dev_name; /**< Name of the file device */
-    const char * if_name;  /**< Network interface name */
+    const char *dev_name;  /**< Name of the file device */
+    const char *if_name;   /**< Network interface name */
 };
 
 struct esp_netif_obj {

@@ -1,9 +1,8 @@
-import os
+# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Unlicense OR CC0-1.0
 import re
 import socket
 
-import pytest
-from pytest_embedded import Dut
 
 def test_examples_protocol_asio_udp_server(dut):
     """
@@ -15,7 +14,10 @@ def test_examples_protocol_asio_udp_server(dut):
       5. Test evaluates received test message on server stdout
     """
     test_msg = b'echo message from client to server'
-    data = dut.expect(re.compile(b' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'), timeout=30).group(1).decode()
+    data = dut.expect(
+        re.compile(
+            b' IPv4 address: ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)'),  # noqa: W605
+        timeout=30).group(1).decode()
     dut.expect('ASIO engine is up and running', timeout=1)
     cli = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     cli.settimeout(30)
@@ -28,6 +30,8 @@ def test_examples_protocol_asio_udp_server(dut):
         pass
     else:
         print('Failure!')
-        raise ValueError('Wrong data received from asio udp server: {} (expected:{})'.format(data, test_msg))
+        raise ValueError(
+            'Wrong data received from asio udp server: {} (expected:{})'.
+            format(data, test_msg))
     # 5. check the client message appears also on server terminal
     dut.expect(test_msg.decode())

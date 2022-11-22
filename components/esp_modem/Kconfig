@@ -1,0 +1,28 @@
+menu "esp-modem"
+
+    config ESP_MODEM_CMUX_DEFRAGMENT_PAYLOAD
+        bool "Defragment CMUX messages internally"
+        default y
+        help
+            If enabled (default), the esp-modem automatically defragments CMUX messages
+            to only pass the completed CMUX message to higher layers.
+            This is useful for messages in command mode (if they're received fragmented).
+            It's not a problem for messages in data mode as the upper layer (PPP protocol)
+            defines message boundaries.
+            Keep the default to true for most cases (as most devices use simply 1 byte CMUX
+            length, as the internal Rx buffer of size >= 256 bytes won't overflow)
+            Set to false if your devices uses 2 byte CMUX payload (e.g. A7672S).
+            The operation would work without an issue in data mode, but some replies
+            in command mode might come fragmented in rare cases so might need to retry
+            AT commands.
+
+    config ESP_MODEM_CMUX_DELAY_AFTER_DLCI_SETUP
+        int "Delay in ms to wait before creating another virtual terminal"
+        default 0
+        help
+            Some devices might need a pause before sending SABM command that creates
+            virtual terminal. This delay applies only to establishing a CMUX mode.
+            The typical reason for failing SABM request without a delay is that
+            some devices (SIM800) send MSC requests just after opening a new DLCI.
+
+endmenu

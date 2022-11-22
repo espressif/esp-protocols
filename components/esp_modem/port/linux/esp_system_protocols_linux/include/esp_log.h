@@ -44,4 +44,3 @@ printf(LOG_COLOR_I); printf("(%s) ", TAG); printf(__VA_ARGS__); printf(LOG_RESET
 printf(LOG_COLOR_D); printf("(%s) ", TAG); printf(__VA_ARGS__); printf(LOG_RESET_COLOR "\n"); } while(0)
 #define ESP_LOGV(TAG, ...)  do { \
 printf(LOG_COLOR_V); printf("(%s) ", TAG); printf(__VA_ARGS__); printf(LOG_RESET_COLOR "\n"); } while(0)
-

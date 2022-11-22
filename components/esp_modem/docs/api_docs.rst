@@ -6,7 +6,7 @@ C API Documentation
 
 The C API is very simple and consist of these two basic parts:
 
-- :ref:`lifecycle_api` 
+- :ref:`lifecycle_api`
 - :ref:`modem_commands`
 
 The Typical application workflow is to:

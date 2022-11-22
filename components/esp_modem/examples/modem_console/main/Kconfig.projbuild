@@ -16,6 +16,7 @@ menu "Example Configuration"
     endchoice
 
     choice EXAMPLE_MODEM_DEVICE
+        depends on EXAMPLE_SERIAL_CONFIG_UART
         prompt "Choose supported modem device (DCE)"
         default EXAMPLE_MODEM_DEVICE_BG96
         help
@@ -74,48 +75,23 @@ menu "Example Configuration"
         help
             Set to true for the PPP client to skip authentication
 
-    config EXAMPLE_SEND_MSG
-        bool "Short message (SMS)"
-        default n
-        help
-            Select this, the modem will send a short message before power off.
-
-    if EXAMPLE_SEND_MSG
-        config EXAMPLE_SEND_MSG_PEER_PHONE_NUMBER
-            string "Peer Phone Number (with area code)"
-            default "+8610086"
-            help
-                Enter the peer phone number that you want to send message to.
-    endif
-
-    config EXAMPLE_NEED_SIM_PIN
-        bool "SIM PIN needed"
-        default n
-        help
-            Enable to set SIM PIN before starting the example
-
-    config EXAMPLE_SIM_PIN
-        string "Set SIM PIN"
-        default "1234"
-        depends on EXAMPLE_NEED_SIM_PIN
-        help
-            Pin to unlock the SIM
-
-    choice EXAMPLE_FLOW_CONTROL
-        bool "Set preferred modem control flow"
-        default EXAMPLE_FLOW_CONTROL_NONE
-        help
-            Set the modem's preferred control flow
-
-        config EXAMPLE_FLOW_CONTROL_NONE
-            bool "No control flow"
-        config EXAMPLE_FLOW_CONTROL_SW
-            bool "SW control flow"
-        config EXAMPLE_FLOW_CONTROL_HW
-            bool "HW control flow"
-    endchoice
-
     menu "UART Configuration"
+        depends on EXAMPLE_SERIAL_CONFIG_UART
+
+        choice EXAMPLE_FLOW_CONTROL
+            bool "Set preferred modem control flow"
+            default EXAMPLE_FLOW_CONTROL_NONE
+            help
+                Set the modem's preferred control flow
+
+            config EXAMPLE_FLOW_CONTROL_NONE
+                bool "No control flow"
+            config EXAMPLE_FLOW_CONTROL_SW
+                bool "SW control flow"
+            config EXAMPLE_FLOW_CONTROL_HW
+                bool "HW control flow"
+        endchoice
+
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
             default 25
@@ -147,7 +123,7 @@ menu "Example Configuration"
         config EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE
             int "UART Event Task Stack Size"
             range 2000 6000
-            default 2048
+            default 4096
             help
                 Stack size of UART event task.
 
@@ -187,4 +163,10 @@ menu "Example Configuration"
                 Buffer size of UART RX buffer.
     endmenu
 
+    config EXAMPLE_MODEM_PWRKEY_PIN
+        int "PWRKEY Pin Number"
+        default 18
+        range 0 31
+        help
+            Pin number connected to modem's power key pin.
 endmenu

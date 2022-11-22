@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -74,8 +66,8 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
+        ESP_MODEM_THROW_IF_FALSE(signal.wait(TASK_PARAMS, 1000), "Failed to set UART task params");
         on_read = std::move(f);
-        signal.set(TASK_PARAMS);
     }
 
 private:
@@ -120,7 +112,6 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 
 void UartTerminal::task()
 {
-    std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     uart_event_t event;
     size_t len;
     signal.set(TASK_INIT);
@@ -129,17 +120,15 @@ void UartTerminal::task()
         return; // exits to the static method where the task gets deleted
     }
     while (signal.is_any(TASK_START)) {
+        signal.set(TASK_PARAMS);
         if (get_event(event, 100)) {
-            if (signal.is_any(TASK_PARAMS)) {
-                on_read_priv = on_read;
-                signal.clear(TASK_PARAMS);
-            }
+            signal.clear(TASK_PARAMS);
             switch (event.type) {
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);
-                if (len && on_read_priv) {
-                    if (on_read_priv(nullptr, len)) {
-                        on_read_priv = nullptr;
+                if (len && on_read) {
+                    if (on_read(nullptr, len)) {
+                        on_read = nullptr;
                     }
                 }
                 break;
@@ -218,4 +207,3 @@ void UartTerminal::set_flow_control(esp_modem_flow_ctrl_t flow_control)
 
 
 } // namespace esp_modem
-

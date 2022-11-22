@@ -53,14 +53,15 @@ void start_client(void)
 #ifdef CONFIG_EXAMPLE_CHAT_SERVER
     std::lock_guard<std::mutex> guard(server_ready);
 #endif
-    std::thread t([&io_context]() { try {
-                                        io_context.run();
-                                  } catch (const std::exception &e) {
-                                        ESP_LOGE(TAG, "Exception occured during client thread execution %s", e.what());
-                                  }
-                                    catch (...) {
-                                         ESP_LOGE(TAG, "Unknown exception");
-                                   }});
+    std::thread t([&io_context]() {
+        try {
+            io_context.run();
+        } catch (const std::exception &e) {
+            ESP_LOGE(TAG, "Exception occured during client thread execution %s", e.what());
+        } catch (...) {
+            ESP_LOGE(TAG, "Unknown exception");
+        }
+    });
     do {
         ESP_LOGI(TAG, "CLIENT: Waiting for input");
         get_string(line, sizeof(line));
@@ -95,14 +96,14 @@ extern "C" void app_main(void)
         asio::io_context io_context;
         chat_server server(io_context, tcp::endpoint(tcp::v4(), std::atoi(CONFIG_EXAMPLE_CHAT_SERVER_BIND_PORT)));
         std::thread t =  std::thread([&io_context]() { // Chat server starting here
-                                     try {
-                                           io_context.run();
-                                     } catch (const std::exception &e) {
-                                           ESP_LOGE(TAG, "Exception occured during server thread execution %s", e.what());
-                                     }
-                                       catch (...) {
-                                           ESP_LOGE(TAG, "Unknown exception");
-                                     }});;
+            try {
+                io_context.run();
+            } catch (const std::exception &e) {
+                ESP_LOGE(TAG, "Exception occured during server thread execution %s", e.what());
+            } catch (...) {
+                ESP_LOGE(TAG, "Unknown exception");
+            }
+        });;
 #endif
 #ifdef CONFIG_EXAMPLE_CHAT_CLIENT
         start_client();

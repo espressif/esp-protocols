@@ -1,16 +1,8 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #pragma once
 
@@ -82,11 +74,13 @@ public:
             Task::Delay(1000); // Mandatory 1s pause before
             int retry = 0;
             while (retry++ < 3) {
-                if (set_command_mode() == command_result::OK)
+                if (set_command_mode() == command_result::OK) {
                     return true;
+                }
                 Task::Delay(1000); // Mandatory 1s pause after escape
-                if (sync() == command_result::OK)
+                if (sync() == command_result::OK) {
                     return true;
+                }
                 Task::Delay(1000); // Mandatory 1s pause before escape
             }
             return false;
@@ -107,7 +101,7 @@ public:
     /**
      * @brief Simplified version of operator name (without the ACT, which is included in the command library)
      */
-    command_result get_operator_name(std::string& name)
+    command_result get_operator_name(std::string &name)
     {
         int dummy_act;
         return get_operator_name(name, dummy_act);
@@ -140,7 +134,7 @@ public:
     command_result get_battery_status(int &voltage, int &bcs, int &bcl) override;
     command_result power_down() override;
     command_result set_gnss_power_mode(int mode) override;
-    command_result set_network_bands(const std::string& mode, const int* bands, int size) override;
+    command_result set_network_bands(const std::string &mode, const int *bands, int size) override;
 };
 
 /**

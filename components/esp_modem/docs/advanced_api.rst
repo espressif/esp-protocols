@@ -46,4 +46,3 @@ a custom DTE object and supply it into :ref:`the DCE factory<dce_factory>`. The 
 - Create the DTE which uses the custom Terminal
 
 Please refer to the implementation of the existing UART DTE.
-

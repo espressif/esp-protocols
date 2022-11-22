@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -11,13 +11,13 @@
 namespace asio {
 namespace error {
 
-const asio::error_category& get_mbedtls_category();
+const asio::error_category &get_mbedtls_category();
 } // namespace error
 
 namespace ssl {
 namespace mbedtls {
 
-void throw_alloc_failure(const char* location);
+void throw_alloc_failure(const char *location);
 
 const char *error_message(int error_code);
 
@@ -26,11 +26,10 @@ enum class container {
 };
 
 template <typename T, typename... Args>
-inline T* create(const char * location, Args &&... args)
+inline T *create(const char *location, Args &&... args)
 {
-    T* t = new (std::nothrow) T(std::forward<Args>(args)...);
-    if (t == nullptr)
-    {
+    T *t = new (std::nothrow) T(std::forward<Args>(args)...);
+    if (t == nullptr) {
         throw_alloc_failure(location);
     }
     return t;
@@ -43,12 +42,12 @@ public:
     const unsigned char *data(container c) const
     {
         switch (c) {
-            case container::CERT:
-                return static_cast<const unsigned char *>(cert_chain_.data());
-            case container::CA_CERT:
-                return static_cast<const unsigned char *>(ca_cert_.data());
-            case container::PRIVKEY:
-                return static_cast<const unsigned char *>(private_key_.data());
+        case container::CERT:
+            return static_cast<const unsigned char *>(cert_chain_.data());
+        case container::CA_CERT:
+            return static_cast<const unsigned char *>(ca_cert_.data());
+        case container::PRIVKEY:
+            return static_cast<const unsigned char *>(private_key_.data());
         }
         return nullptr;
     }
@@ -56,12 +55,12 @@ public:
     std::size_t size(container c) const
     {
         switch (c) {
-            case container::CERT:
-                return cert_chain_.size();
-            case container::CA_CERT:
-                return ca_cert_.size();
-            case container::PRIVKEY:
-                return private_key_.size();
+        case container::CERT:
+            return cert_chain_.size();
+        case container::CA_CERT:
+            return ca_cert_.size();
+        case container::PRIVKEY:
+            return private_key_.size();
         }
         return 0;
     }
@@ -80,11 +79,10 @@ public:
  */
 class shared_ctx {
 public:
-    static SSL_CTX *create(const char* location, context_base::method m)
+    static SSL_CTX *create(const char *location, context_base::method m)
     {
         auto wrapped = asio::ssl::mbedtls::create<shared_ctx>(location, m);
-        if (wrapped->ctx_ == nullptr)
-        {
+        if (wrapped->ctx_ == nullptr) {
             throw_alloc_failure(location);
         }
         return wrapped;
@@ -96,10 +94,12 @@ public:
     }
 
     explicit shared_ctx(context_base::method m)
-        :ctx_(std::shared_ptr<context>(new (std::nothrow) context(m))) { }
+        : ctx_(std::shared_ptr<context>(new (std::nothrow) context(m))) { }
 
 private:
     std::shared_ptr<mbedtls::context> ctx_;
 };
 
-} } } // namespace asio::ssl::mbedtls
+}
+}
+} // namespace asio::ssl::mbedtls

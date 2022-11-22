@@ -1,10 +1,11 @@
-/* Modem console example
+/*
+ * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ */
 
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * Modem console example
 */
 
 #include <cstdio>
@@ -15,10 +16,12 @@
 #include "esp_console.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
+#include "esp_sleep.h"
+#include "driver/gpio.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
-#if defined(CONFIG_USB_OTG_SUPPORTED)
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
 #include "esp_modem_usb_config.h"
 #include "cxx_include/esp_modem_usb_api.hpp"
 #endif
@@ -41,13 +44,16 @@
             return 0;                        \
         } else {    \
             ESP_LOGE(TAG, "Failed with %s", err == command_result::TIMEOUT ? "TIMEOUT":"ERROR");  \
-        return 1;                            \
+            return 1;                            \
         } } while (0)
 
 /**
  * Please update the default APN name here (this could be updated runtime)
  */
 #define DEFAULT_APN "my_apn"
+
+#define GPIO_OUTPUT_PWRKEY    (gpio_num_t)CONFIG_EXAMPLE_MODEM_PWRKEY_PIN
+#define GPIO_OUTPUT_PIN_SEL  (1ULL<<GPIO_OUTPUT_PWRKEY)
 
 extern "C" void modem_console_register_http(void);
 extern "C" void modem_console_register_ping(void);
@@ -56,10 +62,40 @@ static const char *TAG = "modem_console";
 static esp_console_repl_t *s_repl = nullptr;
 
 using namespace esp_modem;
+static SignalGroup exit_signal;
 
+
+void config_gpio(void)
+{
+    gpio_config_t io_conf = {};                     //zero-initialize the config structure.
+
+    io_conf.intr_type = GPIO_INTR_DISABLE;          //disable interrupt
+    io_conf.mode = GPIO_MODE_OUTPUT;                //set as output mode
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;     //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;   //disable pull-down mode
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;       //disable pull-up mode
+
+    gpio_config(&io_conf);                          //configure GPIO with the given settings
+}
+
+void wakeup_modem(void)
+{
+    /* Power on the modem */
+    ESP_LOGI(TAG, "Power on the modem");
+    gpio_set_level(GPIO_OUTPUT_PWRKEY, 1);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    gpio_set_level(GPIO_OUTPUT_PWRKEY, 0);
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+}
 
 extern "C" void app_main(void)
 {
+    static RTC_RODATA_ATTR char apn_rtc[20] = DEFAULT_APN;
+    static RTC_DATA_ATTR modem_mode mode_rtc = esp_modem::modem_mode::COMMAND_MODE;
+
+    config_gpio();
+
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -111,61 +147,89 @@ extern "C" void app_main(void)
 
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
-    struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296); // VID and PID of BG96 modem
-    // BG96 modem implements Vendor Specific class, that is CDC-ACM like. Interface for AT commands has index no. 2.
-    usb_config.interface_idx = 2;
-    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);  
-    ESP_LOGI(TAG, "Waiting for USB device connection...");
-    auto dte = create_usb_dte(&dte_config);
-    std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+    while (1) {
+        exit_signal.clear(1);
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
+        const esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
+        ESP_LOGI(TAG, "Waiting for USB device connection...");
+        auto dte = create_usb_dte(&dte_config);
+        dte->set_error_cb([&](terminal_error err) {
+            ESP_LOGI(TAG, "error handler %d", err);
+            if (err == terminal_error::DEVICE_GONE) {
+                exit_signal.set(1);
+            }
+        });
+        std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
 
 #else
 #error Invalid serial connection to modem.
 #endif
-    
+
     assert(dce != nullptr);
 
+    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
 
-    //now we want to go back to 2-Wire mode:
-    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_NONE);
-
-
-    for (int i = 0; i < 15; ++i) {
-        if (command_result::OK != dce->sync()) {
-            ESP_LOGW(TAG, "sync no Success after %i try", i);
-        } else {
-            ESP_LOGI(TAG, "sync Success after %i try", i);
-            break; //exit the Loop.
-        }
-    }
+	    //now we want to go back to 2-Wire mode:
+	    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_NONE);
 
 
-    //now we want to go back to 4-Wire mode:
-    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_HW);
+	    for (int i = 0; i < 15; ++i) {
+	        if (command_result::OK != dce->sync()) {
+	            ESP_LOGW(TAG, "sync no Success after %i try", i);
+	        } else {
+	            ESP_LOGI(TAG, "sync Success after %i try", i);
+	            break; //exit the Loop.
+	        }
+	    }
 
-    //set this mode also to the DCE.
-    if (command_result::OK != dce->set_flow_control(2, 2)) {
-        ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
-        return;
-    }
-    ESP_LOGI(TAG, "set_flow_control OK");
+
+	    //now we want to go back to 4-Wire mode:
+	    uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_HW);
+
+	    //set this mode also to the DCE.
+	    if (command_result::OK != dce->set_flow_control(2, 2)) {
+	        ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
+	        return;
+	    }
+	    ESP_LOGI(TAG, "set_flow_control OK");
 
 
-    //sync
-    for (int i = 0; i < 15; ++i) {
-        if (command_result::OK != dce->sync()) {
-            ESP_LOGE(TAG, "sync no Success after %i try", i);
-        } else {
-            ESP_LOGI(TAG, "sync Success after %i try", i);
-            break; //exit the Loop.
-        }
-    }
+	    //sync
+	    for (int i = 0; i < 15; ++i) {
+	        if (command_result::OK != dce->sync()) {
+	            ESP_LOGE(TAG, "sync no Success after %i try", i);
+	        } else {
+	            ESP_LOGI(TAG, "sync Success after %i try", i);
+	            break; //exit the Loop.
+	        }
+	    }
+	}
 
 
     // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &s_repl));
+
+    switch (esp_sleep_get_wakeup_cause()) {
+    case ESP_SLEEP_WAKEUP_TIMER:
+        if (esp_modem::modem_mode::CMUX_MODE == mode_rtc) {
+            ESP_LOGI(TAG, "Deep sleep reset\n");
+
+            /* Set APN */
+            auto new_pdp = std::unique_ptr<PdpContext>(new PdpContext(apn_rtc));
+            dce->get_module()->configure_pdp_context(std::move(new_pdp));
+
+            /* Set CMUX mode */
+            if (!dce->set_mode(mode_rtc)) {
+                ESP_LOGE(TAG, "Failed to set the desired mode");
+            }
+        }
+        break;
+    case ESP_SLEEP_WAKEUP_UNDEFINED:
+    default:
+        ESP_LOGD(TAG, "Not a deep sleep reset\n");
+    }
 
     modem_console_register_http();
     modem_console_register_ping();
@@ -182,7 +246,10 @@ extern "C" void app_main(void)
             } else if (mode == "PPP") {
                 dev_mode = esp_modem::modem_mode::DATA_MODE;
             } else if (mode == "CMUX") {
+                /* Even if switching to CMUX fails, we make the DTE multiplex terminal.
+                   (This is potentially a bug and might be fixed eventually) */
                 dev_mode = esp_modem::modem_mode::CMUX_MODE;
+                mode_rtc = dev_mode;
             } else {
                 ESP_LOGE(TAG, "Unsupported mode: %s", mode.c_str());
                 return 1;
@@ -192,6 +259,8 @@ extern "C" void app_main(void)
                 ESP_LOGE(TAG, "Failed to set the desired mode");
                 return 1;
             }
+            mode_rtc = dev_mode;
+
             ESP_LOGI(TAG, "OK");
         }
         return 0;
@@ -299,6 +368,7 @@ extern "C" void app_main(void)
         if (c->get_count_of(&SetApn::apn)) {
             auto apn = c->get_string_of(&SetApn::apn);
             ESP_LOGI(TAG, "Setting the APN=%s...", apn.c_str());
+            strcpy(apn_rtc, apn.c_str());
             auto new_pdp = std::unique_ptr<PdpContext>(new PdpContext(apn));
             dce->get_module()->configure_pdp_context(std::move(new_pdp));
             ESP_LOGI(TAG, "OK");
@@ -306,16 +376,96 @@ extern "C" void app_main(void)
         return 0;
     });
 
-    SignalGroup exit_signal;
     const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Exiting...");
         exit_signal.set(1);
-        s_repl->del(s_repl);
         return 0;
     });
+
+    /* Put the esp32 into deep sleep */
+    const struct DeepSleepArgs {
+        DeepSleepArgs(): timeout(INT1, nullptr, nullptr, "<tout>", "TIMEOUT") {}
+        CommandArgs timeout;
+    } deep_sleep_args;
+    const ConsoleCommand SetDeepSleep("set_deep_sleep", "Put esp32 to deep sleep", &deep_sleep_args, sizeof(deep_sleep_args), [&](ConsoleCommand * c) {
+        int tout = c->get_int_of(&DeepSleepArgs::timeout);
+        ESP_LOGI(TAG, "Entering deep sleep for %d sec", tout);
+        ESP_LOGI(TAG, "Wakeup Cause: %d ", esp_sleep_get_wakeup_cause());
+        esp_deep_sleep(tout * 1000000);
+        return 0;
+    });
+
+    /* Wake up modem */
+    const ConsoleCommand WakeupModem("wakeup_modem", "Wakes up the modem from PSM", no_args, [&](ConsoleCommand * c) {
+        wakeup_modem();
+        ESP_LOGI(TAG, "OK");
+        return 0;
+    });
+
+    /* Enable PSM modem */
+    const ConsoleCommand EnablePSM("enable_psm", "Enables PSM on the modem", no_args, [&](ConsoleCommand * c) {
+        std::string out;
+        CHECK_ERR(dce->at("AT+CPSMS=1", out, 500), ESP_LOGI(TAG, "OK. %s", out.c_str()));
+        return 0;
+    });
+
+    /* Disable PSM modem */
+    const ConsoleCommand DisablePSM("disable_psm", "Disables PSM on the modem", no_args, [&](ConsoleCommand * c) {
+        std::string out;
+        CHECK_ERR(dce->at("AT+CPSMS=0", out, 500),   ESP_LOGI(TAG, "OK. %s", out.c_str()));
+        return 0;
+    });
+
+    /* Get modem PSM cfg */
+    const ConsoleCommand GetModemCfg("get_psm_cfg", "Get PSM config", no_args, [&](ConsoleCommand * c) {
+        std::string out;
+        CHECK_ERR(dce->at("AT+CPSMS?", out, 500),  ESP_LOGI(TAG, "OK. %s", out.c_str()));
+        return 0;
+    });
+
+    /* Set modem PSM config */
+    const struct SetPsmCfgArgs {
+        SetPsmCfgArgs():
+            periodic_tau(STR1, nullptr, nullptr, "<Requested_Periodic-TAU>", "T3412 Timer in 8-bit format"),
+            active_time(STR0, nullptr, nullptr, "<Requested_Active-Time>", "T3324 Timer in 8-bit format") {}
+        CommandArgs periodic_tau;
+        CommandArgs active_time;
+    } set_psm_cfg_args;
+    const ConsoleCommand SetPsmCfg("set_psm_cfg", "Set PSM config", &set_psm_cfg_args, sizeof(set_psm_cfg_args), [&](ConsoleCommand * c) {
+        std::string out;
+        auto periodic_tau = c->get_string_of(&SetPsmCfgArgs::periodic_tau);
+        auto active_time = c->get_string_of(&SetPsmCfgArgs::active_time);
+
+        /* Validate input */
+        if ((strlen(periodic_tau.c_str()) != strlen("00000000")) ||
+                (strlen(active_time.c_str()) != strlen("00000000"))) {
+            ESP_LOGE(TAG, "Failed with ERROR: Invalid argument length");
+            return 1;
+        }
+
+        /* Get PSM config */
+        dce->at("AT+CPSMS?", out, 500);
+
+        /* Update PSM config */
+        if (out.size() > 8) {
+            std::string set_cmd = "AT+CPSMS=" + std::to_string(out.c_str()[8] - '0') + ",,,\"" + periodic_tau.c_str() + "\",\"" + active_time.c_str() + "\"";
+            CHECK_ERR(dce->at(set_cmd, out, 500),  ESP_LOGI(TAG, "OK. %s", out.c_str()));
+        } else {
+            ESP_LOGE(TAG, "Failed with ERROR: Invalid AT+CPSMS? return length");
+        }
+
+        return 0;
+    });
+
+
     // start console REPL
     ESP_ERROR_CHECK(esp_console_start_repl(s_repl));
     // wait for exit
     exit_signal.wait_any(1, UINT32_MAX);
+    s_repl->del(s_repl);
     ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
+    // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features.
+} // while (1)
+#endif
 }
