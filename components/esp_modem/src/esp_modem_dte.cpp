@@ -174,6 +174,7 @@ int DTE::write(uint8_t *data, size_t len)
 unique_buffer::unique_buffer(size_t size):
     data(std::make_unique<uint8_t[]>(size)), size(size), consumed(0) {}
 
-void esp_modem::DTE::set_flow_control(esp_modem_flow_ctrl_t flow_control) {
+void esp_modem::DTE::set_flow_control(esp_modem_flow_ctrl_t flow_control)
+{
     command_term->set_flow_control(flow_control);
 }

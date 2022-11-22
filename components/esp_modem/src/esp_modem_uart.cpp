@@ -198,7 +198,7 @@ void UartTerminal::set_flow_control(esp_modem_flow_ctrl_t flow_control)
     } else if (flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
         res = uart_set_sw_flow_ctrl(uart.port, true, 8, UART_FIFO_LEN - 8);
     } else if  (flow_control == ESP_MODEM_FLOW_CONTROL_NONE) {
-    	res = uart_set_hw_flow_ctrl(uart.port, UART_HW_FLOWCTRL_DISABLE, 0);
+        res = uart_set_hw_flow_ctrl(uart.port, UART_HW_FLOWCTRL_DISABLE, 0);
     }
     ESP_MODEM_THROW_IF_ERROR(res, "config uart flow control failed");
 

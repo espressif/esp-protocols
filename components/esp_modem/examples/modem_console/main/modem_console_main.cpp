@@ -167,7 +167,7 @@ extern "C" void app_main(void)
 
     assert(dce != nullptr);
 
-    if(dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+    if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
 
         //now we want to go back to 2-Wire mode:
         uart_dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_NONE);

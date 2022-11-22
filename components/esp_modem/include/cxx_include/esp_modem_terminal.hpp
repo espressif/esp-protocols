@@ -74,7 +74,7 @@ public:
 
     virtual void stop() = 0;
 
-    virtual void set_flow_control(esp_modem_flow_ctrl_t flow_control){}
+    virtual void set_flow_control(esp_modem_flow_ctrl_t flow_control) {}
 
 protected:
     std::function<bool(uint8_t *data, size_t len)> on_read;
