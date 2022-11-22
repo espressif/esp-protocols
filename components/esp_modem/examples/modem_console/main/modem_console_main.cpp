@@ -167,6 +167,7 @@ extern "C" void app_main(void)
 
     assert(dce != nullptr);
 
+#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
 
         //now we want to go back to 2-Wire mode:
@@ -204,7 +205,7 @@ extern "C" void app_main(void)
             }
         }
     }
-
+#endif
 
     // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
