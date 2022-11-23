@@ -277,6 +277,8 @@
 </li>
       <li><a href="api_docs.html#_CPPv412esp_modem_atPKcPci">esp_modem_at (C++ function)</a>
 </li>
+      <li><a href="api_docs.html#_CPPv417esp_modem_commandP15esp_modem_dce_tPKcPF9esp_err_tP7uint8_t6size_tE8uint32_t">esp_modem_command (C++ function)</a>
+</li>
       <li><a href="api_docs.html#_CPPv420esp_modem_dce_config">esp_modem_dce_config (C++ struct)</a>
 </li>
       <li><a href="api_docs.html#_CPPv4N20esp_modem_dce_config3apnE">esp_modem_dce_config::apn (C++ member)</a>
@@ -287,12 +289,12 @@
 </li>
       <li><a href="api_docs.html#_CPPv420esp_modem_dce_device">esp_modem_dce_device (C++ enum)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_docs.html#_CPPv4N20esp_modem_dce_device18ESP_MODEM_DCE_BG96E">esp_modem_dce_device::ESP_MODEM_DCE_BG96 (C++ enumerator)</a>
 </li>
       <li><a href="api_docs.html#_CPPv4N20esp_modem_dce_device21ESP_MODEM_DCE_GENETICE">esp_modem_dce_device::ESP_MODEM_DCE_GENETIC (C++ enumerator)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_docs.html#_CPPv4N20esp_modem_dce_device21ESP_MODEM_DCE_SIM7000E">esp_modem_dce_device::ESP_MODEM_DCE_SIM7000 (C++ enumerator)</a>
 </li>
       <li><a href="api_docs.html#_CPPv4N20esp_modem_dce_device21ESP_MODEM_DCE_SIM7070E">esp_modem_dce_device::ESP_MODEM_DCE_SIM7070 (C++ enumerator)</a>
@@ -306,6 +308,16 @@
       <li><a href="api_docs.html#_CPPv418esp_modem_dce_mode">esp_modem_dce_mode (C++ enum)</a>
 </li>
       <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode19ESP_MODEM_MODE_CMUXE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX (C++ enumerator)</a>
+</li>
+      <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode26ESP_MODEM_MODE_CMUX_MANUALE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX_MANUAL (C++ enumerator)</a>
+</li>
+      <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode34ESP_MODEM_MODE_CMUX_MANUAL_COMMANDE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX_MANUAL_COMMAND (C++ enumerator)</a>
+</li>
+      <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode31ESP_MODEM_MODE_CMUX_MANUAL_DATAE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX_MANUAL_DATA (C++ enumerator)</a>
+</li>
+      <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode31ESP_MODEM_MODE_CMUX_MANUAL_EXITE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX_MANUAL_EXIT (C++ enumerator)</a>
+</li>
+      <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode31ESP_MODEM_MODE_CMUX_MANUAL_SWAPE">esp_modem_dce_mode::ESP_MODEM_MODE_CMUX_MANUAL_SWAP (C++ enumerator)</a>
 </li>
       <li><a href="api_docs.html#_CPPv4N18esp_modem_dce_mode22ESP_MODEM_MODE_COMMANDE">esp_modem_dce_mode::ESP_MODEM_MODE_COMMAND (C++ enumerator)</a>
 </li>
@@ -495,18 +507,28 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="internal_docs.html#_CPPv410modem_mode">modem_mode (C++ enum)</a>
 </li>
+      <li><a href="internal_docs.html#_CPPv4N10modem_mode19CMUX_MANUAL_COMMANDE">modem_mode::CMUX_MANUAL_COMMAND (C++ enumerator)</a>
+</li>
+      <li><a href="internal_docs.html#_CPPv4N10modem_mode16CMUX_MANUAL_DATAE">modem_mode::CMUX_MANUAL_DATA (C++ enumerator)</a>
+</li>
+      <li><a href="internal_docs.html#_CPPv4N10modem_mode16CMUX_MANUAL_EXITE">modem_mode::CMUX_MANUAL_EXIT (C++ enumerator)</a>
+</li>
+      <li><a href="internal_docs.html#_CPPv4N10modem_mode16CMUX_MANUAL_MODEE">modem_mode::CMUX_MANUAL_MODE (C++ enumerator)</a>
+</li>
+      <li><a href="internal_docs.html#_CPPv4N10modem_mode16CMUX_MANUAL_SWAPE">modem_mode::CMUX_MANUAL_SWAP (C++ enumerator)</a>
+</li>
       <li><a href="internal_docs.html#_CPPv4N10modem_mode9CMUX_MODEE">modem_mode::CMUX_MODE (C++ enumerator)</a>
 </li>
       <li><a href="internal_docs.html#_CPPv4N10modem_mode12COMMAND_MODEE">modem_mode::COMMAND_MODE (C++ enumerator)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="internal_docs.html#_CPPv4N10modem_mode9DATA_MODEE">modem_mode::DATA_MODE (C++ enumerator)</a>
 </li>
       <li><a href="internal_docs.html#_CPPv4N10modem_mode5UNDEFE">modem_mode::UNDEF (C++ enumerator)</a>
 </li>
       <li><a href="advanced_api.html#_CPPv49ModemType">ModemType (C++ enum)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="advanced_api.html#_CPPv4N9ModemType4BG96E">ModemType::BG96 (C++ enumerator)</a>
 </li>
       <li><a href="advanced_api.html#_CPPv4N9ModemType13GenericModuleE">ModemType::GenericModule (C++ enumerator)</a>
