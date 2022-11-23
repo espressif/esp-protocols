@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>Advanced esp-modem use cases &#8212; esp-modem  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -12,9 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Internal design" href="internal_design.html" />
@@ -36,10 +34,10 @@
           <div class="body" role="main">
             
   <section id="advanced-esp-modem-use-cases">
-<h1>Advanced esp-modem use cases<a class="headerlink" href="#advanced-esp-modem-use-cases" title="Permalink to this heading">¶</a></h1>
+<h1>Advanced esp-modem use cases<a class="headerlink" href="#advanced-esp-modem-use-cases" title="Permalink to this headline">¶</a></h1>
 <p>This chapter outlines basic extensibility of the esp-modem component.</p>
 <section id="custom-instantiation-with-dce-factory">
-<span id="dce-factory"></span><h2>Custom instantiation with DCE factory<a class="headerlink" href="#custom-instantiation-with-dce-factory" title="Permalink to this heading">¶</a></h2>
+<span id="dce-factory"></span><h2>Custom instantiation with DCE factory<a class="headerlink" href="#custom-instantiation-with-dce-factory" title="Permalink to this headline">¶</a></h2>
 <p>It is possible to create a modem handle in many different ways:</p>
 <ul class="simple">
 <li><p>Build a DCE on top a generic module, user defined module or build the module only (in case the application will only use AT command interface)</p></li>
@@ -112,14 +110,14 @@
 <em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_creator"><span class="std std-ref">Creator</span></a> class for building a DCE_T&lt;Module&gt; in a specific way, either from a Module object or by default from the <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> and netif. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Throws <span class="colon">:</span></dt>
+<dt class="field-odd">Throws </dt>
 <dd class="field-odd"><p></p></dd>
 </dl>
 </dd></dl>
 
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4N9esp_modem11dce_factory7FactoryE">
-<span id="_CPPv3N9esp_modem11dce_factory7FactoryE"></span><span id="_CPPv2N9esp_modem11dce_factory7FactoryE"></span><span id="esp_modem::dce_factory::Factory"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Factory</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory7FactoryE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3N9esp_modem11dce_factory7FactoryE"></span><span id="_CPPv2N9esp_modem11dce_factory7FactoryE"></span><span id="esp_modem::dce_factory::Factory"></span><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">dce_factory</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">Factory</span></span></span><a class="headerlink" href="#_CPPv4N9esp_modem11dce_factory7FactoryE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;esp_modem_dce_factory.hpp&gt;</em></div>
 <p><a class="reference internal" href="#classesp__modem_1_1dce__factory_1_1_factory"><span class="std std-ref">Factory</span></a> class for creating virtual <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> objects based on the configuration of the supplied module. This could also be used to create a custom module or a DCE_T&lt;module&gt;, provided user app derives from this factory. </p>
@@ -130,16 +128,16 @@
 <span id="_CPPv3IDpEN9esp_modem11dce_factory7Factory12build_uniqueEPK6configDpRR4Args"></span><span id="_CPPv2IDpEN9esp_modem11dce_factory7Factory12build_uniqueEPK6configDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory_1a5fd0210522a31e645f28c0b0f23ffb67"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCEE" title="esp_modem::DCE"><span class="n"><span class="pre">DCE</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">build_unique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">config</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cfg</span></span>, <a class="reference internal" href="#_CPPv4IDpEN9esp_modem11dce_factory7Factory12build_uniqueENSt10unique_ptrI3DCEEEPK6configDpRR4Args" title="esp_modem::dce_factory::Factory::build_unique::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN9esp_modem11dce_factory7Factory12build_uniqueENSt10unique_ptrI3DCEEEPK6configDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create a default unique_ptr <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> generically, with the chosen module derived from the <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_generic_module"><span class="std std-ref">GenericModule</span></a>. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Template Parameters</dt>
 <dd class="field-odd"><p><strong>Args</strong> – Arguments to the builder, i.e. constructor of <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e___t"><span class="std std-ref">esp_modem::DCE_T</span></a> class </p>
 </dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dt class="field-even">Parameters</dt>
 <dd class="field-even"><ul class="simple">
 <li><p><strong>cfg</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> configuration structure <a class="reference internal" href="api_docs.html#structesp__modem__dte__config"><span class="std std-ref">esp_modem_dte_config</span></a> </p></li>
 <li><p><strong>args</strong> – typically a <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> object and a netif handle for PPP network </p></li>
 </ul>
 </dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>unique_ptr <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> of the created <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> on success </p>
 </dd>
 </dl>
@@ -153,19 +151,19 @@
 <span id="_CPPv3I0DpEN9esp_modem11dce_factory7Factory12build_uniqueEPK6configDpRR4Args"></span><span id="_CPPv2I0DpEN9esp_modem11dce_factory7Factory12build_uniqueEPK6configDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T_Module</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory_1a2a4686de666658fb89a8d80ce2935bf2"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCEE" title="esp_modem::DCE"><span class="n"><span class="pre">DCE</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">build_unique</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">config</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cfg</span></span>, <a class="reference internal" href="#_CPPv4I0DpEN9esp_modem11dce_factory7Factory12build_uniqueENSt10unique_ptrI3DCEEEPK6configDpRR4Args" title="esp_modem::dce_factory::Factory::build_unique::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0DpEN9esp_modem11dce_factory7Factory12build_uniqueENSt10unique_ptrI3DCEEEPK6configDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create a default unique_ptr <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> in a specific way (from the module) </p>
 <dl class="field-list simple">
-<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Template Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>Module</strong> – Specific Module used in this <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> </p></li>
 <li><p><strong>Args</strong> – Arguments to the builder, i.e. constructor of <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e___t"><span class="std std-ref">esp_modem::DCE_T</span></a> class </p></li>
 </ul>
 </dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dt class="field-even">Parameters</dt>
 <dd class="field-even"><ul class="simple">
 <li><p><strong>cfg</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> configuration structure <a class="reference internal" href="api_docs.html#structesp__modem__dte__config"><span class="std std-ref">esp_modem_dte_config</span></a> </p></li>
 <li><p><strong>args</strong> – typically a <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> object and a netif handle for PPP network </p></li>
 </ul>
 </dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>unique_ptr <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> of the created <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> on success </p>
 </dd>
 </dl>
@@ -176,19 +174,19 @@
 <span id="_CPPv3I0DpEN9esp_modem11dce_factory7Factory5buildEPK6configDpRR4Args"></span><span id="_CPPv2I0DpEN9esp_modem11dce_factory7Factory5buildEPK6configDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T_Module</span></span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1dce__factory_1_1_factory_1a2dfb050a53429bb651fb58de5841c04d"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCEE" title="esp_modem::DCE"><span class="n"><span class="pre">DCE</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">build</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">config</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cfg</span></span>, <a class="reference internal" href="#_CPPv4I0DpEN9esp_modem11dce_factory7Factory5buildEP3DCEPK6configDpRR4Args" title="esp_modem::dce_factory::Factory::build::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0DpEN9esp_modem11dce_factory7Factory5buildEP3DCEPK6configDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create a <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a>. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Template Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>Module</strong> – Specific Module used in this <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> </p></li>
 <li><p><strong>Args</strong> – Arguments to the builder, i.e. constructor of <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e___t"><span class="std std-ref">esp_modem::DCE_T</span></a> class </p></li>
 </ul>
 </dd>
-<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dt class="field-even">Parameters</dt>
 <dd class="field-even"><ul class="simple">
 <li><p><strong>cfg</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> configuration structure <a class="reference internal" href="api_docs.html#structesp__modem__dte__config"><span class="std std-ref">esp_modem_dte_config</span></a> </p></li>
 <li><p><strong>args</strong> – typically a <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> object and a netif handle for PPP network </p></li>
 </ul>
 </dd>
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p><a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> pointer the created <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> on success </p>
 </dd>
 </dl>
@@ -201,7 +199,7 @@
 
 </section>
 <section id="create-custom-module">
-<span id="id1"></span><h2>Create custom module<a class="headerlink" href="#create-custom-module" title="Permalink to this heading">¶</a></h2>
+<span id="id1"></span><h2>Create custom module<a class="headerlink" href="#create-custom-module" title="Permalink to this headline">¶</a></h2>
 <p>Creating a custom module is necessary if the application needs to use a specific device that is not supported
 and their commands differ from any of the supported devices. In this case it is recommended to define a new class
 representing this specific device and derive from the <a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem13GenericModuleE" title="esp_modem::GenericModule"><code class="xref cpp cpp-class docutils literal notranslate"><span class="pre">esp_modem::GenericModule</span></code></a>. In order to instantiate
@@ -212,7 +210,7 @@ the specific module, using <a class="reference internal" href="#_CPPv4I0DpEN9esp
 for demonstration purposes only.</p>
 </section>
 <section id="create-new-communication-interface">
-<h2>Create new communication interface<a class="headerlink" href="#create-new-communication-interface" title="Permalink to this heading">¶</a></h2>
+<h2>Create new communication interface<a class="headerlink" href="#create-new-communication-interface" title="Permalink to this headline">¶</a></h2>
 <p>In order to connect to a device using an unsupported interface (e.g. SPI or I2C), it is necessary to implement
 a custom DTE object and supply it into <a class="reference internal" href="#dce-factory"><span class="std std-ref">the DCE factory</span></a>. The DCE is typically created in two steps:</p>
 <ul class="simple">
@@ -272,7 +270,7 @@ a custom DTE object and supply it into <a class="reference internal" href="#dce-
     </form>
     </div>
 </div>
-<script>document.getElementById('searchbox').style.display = "block"</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -289,7 +287,7 @@ a custom DTE object and supply it into <a class="reference internal" href="#dce-
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

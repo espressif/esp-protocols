@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>C++ API Documentation &#8212; esp-modem  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -12,9 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Advanced esp-modem use cases" href="advanced_api.html" />
@@ -36,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="c-api-documentation">
-<h1>C++ API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this heading">¶</a></h1>
+<h1>C++ API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this headline">¶</a></h1>
 <p>Similar to the <a class="reference internal" href="api_docs.html#c-api"><span class="std std-ref">C API Documentation</span></a>, the basic application workflow consist of</p>
 <div class="toctree-wrapper compound">
 </div>
@@ -47,7 +45,7 @@
 <li><p><a class="reference internal" href="#cpp-destroy"><span class="std std-ref">Destroying the DCE</span></a></p></li>
 </ul>
 <section id="create-dte-and-dce">
-<span id="cpp-init"></span><h2>Create DTE and DCE<a class="headerlink" href="#create-dte-and-dce" title="Permalink to this heading">¶</a></h2>
+<span id="cpp-init"></span><h2>Create DTE and DCE<a class="headerlink" href="#create-dte-and-dce" title="Permalink to this headline">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_INIT_DTE</span></span></dt>
@@ -72,10 +70,10 @@
 <span id="_CPPv315create_uart_dtePK10dte_config"></span><span id="_CPPv215create_uart_dtePK10dte_config"></span><span id="create_uart_dte__dte_configCP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga4a4f7f00866211c2d390fd3edb282531"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_uart_dte</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dte_config" title="dte_config"><span class="n"><span class="pre">dte_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415create_uart_dtePK10dte_config" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create UART <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> configuration </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>shared ptr to <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> on success nullptr on failure (either due to insufficient memory or wrong dte configuration) if exceptions are disabled the API abort()’s on error </p>
 </dd>
 </dl>
@@ -86,10 +84,10 @@
 <span id="_CPPv314create_vfs_dtePK10dte_config"></span><span id="_CPPv214create_vfs_dtePK10dte_config"></span><span id="create_vfs_dte__dte_configCP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga5795216bc8c5a8a3c08e1008c7576253"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_vfs_dte</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dte_config" title="dte_config"><span class="n"><span class="pre">dte_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414create_vfs_dtePK10dte_config" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create VFS <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> configuration </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>shared ptr to <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> on success nullptr on failure (either due to insufficient memory or wrong dte configuration) if exceptions are disabled the API abort()’s on error </p>
 </dd>
 </dl>
@@ -109,14 +107,14 @@
 <span id="_CPPv318create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv218create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_SIM7600_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1ga4afd7f37219025f4dfd936784e5a56e1"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_SIM7600_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_s_i_m7600"><span class="std std-ref">SIM7600</span></a> module. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> configuration </p></li>
 <li><p><strong>dte</strong> – reference to the communicating <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> </p></li>
 <li><p><strong>netif</strong> – reference to the network interface</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>unique ptr to the created <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> on success nullptr on failure if exceptions are disabled the API abort()’s on error </p>
 </dd>
 </dl>
@@ -157,10 +155,10 @@
 
 </section>
 <section id="mode-switching-commands">
-<span id="cpp-mode-switch"></span><h2>Mode switching commands<a class="headerlink" href="#mode-switching-commands" title="Permalink to this heading">¶</a></h2>
+<span id="cpp-mode-switch"></span><h2>Mode switching commands<a class="headerlink" href="#mode-switching-commands" title="Permalink to this headline">¶</a></h2>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4I0EN9esp_modem5DCE_TE">
-<span id="_CPPv3I0EN9esp_modem5DCE_TE"></span><span id="_CPPv2I0EN9esp_modem5DCE_TE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpecificModule</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1_d_c_e___t"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">DCE_T</span></span></span><a class="headerlink" href="#_CPPv4I0EN9esp_modem5DCE_TE" title="Permalink to this definition">¶</a><br /></dt>
+<span id="_CPPv3I0EN9esp_modem5DCE_TE"></span><span id="_CPPv2I0EN9esp_modem5DCE_TE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpecificModule</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1_d_c_e___t"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DCE_T</span></span></span><a class="headerlink" href="#_CPPv4I0EN9esp_modem5DCE_TE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>General <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> class templated on a specific module. It is responsible for all the necessary transactions related to switching modes and consequent synergy with aggregated objects of <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>, <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_netif"><span class="std std-ref">Netif</span></a> and a specific Module. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
@@ -175,7 +173,7 @@
 
 </section>
 <section id="modem-commands">
-<span id="cpp-modem-commands"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this heading">¶</a></h2>
+<span id="cpp-modem-commands"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE4syncEv" title="esp_modem::DCE::sync"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::sync()</span></code></a></p></li>
 <li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringERi" title="esp_modem::DCE::get_operator_name"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_operator_name()</span></code></a></p></li>
@@ -216,7 +214,7 @@
 </ul>
 </section>
 <section id="destroy-the-dce">
-<span id="cpp-destroy"></span><h2>Destroy the DCE<a class="headerlink" href="#destroy-the-dce" title="Permalink to this heading">¶</a></h2>
+<span id="cpp-destroy"></span><h2>Destroy the DCE<a class="headerlink" href="#destroy-the-dce" title="Permalink to this headline">¶</a></h2>
 <p>The DCE object is created as <code class="docutils literal notranslate"><span class="pre">std::unique_ptr</span></code> by default and as such doesn’t have to be explicitly destroyed.
 It simply gets destroyed and cleaned-up automatically if the object goes out of the block scope.</p>
 </section>
@@ -272,7 +270,7 @@ It simply gets destroyed and cleaned-up automatically if the object goes out of 
     </form>
     </div>
 </div>
-<script>document.getElementById('searchbox').style.display = "block"</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -289,7 +287,7 @@ It simply gets destroyed and cleaned-up automatically if the object goes out of 
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

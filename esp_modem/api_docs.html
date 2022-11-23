@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>C API Documentation &#8212; esp-modem  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -12,9 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="C++ API Documentation" href="cxx_api_docs.html" />
@@ -36,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="c-api-documentation">
-<span id="c-api"></span><h1>C API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this heading">¶</a></h1>
+<span id="c-api"></span><h1>C API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this headline">¶</a></h1>
 <p>The C API is very simple and consist of these two basic parts:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#lifecycle-api"><span class="std std-ref">Lifecycle API</span></a></p></li>
@@ -53,7 +51,7 @@
 </ul>
 <p>Note the configuration structures for DTE and DCE, needed for creating the DCE instance, is documented in <a class="reference internal" href="#api-config"><span class="std std-ref">Configuration structures</span></a></p>
 <section id="lifecycle-api">
-<span id="id1"></span><h2>Lifecycle API<a class="headerlink" href="#lifecycle-api" title="Permalink to this heading">¶</a></h2>
+<span id="id1"></span><h2>Lifecycle API<a class="headerlink" href="#lifecycle-api" title="Permalink to this headline">¶</a></h2>
 <p>These functions are used to create, destroy and set modem working mode.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#_CPPv413esp_modem_newPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t" title="esp_modem_new"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem_new()</span></code></a></p></li>
@@ -196,14 +194,14 @@
 <span id="_CPPv313esp_modem_newPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t"></span><span id="_CPPv213esp_modem_newPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t"></span><span id="esp_modem_new__esp_modem_dte_config_tCP.esp_modem_dce_config_tCP.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ga52970f4ff9c5359857119b7f28707360"></span><span class="n"><span class="pre">esp_modem_dce_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_new</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv422esp_modem_dte_config_t" title="esp_modem_dte_config_t"><span class="n"><span class="pre">esp_modem_dte_config_t</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dte_config</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv422esp_modem_dce_config_t" title="esp_modem_dce_config_t"><span class="n"><span class="pre">esp_modem_dce_config_t</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dce_config</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv413esp_modem_newPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create a generic DCE handle for new modem API. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dte_config</strong> – DTE configuration (UART config for now) </p></li>
 <li><p><strong>dce_config</strong> – DCE configuration </p></li>
 <li><p><strong>netif</strong> – Network interface handle for the data mode</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>DCE pointer on success, NULL on failure </p>
 </dd>
 </dl>
@@ -214,7 +212,7 @@
 <span id="_CPPv317esp_modem_new_dev22esp_modem_dce_device_tPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t"></span><span id="_CPPv217esp_modem_new_dev22esp_modem_dce_device_tPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t"></span><span id="esp_modem_new_dev__esp_modem_dce_device_t.esp_modem_dte_config_tCP.esp_modem_dce_config_tCP.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ga102ace0a2f93dc4838e28b7fee24d290"></span><span class="n"><span class="pre">esp_modem_dce_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_new_dev</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv422esp_modem_dce_device_t" title="esp_modem_dce_device_t"><span class="n"><span class="pre">esp_modem_dce_device_t</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">module</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv422esp_modem_dte_config_t" title="esp_modem_dte_config_t"><span class="n"><span class="pre">esp_modem_dte_config_t</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dte_config</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv422esp_modem_dce_config_t" title="esp_modem_dce_config_t"><span class="n"><span class="pre">esp_modem_dce_config_t</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dce_config</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417esp_modem_new_dev22esp_modem_dce_device_tPK22esp_modem_dte_config_tPK22esp_modem_dce_config_tP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Create a DCE handle using the supplied device. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>module</strong> – Specific device for creating this DCE </p></li>
 <li><p><strong>dte_config</strong> – DTE configuration (UART config for now) </p></li>
@@ -222,7 +220,7 @@
 <li><p><strong>netif</strong> – Network interface handle for the data mode</p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>DCE pointer on success, NULL on failure </p>
 </dd>
 </dl>
@@ -233,7 +231,7 @@
 <span id="_CPPv317esp_modem_destroyP15esp_modem_dce_t"></span><span id="_CPPv217esp_modem_destroyP15esp_modem_dce_t"></span><span id="esp_modem_destroy__esp_modem_dce_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1gad7ea1bd023285cd7c827b66e00cb085a"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">esp_modem_dce_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dce</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417esp_modem_destroyP15esp_modem_dce_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Destroys modem’s DCE handle. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>dce</strong> – DCE to destroy </p>
 </dd>
 </dl>
@@ -244,13 +242,13 @@
 <span id="_CPPv322esp_modem_set_error_cbP15esp_modem_dce_t28esp_modem_terminal_error_cbt"></span><span id="_CPPv222esp_modem_set_error_cbP15esp_modem_dce_t28esp_modem_terminal_error_cbt"></span><span id="esp_modem_set_error_cb__esp_modem_dce_tP.esp_modem_terminal_error_cbt"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ga84df5fd9c4b128c110d614f3b7646134"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_error_cb</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">esp_modem_dce_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dce</span></span>, <a class="reference internal" href="#_CPPv428esp_modem_terminal_error_cbt" title="esp_modem_terminal_error_cbt"><span class="n"><span class="pre">esp_modem_terminal_error_cbt</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">err_cb</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv422esp_modem_set_error_cbP15esp_modem_dce_t28esp_modem_terminal_error_cbt" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Set DTE’s error callback. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dce</strong> – Modem DCE handle </p></li>
 <li><p><strong>err_cb</strong> – <strong>[in]</strong> Error callback </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>ESP_OK on success, ESP_FAIL on failure </p>
 </dd>
 </dl>
@@ -261,13 +259,13 @@
 <span id="_CPPv318esp_modem_set_modeP15esp_modem_dce_t20esp_modem_dce_mode_t"></span><span id="_CPPv218esp_modem_set_modeP15esp_modem_dce_t20esp_modem_dce_mode_t"></span><span id="esp_modem_set_mode__esp_modem_dce_tP.esp_modem_dce_mode_t"></span><span class="target" id="group___e_s_p___m_o_d_e_m___c___a_p_i_1ga8e51dd9d216256fd46bdb768dbfa5e9d"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_mode</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">esp_modem_dce_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dce</span></span>, <a class="reference internal" href="#_CPPv420esp_modem_dce_mode_t" title="esp_modem_dce_mode_t"><span class="n"><span class="pre">esp_modem_dce_mode_t</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_set_modeP15esp_modem_dce_t20esp_modem_dce_mode_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Set operation mode for this DCE. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dce</strong> – Modem DCE handle </p></li>
 <li><p><strong>mode</strong> – Desired MODE </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>ESP_OK on success, ESP_FAIL on failure </p>
 </dd>
 </dl>
@@ -278,7 +276,7 @@
 
 </section>
 <section id="modem-commands">
-<span id="id2"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this heading">¶</a></h2>
+<span id="id2"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this headline">¶</a></h2>
 <p>These functions are the actual commands to communicate with the modem using AT command interface.</p>
 <p>Note that the functions which implement AT commands returning textual values use plain <code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span></code>
 pointer as the return value. The API expects the output data to point to user allocated space of at least
@@ -290,7 +288,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv314esp_modem_syncv"></span><span id="_CPPv214esp_modem_syncv"></span><span id="esp_modem_sync"></span><span class="target" id="esp__modem__api__commands_8h_1aae389a69782d2e373396b07b26ae003b"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_sync</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414esp_modem_syncv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sends the initial AT sequence to sync up with the device. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -301,13 +299,13 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv327esp_modem_get_operator_namePcPi"></span><span id="_CPPv227esp_modem_get_operator_namePcPi"></span><span id="esp_modem_get_operator_name__cP.iP"></span><span class="target" id="esp__modem__api__commands_8h_1a5fac1591bf4e15d00ad3eb56c19aed21"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_operator_name</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">name</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">act</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_get_operator_namePcPi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the operator name. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>operator</strong> – <strong>[out]</strong> name </p></li>
 <li><p><strong>access</strong> – <strong>[out]</strong> technology </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -318,7 +316,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv323esp_modem_store_profilev"></span><span id="_CPPv223esp_modem_store_profilev"></span><span id="esp_modem_store_profile"></span><span class="target" id="esp__modem__api__commands_8h_1a7aa4b5cc28b0d1440cfc416e3d60ec74"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_store_profile</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423esp_modem_store_profilev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Stores current user profile. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -329,10 +327,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv317esp_modem_set_pinPKc"></span><span id="_CPPv217esp_modem_set_pinPKc"></span><span id="esp_modem_set_pin__cCP"></span><span class="target" id="esp__modem__api__commands_8h_1adcf823ecf81bad4469105e051ab74c02"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_pin</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">pin</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417esp_modem_set_pinPKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the supplied PIN code. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>pin</strong> – <strong>[in]</strong> Pin </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -343,14 +341,14 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv312esp_modem_atPKcPci"></span><span id="_CPPv212esp_modem_atPKcPci"></span><span id="esp_modem_at__cCP.cP.i"></span><span class="target" id="esp__modem__api__commands_8h_1a4400ba1800003b088a62b7302d3bb186"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_at</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">cmd</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">timeout</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv412esp_modem_atPKcPci" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Execute the supplied AT command. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>at</strong> – <strong>[in]</strong> AT command </p></li>
 <li><p><strong>out</strong> – <strong>[out]</strong> Command output string </p></li>
 <li><p><strong>timeout</strong> – <strong>[in]</strong> AT command timeout in milliseconds </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -361,10 +359,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_read_pinPb"></span><span id="_CPPv218esp_modem_read_pinPb"></span><span id="esp_modem_read_pin__bP"></span><span class="target" id="esp__modem__api__commands_8h_1a5f4eee22b3b0e41850e535c3ef9a2d97"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_read_pin</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">pin_ok</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_read_pinPb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Checks if the SIM needs a PIN. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>pin_ok</strong> – <strong>[out]</strong> true if the SIM card doesn’t need a PIN to unlock </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -375,10 +373,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_set_echoKb"></span><span id="_CPPv218esp_modem_set_echoKb"></span><span id="esp_modem_set_echo__bC"></span><span class="target" id="esp__modem__api__commands_8h_1a48bee17bab23e4e245564212ec5230d5"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_echo</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">echo_on</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_set_echoKb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets echo mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>echo_on</strong> – <strong>[in]</strong> true if echo mode on (repeats the commands) </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -389,10 +387,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv322esp_modem_sms_txt_modeKb"></span><span id="_CPPv222esp_modem_sms_txt_modeKb"></span><span id="esp_modem_sms_txt_mode__bC"></span><span class="target" id="esp__modem__api__commands_8h_1a277771d525daa3bf11007554ce7b65dc"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_sms_txt_mode</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">txt</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv422esp_modem_sms_txt_modeKb" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the Txt or Pdu mode for SMS (only txt is supported) </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>txt</strong> – <strong>[in]</strong> true if txt mode </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -403,7 +401,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv327esp_modem_sms_character_setv"></span><span id="_CPPv227esp_modem_sms_character_setv"></span><span id="esp_modem_sms_character_set"></span><span class="target" id="esp__modem__api__commands_8h_1ae214058edfeecd33fb4e266247c5f9c2"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_sms_character_set</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_sms_character_setv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the default (GSM) character set. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -414,13 +412,13 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_send_smsPKcPKc"></span><span id="_CPPv218esp_modem_send_smsPKcPKc"></span><span id="esp_modem_send_sms__cCP.cCP"></span><span class="target" id="esp__modem__api__commands_8h_1a2e5f9ba75172c7a767b86259d405c74a"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_send_sms</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">number</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">message</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_send_smsPKcPKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sends SMS message in txt mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>number</strong> – <strong>[in]</strong> Phone number to send the message to </p></li>
 <li><p><strong>message</strong> – <strong>[in]</strong> Text message to be sent </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -431,7 +429,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv326esp_modem_resume_data_modev"></span><span id="_CPPv226esp_modem_resume_data_modev"></span><span id="esp_modem_resume_data_mode"></span><span class="target" id="esp__modem__api__commands_8h_1a92e73f6ace9a8516701f85548f6f26be"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_resume_data_mode</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426esp_modem_resume_data_modev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Resumes data mode (Switches back to the data mode, which was temporarily suspended) </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -442,10 +440,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv325esp_modem_set_pdp_contextP22esp_modem_PdpContext_t"></span><span id="_CPPv225esp_modem_set_pdp_contextP22esp_modem_PdpContext_t"></span><span id="esp_modem_set_pdp_context__esp_modem_PdpContext_tP"></span><span class="target" id="esp__modem__api__commands_8h_1a1907fc2d7312ab1de760b20e39596424"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_pdp_context</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">esp_modem_PdpContext_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">p1</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425esp_modem_set_pdp_contextP22esp_modem_PdpContext_t" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets php context. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>p1</strong> – <strong>[in]</strong> PdP context struct to setup modem cellular connection </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -456,7 +454,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv326esp_modem_set_command_modev"></span><span id="_CPPv226esp_modem_set_command_modev"></span><span id="esp_modem_set_command_mode"></span><span class="target" id="esp__modem__api__commands_8h_1a88e7013264c81f6238920f2e42312bc9"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_command_mode</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426esp_modem_set_command_modev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Switches to the command mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -467,7 +465,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_set_cmuxv"></span><span id="_CPPv218esp_modem_set_cmuxv"></span><span id="esp_modem_set_cmux"></span><span class="target" id="esp__modem__api__commands_8h_1a5e06c4a95333c696c776a819343cb178"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_cmux</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_set_cmuxv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Switches to the CMUX mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -478,10 +476,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_get_imsiPc"></span><span id="_CPPv218esp_modem_get_imsiPc"></span><span id="esp_modem_get_imsi__cP"></span><span class="target" id="esp__modem__api__commands_8h_1a741a7428f72055e2fa35939985373643"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_imsi</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">imsi</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_get_imsiPc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the IMSI number. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>imsi</strong> – <strong>[out]</strong> Module’s IMSI number </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -492,10 +490,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_get_imeiPc"></span><span id="_CPPv218esp_modem_get_imeiPc"></span><span id="esp_modem_get_imei__cP"></span><span class="target" id="esp__modem__api__commands_8h_1abf5fd52813daf3e37ffc8e0e72dbb365"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_imei</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">imei</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_get_imeiPc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the IMEI number. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>imei</strong> – <strong>[out]</strong> Module’s IMEI number </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -506,10 +504,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv325esp_modem_get_module_namePc"></span><span id="_CPPv225esp_modem_get_module_namePc"></span><span id="esp_modem_get_module_name__cP"></span><span class="target" id="esp__modem__api__commands_8h_1ab104cfa5988a274f3e3e3a4501c1f271"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_module_name</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">name</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425esp_modem_get_module_namePc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reads the module name. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>name</strong> – <strong>[out]</strong> module name </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -520,7 +518,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv323esp_modem_set_data_modev"></span><span id="_CPPv223esp_modem_set_data_modev"></span><span id="esp_modem_set_data_mode"></span><span class="target" id="esp__modem__api__commands_8h_1aa5ed2c30147eeebeed57b57f989aa8e1"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_data_mode</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423esp_modem_set_data_modev" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets the modem to data mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -531,13 +529,13 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv328esp_modem_get_signal_qualityPiPi"></span><span id="_CPPv228esp_modem_get_signal_qualityPiPi"></span><span id="esp_modem_get_signal_quality__iP.iP"></span><span class="target" id="esp__modem__api__commands_8h_1a19183c257cf1522d2fd65105e81e850e"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_signal_quality</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">rssi</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">ber</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428esp_modem_get_signal_qualityPiPi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get Signal quality. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>rssi</strong> – <strong>[out]</strong> signal strength indication </p></li>
 <li><p><strong>ber</strong> – <strong>[out]</strong> channel bit error rate </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -548,13 +546,13 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv326esp_modem_set_flow_controlii"></span><span id="_CPPv226esp_modem_set_flow_controlii"></span><span id="esp_modem_set_flow_control__i.i"></span><span class="target" id="esp__modem__api__commands_8h_1aa3c08efe9006a239196fc3eb09504989"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_flow_control</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dce_flow</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte_flow</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426esp_modem_set_flow_controlii" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Sets HW control flow. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dce_flow</strong> – <strong>[in]</strong> 0=none, 2=RTS hw flow control of DCE </p></li>
 <li><p><strong>dte_flow</strong> – <strong>[in]</strong> 0=none, 2=CTS hw flow control of DTE </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -565,7 +563,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv317esp_modem_hang_upv"></span><span id="_CPPv217esp_modem_hang_upv"></span><span id="esp_modem_hang_up"></span><span class="target" id="esp__modem__api__commands_8h_1ad718da0bb46d6e2e7c2939eb69a9b040"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_hang_up</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417esp_modem_hang_upv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Hangs up current data call. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -576,14 +574,14 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv328esp_modem_get_battery_statusPiPiPi"></span><span id="_CPPv228esp_modem_get_battery_statusPiPiPi"></span><span id="esp_modem_get_battery_status__iP.iP.iP"></span><span class="target" id="esp__modem__api__commands_8h_1a8e1856361e95e24ccac5afd8cce2028f"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_battery_status</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">voltage</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">bcs</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">bcl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428esp_modem_get_battery_statusPiPiPi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get voltage levels of modem power up circuitry. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>voltage</strong> – <strong>[out]</strong> Current status in mV </p></li>
 <li><p><strong>bcs</strong> – <strong>[out]</strong> charge status (-1-Not available, 0-Not charging, 1-Charging, 2-Charging done) </p></li>
 <li><p><strong>bcl</strong> – <strong>[out]</strong> 1-100% battery capacity, -1-Not available </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -594,7 +592,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv320esp_modem_power_downv"></span><span id="_CPPv220esp_modem_power_downv"></span><span id="esp_modem_power_down"></span><span class="target" id="esp__modem__api__commands_8h_1a872c6216f9b7d432a2ae79ef8b8132a2"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_power_down</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420esp_modem_power_downv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Power down the module. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -605,7 +603,7 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv315esp_modem_resetv"></span><span id="_CPPv215esp_modem_resetv"></span><span id="esp_modem_reset"></span><span class="target" id="esp__modem__api__commands_8h_1a35e5bd24fca6dda7f5d328a7876554a1"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_reset</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415esp_modem_resetv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Reset the module. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dt class="field-odd">Returns</dt>
 <dd class="field-odd"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -616,10 +614,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv318esp_modem_set_baudi"></span><span id="_CPPv218esp_modem_set_baudi"></span><span id="esp_modem_set_baud__i"></span><span class="target" id="esp__modem__api__commands_8h_1a20107425f600190a441c77efbbbb991b"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_baud</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">baud</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418esp_modem_set_baudi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Configures the baudrate. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>baud</strong> – <strong>[in]</strong> Desired baud rate of the DTE </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -630,14 +628,14 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv322esp_modem_set_operatoriiPKc"></span><span id="_CPPv222esp_modem_set_operatoriiPKc"></span><span id="esp_modem_set_operator__i.i.cCP"></span><span class="target" id="esp__modem__api__commands_8h_1a0ecc34c5c641bd27f793abe631668cde"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_operator</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">format</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">oper</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv422esp_modem_set_operatoriiPKc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Force an attempt to connect to a specific operator. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>mode</strong> – <strong>[in]</strong> mode of attempt mode=0 - automatic mode=1 - manual mode=2 - deregister mode=3 - set format for read operation mode=4 - manual with fallback to automatic </p></li>
 <li><p><strong>format</strong> – <strong>[in]</strong> what format the operator is given in format=0 - long format format=1 - short format format=2 - numeric </p></li>
 <li><p><strong>oper</strong> – <strong>[in]</strong> the operator to connect to </p></li>
 </ul>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -648,10 +646,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv338esp_modem_set_network_attachment_statei"></span><span id="_CPPv238esp_modem_set_network_attachment_statei"></span><span id="esp_modem_set_network_attachment_state__i"></span><span class="target" id="esp__modem__api__commands_8h_1aa5740b04601815aad17194be83803636"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_network_attachment_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv438esp_modem_set_network_attachment_statei" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Attach or detach from the GPRS service. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>state</strong> – <strong>[in]</strong> 1-attach 0-detach </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -662,10 +660,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv338esp_modem_get_network_attachment_statePi"></span><span id="_CPPv238esp_modem_get_network_attachment_statePi"></span><span id="esp_modem_get_network_attachment_state__iP"></span><span class="target" id="esp__modem__api__commands_8h_1a2e52cc922ab637cd609a351e3854b661"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_network_attachment_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv438esp_modem_get_network_attachment_statePi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get network attachment state. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>state</strong> – <strong>[out]</strong> 1-attached 0-detached </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -676,10 +674,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv325esp_modem_set_radio_statei"></span><span id="_CPPv225esp_modem_set_radio_statei"></span><span id="esp_modem_set_radio_state__i"></span><span class="target" id="esp__modem__api__commands_8h_1a6fdc7fd018de06178c1e5d00e90ac34a"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_radio_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425esp_modem_set_radio_statei" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>What mode the radio should be set to. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>state</strong> – <strong>[in]</strong> state 1-full 0-minimum … </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -690,10 +688,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv325esp_modem_get_radio_statePi"></span><span id="_CPPv225esp_modem_get_radio_statePi"></span><span id="esp_modem_get_radio_state__iP"></span><span class="target" id="esp__modem__api__commands_8h_1a3f789ee98e4f987409e20e6af5357374"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_radio_state</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">state</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425esp_modem_get_radio_statePi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Get current radio state. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>state</strong> – <strong>[out]</strong> 1-full 0-minimum … </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -704,10 +702,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv326esp_modem_set_network_modei"></span><span id="_CPPv226esp_modem_set_network_modei"></span><span id="esp_modem_set_network_mode__i"></span><span class="target" id="esp__modem__api__commands_8h_1ab5115c28a1fd2072457764382d4f80b8"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_network_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426esp_modem_set_network_modei" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Set network mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> preferred mode </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -718,10 +716,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv328esp_modem_set_preferred_modei"></span><span id="_CPPv228esp_modem_set_preferred_modei"></span><span id="esp_modem_set_preferred_mode__i"></span><span class="target" id="esp__modem__api__commands_8h_1a087b1a65483fb08748f716aa12dae83c"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_preferred_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428esp_modem_set_preferred_modei" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Preferred network mode (CAT-M and/or NB-IoT) </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> preferred selection </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -732,10 +730,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv327esp_modem_set_network_bandsPKcPKii"></span><span id="_CPPv227esp_modem_set_network_bandsPKcPKii"></span><span id="esp_modem_set_network_bands__cCP.iCP.i"></span><span class="target" id="esp__modem__api__commands_8h_1a98c17279c541200a882028819524329b"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_network_bands</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">mode</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">bands</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">size</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427esp_modem_set_network_bandsPKcPKii" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Set network bands for CAT-M or NB-IoT. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[in]</strong> CAT-M or NB-IoT </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -746,10 +744,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv333esp_modem_get_network_system_modePi"></span><span id="_CPPv233esp_modem_get_network_system_modePi"></span><span id="esp_modem_get_network_system_mode__iP"></span><span class="target" id="esp__modem__api__commands_8h_1ae484a55162d67056e2e958f2fbd61cfd"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_network_system_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv433esp_modem_get_network_system_modePi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Show network system mode. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[out]</strong> current network mode </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -760,10 +758,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv329esp_modem_set_gnss_power_modei"></span><span id="_CPPv229esp_modem_set_gnss_power_modei"></span><span id="esp_modem_set_gnss_power_mode__i"></span><span class="target" id="esp__modem__api__commands_8h_1a0b1e8b668c2ce03d0865290f3d978c46"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_set_gnss_power_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429esp_modem_set_gnss_power_modei" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>GNSS power control. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[out]</strong> power mode (0 - off, 1 - on) </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -774,10 +772,10 @@ pointer as the return value. The API expects the output data to point to user al
 <span id="_CPPv329esp_modem_get_gnss_power_modePi"></span><span id="_CPPv229esp_modem_get_gnss_power_modePi"></span><span id="esp_modem_get_gnss_power_mode__iP"></span><span class="target" id="esp__modem__api__commands_8h_1a012e51ed707a82e4e0cd0d1bd0b7b9ae"></span><a class="reference internal" href="internal_docs.html#_CPPv414command_result" title="command_result"><span class="n"><span class="pre">command_result</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_modem_get_gnss_power_mode</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">mode</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429esp_modem_get_gnss_power_modePi" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>GNSS power control. </p>
 <dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>mode</strong> – <strong>[out]</strong> power mode (0 - off, 1 - on) </p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dt class="field-even">Returns</dt>
 <dd class="field-even"><p>OK, FAIL or TIMEOUT </p>
 </dd>
 </dl>
@@ -786,7 +784,7 @@ pointer as the return value. The API expects the output data to point to user al
 </div>
 </section>
 <section id="configuration-structures">
-<span id="api-config"></span><h2>Configuration structures<a class="headerlink" href="#configuration-structures" title="Permalink to this heading">¶</a></h2>
+<span id="api-config"></span><h2>Configuration structures<a class="headerlink" href="#configuration-structures" title="Permalink to this headline">¶</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group___e_s_p___m_o_d_e_m___c_o_n_f_i_g"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_CONFIG</span></span></dt>
@@ -1087,7 +1085,7 @@ pointer as the return value. The API expects the output data to point to user al
     </form>
     </div>
 </div>
-<script>document.getElementById('searchbox').style.display = "block"</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -1104,7 +1102,7 @@ pointer as the return value. The API expects the output data to point to user al
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

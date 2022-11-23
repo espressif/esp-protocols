@@ -4,7 +4,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
     <title>ESP MODEM &#8212; esp-modem  documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -12,9 +12,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="C API Documentation" href="api_docs.html" />
@@ -36,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="esp-modem">
-<h1>ESP MODEM<a class="headerlink" href="#esp-modem" title="Permalink to this heading">¶</a></h1>
+<h1>ESP MODEM<a class="headerlink" href="#esp-modem" title="Permalink to this headline">¶</a></h1>
 <p>This component is used to communicate with modems in the command mode (using AT commands), as well as the data mode
 (over PPPoS protocol).
 The modem device is modeled with a DCE (Data Communication Equipment) object, which is composed of:</p>
@@ -60,9 +58,9 @@ The modem device is modeled with a DCE (Data Communication Equipment) object, wh
 </pre></div>
 </div>
 <section id="modem-components">
-<h2>Modem components<a class="headerlink" href="#modem-components" title="Permalink to this heading">¶</a></h2>
+<h2>Modem components<a class="headerlink" href="#modem-components" title="Permalink to this headline">¶</a></h2>
 <section id="dce">
-<h3>DCE<a class="headerlink" href="#dce" title="Permalink to this heading">¶</a></h3>
+<h3>DCE<a class="headerlink" href="#dce" title="Permalink to this headline">¶</a></h3>
 <p>This is the basic operational unit of the esp_modem component, abstracting a specific module in software,
 which is basically configured by</p>
 <ul class="simple">
@@ -77,20 +75,20 @@ which is basically configured by</p>
 </ul>
 </section>
 <section id="dte">
-<h3>DTE<a class="headerlink" href="#dte" title="Permalink to this heading">¶</a></h3>
+<h3>DTE<a class="headerlink" href="#dte" title="Permalink to this headline">¶</a></h3>
 <p>Is an abstraction of the physical interface connected to the modem. Current implementation supports only UART</p>
 </section>
 <section id="ppp-netif">
-<h3>PPP netif<a class="headerlink" href="#ppp-netif" title="Permalink to this heading">¶</a></h3>
+<h3>PPP netif<a class="headerlink" href="#ppp-netif" title="Permalink to this headline">¶</a></h3>
 <p>Is used to attach the specific network interface to a network communication protocol used by the modem. Currently implementation supports only PPPoS protocol.</p>
 </section>
 <section id="module">
-<h3>Module<a class="headerlink" href="#module" title="Permalink to this heading">¶</a></h3>
+<h3>Module<a class="headerlink" href="#module" title="Permalink to this headline">¶</a></h3>
 <p>Abstraction of the specific modem device. Currently the component supports SIM800, BG96, SIM7600.</p>
 </section>
 </section>
 <section id="use-cases">
-<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this heading">¶</a></h2>
+<h2>Use cases<a class="headerlink" href="#use-cases" title="Permalink to this headline">¶</a></h2>
 <p>Users interact with the esp-modem using the DCE’s interface, to basically</p>
 <ul class="simple">
 <li><p>Switch between command and data mode to connect to the internet via cellular network.</p></li>
@@ -106,32 +104,32 @@ IP address changes.</p>
 </ul>
 </section>
 <section id="extensibility">
-<h2>Extensibility<a class="headerlink" href="#extensibility" title="Permalink to this heading">¶</a></h2>
+<h2>Extensibility<a class="headerlink" href="#extensibility" title="Permalink to this headline">¶</a></h2>
 <section id="cmux">
-<h3>CMUX<a class="headerlink" href="#cmux" title="Permalink to this heading">¶</a></h3>
+<h3>CMUX<a class="headerlink" href="#cmux" title="Permalink to this headline">¶</a></h3>
 <p>Implementation of virtual terminals is an experimental feature, which allows users to also issue commands in the data mode,
 after creating multiple virtual terminals, designating some of them solely to data mode, others solely to command mode.</p>
 </section>
 <section id="dte-s">
-<h3>DTE’s<a class="headerlink" href="#dte-s" title="Permalink to this heading">¶</a></h3>
+<h3>DTE’s<a class="headerlink" href="#dte-s" title="Permalink to this headline">¶</a></h3>
 <p>Currently, we support only UART (and USB as a preview feature), but modern modules support other communication interfaces, such as USB, SPI.</p>
 </section>
 <section id="other-devices">
-<h3>Other devices<a class="headerlink" href="#other-devices" title="Permalink to this heading">¶</a></h3>
+<h3>Other devices<a class="headerlink" href="#other-devices" title="Permalink to this headline">¶</a></h3>
 <p>Adding a new device is a must-have requirement for the esp-modem component. Different modules support different commands,
 or some commands might have a different implementation. Adding a new device means to provide a new implementation
 as a class derived from <code class="docutils literal notranslate"><span class="pre">GenericModule</span></code>, where we could add new commands or modify the existing ones.</p>
 </section>
 </section>
 <section id="configuration">
-<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this heading">¶</a></h2>
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
 <p>Modem abstraction is configurable both compile-time and run-time.</p>
 <section id="component-kconfig">
-<h3>Component Kconfig<a class="headerlink" href="#component-kconfig" title="Permalink to this heading">¶</a></h3>
+<h3>Component Kconfig<a class="headerlink" href="#component-kconfig" title="Permalink to this headline">¶</a></h3>
 <p>Compile-time configuration is provided using menuconfig. Please check the description for the CMUX mode configuration options.</p>
 </section>
 <section id="runtime-configuration">
-<h3>Runtime configuration<a class="headerlink" href="#runtime-configuration" title="Permalink to this heading">¶</a></h3>
+<h3>Runtime configuration<a class="headerlink" href="#runtime-configuration" title="Permalink to this headline">¶</a></h3>
 <p>Is defined using standard configuration structures for <code class="docutils literal notranslate"><span class="pre">DTE</span></code> and <code class="docutils literal notranslate"><span class="pre">DCE</span></code> objects separately. Please find documentation of</p>
 <ul class="simple">
 <li><p>:cpp:class:<code class="docutils literal notranslate"><span class="pre">esp_modem_dte_config_t</span></code></p></li>
@@ -206,7 +204,7 @@ as a class derived from <code class="docutils literal notranslate"><span class="
     </form>
     </div>
 </div>
-<script>document.getElementById('searchbox').style.display = "block"</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -223,7 +221,7 @@ as a class derived from <code class="docutils literal notranslate"><span class="
       &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.3.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

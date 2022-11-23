@@ -1,4 +1,4 @@
-    
+ 
 - :cpp:func:`esp_modem::DCE::sync` 
 - :cpp:func:`esp_modem::DCE::get_operator_name` 
 - :cpp:func:`esp_modem::DCE::store_profile` 
