@@ -36,6 +36,11 @@ typedef enum esp_modem_dce_mode {
     ESP_MODEM_MODE_COMMAND,  /**< Default mode after modem startup, used for sending AT commands */
     ESP_MODEM_MODE_DATA,     /**< Used for switching to PPP mode for the modem to connect to a network */
     ESP_MODEM_MODE_CMUX,     /**< Multiplexed terminal mode */
+    ESP_MODEM_MODE_CMUX_MANUAL,         /**< CMUX manual mode */
+    ESP_MODEM_MODE_CMUX_MANUAL_EXIT,    /**< Exit CMUX manual mode */
+    ESP_MODEM_MODE_CMUX_MANUAL_SWAP,    /**< Swap terminals in CMUX manual mode */
+    ESP_MODEM_MODE_CMUX_MANUAL_DATA,    /**< Set DATA mode in CMUX manual mode */
+    ESP_MODEM_MODE_CMUX_MANUAL_COMMAND, /**< Set COMMAND mode in CMUX manual mode */
 } esp_modem_dce_mode_t;
 
 /**
@@ -112,6 +117,8 @@ esp_err_t esp_modem_set_error_cb(esp_modem_dce_t *dce, esp_modem_terminal_error_
  * @return ESP_OK on success, ESP_FAIL on failure
  */
 esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce, esp_modem_dce_mode_t mode);
+
+esp_err_t esp_modem_command(esp_modem_dce_t *dce, const char *command, esp_err_t(*got_line_cb)(uint8_t *data, size_t len), uint32_t timeout_ms);
 
 /**
  * @}
