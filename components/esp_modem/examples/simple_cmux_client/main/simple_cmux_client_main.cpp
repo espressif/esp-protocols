@@ -45,7 +45,40 @@ using namespace idf::event;
 static const char *TAG = "cmux_example";
 
 
-extern "C" void app_main(void)
+
+/**
+ *
+ * @param dce
+ * very relevant here to have "& dce" instead of "dce"
+ * see https://stackoverflow.com/questions/30905487/how-can-i-pass-stdunique-ptr-into-a-function
+ *
+ * @param m
+ */
+void set_mode_and_report(std::unique_ptr<DCE_gnss> &dce, modem_mode m)
+{
+    std::string str;
+    switch (m) {
+    case modem_mode::UNDEF:               str = "UNDEF";               break;
+    case modem_mode::COMMAND_MODE:        str = "COMMAND_MODE";        break;
+    case modem_mode::DATA_MODE:           str = "DATA_MODE";           break;
+    case modem_mode::CMUX_MODE:           str = "CMUX_MODE";           break;
+    case modem_mode::CMUX_MANUAL_MODE:    str = "CMUX_MANUAL_MODE";    break;
+    case modem_mode::CMUX_MANUAL_EXIT:    str = "CMUX_MANUAL_EXIT";    break;
+    case modem_mode::CMUX_MANUAL_DATA:    str = "CMUX_MANUAL_DATA";    break;
+    case modem_mode::CMUX_MANUAL_COMMAND: str = "CMUX_MANUAL_COMMAND"; break;
+    case modem_mode::CMUX_MANUAL_SWAP:    str = "CMUX_MANUAL_SWAP";    break;
+    }
+
+    if (dce->set_mode(m)) {
+        std::cout << "Modem has correctly entered mode " << str << std::endl;
+    } else {
+        ESP_LOGE(TAG, "Failed to configure desired mode... exiting");
+        return;
+    }
+}
+
+
+extern "C" void simple_cmux_client_main(void)
 {
     /* Init and register system/core components */
     auto loop = std::make_shared<ESPEventLoop>();
@@ -105,11 +138,41 @@ extern "C" void app_main(void)
     assert(dce);
 
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+
+        //now we want to go back to 2-Wire mode:
+        dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_NONE);
+
+
+        for (int i = 0; i < 15; ++i) {
+            if (command_result::OK != dce->sync()) {
+                ESP_LOGW(TAG, "sync no Success after %i try", i);
+            } else {
+                ESP_LOGI(TAG, "sync Success after %i try", i);
+                break; //exit the Loop.
+            }
+        }
+
+
+        //now we want to go back to 4-Wire mode:
+        dte->set_flow_control(ESP_MODEM_FLOW_CONTROL_HW);
+
+        //set this mode also to the DCE.
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
         }
         ESP_LOGI(TAG, "set_flow_control OK");
+
+
+        //sync
+        for (int i = 0; i < 15; ++i) {
+            if (command_result::OK != dce->sync()) {
+                ESP_LOGE(TAG, "sync no Success after %i try", i);
+            } else {
+                ESP_LOGI(TAG, "sync Success after %i try", i);
+                break; //exit the Loop.
+            }
+        }
     } else {
         ESP_LOGI(TAG, "not set_flow_control, because 2-wire mode active.");
     }
@@ -123,12 +186,11 @@ extern "C" void app_main(void)
     }
 #endif
 
-    if (dce->set_mode(esp_modem::modem_mode::CMUX_MODE)) {
-        std::cout << "Modem has correctly entered multiplexed command/data mode" << std::endl;
-    } else {
-        ESP_LOGE(TAG, "Failed to configure multiplexed command mode... exiting");
-        return;
-    }
+    set_mode_and_report(dce, esp_modem::modem_mode::CMUX_MANUAL_MODE);       /*!< Enter CMUX mode manually -- just creates two virtual terminals */
+    set_mode_and_report(dce, esp_modem::modem_mode::CMUX_MANUAL_DATA);       // second Terminal to Data (Swap is implicit)
+
+
+
 
     /* Read some data from the modem */
     std::string str;
@@ -138,11 +200,6 @@ extern "C" void app_main(void)
     }
     std::cout << "Operator name:" << str << std::endl;
 
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
-    if (dce->set_gnss_power_mode(1) == esp_modem::command_result::OK) {
-        std::cout << "Modem set_gnss_power_mode: OK" << std::endl;
-    }
-#endif
 
     /* Try to connect to the network and publish an mqtt topic */
     ESPEventHandlerSync event_handler(loop);
@@ -157,6 +214,12 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Netmask     : " IPSTR, IP2STR(&event->ip_info.netmask));
         ESP_LOGI(TAG, "Gateway     : " IPSTR, IP2STR(&event->ip_info.gw));
         std::cout << "Got IP address" << std::endl;
+
+
+
+label_loop:
+
+
 
         /* When connected to network, subscribe and publish some MQTT data */
         MqttClient mqtt(BROKER_URL);
@@ -183,51 +246,40 @@ extern "C" void app_main(void)
             }
         }
 
+
+        /* Again reading some data from the modem */
+        if (dce->get_imsi(str) == esp_modem::command_result::OK) {
+            std::cout << "Modem IMSI number:" << str << std::endl;
+        }
+
+
+        /* Again reading some data from the modem */
+        switch (dce->get_gnss_information_sim70xx_once_req()) {
+        case command_result::OK:             /*!< The command completed successfully */
+            std::cout << "get_gnss_information_sim70xx_once OK" << std::endl;
+            break;
+        case command_result::FAIL:           /*!< The command explicitly failed */
+            std::cout << "get_gnss_information_sim70xx_once fail" << std::endl;
+            break;
+        case command_result::TIMEOUT:        /*!< The device didn't respond in the specified timeline */
+            std::cout << "get_gnss_information_sim70xx_once timeout" << std::endl;
+            break;
+        }
+        vTaskDelay( 30500 / portTICK_PERIOD_MS );
+
+
+
+        goto label_loop;
+
     } else if (result.event.id == ESPEventID(IP_EVENT_PPP_LOST_IP)) {
         ESP_LOGE(TAG, "PPP client has lost connection... exiting");
         return;
     }
 
-    /* Again reading some data from the modem */
-    if (dce->get_imsi(str) == esp_modem::command_result::OK) {
-        std::cout << "Modem IMSI number:" << str << std::endl;
-    }
 
 
-#if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
-    esp_modem_gps_t gps;
 
-    for (int i = 0; i < 200; ++i) {
-        if (dce->get_gnss_information_sim70xx(gps) == esp_modem::command_result::OK) {
-            ESP_LOGI(TAG, "gps.run  %i",
-                     gps.run);
-            ESP_LOGI(TAG, "gps.fix  %i",
-                     gps.fix);
-            ESP_LOGI(TAG, "gps.date.year %i gps.date.month %i gps.date.day %i",
-                     gps.date.year,   gps.date.month,   gps.date.day);
-            ESP_LOGI(TAG, "gps.tim.hour %i gps.tim.minute %i   gps.tim.second %i   gps.tim.thousand %i",
-                     gps.tim.hour,   gps.tim.minute,     gps.tim.second,     gps.tim.thousand);
-            ESP_LOGI(TAG, "gps.latitude %f gps.longitude %f ",
-                     gps.latitude,   gps.longitude );
-            ESP_LOGI(TAG, "gps.altitude  %f",
-                     gps.altitude);
-            ESP_LOGI(TAG, "gps.speed  %f",
-                     gps.speed);
-            ESP_LOGI(TAG, "gps.cog  %f",
-                     gps.cog);
-            ESP_LOGI(TAG, "gps.fix_mode  %i",
-                     gps.fix_mode);
-            ESP_LOGI(TAG, "gps.dop_h %f gps.dop_p %f gps.dop_v %f ",
-                     gps.dop_h,   gps.dop_p,   gps.dop_v );
-            ESP_LOGI(TAG, "gps.sats_in_view  %i",
-                     gps.sats_in_view);
-            ESP_LOGI(TAG, "gps.hpa  %f gps.vpa  %f",
-                     gps.hpa, gps.vpa);
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000)); //Wait
 
-    }
-#endif  // CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
 
 
 #if CONFIG_EXAMPLE_PERFORM_OTA == 1
@@ -244,13 +296,6 @@ extern "C" void app_main(void)
     }
 #endif // CONFIG_EXAMPLE_PERFORM_OTA
 
-    /* Close multiplexed command/data mode */
-#if CONFIG_EXAMPLE_CLOSE_CMUX_AT_END == 1
-    if (dce->set_mode(esp_modem::modem_mode::COMMAND_MODE)) {
-        std::cout << "Modem has correctly entered command mode" << std::endl;
-    } else {
-        ESP_LOGE(TAG, "Failed to configure desired mode... exiting");
-        return;
-    }
-#endif
+
+
 }

@@ -49,6 +49,279 @@ std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *c
     return gnss_factory::LocalFactory::create(config, std::move(dte), netif);
 }
 
+esp_modem::command_result get_gnss_information_sim70xx_lib_once_req(esp_modem::CommandableIf *t)
+{
+
+    ESP_LOGV(TAG, "%s", __func__ );
+
+    auto ret = esp_modem::dce_commands::generic_command_common(t, "AT+SGNSCMD=1,0\r", 1000);
+
+    switch (ret) {
+    case esp_modem::command_result::OK:             /*!< The command completed successfully */
+        ESP_LOGI(TAG, "GNSS OK");
+        break;
+    case esp_modem::command_result::FAIL:           /*!< The command explicitly failed */
+        ESP_LOGI(TAG, "GNSS FAIL");
+        break;
+    case esp_modem::command_result::TIMEOUT:         /*!< The device didn't respond in the specified timeline */
+        ESP_LOGI(TAG, "GNSS TIMEOUT");
+        break;
+    }
+
+
+    return ret;
+}
+
+
+
+esp_modem::command_result get_gnss_information_sim70xx_lib_once(esp_modem::CommandableIf *t, esp_modem_gps_t &gps)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    std::string str_out;
+    std::string_view out(str_out);
+
+    std::string output;
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    constexpr std::string_view pattern = "+SGNSCMD: ";
+    if (out.find(pattern) == std::string_view::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+    /**
+     * Parsing +SGNSCMD:
+     * <GNSS mode>,
+     * <UTC date>,
+     * <Total number of satellites>
+     * <UTC Time>,
+     * <Latitude>,
+     * <Longitude>,
+     * <MSL Accuracy>,
+     * <MSL Altitude>,
+     * <MSL Altitude sea level>,
+     * <Speed Over Ground>,
+     * <Course Over Ground>,
+     * <Time Stamp>,
+     * <Flag>,
+     */
+    out = out.substr(pattern.size());
+    int pos = 0;
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+    //GNSS mode
+    int GNSS_run_status;
+    if (std::from_chars(out.data(), out.data() + pos, GNSS_run_status).ec == std::errc::invalid_argument) {
+        return esp_modem::command_result::FAIL;
+    }
+    gps.run = (gps_run_t)GNSS_run_status;
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //now, if we are in extended Mode it could be that we have the Date here,
+    //otherwise we have here the Time.
+
+
+
+
+    if ((out.find('-')) == 4) { //5th position is - for Date.
+        ESP_LOGI(TAG, "out= -");
+
+        //UTC date
+        {
+            std::string_view UTC_date = out.substr(0, pos);
+            if (UTC_date.length() > 1) {
+                if (std::from_chars(out.data() + 0, out.data() + 4, gps.date.year).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+                if (std::from_chars(out.data() + 5, out.data() + 7, gps.date.month).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+                if (std::from_chars(out.data() + 8, out.data() + 10, gps.date.day).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+            } else {
+                gps.date.year    = 0;
+                gps.date.month   = 0;
+                gps.date.day     = 0;
+            }
+
+        } //clean up UTC date
+        out = out.substr(pos + 1);
+        if ((pos = out.find(',')) == std::string::npos) {
+            return esp_modem::command_result::FAIL;
+        }
+
+    }
+
+    if (out.find(':') == 2) { //3rd position is : for Time.
+        ESP_LOGI(TAG, "out= :");
+        //UTC Time
+        {
+            std::string_view UTC_Time = out.substr(0, pos);
+            if (UTC_Time.length() > 1) {
+                if (std::from_chars(out.data() + 0, out.data() + 2, gps.tim.hour).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+                if (std::from_chars(out.data() + 3, out.data() + 5, gps.tim.minute).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+                if (std::from_chars(out.data() + 6, out.data() + 8, gps.tim.second).ec == std::errc::invalid_argument) {
+                    return esp_modem::command_result::FAIL;
+                }
+                gps.tim.thousand = 0;
+            } else {
+                gps.tim.hour     = 0;
+                gps.tim.minute   = 0;
+                gps.tim.second   = 0;
+                gps.tim.thousand = 0;
+            }
+
+        } //clean up UTC Time
+        out = out.substr(pos + 1);
+        if ((pos = out.find(',')) == std::string::npos) {
+            return esp_modem::command_result::FAIL;
+        }
+    }
+
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+
+    //Latitude
+    {
+        std::string_view Latitude = out.substr(0, pos);
+        if (Latitude.length() > 1) {
+            gps.latitude  = std::stof(std::string(out.substr(0, pos)));
+        } else {
+            gps.latitude  = 0;
+        }
+    } //clean up Latitude
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //Longitude
+    {
+        std::string_view Longitude = out.substr(0, pos);
+        if (Longitude.length() > 1) {
+            gps.longitude  = std::stof(std::string(out.substr(0, pos)));
+        } else {
+            gps.longitude  = 0;
+        }
+    } //clean up Longitude
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //MSL Accuracy
+    {
+        std::string_view MSL_Accuracy = out.substr(0, pos);
+        if (MSL_Accuracy.length() > 1) {
+            gps.msl_accuracy  = std::stof(std::string(out.substr(0, pos)));
+        } else {
+            gps.msl_accuracy  = 0;
+        }
+    } //clean up MSL Accuracy
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //MSL Altitude
+    {
+        std::string_view Altitude = out.substr(0, pos);
+        if (Altitude.length() > 1) {
+            gps.altitude  = std::stof(std::string(out.substr(0, pos)));
+        } else {
+            gps.altitude  = 0;
+        }
+    } //clean up Altitude
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //MSL Altitude sea level
+    {
+        std::string_view Altitude_sea = out.substr(0, pos);
+        if (Altitude_sea.length() > 1) {
+            gps.altitude_sea  = std::stof(std::string(out.substr(0, pos)));
+        } else {
+            gps.altitude_sea  = 0;
+        }
+    } //clean up Altitude
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+
+    //Speed Over Ground Km/hour
+    {
+        std::string_view gps_speed = out.substr(0, pos);
+        if (gps_speed.length() > 1) {
+            gps.speed  = std::stof(std::string(gps_speed));
+        } else {
+            gps.speed  = 0;
+        }
+    } //clean up gps_speed
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+
+    //Course Over Ground degrees
+    {
+        std::string_view gps_cog = out.substr(0, pos);
+        if (gps_cog.length() > 1) {
+            gps.cog  = std::stof(std::string(gps_cog));
+        } else {
+            gps.cog  = 0;
+        }
+    } //clean up gps_cog
+    out = out.substr(pos + 1);
+    if ((pos = out.find(',')) == std::string::npos) {
+        return esp_modem::command_result::FAIL;
+    }
+
+    output = out;
+    ESP_LOGI(TAG, "out= ###%s###", output.c_str());
+
+    //TODO:
+    //Timestamp
+    //Flags
+
+
+    return esp_modem::command_result::OK;
+}
+
 esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, esp_modem_gps_t &gps)
 {
 
@@ -330,9 +603,29 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     return esp_modem::command_result::OK;
 }
 
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx_once(esp_modem_gps_t &gps)
+{
+    return get_gnss_information_sim70xx_lib_once(dte.get(), gps);
+}
+
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx_once_req()
+{
+    return get_gnss_information_sim70xx_lib_once_req(dte.get());
+}
+
 esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
 {
     return get_gnss_information_sim70xx_lib(dte.get(), gps);
+}
+
+esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx_once(esp_modem_gps_t &gps)
+{
+    return device->get_gnss_information_sim70xx_once(gps);
+}
+
+esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx_once_req()
+{
+    return device->get_gnss_information_sim70xx_once_req();
 }
 
 esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)

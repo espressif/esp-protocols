@@ -100,7 +100,8 @@ typedef enum {
 struct esp_modem_gps {
     float latitude;                                                /*!< Latitude (degrees) */
     float longitude;                                               /*!< Longitude (degrees) */
-    float altitude;                                                /*!< Altitude (meters) */
+    float altitude;                                                /*!< MSL Altitude (meters) */
+    float altitude_sea;                                            /*!< MSL Altitude sea level (meters) */
     gps_run_t run;                                                 /*!< run status */
     gps_fix_t fix;                                                 /*!< Fix status */
     uint8_t sats_in_use;                                           /*!< Number of satellites in use */
@@ -115,6 +116,7 @@ struct esp_modem_gps {
     float cog;                                                     /*!< Course over ground */
     float hpa;                                                     /*!< Horizontal Position Accuracy  */
     float vpa;                                                     /*!< Vertical Position Accuracy  */
+    float msl_accuracy;                                            /*!< MSL Accuracy  */
 };
 
 typedef struct esp_modem_gps esp_modem_gps_t;
