@@ -242,7 +242,17 @@ extern "C" void app_main(void)
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
             modem_mode dev_mode;
-            if (mode == "CMD") {
+            if (mode == "CMUX1") {
+                dev_mode = esp_modem::modem_mode::CMUX_MANUAL_MODE;
+            } else if (mode == "CMUX2") {
+                dev_mode = esp_modem::modem_mode::CMUX_MANUAL_EXIT;
+            } else if (mode == "CMUX3") {
+                dev_mode = esp_modem::modem_mode::CMUX_MANUAL_SWAP;
+            } else if (mode == "CMUX4") {
+                dev_mode = esp_modem::modem_mode::CMUX_MANUAL_DATA;
+            } else if (mode == "CMUX5") {
+                dev_mode = esp_modem::modem_mode::CMUX_MANUAL_COMMAND;
+            } else if (mode == "CMD") {
                 dev_mode = esp_modem::modem_mode::COMMAND_MODE;
             } else if (mode == "PPP") {
                 dev_mode = esp_modem::modem_mode::DATA_MODE;
