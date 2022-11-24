@@ -200,5 +200,5 @@ unique_buffer::unique_buffer(size_t size):
 
 void esp_modem::DTE::set_flow_control(esp_modem_flow_ctrl_t flow_control)
 {
-    command_term->set_flow_control(flow_control);
+    primary_term->set_flow_control(flow_control);
 }
