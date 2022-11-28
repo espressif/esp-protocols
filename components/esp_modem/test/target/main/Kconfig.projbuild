@@ -1,26 +1,38 @@
-menu "Example Configuration"
+menu "Test App Configuration"
 
-    config ESP_WIFI_SSID
-        string "WiFi SSID"
-        default "myssid"
+    config TEST_APP_PPP_SERVER_IP
+        string "IP address of PPP server"
+        default "10.0.0.1"
         help
-            SSID (network name) for the example to connect to.
+            IP address of PPP server. Note: this is also the address
+            where the TCP server is started to test the connection
 
-    config ESP_WIFI_PASSWORD
-        string "WiFi Password"
-        default "mypassword"
+    config TEST_APP_PPP_CLIENT_IP
+        string "IP address of PPP client"
+        default "10.0.0.2"
         help
-            WiFi password (WPA or WPA2) for the example to use.
-    config ESP_WIFI_CHANNEL
-        int "WiFi Channel"
-        range 1 13
-        default 1
-        help
-            WiFi channel (network channel) for the example to use.
+            IP address that PPP server assigns to PPP client.
 
-    config ESP_MAX_STA_CONN
-        int "Maximal STA connections"
-        default 4
+    config TEST_APP_UART_TX_PIN
+        int "TXD Pin Number"
+        default 6
+        range 0 31
         help
-            Max number of the STA connects to AP.
+            Pin number of UART TX.
+
+    config TEST_APP_UART_RX_PIN
+        int "RXD Pin Number"
+        default 7
+        range 0 31
+        help
+            Pin number of UART RX.
+
+    config TEST_APP_TCP_PORT
+        int "Port of test"
+        range 0 65535
+        default 2222
+        help
+            The remote port to which the client will connects to
+            once the PPP connection established
+
 endmenu
