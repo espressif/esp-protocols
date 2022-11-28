@@ -1,0 +1,92 @@
+name: Code Coverage Analyzer
+
+on: [push, pull_request]
+
+jobs:
+  gcovr_analyzer_esp_modem:
+    name: Run gcovr on esp modem host test
+    runs-on: ubuntu-22.04
+    container: espressif/idf:release-v4.3
+    env:
+      lwip: lwip-2.1.2
+      lwip_contrib: contrib-2.1.0
+      lwip_uri: http://download.savannah.nongnu.org/releases/lwip
+      COMP_DIR: esp-protocols/components/esp_modem
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          path: esp-protocols
+          persist-credentials: false
+      - name: Build and Test
+        shell: bash
+        run: |
+          apt-get update
+          apt-get update && apt-get install -y gcc-8 g++-8 python3-pip
+          apt-get install -y rsync
+          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+          export DEBIAN_FRONTEND=noninteractive
+          export LWIP_PATH=`pwd`/${{ env.lwip }}
+          export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
+          . ${IDF_PATH}/export.sh
+          ${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
+          cd $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/test/host_test
+          cat sdkconfig.ci.coverage >> sdkconfig.defaults
+          idf.py build
+          ./build/host_modem_test.elf
+      - name: Run gcovr
+        shell: bash
+        run: |
+          python -m pip install gcovr
+          cd $GITHUB_WORKSPACE/${{ env.COMP_DIR }}
+          gcov-8 `find . -name "esp_modem*gcda" -printf '%h\n' | head -n 1`/*
+          gcovr --gcov-ignore-parse-errors -g -k -r . --html index.html  -x esp_modem_coverage.xml
+          mkdir docs_gcovr
+          cp $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/index.html docs_gcovr
+          touch docs_gcovr/.nojekyll
+
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: esp-protocols/**/esp_modem_coverage.xml
+          badge: true
+          fail_below_min: false
+          format: markdown
+          hide_branch_rate: false
+          hide_complexity: false
+          indicators: true
+          output: both
+          thresholds: '60 80'
+
+      - name: Write to Job Summary
+        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: docs_gcovr
+          path: |
+            ${{ env.COMP_DIR }}/docs_gcovr
+          if-no-files-found: error
+
+  show_report_data:
+    name: Publish-Results
+    if: github.ref == 'refs/heads/master' || github.repository != 'espressif/esp-protocols'
+    runs-on: ubuntu-22.04
+    needs: gcovr_analyzer_esp_modem
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+      - name: Download Artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: docs_gcovr
+
+      - name: Deploy generated docs
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: 'docs_gcovr'
