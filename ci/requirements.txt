@@ -5,3 +5,4 @@ SimpleWebSocketServer
 dpkt
 pytest
 idf_build_apps
+netifaces
