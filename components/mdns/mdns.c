@@ -6067,19 +6067,19 @@ void mdns_debug_packet(const uint8_t *data, size_t len)
     _mdns_dbg_printf("Packet[%u]: ", t);
 
     header.id = _mdns_read_u16(data, MDNS_HEAD_ID_OFFSET);
-    header.flags.value = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
+    header.flags = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
     header.questions = _mdns_read_u16(data, MDNS_HEAD_QUESTIONS_OFFSET);
     header.answers = _mdns_read_u16(data, MDNS_HEAD_ANSWERS_OFFSET);
     header.servers = _mdns_read_u16(data, MDNS_HEAD_SERVERS_OFFSET);
     header.additional = _mdns_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
 
     _mdns_dbg_printf("%s",
-                     (header.flags.value == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
-                     (header.flags.value == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
-                     (header.flags.value == 0) ? "\n" : " "
+                     (header.flags & MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
+                     (header.flags & MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
+                     (header.flags == 0) ? "\n" : " "
                     );
-    if (header.flags.value && header.flags.value != MDNS_FLAGS_QR_AUTHORITATIVE) {
-        _mdns_dbg_printf("0x%04X\n", header.flags.value);
+    if (header.flags && (0 == (header.flags & MDNS_FLAGS_QR_AUTHORITATIVE))) {
+        _mdns_dbg_printf("0x%04X\n", header.flags);
     }
 
     if (header.questions) {
