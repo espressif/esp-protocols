@@ -57,6 +57,14 @@ struct pbuf  {
 #define s6_addr32 un.u32_addr
 #endif // CONFIG_IDF_TARGET_LINUX
 
+static void __attribute__((constructor)) ctor_networking_socket(void)
+{
+    for (int i = 0; i < sizeof(s_interfaces) / sizeof(s_interfaces[0]); ++i) {
+        s_interfaces[i].sock = -1;
+        s_interfaces[i].proto = 0;
+    }
+}
+
 static void delete_socket(int sock)
 {
     close(sock);
@@ -326,10 +334,6 @@ void sock_recv_task(void *arg)
 static void mdns_networking_init(void)
 {
     if (s_run_sock_recv_task == false) {
-        for (int i = 0; i < sizeof(s_interfaces) / sizeof(s_interfaces[0]); ++i) {
-            s_interfaces[i].sock = -1;
-            s_interfaces[i].proto = 0;
-        }
         s_run_sock_recv_task = true;
         xTaskCreate( sock_recv_task, "mdns recv task", 3 * 1024, NULL, 5, NULL );
     }
@@ -362,16 +366,18 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
         ESP_LOGE(TAG, "Failed to add ipv6 multicast group for protocol %d", ip_protocol);
     }
     s_interfaces[tcpip_if].proto |= (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+    s_interfaces[tcpip_if].sock = sock;
     return true;
 }
 
 esp_err_t _mdns_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    mdns_networking_init();
     ESP_LOGI(TAG, "_mdns_pcb_init(tcpip_if=%d, ip_protocol=%d)", tcpip_if, ip_protocol);
     if (!create_pcb(tcpip_if, ip_protocol)) {
         return ESP_FAIL;
     }
+
+    mdns_networking_init();
     return ESP_OK;
 }
 
