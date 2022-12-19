@@ -212,8 +212,7 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
         ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
     }
 
-    if (error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT)
-    {
+    if (error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
         client->error_handle.esp_tls_last_esp_err =
             esp_tls_get_and_clear_last_error(esp_transport_get_error_handle(client->transport),
                                              &client->error_handle.esp_tls_stack_err,
