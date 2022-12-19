@@ -104,7 +104,7 @@ typedef enum {
 struct esp_websocket_client {
     esp_event_loop_handle_t     event_handle;
     TaskHandle_t                task_handle;
-	esp_websocket_error_codes_t error_handle;
+    esp_websocket_error_codes_t error_handle;
     esp_transport_list_handle_t transport_list;
     esp_transport_handle_t      transport;
     websocket_config_storage_t *config;
