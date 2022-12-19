@@ -157,7 +157,7 @@ esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, con
  *             Must stop the WebSocket client before set headers if the client has been connected
  *
  * @param[in]  client  The client
- * @param[in]  uri     The uri
+ * @param headers  additional header strings each terminated with \r\n
  *
  * @return     esp_err_t
  */
