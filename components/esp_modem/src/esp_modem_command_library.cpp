@@ -218,7 +218,7 @@ command_result get_battery_status_sim7xxx(CommandableIf *t, int &voltage, int &b
 command_result set_flow_control(CommandableIf *t, int dce_flow, int dte_flow)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    return generic_command_common(t, "AT+IFC=" + std::to_string(dce_flow) + ", " + std::to_string(dte_flow) + "\r");
+    return generic_command_common(t, "AT+IFC=" + std::to_string(dce_flow) + "," + std::to_string(dte_flow) + "\r");
 }
 
 command_result get_operator_name(CommandableIf *t, std::string &operator_name, int &act)
