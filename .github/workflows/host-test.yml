@@ -26,11 +26,8 @@ jobs:
           update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
           export LWIP_PATH=`pwd`/${{ env.lwip }}
           export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
-          wget --no-verbose ${lwip_uri}/${lwip}.zip
-          unzip -oq ${lwip}.zip
-          wget --no-verbose ${lwip_uri}/${lwip_contrib}.zip
-          unzip -oq ${lwip_contrib}.zip
           . ${IDF_PATH}/export.sh
+          ${{ GITHUB_WORKSPACE }}/${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/linux_modem
           idf.py build
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/test/host_test
