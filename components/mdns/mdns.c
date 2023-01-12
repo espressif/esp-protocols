@@ -434,8 +434,7 @@ static const uint8_t *_mdns_read_fqdn(const uint8_t *packet, const uint8_t *star
             if (name->parts == 1 && buf[0] != '_'
                     && (strcasecmp(buf, MDNS_DEFAULT_DOMAIN) != 0)
                     && (strcasecmp(buf, "arpa") != 0)
-                    && (strcasecmp(buf, "ip6") != 0)
-                    && (strcasecmp(buf, "in-addr") != 0)) {
+                    && (strcasecmp(buf, "ip6") != 0)) {
                 strlcat(name->host, ".", sizeof(name->host));
                 strlcat(name->host, buf, sizeof(name->host));
             } else if (strcasecmp(buf, MDNS_SUB_STR) == 0) {
@@ -680,7 +679,7 @@ search_next:
         const uint8_t *content = _mdns_read_fqdn(packet, len_location, &name, buf, packet_len);
         if (!content) {
             //not a readable fqdn?
-            return 0;
+            goto search_next; // could be our unfinished fqdn, continue searching
         }
         if (name.parts == count) {
             uint8_t i;
@@ -1100,21 +1099,35 @@ static uint16_t _mdns_append_aaaa_record(uint8_t *packet, uint16_t *index, const
  */
 static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out_question_t *q)
 {
-    const char *str[4];
+    const char *str[6];
     uint8_t str_index = 0;
     uint8_t part_length;
-    if (q->host) {
-        str[str_index++] = q->host;
+    if (q->host && strstr(q->host, "in-addr")) {
+        char * host = strdup(q->host);
+        char *rest = NULL;
+        for (char *p = strtok_r(host,".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
+            str[str_index++] = p;
+        }
+        if (q->domain) {
+            str[str_index++] = q->domain;
+        }
+
+    } else {
+        if (q->host) {
+            str[str_index++] = q->host;
+        }
+        if (q->service) {
+            str[str_index++] = q->service;
+        }
+        if (q->proto) {
+            str[str_index++] = q->proto;
+        }
+        if (q->domain) {
+            str[str_index++] = q->domain;
+        }
+
     }
-    if (q->service) {
-        str[str_index++] = q->service;
-    }
-    if (q->proto) {
-        str[str_index++] = q->proto;
-    }
-    if (q->domain) {
-        str[str_index++] = q->domain;
-    }
+
 
     part_length = _mdns_append_fqdn(packet, index, str, str_index, MDNS_MAX_PACKET_SIZE);
     if (!part_length) {
@@ -1200,6 +1213,63 @@ static uint8_t _mdns_append_host_answer(uint8_t *packet, uint16_t *index, mdns_h
     return num_records;
 }
 
+static uint16_t _mdns_append_rev_ptr_record(uint8_t * packet, uint16_t * index, const char* name, bool flush, bool bye)
+{
+    const char * str[6];
+    int i = 0;
+
+    if (strstr(name, "in-addr") == NULL) {
+        return 0;
+    }
+    char * host = strdup(name);
+    char *rest = NULL;
+    for (char *p = strtok_r(host,".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
+        str[i++] = p;
+    }
+    str[i++] = "arpa";
+    uint16_t record_length = 0;
+    uint8_t part_length;
+
+    part_length = _mdns_append_fqdn(packet, index, str, i, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    part_length = _mdns_append_type(packet, index, MDNS_ANSWER_PTR, false, bye?0:MDNS_ANSWER_PTR_TTL);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    uint16_t data_len_location = *index - 2;
+    str[0] = _mdns_self_host.hostname;
+    str[1] = MDNS_DEFAULT_DOMAIN;
+
+    part_length = _mdns_append_fqdn(packet, index, str, 2, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+
+    _mdns_set_u16(packet, data_len_location, part_length);
+    record_length += part_length;
+
+    return record_length;
+}
+
+
+static uint8_t _mdns_append_reverse_ptr_record(uint8_t *packet, uint16_t *index, const char* name, bool flush, bool bye)
+{
+    uint8_t appended_answers = 0;
+
+    if (_mdns_append_rev_ptr_record(packet, index, name, flush, bye) <= 0) {
+        return appended_answers;
+    }
+    appended_answers++;
+
+    return appended_answers;
+}
+
 /**
  * @brief  Append PTR answers to packet
  *
@@ -1238,6 +1308,8 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
     if (answer->type == MDNS_TYPE_PTR) {
         if (answer->service) {
             return _mdns_append_service_ptr_answers(packet, index, answer->service, answer->flush, answer->bye);
+        } else if (answer->host && answer->host->hostname && strstr(answer->host->hostname, "in-addr")) {
+            return _mdns_append_reverse_ptr_record(packet, index, answer->host->hostname, answer->flush, answer->bye) > 0;
         } else {
             return _mdns_append_ptr_record(packet, index,
                                            answer->custom_instance, answer->custom_service, answer->custom_proto,
@@ -1639,6 +1711,15 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
     return true;
 }
 
+static bool _mdns_create_answer_from_reverse_query(mdns_tx_packet_t * packet, const char * hostname, bool send_flush)
+{
+    mdns_host_item_t * host = mdns_get_host_item(hostname);
+    if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, NULL, host, send_flush, false)) {
+        return false;
+    }
+    return true;
+}
+
 static bool _mdns_create_answer_from_hostname(mdns_tx_packet_t *packet, const char *hostname, bool send_flush)
 {
     mdns_host_item_t *host = mdns_get_host_item(hostname);
@@ -1723,13 +1804,18 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
                 _mdns_free_tx_packet(packet);
                 return;
             }
+        } else if (q->type == MDNS_TYPE_PTR) {
+            if (!_mdns_create_answer_from_reverse_query(packet, q->host, send_flush)) {
+                _mdns_free_tx_packet(packet);
+                return;
+            }
         } else if (!_mdns_alloc_answer(&packet->answers, q->type, NULL, NULL, send_flush, false)) {
             _mdns_free_tx_packet(packet);
             return;
         }
 
         if (parsed_packet->src_port != MDNS_SERVICE_PORT &&  // Repeat the queries only for "One-Shot mDNS queries"
-                (q->type == MDNS_TYPE_ANY || q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA)) {
+                (q->type == MDNS_TYPE_ANY || q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA || q->type == MDNS_TYPE_PTR)) {
             mdns_out_question_t *out_question = malloc(sizeof(mdns_out_question_t));
             if (out_question == NULL) {
                 HOOK_MALLOC_FAILED;
@@ -2948,7 +3034,7 @@ static bool _mdns_name_is_discovery(mdns_name_t *name, uint16_t type)
 static bool _mdns_name_is_ours(mdns_name_t *name)
 {
     //domain have to be "local"
-    if (_str_null_or_empty(name->domain) || strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN)) {
+    if (_str_null_or_empty(name->domain) || ( strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN) && strcasecmp(name->domain, "arpa")) ) {
         return false;
     }
 
