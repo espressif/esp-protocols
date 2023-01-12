@@ -1,0 +1,302 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>C++ API Documentation &#8212; esp-modem  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Advanced esp-modem use cases" href="advanced_api.html" />
+    <link rel="prev" title="C API Documentation" href="api_docs.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="c-api-documentation">
+<h1>C++ API Documentation<a class="headerlink" href="#c-api-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Similar to the <a class="reference internal" href="api_docs.html#c-api"><span class="std std-ref">C API Documentation</span></a>, the basic application workflow consist of</p>
+<div class="toctree-wrapper compound">
+</div>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cpp-init"><span class="std std-ref">Construction of the DCE</span></a></p></li>
+<li><p><a class="reference internal" href="#cpp-mode-switch"><span class="std std-ref">Switching modes</span></a></p></li>
+<li><p><a class="reference internal" href="#cpp-modem-commands"><span class="std std-ref">Sending (AT) commands</span></a></p></li>
+<li><p><a class="reference internal" href="#cpp-destroy"><span class="std std-ref">Destroying the DCE</span></a></p></li>
+</ul>
+<section id="create-dte-and-dce">
+<span id="cpp-init"></span><h2>Create DTE and DCE<a class="headerlink" href="#create-dte-and-dce" title="Permalink to this headline">¶</a></h2>
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_INIT_DTE</span></span></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>’s. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv410dce_config">
+<span id="_CPPv310dce_config"></span><span id="_CPPv210dce_config"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga66d8d640adc724af2e6fe9dc7c051afa"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dce_config</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="api_docs.html#_CPPv420esp_modem_dce_config" title="esp_modem_dce_config"><span class="n"><span class="pre">esp_modem_dce_config</span></span></a><a class="headerlink" href="#_CPPv410dce_config" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv410dte_config">
+<span id="_CPPv310dte_config"></span><span id="_CPPv210dte_config"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga741a0f27d09386e4c8844076a8954ac1"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">dte_config</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="api_docs.html#_CPPv420esp_modem_dte_config" title="esp_modem_dte_config"><span class="n"><span class="pre">esp_modem_dte_config</span></span></a><a class="headerlink" href="#_CPPv410dte_config" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv415create_uart_dtePK10dte_config">
+<span id="_CPPv315create_uart_dtePK10dte_config"></span><span id="_CPPv215create_uart_dtePK10dte_config"></span><span id="create_uart_dte__dte_configCP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga4a4f7f00866211c2d390fd3edb282531"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_uart_dte</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dte_config" title="dte_config"><span class="n"><span class="pre">dte_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415create_uart_dtePK10dte_config" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create UART <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> configuration </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>shared ptr to <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> on success nullptr on failure (either due to insufficient memory or wrong dte configuration) if exceptions are disabled the API abort()’s on error </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv414create_vfs_dtePK10dte_config">
+<span id="_CPPv314create_vfs_dtePK10dte_config"></span><span id="_CPPv214create_vfs_dtePK10dte_config"></span><span id="create_vfs_dte__dte_configCP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_t_e_1ga5795216bc8c5a8a3c08e1008c7576253"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_vfs_dte</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dte_config" title="dte_config"><span class="n"><span class="pre">dte_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv414create_vfs_dtePK10dte_config" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create VFS <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> configuration </p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>shared ptr to <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> on success nullptr on failure (either due to insufficient memory or wrong dte configuration) if exceptions are disabled the API abort()’s on error </p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl>
+<dt class="sig sig-object cpp">
+<span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ESP_MODEM_INIT_DCE</span></span></dt>
+<dd><p>ESP_MODEM Initialization API for <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv318create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv218create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_SIM7600_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1ga4afd7f37219025f4dfd936784e5a56e1"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_SIM7600_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418create_SIM7600_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_s_i_m7600"><span class="std std-ref">SIM7600</span></a> module. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> – <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> configuration </p></li>
+<li><p><strong>dte</strong> – reference to the communicating <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a> </p></li>
+<li><p><strong>netif</strong> – reference to the network interface</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>unique ptr to the created <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> on success nullptr on failure if exceptions are disabled the API abort()’s on error </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418create_SIM7070_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv318create_SIM7070_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv218create_SIM7070_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_SIM7070_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1gab043e285535f359c1b1024a9bcffea23"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_SIM7070_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418create_SIM7070_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_s_i_m7070"><span class="std std-ref">SIM7070</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418create_SIM7000_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv318create_SIM7000_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv218create_SIM7000_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_SIM7000_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1ga472839e7151b9ec7e89856225e0ae62a"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_SIM7000_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418create_SIM7000_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_s_i_m7000"><span class="std std-ref">SIM7000</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv417create_SIM800_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv317create_SIM800_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv217create_SIM800_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_SIM800_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1gab349608fb7df969de3a107c9cd5caeb1"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_SIM800_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv417create_SIM800_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_s_i_m800"><span class="std std-ref">SIM800</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv415create_BG96_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv315create_BG96_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv215create_BG96_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_BG96_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1gaddc0b6cdc955e5eec170e46181bfddb1"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_BG96_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415create_BG96_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> based on <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_b_g96"><span class="std std-ref">BG96</span></a> module. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418create_generic_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t">
+<span id="_CPPv318create_generic_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="_CPPv218create_generic_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t"></span><span id="create_generic_dce__dce_configCP.std::shared_ptr:DTE:.esp_netif_tP"></span><span class="target" id="group___e_s_p___m_o_d_e_m___i_n_i_t___d_c_e_1ga533398ff0278c20dfe4e0bc55719d71e"></span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">unique_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DCE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_generic_dce</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410dce_config" title="dce_config"><span class="n"><span class="pre">dce_config</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">config</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared_ptr</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">DTE</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">dte</span></span>, <span class="n"><span class="pre">esp_netif_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">netif</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418create_generic_dcePK10dce_configNSt10shared_ptrI3DTEEEP11esp_netif_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create generic <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a>. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="mode-switching-commands">
+<span id="cpp-mode-switch"></span><h2>Mode switching commands<a class="headerlink" href="#mode-switching-commands" title="Permalink to this headline">¶</a></h2>
+<dl class="cpp class">
+<dt class="sig sig-object cpp" id="_CPPv4I0EN9esp_modem5DCE_TE">
+<span id="_CPPv3I0EN9esp_modem5DCE_TE"></span><span id="_CPPv2I0EN9esp_modem5DCE_TE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">SpecificModule</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classesp__modem_1_1_d_c_e___t"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">esp_modem</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">DCE_T</span></span></span><a class="headerlink" href="#_CPPv4I0EN9esp_modem5DCE_TE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>General <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_c_e"><span class="std std-ref">DCE</span></a> class templated on a specific module. It is responsible for all the necessary transactions related to switching modes and consequent synergy with aggregated objects of <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_d_t_e"><span class="std std-ref">DTE</span></a>, <a class="reference internal" href="internal_docs.html#classesp__modem_1_1_netif"><span class="std std-ref">Netif</span></a> and a specific Module. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N9esp_modem5DCE_T8set_dataEv">
+<span id="_CPPv3N9esp_modem5DCE_T8set_dataEv"></span><span id="_CPPv2N9esp_modem5DCE_T8set_dataEv"></span><span id="esp_modem::DCE_T::set_data"></span><span class="target" id="classesp__modem_1_1_d_c_e___t_1a0f41a6dbf86ff8058cb3ef727cefdc5f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_data</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N9esp_modem5DCE_T8set_dataEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set data mode! </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+</section>
+<section id="modem-commands">
+<span id="cpp-modem-commands"></span><h2>Modem commands<a class="headerlink" href="#modem-commands" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE4syncEv" title="esp_modem::DCE::sync"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::sync()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE17get_operator_nameERNSt6stringERi" title="esp_modem::DCE::get_operator_name"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_operator_name()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE13store_profileEv" title="esp_modem::DCE::store_profile"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::store_profile()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE7set_pinERKNSt6stringE" title="esp_modem::DCE::set_pin"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_pin()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE2atERKNSt6stringERNSt6stringEi" title="esp_modem::DCE::at"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::at()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8read_pinERb" title="esp_modem::DCE::read_pin"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::read_pin()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8set_echoEKb" title="esp_modem::DCE::set_echo"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_echo()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE12sms_txt_modeEKb" title="esp_modem::DCE::sms_txt_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::sms_txt_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE17sms_character_setEv" title="esp_modem::DCE::sms_character_set"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::sms_character_set()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8send_smsERKNSt6stringERKNSt6stringE" title="esp_modem::DCE::send_sms"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::send_sms()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE16resume_data_modeEv" title="esp_modem::DCE::resume_data_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::resume_data_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE15set_pdp_contextER10PdpContext" title="esp_modem::DCE::set_pdp_context"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_pdp_context()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE16set_command_modeEv" title="esp_modem::DCE::set_command_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_command_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8set_cmuxEv" title="esp_modem::DCE::set_cmux"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_cmux()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8get_imsiERNSt6stringE" title="esp_modem::DCE::get_imsi"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_imsi()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8get_imeiERNSt6stringE" title="esp_modem::DCE::get_imei"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_imei()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE15get_module_nameERNSt6stringE" title="esp_modem::DCE::get_module_name"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_module_name()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE13set_data_modeEv" title="esp_modem::DCE::set_data_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_data_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE18get_signal_qualityERiRi" title="esp_modem::DCE::get_signal_quality"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_signal_quality()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE16set_flow_controlEii" title="esp_modem::DCE::set_flow_control"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_flow_control()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE7hang_upEv" title="esp_modem::DCE::hang_up"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::hang_up()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE18get_battery_statusERiRiRi" title="esp_modem::DCE::get_battery_status"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_battery_status()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE10power_downEv" title="esp_modem::DCE::power_down"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::power_down()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE5resetEv" title="esp_modem::DCE::reset"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::reset()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE8set_baudEi" title="esp_modem::DCE::set_baud"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_baud()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE12set_operatorEiiRKNSt6stringE" title="esp_modem::DCE::set_operator"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_operator()()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE28set_network_attachment_stateEi" title="esp_modem::DCE::set_network_attachment_state"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_network_attachment_state()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE28get_network_attachment_stateERi" title="esp_modem::DCE::get_network_attachment_state"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_network_attachment_state()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE15set_radio_stateEi" title="esp_modem::DCE::set_radio_state"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_radio_state()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE15get_radio_stateERi" title="esp_modem::DCE::get_radio_state"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_radio_state()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE16set_network_modeEi" title="esp_modem::DCE::set_network_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_network_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE18set_preferred_modeEi" title="esp_modem::DCE::set_preferred_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_preferred_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE17set_network_bandsERKNSt6stringEPKii" title="esp_modem::DCE::set_network_bands"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_network_bands()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE23get_network_system_modeERi" title="esp_modem::DCE::get_network_system_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_network_system_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE19set_gnss_power_modeEi" title="esp_modem::DCE::set_gnss_power_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::set_gnss_power_mode()</span></code></a></p></li>
+<li><p><a class="reference internal" href="internal_docs.html#_CPPv4N9esp_modem3DCE19get_gnss_power_modeERi" title="esp_modem::DCE::get_gnss_power_mode"><code class="xref cpp cpp-func docutils literal notranslate"><span class="pre">esp_modem::DCE::get_gnss_power_mode()</span></code></a></p></li>
+</ul>
+</section>
+<section id="destroy-the-dce">
+<span id="cpp-destroy"></span><h2>Destroy the DCE<a class="headerlink" href="#destroy-the-dce" title="Permalink to this headline">¶</a></h2>
+<p>The DCE object is created as <code class="docutils literal notranslate"><span class="pre">std::unique_ptr</span></code> by default and as such doesn’t have to be explicitly destroyed.
+It simply gets destroyed and cleaned-up automatically if the object goes out of the block scope.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">esp-modem</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Brief intro</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_docs.html">C interface</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">C++ interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#create-dte-and-dce">Create DTE and DCE</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mode-switching-commands">Mode switching commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#modem-commands">Modem commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#destroy-the-dce">Destroy the DCE</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_api.html">Advanced use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal_design.html">Internal design</a></li>
+<li class="toctree-l1"><a class="reference internal" href="internal_docs.html">Internal implementation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="api_docs.html" title="previous chapter">C API Documentation</a></li>
+      <li>Next: <a href="advanced_api.html" title="next chapter">Advanced esp-modem use cases</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016 - 2021, Espressif Systems (Shanghai) Co., Ltd.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/cxx_api_docs.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
