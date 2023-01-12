@@ -11,8 +11,7 @@ jobs:
       lwip: lwip-2.1.2
       lwip_contrib: contrib-2.1.0
       lwip_uri: http://download.savannah.nongnu.org/releases/lwip
-
-
+      COMP_DIR: esp-protocols/components/esp_modem
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@master
@@ -27,7 +26,7 @@ jobs:
           export LWIP_PATH=`pwd`/${{ env.lwip }}
           export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
           . ${IDF_PATH}/export.sh
-          ${{ GITHUB_WORKSPACE }}/${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
+          $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/linux_modem
           idf.py build
           cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/test/host_test
