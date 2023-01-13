@@ -1,5 +1,7 @@
 # ESP MODEM
 
+[![Component Registry](https://components.espressif.com/components/espressif/esp_modem/badge.svg)](https://components.espressif.com/components/espressif/esp_modem)
+
 The `esp-modem` component is a managed component for `esp-idf` that is used for communication with GSM/LTE modems
 that support AT commands and PPP protocol as a network interface.
 
