@@ -70,23 +70,23 @@ jobs:
             ${{ env.COMP_DIR }}/docs_gcovr
           if-no-files-found: error
 
-  show_report_data:
-    name: Publish-Results
-    if: github.ref == 'refs/heads/master' || github.repository != 'espressif/esp-protocols'
-    runs-on: ubuntu-22.04
-    needs: gcovr_analyzer_esp_modem
-    steps:
-      - name: Checkout 🛎️
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-      - name: Download Artifacts
-        uses: actions/download-artifact@v1
-        with:
-          name: docs_gcovr
-
-      - name: Deploy generated docs
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: 'docs_gcovr'
+#  show_report_data:
+#    name: Publish-Results
+#    if: github.ref == 'refs/heads/master' || github.repository != 'espressif/esp-protocols'
+#    runs-on: ubuntu-22.04
+#    needs: gcovr_analyzer_esp_modem
+#    steps:
+#      - name: Checkout 🛎️
+#        uses: actions/checkout@v3
+#        with:
+#          persist-credentials: false
+#      - name: Download Artifacts
+#        uses: actions/download-artifact@v1
+#        with:
+#          name: docs_gcovr
+#
+#      - name: Deploy generated docs
+#        uses: JamesIves/github-pages-deploy-action@v4
+#        with:
+#          branch: gh-pages
+#          folder: 'docs_gcovr'
