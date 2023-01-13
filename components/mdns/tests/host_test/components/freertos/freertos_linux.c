@@ -158,15 +158,15 @@ void xTaskCreate(TaskFunction_t pvTaskCode, const char *const pcName, const uint
     }
 }
 
-uint32_t esp_get_free_heap_size(void)
-{
-    return 0;
-}
-
-uint32_t esp_random(void)
-{
-    return rand();
-}
+//uint32_t esp_get_free_heap_size(void)
+//{
+//    return 0;
+//}
+//
+//uint32_t esp_random(void)
+//{
+//    return rand();
+//}
 
 void xTaskNotifyGive(TaskHandle_t task)
 {

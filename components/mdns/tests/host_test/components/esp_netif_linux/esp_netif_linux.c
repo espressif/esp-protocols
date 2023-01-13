@@ -50,9 +50,7 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_
             struct sockaddr_in *pAddr = (struct sockaddr_in *) tmp->ifa_addr;
             inet_ntop(AF_INET, &pAddr->sin_addr, addr, sizeof(addr) );
             if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
-                printf("AF_INET: %s: %s\n", tmp->ifa_name, addr);
                 memcpy(&ip_info->ip.addr, &pAddr->sin_addr, 4);
-                break;
             }
         }
         tmp = tmp->ifa_next;

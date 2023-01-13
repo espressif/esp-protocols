@@ -1,0 +1,5 @@
+sudo ip link add eth2 type dummy
+sudo ip addr add 192.168.1.200/24 dev eth2
+sudo ip addr add 192.168.1.201/24 dev eth2
+sudo ip link set eth2 up
+sudo ifconfig eth2 multicast

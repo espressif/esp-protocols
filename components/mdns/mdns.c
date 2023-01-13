@@ -17,10 +17,15 @@
 #include "mdns_networking.h"
 #include "esp_log.h"
 #include "esp_random.h"
-#if CONFIG_ETH_ENABLED
+#if __has_include("bsd/string.h")
+#include "bsd/string.h"
+#endif
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
 #endif
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
 #include "esp_wifi.h"
+#endif
 
 
 #ifdef MDNS_ENABLE_DEBUG
@@ -1102,10 +1107,11 @@ static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out
     const char *str[6];
     uint8_t str_index = 0;
     uint8_t part_length;
+    char *host_dup = NULL;  // need to duplicate host-name for some cases
     if (q->host && strstr(q->host, "in-addr")) {
-        char * host = strdup(q->host);
+        host_dup = strdup(q->host);
         char *rest = NULL;
-        for (char *p = strtok_r(host,".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
+        for (char *p = strtok_r(host_dup, ".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
             str[str_index++] = p;
         }
         if (q->domain) {
@@ -1131,11 +1137,13 @@ static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out
 
     part_length = _mdns_append_fqdn(packet, index, str, str_index, MDNS_MAX_PACKET_SIZE);
     if (!part_length) {
+        free(host_dup);
         return 0;
     }
 
     part_length += _mdns_append_u16(packet, index, q->type);
     part_length += _mdns_append_u16(packet, index, q->unicast ? 0x8001 : 0x0001);
+    free(host_dup);
     return part_length;
 }
 
@@ -1213,17 +1221,17 @@ static uint8_t _mdns_append_host_answer(uint8_t *packet, uint16_t *index, mdns_h
     return num_records;
 }
 
-static uint16_t _mdns_append_rev_ptr_record(uint8_t * packet, uint16_t * index, const char* name, bool flush, bool bye)
+static uint16_t _mdns_append_rev_ptr_record(uint8_t *packet, uint16_t *index, const char *name, bool flush, bool bye)
 {
-    const char * str[6];
+    const char *str[6];
     int i = 0;
 
     if (strstr(name, "in-addr") == NULL) {
         return 0;
     }
-    char * host = strdup(name);
+    char *host = strdup(name);
     char *rest = NULL;
-    for (char *p = strtok_r(host,".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
+    for (char *p = strtok_r(host, ".", &rest); p != NULL; p = strtok_r(NULL, ".", &rest)) {
         str[i++] = p;
     }
     str[i++] = "arpa";
@@ -1236,7 +1244,7 @@ static uint16_t _mdns_append_rev_ptr_record(uint8_t * packet, uint16_t * index, 
     }
     record_length += part_length;
 
-    part_length = _mdns_append_type(packet, index, MDNS_ANSWER_PTR, false, bye?0:MDNS_ANSWER_PTR_TTL);
+    part_length = _mdns_append_type(packet, index, MDNS_ANSWER_PTR, false, bye ? 0 : MDNS_ANSWER_PTR_TTL);
     if (!part_length) {
         return 0;
     }
@@ -1258,7 +1266,7 @@ static uint16_t _mdns_append_rev_ptr_record(uint8_t * packet, uint16_t * index, 
 }
 
 
-static uint8_t _mdns_append_reverse_ptr_record(uint8_t *packet, uint16_t *index, const char* name, bool flush, bool bye)
+static uint8_t _mdns_append_reverse_ptr_record(uint8_t *packet, uint16_t *index, const char *name, bool flush, bool bye)
 {
     uint8_t appended_answers = 0;
 
@@ -1711,9 +1719,9 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
     return true;
 }
 
-static bool _mdns_create_answer_from_reverse_query(mdns_tx_packet_t * packet, const char * hostname, bool send_flush)
+static bool _mdns_create_answer_from_reverse_query(mdns_tx_packet_t *packet, const char *hostname, bool send_flush)
 {
-    mdns_host_item_t * host = mdns_get_host_item(hostname);
+    mdns_host_item_t *host = mdns_get_host_item(hostname);
     if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, NULL, host, send_flush, false)) {
         return false;
     }
@@ -3394,6 +3402,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
     mdns_debug_packet(data, len);
 #endif
 
+#ifndef CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
     // Check if the packet wasn't sent by us
     if (packet->ip_protocol == MDNS_IP_PROTOCOL_V4) {
         esp_netif_ip_info_t if_ip_info;
@@ -3410,6 +3419,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
         }
 #endif
     }
+#endif
 
     // Check for the minimum size of mdns packet
     if (len <=  MDNS_HEAD_ADDITIONAL_OFFSET) {
@@ -3977,6 +3987,7 @@ static inline void post_mdns_announce_pcb(mdns_predef_if_t preset_if, mdns_ip_pr
     mdns_post_custom_action_tcpip_if(mdns_if_from_preset_if(preset_if), protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ANNOUNCE_IP4 : MDNS_EVENT_ANNOUNCE_IP6);
 }
 
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
 void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                                         int32_t event_id, void *event_data)
 {
@@ -4054,6 +4065,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         }
     }
 }
+#endif /* CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH */
 
 /*
  * MDNS Search
@@ -6151,19 +6163,19 @@ void mdns_debug_packet(const uint8_t *data, size_t len)
     _mdns_dbg_printf("Packet[%u]: ", t);
 
     header.id = _mdns_read_u16(data, MDNS_HEAD_ID_OFFSET);
-    header.flags.value = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
+    header.flags = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
     header.questions = _mdns_read_u16(data, MDNS_HEAD_QUESTIONS_OFFSET);
     header.answers = _mdns_read_u16(data, MDNS_HEAD_ANSWERS_OFFSET);
     header.servers = _mdns_read_u16(data, MDNS_HEAD_SERVERS_OFFSET);
     header.additional = _mdns_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
 
     _mdns_dbg_printf("%s",
-                     (header.flags.value == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
-                     (header.flags.value == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
-                     (header.flags.value == 0) ? "\n" : " "
+                     (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
+                     (header.flags == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
+                     (header.flags == 0) ? "\n" : " "
                     );
-    if (header.flags.value && header.flags.value != MDNS_FLAGS_QR_AUTHORITATIVE) {
-        _mdns_dbg_printf("0x%04X\n", header.flags.value);
+    if (header.flags && header.flags != MDNS_FLAGS_QR_AUTHORITATIVE) {
+        _mdns_dbg_printf("0x%04X\n", header.flags);
     }
 
     if (header.questions) {

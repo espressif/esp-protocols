@@ -16,7 +16,7 @@ typedef void (*cb_t)(void *arg);
 
 class TimerTaskMock {
 public:
-    TimerTaskMock(cb_t cb): cb(cb), t(run_static, this), active(false), ms(INT32_MAX) {}
+    TimerTaskMock(cb_t cb): cb(cb), active(false), ms(INT32_MAX) {}
     ~TimerTaskMock(void)
     {
         active = false;
@@ -27,6 +27,7 @@ public:
     {
         ms = m;
         active = true;
+        t = std::thread(run_static, this);
     }
 
 private:

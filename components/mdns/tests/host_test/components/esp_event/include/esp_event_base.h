@@ -11,3 +11,9 @@ typedef enum {
     WIFI_EVENT_AP_START,                 /**< ESP32 soft-AP start */
     WIFI_EVENT_AP_STOP,                  /**< ESP32 soft-AP stop */
 } mdns_used_event_t;
+
+#define ESP_EVENT_DECLARE_BASE(x)
+#define ESP_EVENT_ANY_ID       (-1)
+
+typedef void *esp_event_base_t;
+typedef void *system_event_t;

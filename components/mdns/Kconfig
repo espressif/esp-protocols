@@ -81,6 +81,20 @@ menu "mDNS"
             This option creates a new thread to serve receiving packets (TODO).
             This option uses additional N sockets, where N is number of interfaces.
 
+    config MDNS_SKIP_SUPPRESSING_OWN_QUERIES
+        bool "Skip suppressing our own packets"
+        default n
+        help
+            Enable only if the querier and the responder share the same IP address.
+            This usually happens in test mode, where we may run multiple instances of
+            responders/queriers on the same interface.
+
+    config MDNS_ENABLE_DEBUG_PRINTS
+        bool "Enable debug prints of mDNS packets"
+        default n
+        help
+            Enable for the library to log received and sent mDNS packets to stdout.
+
     config MDNS_MULTIPLE_INSTANCE
         bool "Multiple instances under the same service type"
         default y
