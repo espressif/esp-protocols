@@ -57,4 +57,7 @@ jobs:
           . ${IDF_PATH}/export.sh
           cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/host_test
           idf.py build
-          ./build/mdns_host.elf & dig +short -p 5353 @224.0.0.251 myesp.local
+          ./build/mdns_host.elf &
+          dig +short -p 5353 @224.0.0.251 myesp.local > ip.txt
+          cat ip.txt | xargs dig +short -p 5353 @224.0.0.251 -x
+          cat ip.txt

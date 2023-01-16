@@ -39,31 +39,26 @@ int main(int argc, char *argv[])
     esp_netif_config_t cfg = { .base = &base_cg  };
     esp_netif_t *sta = esp_netif_new(&cfg);
     ESP_ERROR_CHECK(mdns_init());
-    ESP_ERROR_CHECK(mdns_register_netif(sta));
-    ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4));
-
-    mdns_hostname_set(CONFIG_TEST_HOSTNAME);
+    ESP_ERROR_CHECK(mdns_hostname_set(CONFIG_TEST_HOSTNAME));
     ESP_LOGI(TAG, "mdns hostname set to: [%s]", CONFIG_TEST_HOSTNAME);
-    mdns_ip_addr_t addr4 = { .addr.u_addr.ip4.addr = 0x1020304 };
-    addr4.addr.type = ESP_IPADDR_TYPE_V4;
-    const char *delegated_hostname = "200.0.168.192.in-addr";
-    addr4.addr.type = ESP_IPADDR_TYPE_V4;
-    ESP_ERROR_CHECK( mdns_delegate_hostname_add(delegated_hostname, &addr4) );
+    ESP_ERROR_CHECK(mdns_register_netif(sta));
+    ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_IP4_REVERSE_LOOKUP));
 
+#ifdef REGISTER_SERVICE
     //set default mDNS instance name
-    //mdns_instance_name_set("myesp-inst");
+    mdns_instance_name_set("myesp-inst");
     //structure with TXT records
-//    mdns_txt_item_t serviceTxtData[3] = {
-//        {"board", "esp32"},
-//        {"u", "user"},
-//        {"p", "password"}
-//    };
-//    vTaskDelay(pdMS_TO_TICKS(1000));
+    mdns_txt_item_t serviceTxtData[3] = {
+        {"board", "esp32"},
+        {"u", "user"},
+        {"p", "password"}
+    };
     vTaskDelay(pdMS_TO_TICKS(10000));
-    // ESP_ERROR_CHECK(mdns_service_add("myesp-service2", "_http", "_tcp", 80, serviceTxtData, 3));
-    // vTaskDelay(2000);
+    ESP_ERROR_CHECK(mdns_service_add("myesp-service2", "_http", "_tcp", 80, serviceTxtData, 3));
+#endif
+    vTaskDelay(pdMS_TO_TICKS(10000));
     query_mdns_host("david-work");
-    vTaskDelay(2000);
+    vTaskDelay(pdMS_TO_TICKS(1000));
     esp_netif_destroy(sta);
     mdns_free();
     ESP_LOGI(TAG, "Exit");

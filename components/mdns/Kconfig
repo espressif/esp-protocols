@@ -95,6 +95,13 @@ menu "mDNS"
         help
             Enable for the library to log received and sent mDNS packets to stdout.
 
+    config MDNS_RESPOND_REVERSE_QUERIES
+        bool "Enable responding to IPv4 reverse queries"
+        default n
+        help
+            Enables support for IPv4 reverse lookup. If enabled, the mDNS library
+            response to PTR queries of "A.B.C.D.in-addr.arpa" type.
+
     config MDNS_MULTIPLE_INSTANCE
         bool "Multiple instances under the same service type"
         default y

@@ -8,12 +8,7 @@
 #include "stdbool.h"
 #include "esp_err.h"
 #include "esp_event_base.h"
-//#include "bsd_strings.h"
-
-
-
-//const char *WIFI_EVENT;
-//const char *IP_EVENT;
+#include "bsd/string.h"
 
 esp_err_t esp_event_handler_register(const char *event_base, int32_t event_id, void *event_handler, void *event_handler_arg);
 
