@@ -62,48 +62,30 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32", "esp32s2", "esp32c3"]
-        config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
+        test: [ { app: example, path: "components/mdns/examples" }, { app: unit_test, path: "components/mdns/tests/unit_test" } ]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
-    env:
-      TEST_DIR: components/mdns/examples
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.config }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
         shell: bash
-        working-directory: ${{ env.TEST_DIR }}
+        working-directory: ${{ matrix.test.path }}
         run: |
+          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
-          rm -rf sdkconfig sdkconfig.defaults build build_${{ matrix.config }}
-          cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults
-          idf.py set-target ${{ matrix.idf_target }}
-          idf.py build
-          mv build build_${{ matrix.config }}
-      - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.config }}
-        working-directory: ${{ env.TEST_DIR }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          cd build_${{ matrix.config }}
-          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+          python $IDF_PATH/tools/ci/ci_build_apps.py . --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
+          for dir in `ls -d build_*`; do
+          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh `pwd`/$dir
+          zip -qur artifacts.zip $dir
+          done
       - uses: actions/upload-artifact@v3
+        if: ${{ matrix.idf_target }} == "esp32"
         with:
-          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
-          path: |
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/bootloader/bootloader.bin
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/partition_table/partition-table.bin
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/*.bin
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/*.elf
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/flasher_args.json
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/config/sdkconfig.h
-            ${{ env.TEST_DIR }}/build_${{ matrix.config }}/config/sdkconfig.json
+          name: mdns_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ matrix.test.path }}/artifacts.zip
           if-no-files-found: error
 
   build_asio:
@@ -240,14 +222,12 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
-        config: ["eth_custom_netif", "eth_def", "eth_no_ipv6", "eth_socket"]
-    name: Run mDNS Example Test on target
+        test: [ { app: example, path: "components/mdns/examples" }, { app: unit_test, path: "components/mdns/tests/unit_test" } ]
+    name: Run mDNS target tests
     needs: build_mdns
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
-    env:
-      TEST_DIR: components/mdns/examples
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
     steps:
@@ -256,28 +236,27 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
-          path: ${{ env.TEST_DIR }}/build_${{ matrix.config }}
+          name: mdns_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ matrix.test.path }}/ci/
       - name: Install Python packages
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
             sudo apt-get install -y dnsutils
-      - name: Download Example Test to target ${{ matrix.config }}
+      - name: Run ${{ matrix.test.app }} application on ${{ matrix.idf_target }}
+        working-directory: ${{ matrix.test.path }}
         run: |
-            python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/mdns/examples/build_${{ matrix.config }}/flash_image.bin
-      - name: Run Example Test on target ${{ matrix.config }}
-        working-directory: components/mdns/examples
-        run: |
+            unzip ci/artifacts.zip -d ci
+            for dir in `ls -d ci/build_*`; do
             rm -rf build sdkconfig.defaults
-            mv build_${{ matrix.config }} build
-            cat sdkconfig.ci.${{ matrix.config }} >> sdkconfig.defaults
-            python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
+            mv $dir build
+            python -m pytest --log-cli-level DEBUG --junit-xml=./results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=${{ matrix.idf_target }}
+            done
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}
-          path: ${{ env.TEST_DIR }}/*.xml
+          name: results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml
+          path: ${{ matrix.test.path }}/*.xml
 
   run-target-asio:
     strategy:
@@ -348,7 +327,6 @@ jobs:
           idf.py set-target ${{ matrix.idf_target }}
           idf.py build
           $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh ${GITHUB_WORKSPACE}/${TEST_DIR}/build
-          ls build
       - uses: actions/upload-artifact@v3
         with:
           name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import re
 import select
@@ -8,8 +8,11 @@ import subprocess
 import time
 from threading import Event, Thread
 
-import dpkt
-import dpkt.dns
+try:
+    import dpkt
+    import dpkt.dns
+except ImportError:
+    pass
 
 
 def get_dns_query_for_esp(esp_host):
