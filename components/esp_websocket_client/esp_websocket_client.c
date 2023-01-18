@@ -582,6 +582,33 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
     return ESP_OK;
 }
 
+esp_err_t esp_websocket_client_destroy_non_blocking(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (client->run) {
+        return ESP_FAIL;
+    }
+    if (client->event_handle) {
+        esp_event_loop_delete(client->event_handle);
+    }
+    if (client->if_name) {
+        free(client->if_name);
+    }
+    esp_websocket_client_destroy_config(client);
+    esp_transport_list_destroy(client->transport_list);
+    vQueueDelete(client->lock);
+    free(client->tx_buffer);
+    free(client->rx_buffer);
+    if (client->status_bits) {
+        vEventGroupDelete(client->status_bits);
+    }
+    free(client);
+    client = NULL;
+    return ESP_OK;
+}
+
 esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, const char *uri)
 {
     if (client == NULL || uri == NULL) {

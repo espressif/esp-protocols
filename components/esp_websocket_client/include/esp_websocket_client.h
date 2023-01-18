@@ -167,6 +167,15 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client);
 esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client);
 
 /**
+ * @brief      Free all resources.
+ *
+ * @param[in]  client  The client
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_destroy_non_blocking(esp_websocket_client_handle_t client);
+
+/**
  * @brief      Write binary data to the WebSocket connection (data send with WS OPCODE=02, i.e. binary)
  *
  * @param[in]  client  The client
