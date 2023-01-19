@@ -419,7 +419,7 @@ extern "C" esp_err_t esp_modem_command(esp_modem_dce_t *dce_wrap, const char *co
     }, timeout_ms));
 }
 
-extern "C" esp_err_t esp_modem_set_baud(esp_modem_dce_t* dce_wrap, int baud)
+extern "C" esp_err_t esp_modem_set_baud(esp_modem_dce_t *dce_wrap, int baud)
 {
-	return command_response_to_esp_err(dce_wrap->dce->set_baud(baud));
+    return command_response_to_esp_err(dce_wrap->dce->set_baud(baud));
 }
