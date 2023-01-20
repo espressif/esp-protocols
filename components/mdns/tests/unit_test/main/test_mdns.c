@@ -115,6 +115,14 @@ TEST(mdns, query_api_fails_with_expected_err)
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
 
     TEST_ASSERT_EQUAL(ESP_OK, mdns_init() );
+    // check it is not possible to register a service or set an instance without configuring the hostname
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, mdns_service_add(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT, NULL, 0));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, mdns_instance_name_set(MDNS_INSTANCE));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+    // hostname is set, now adding a service and instance should succeed
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_add(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT, NULL, 0));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_instance_name_set(MDNS_INSTANCE));
+
     TEST_ASSERT_EQUAL(ESP_OK, mdns_query_ptr(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, 10, CONFIG_MDNS_MAX_SERVICES,  &results) );
     mdns_query_results_free(results);
 
