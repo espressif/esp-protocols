@@ -68,9 +68,10 @@ void DCE::forwarding(uint8_t *data, size_t len)
             signal.set(IDLE);
             return;
         case Listener::state::IN_PROGRESS:
-            return;
+            break;
+//            return;
         }
-    } else if (state == status::RECEIVING || state == status::RECEIVING_1 ) {
+    } else if (state == status::RECEIVING) {
         switch (at.recv(data, len)) {
         case Listener::state::OK:
             state = status::IDLE;
@@ -81,6 +82,7 @@ void DCE::forwarding(uint8_t *data, size_t len)
             signal.set(IDLE);
             return;
         case Listener::state::IN_PROGRESS:
+//            break;
             return;
         }
     }
@@ -123,6 +125,15 @@ void DCE::close_sock()
         close(sock);
         sock = -1;
     }
+    const int retries = 5;
+    int i = 0;
+    while (net_close() != esp_modem::command_result::OK) {
+        if (i++ > retries) {
+            ESP_LOGE(TAG, "Failed to close network");
+            return;
+        }
+        esp_modem::Task::Delay(1000);
+    }
 }
 
 bool DCE::at_to_sock()
@@ -141,7 +152,7 @@ bool DCE::at_to_sock()
         return false;
     }
     state = status::RECEIVING;
-    send_cmd("AT+CIPRXGET=2,0," + std::to_string(size) + "\r");
+    at.start_receiving(size);
     return true;
 }
 
@@ -170,8 +181,7 @@ bool DCE::sock_to_at()
         return false;
     }
     ESP_LOG_BUFFER_HEXDUMP(TAG, &buffer[0], len, ESP_LOG_VERBOSE);
-    data_to_send = len;
-    send_cmd("AT+CIPSEND=0," + std::to_string(len) + "\r");
+    at.start_sending(len);
     return true;
 }
 
@@ -238,30 +248,19 @@ void DCE::init(int port)
 
 }
 
-void Listener::check_async_replies(std::string_view &response) const
-{
-    ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
-    if (response.find("+CIPRXGET: 1") != std::string::npos) {
-        uint64_t data_ready = 1;
-        write(data_ready_fd, &data_ready, sizeof(data_ready));
-        ESP_LOGD(TAG, "Got data on modem!");
-    }
-
-}
-
 bool DCE::start(std::string host, int port)
 {
     dte->on_read(nullptr);
     tcp_close();
-    if (set_rx_mode(1) != esp_modem::command_result::OK) {
-        ESP_LOGE(TAG, "Unable to set Rx mode");
-        return false;
-    }
     dte->on_read([this](uint8_t *data, size_t len) {
         this->forwarding(data, len);
         return esp_modem::command_result::TIMEOUT;
     });
-    send_cmd(R"(AT+CIPOPEN=0,"TCP",")" + host + "\"," + std::to_string(port) + "\r");
+    if (!at.start_connecting(host, port)) {
+        ESP_LOGE(TAG, "Unable to start connecting");
+        dte->on_read(nullptr);
+        return false;
+    }
     state = status::CONNECTING;
     return true;
 }
@@ -345,139 +344,6 @@ DECLARE_SOCK_COMMANDS(return_type name(...) )
 
 
 
-Listener::state Listener::recv(uint8_t *data, size_t len)
-{
-    const int MIN_MESSAGE = 6;
-    size_t actual_len = 0;
-    auto *recv_data = (char *)data;
-    if (data_to_recv == 0) {
-        static constexpr std::string_view head = "+CIPRXGET: 2,0,";
-        auto head_pos = std::search(recv_data, recv_data + len, head.begin(), head.end());
-        if (head_pos == nullptr) {
-            return state::FAIL;
-        }
-//            state = status::RECEIVING_FAILED;
-//            signal.set(IDLE);
-//            return;
-//        }
-        if (head_pos - (char *)data > MIN_MESSAGE) {
-            // check for async replies before the Recv header
-            std::string_view response((char *)data, head_pos - (char *)data);
-            check_async_replies(response);
-        }
-
-        auto next_comma = (char *)memchr(head_pos + head.size(), ',', MIN_MESSAGE);
-        if (next_comma == nullptr)  {
-            return state::FAIL;
-        }
-        if (std::from_chars(head_pos + head.size(), next_comma, actual_len).ec == std::errc::invalid_argument) {
-            ESP_LOGE(TAG, "cannot convert");
-            return state::FAIL;
-        }
-
-        auto next_nl = (char *)memchr(next_comma, '\n', 8 /* total_len size (~4) + markers */);
-        if (next_nl == nullptr) {
-            ESP_LOGE(TAG, "not found");
-            return state::FAIL;
-        }
-        if (actual_len > size) {
-            ESP_LOGE(TAG, "TOO BIG");
-            return state::FAIL;
-        }
-        size_t total_len = 0;
-        if (std::from_chars(next_comma + 1, next_nl - 1, total_len).ec == std::errc::invalid_argument) {
-            ESP_LOGE(TAG, "cannot convert");
-            return state::FAIL;
-        }
-        read_again = (total_len > 0);
-        recv_data = next_nl + 1;
-        auto first_data_len = len - (recv_data - (char *)data) /* minus size of the command marker */;
-        if (actual_len > first_data_len) {
-            ::send(sock, recv_data, first_data_len, 0);
-            data_to_recv = actual_len - first_data_len;
-            return state::IN_PROGRESS;
-        }
-        ::send(sock, recv_data, actual_len, 0);
-    } else if (data_to_recv > len) {    // continue sending
-        ::send(sock, recv_data, len, 0);
-        data_to_recv -= len;
-        return state::IN_PROGRESS;
-    } else if (data_to_recv <= len) {    // last read -> looking for "OK" marker
-        ::send(sock, recv_data, data_to_recv, 0);
-        actual_len = data_to_recv;
-    }
-
-    // "OK" after the data
-    char *last_pos = nullptr;
-    if (actual_len + 1 + 2 /* OK */  > len) {
-        last_pos = (char *)memchr(recv_data + 1 + actual_len, 'O', MIN_MESSAGE);
-        if (last_pos == nullptr || last_pos[1] != 'K') {
-            data_to_recv = 0;
-            return state::FAIL;
-        }
-    }
-    if (last_pos != nullptr && (char *)data + len - last_pos > MIN_MESSAGE) {
-        // check for async replies after the Recv header
-        std::string_view response((char *)last_pos + 2 /* OK */, (char *)data + len - last_pos - 2);
-        check_async_replies(response);
-    }
-    data_to_recv = 0;
-    if (read_again) {
-        uint64_t data_ready = 1;
-        write(data_ready_fd, &data_ready, sizeof(data_ready));
-    }
-    return state::OK;
-}
-
-Listener::state Listener::send(uint8_t *data, size_t len)
-{
-    if (send_stat == 0) {
-        if (memchr(data, '>', len) == NULL) {
-            ESP_LOGE(TAG, "Missed >");
-            return state::FAIL;
-        }
-        auto written = dte->write(&buffer[0], data_to_send);
-        if (written != data_to_send) {
-            ESP_LOGE(TAG, "written %d (%d)...", written, len);
-            return state::FAIL;
-        }
-        data_to_send = 0;
-        uint8_t ctrl_z = '\x1A';
-        dte->write(&ctrl_z, 1);
-        send_stat++;
-        return state::IN_PROGRESS;
-    }
-    return Listener::state::IN_PROGRESS;
-}
-
-Listener::state Listener::send(std::string_view response)
-{
-    if (send_stat == 1) {
-        if (response.find("+CIPSEND:") != std::string::npos) {
-            send_stat = 0;
-            return state::OK;
-        }
-        if (response.find("ERROR") != std::string::npos) {
-            ESP_LOGE(TAG, "Failed to sent");
-            send_stat = 0;
-            return state::FAIL;
-        }
-    }
-    return Listener::state::IN_PROGRESS;
-}
-
-Listener::state Listener::connect(std::string_view response)
-{
-    if (response.find("+CIPOPEN: 0,0") != std::string::npos) {
-        ESP_LOGI(TAG, "Connected!");
-        return state::OK;
-    }
-    if (response.find("ERROR") != std::string::npos) {
-        ESP_LOGE(TAG, "Failed to open");
-        return state::FAIL;
-    }
-    return Listener::state::IN_PROGRESS;
-}
 
 
 } // namespace sock_dce

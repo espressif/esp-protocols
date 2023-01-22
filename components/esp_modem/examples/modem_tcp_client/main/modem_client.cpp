@@ -97,7 +97,7 @@ extern "C" void app_main(void)
     assert(dte);
 
     /* Configure the DCE */
-    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_APN);
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("lpwa.vodafone.com");
 
     /* create the DCE and initialize network manually (using AT commands) */
     auto dce = sock_dce::create(&dce_config, std::move(dte));
@@ -106,10 +106,10 @@ extern "C" void app_main(void)
         return;
     }
 
-    dce->init(8883);
+    dce->init(1883);
     esp_mqtt_client_config_t mqtt_config = {};
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
+    mqtt_config.broker.address.uri = "mqtt://127.0.0.1";
     mqtt_config.session.message_retransmit_timeout = 10000;
 #else
     mqtt_config.uri = "mqtt://127.0.0.1";
@@ -118,7 +118,7 @@ extern "C" void app_main(void)
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
-    if (!dce->start(BROKER_URL, 8883)) {
+    if (!dce->start(BROKER_URL, 1883)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }

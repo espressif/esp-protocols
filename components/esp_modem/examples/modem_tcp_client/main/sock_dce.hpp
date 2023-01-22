@@ -28,7 +28,15 @@ public:
     state send(std::string_view response);
     state connect(std::string_view response);
     void check_async_replies(std::string_view &response) const;
+
+    void start_sending(size_t len);
+    void start_receiving(size_t len);
+    bool start_connecting(std::string host, int port);
 private:
+    void send_cmd(std::string_view command)
+    {
+        dte->write((uint8_t *) command.begin(), command.size());
+    }
     std::array<uint8_t, size> &buffer;
     size_t data_to_recv = 0;
     bool read_again = false;
@@ -67,31 +75,19 @@ private:
 
     void forwarding(uint8_t *data, size_t len);
 
-//    void check_async_replies(std::string_view &response) const;
-
-    void send_cmd(std::string_view command)
-    {
-        dte->write((uint8_t *) command.begin(), command.size());
-    }
-
     enum class status {
         IDLE,
         CONNECTING,
         CONNECTION_FAILED,
         SENDING,
-        SENDING_1,
         SENDING_FAILED,
         RECEIVING,
-        RECEIVING_1,
         RECEIVING_FAILED
     };
     status state{status::IDLE};
     static constexpr uint8_t IDLE = 1;
     std::array<uint8_t, size> buffer;
     Listener at{buffer, sock, data_ready_fd, dte};
-    size_t data_to_send = 0;
-//    size_t data_to_recv = 0;
-    bool read_again = false;
     int sock {-1};
     int listen_sock {-1};
     int data_ready_fd {-1};
