@@ -167,6 +167,18 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client);
 esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client);
 
 /**
+ * @brief      If this API called, WebSocket client will destroy and free all resources at the end of event loop.
+ *
+ *  Notes:
+ *  - After event loop finished, client handle would be dangling and should never be used
+ *
+ * @param[in]  client      The client
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_destroy_on_exit(esp_websocket_client_handle_t client);
+
+/**
  * @brief      Write binary data to the WebSocket connection (data send with WS OPCODE=02, i.e. binary)
  *
  * @param[in]  client  The client
