@@ -55,7 +55,6 @@
 #define INC_TASK_H
 
 #define pdMS_TO_TICKS(a) a
-#define portTICK_PERIOD_MS 10
 #define xSemaphoreTake(s,d)        true
 #define xTaskDelete(a)
 #define vTaskDelete(a)             free(a)
@@ -86,10 +85,6 @@ typedef void *TaskHandle_t;
 typedef int    BaseType_t;
 typedef uint32_t TickType_t;
 
-
-extern const char *WIFI_EVENT;
-extern const char *IP_EVENT;
-extern const char *ETH_EVENT;
 
 struct udp_pcb {
     uint8_t dummy;
