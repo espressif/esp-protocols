@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -11,7 +11,6 @@
 
 #include <string>
 #include <memory>
-#include "esp_event_cxx.hpp"
 
 struct MqttClientHandle;
 
@@ -63,11 +62,19 @@ public:
     std::string get_data(void *);
 
     /**
+     * @brief Register MQTT event
+     * @param id Event id
+     * @param event_handler Event handler
+     * @param event_handler_arg Event handler parameters
+     */
+    void register_handler(int32_t id, esp_event_handler_t event_handler, void *event_handler_arg);
+
+    /**
      * @brief Convert internal MQTT event to standard ESPEvent
      * @param ev internal mqtt event
-     * @return corresponding ESPEvent
+     * @return corresponding esp_event id
      */
-    static idf::event::ESPEvent get_event(Event ev);
+    static int32_t get_event(Event ev);
 
 private:
     std::unique_ptr<MqttClientHandle> h;

@@ -184,4 +184,22 @@ menu "Example Configuration"
 
     endmenu
 
+    config EXAMPLE_MQTT_BROKER_URI
+        string "MQTT Broker URL"
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the mqtt broker which this example connects to.
+
+    config EXAMPLE_MQTT_TEST_TOPIC
+        string "MQTT topic to publish/subscribe"
+        default "/topic/esp-pppos"
+        help
+            MQTT topic, which we subscribe on and publish to.
+
+    config EXAMPLE_MQTT_TEST_DATA
+        string "MQTT data to publish/receive"
+        default "esp32-pppos"
+        help
+            MQTT data message, which we publish and expect to receive.
+
 endmenu

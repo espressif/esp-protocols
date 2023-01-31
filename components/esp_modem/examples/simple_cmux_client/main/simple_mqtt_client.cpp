@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -10,10 +10,7 @@
 
 #include <memory>
 #include "mqtt_client.h"
-#include "esp_event_cxx.hpp"
 #include "simple_mqtt_client.hpp"
-
-using namespace idf::event;
 
 /**
  * Reference to the MQTT event base
@@ -33,18 +30,11 @@ struct MqttClientHandle {
         config.uri = uri.c_str();
 #endif
         client = esp_mqtt_client_init(&config);
-        esp_mqtt_client_register_event(client, MQTT_EVENT_ANY, mqtt_event_handler, this);
     }
 
     ~MqttClientHandle()
     {
         esp_mqtt_client_destroy(client);
-    }
-
-    static void mqtt_event_handler(void *args, esp_event_base_t base, int32_t id, void *data)
-    {
-        // forwards the internal event to the global ESPEvent
-        esp_event_post(base, id, data, sizeof(esp_mqtt_event_t), portMAX_DELAY);
     }
 
     esp_mqtt_client_handle_t client;
@@ -62,16 +52,16 @@ void MqttClient::connect()
     esp_mqtt_client_start(h->client);
 }
 
-idf::event::ESPEvent MqttClient::get_event(MqttClient::Event ev)
+int32_t MqttClient::get_event(MqttClient::Event ev)
 {
     switch (ev) {
     case Event::CONNECT: {
-        return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_CONNECTED) };
+        return MQTT_EVENT_CONNECTED;
     }
     case Event::DATA:
-        return { MQTT_EVENTS, ESPEventID(MQTT_EVENT_DATA) };
+        return MQTT_EVENT_DATA;
     }
-    return { };
+    return -1;
 }
 
 int MqttClient::publish(const std::string &topic, const std::string &data, int qos)
@@ -100,6 +90,11 @@ std::string MqttClient::get_data(void *event_data)
         return {};
 
     return std::string(event->data, event->data_len);
+}
+
+void MqttClient::register_handler(int32_t event_id, esp_event_handler_t event_handler, void *arg)
+{
+    ESP_ERROR_CHECK(esp_mqtt_client_register_event(h->client, MQTT_EVENT_ANY, event_handler, arg));
 }
 
 MqttClient::~MqttClient() = default;
