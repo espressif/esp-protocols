@@ -1728,7 +1728,6 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
             return;
         }
 
-#ifdef MDNS_REPEAT_QUERY_IN_RESPONSE
         if (parsed_packet->src_port != MDNS_SERVICE_PORT &&  // Repeat the queries only for "One-Shot mDNS queries"
                 (q->type == MDNS_TYPE_ANY || q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA)) {
             mdns_out_question_t *out_question = malloc(sizeof(mdns_out_question_t));
@@ -1751,7 +1750,6 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
             out_question->own_dynamic_memory = true;
             queueToEnd(mdns_out_question_t, packet->questions, out_question);
         }
-#endif // MDNS_REPEAT_QUERY_IN_RESPONSE
         if (q->unicast) {
             unicast = true;
         }
@@ -5398,7 +5396,7 @@ esp_err_t mdns_instance_name_set(const char *instance)
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    if (_str_null_or_empty(instance) || strlen(instance) > (MDNS_NAME_BUF_LEN - 1)) {
+    if (_str_null_or_empty(instance) || _mdns_server->hostname == NULL || strlen(instance) > (MDNS_NAME_BUF_LEN - 1)) {
         return ESP_ERR_INVALID_ARG;
     }
     char *new_instance = strndup(instance, MDNS_NAME_BUF_LEN - 1);
