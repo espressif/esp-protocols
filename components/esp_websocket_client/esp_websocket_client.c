@@ -115,6 +115,7 @@ struct esp_websocket_client {
     int                         auto_reconnect;
     bool                        run;
     bool                        wait_for_pong_resp;
+    bool                        selected_for_destroying;
     EventGroupHandle_t          status_bits;
     SemaphoreHandle_t            lock;
     char                        *rx_buffer;
@@ -342,6 +343,26 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     return ESP_OK;
 }
 
+static void destroy_and_free_resources(esp_websocket_client_handle_t client)
+{
+    if (client->event_handle) {
+        esp_event_loop_delete(client->event_handle);
+    }
+    if (client->if_name) {
+        free(client->if_name);
+    }
+    esp_websocket_client_destroy_config(client);
+    esp_transport_list_destroy(client->transport_list);
+    vQueueDelete(client->lock);
+    free(client->tx_buffer);
+    free(client->rx_buffer);
+    if (client->status_bits) {
+        vEventGroupDelete(client->status_bits);
+    }
+    free(client);
+    client = NULL;
+}
+
 static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_handle_t client, const char *scheme)
 {
     esp_transport_handle_t trans = esp_transport_list_get_transport(client->transport_list, scheme);
@@ -527,6 +548,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->reconnect_tick_ms = _tick_get_ms();
     client->ping_tick_ms = _tick_get_ms();
     client->wait_for_pong_resp = false;
+    client->selected_for_destroying = false;
 
     int buffer_size = config->buffer_size;
     if (buffer_size <= 0) {
@@ -563,22 +585,16 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
     if (client->run) {
         esp_websocket_client_stop(client);
     }
-    if (client->event_handle) {
-        esp_event_loop_delete(client->event_handle);
+    destroy_and_free_resources(client);
+    return ESP_OK;
+}
+
+esp_err_t esp_websocket_client_destroy_on_exit(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
     }
-    if (client->if_name) {
-        free(client->if_name);
-    }
-    esp_websocket_client_destroy_config(client);
-    esp_transport_list_destroy(client->transport_list);
-    vQueueDelete(client->lock);
-    free(client->tx_buffer);
-    free(client->rx_buffer);
-    if (client->status_bits) {
-        vEventGroupDelete(client->status_bits);
-    }
-    free(client);
-    client = NULL;
+    client->selected_for_destroying = true;
     return ESP_OK;
 }
 
@@ -833,6 +849,9 @@ static void esp_websocket_client_task(void *pv)
     esp_transport_close(client->transport);
     xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     client->state = WEBSOCKET_STATE_UNKNOW;
+    if (client->selected_for_destroying == true) {
+        destroy_and_free_resources(client);
+    }
     vTaskDelete(NULL);
 }
 
