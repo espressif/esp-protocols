@@ -117,7 +117,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>ESP WebSocket Client</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-docs/blob/ae38f27/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/2881314/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -234,7 +234,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 <section id="application-example">
 <h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline"></a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/ae38f27/examples/../examples">example </a>.</p>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/2881314/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
 <h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this headline"></a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
@@ -248,7 +248,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="header-file">
 <h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/ae38f27/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/2881314/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
@@ -327,6 +327,24 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <dd><p>Destroy the WebSocket connection and free all resources. This function must be the last function to call for an session. It is the opposite of the esp_websocket_client_init function and must be called with the same handle as input that a esp_websocket_client_init call returned. This might close all connections this handle has used. </p>
 <p>Notes:<ul class="simple">
 <li><p>Cannot be called from the websocket event handler</p></li>
+</ul>
+</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>client</strong> – <strong>[in]</strong> The client</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>esp_err_t </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv436esp_websocket_client_destroy_on_exit29esp_websocket_client_handle_t">
+<span id="_CPPv336esp_websocket_client_destroy_on_exit29esp_websocket_client_handle_t"></span><span id="_CPPv236esp_websocket_client_destroy_on_exit29esp_websocket_client_handle_t"></span><span id="esp_websocket_client_destroy_on_exit__esp_websocket_client_handle_t"></span><span class="target" id="esp__websocket__client_8h_1a5ede8e7f1ae206734cf4ec5691722908"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_client_destroy_on_exit</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv429esp_websocket_client_handle_t" title="esp_websocket_client_handle_t"><span class="n"><span class="pre">esp_websocket_client_handle_t</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">client</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv436esp_websocket_client_destroy_on_exit29esp_websocket_client_handle_t" title="Permalink to this definition"></a><br /></dt>
+<dd><p>If this API called, WebSocket client will destroy and free all resources at the end of event loop. </p>
+<p>Notes:<ul class="simple">
+<li><p>After event loop finished, client handle would be dangling and should never be used</p></li>
 </ul>
 </p>
 <dl class="field-list simple">
