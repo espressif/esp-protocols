@@ -18,6 +18,7 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_tls_crypto.h"
 
 static const char *TAG = "WEBSOCKET_CLIENT";
 
@@ -55,6 +56,7 @@ static const char *TAG = "WEBSOCKET_CLIENT";
 
 #define WS_OVER_TCP_SCHEME  "ws"
 #define WS_OVER_TLS_SCHEME  "wss"
+#define WS_HTTP_BASIC_AUTH  "Basic "
 
 const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
@@ -72,6 +74,7 @@ typedef struct {
     char                        *scheme;
     char                        *username;
     char                        *password;
+    char                        *auth;
     int                         port;
     bool                        auto_reconnect;
     void                        *user_context;
@@ -249,6 +252,32 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
     return ESP_OK;
 }
 
+static char *http_auth_basic(const char *username, const char *password)
+{
+    int out;
+    char *user_info = NULL;
+    char *digest = NULL;
+    size_t n = 0;
+
+    if (asprintf(&user_info, "%s:%s", username, password) < 0) {
+        return NULL;
+    }
+
+    if (!user_info) {
+        ESP_LOGE(TAG, "No enough memory for user information");
+        return NULL;
+    }
+
+    esp_crypto_base64_encode(NULL, 0, &n, (const unsigned char *)user_info, strlen(user_info));
+    digest = calloc(1, strlen(WS_HTTP_BASIC_AUTH) + n + 1);
+    if (digest) {
+        strcpy(digest, WS_HTTP_BASIC_AUTH);
+        esp_crypto_base64_encode((unsigned char *)digest + 6, n, (size_t *)&out, (const unsigned char *)user_info, strlen(user_info));
+    }
+    free(user_info);
+    return digest;
+}
+
 static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t client, const esp_websocket_client_config_t *config)
 {
     websocket_config_storage_t *cfg = client->config;
@@ -283,6 +312,12 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
         free(cfg->password);
         cfg->password = strdup(config->password);
         ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->password, return ESP_ERR_NO_MEM);
+    }
+
+    if (cfg->username && cfg->password) {
+        free(cfg->auth);
+        cfg->auth = http_auth_basic(cfg->username, cfg->password);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->auth, return ESP_ERR_NO_MEM);
     }
 
     if (config->uri) {
@@ -357,6 +392,7 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     free(cfg->scheme);
     free(cfg->username);
     free(cfg->password);
+    free(cfg->auth);
     free(cfg->subprotocol);
     free(cfg->user_agent);
     free(cfg->headers);
@@ -396,6 +432,7 @@ static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_
             .sub_protocol = client->config->subprotocol,
             .user_agent = client->config->user_agent,
             .headers = client->config->headers,
+            .auth = client->config->auth,
             .propagate_control_frames = true
         };
         return esp_transport_ws_set_config(trans, &config);
