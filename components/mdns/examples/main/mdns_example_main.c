@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -279,6 +279,13 @@ void app_main(void)
     ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ENABLE_IP4));
     ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ANNOUNCE_IP4));
 #endif
+
+#if defined(CONFIG_MDNS_RESPOND_REVERSE_QUERIES)
+    while (mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_IP4_REVERSE_LOOKUP) != ESP_OK) {
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
+#endif
+
     initialise_button();
     xTaskCreate(&mdns_example_task, "mdns_example_task", 2048, NULL, 5, NULL);
 }

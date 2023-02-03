@@ -34,6 +34,8 @@ typedef enum {
     MDNS_EVENT_ANNOUNCE_IP6                 = 1 << 4,
     MDNS_EVENT_DISABLE_IP4                  = 1 << 5,
     MDNS_EVENT_DISABLE_IP6                  = 1 << 6,
+    MDNS_EVENT_IP4_REVERSE_LOOKUP           = 1 << 7,
+    MDNS_EVENT_IP6_REVERSE_LOOKUP           = 1 << 8,
 } mdns_event_actions_t;
 
 /**

@@ -32,3 +32,4 @@ typedef int             BaseType_t;
 
 uint32_t esp_get_free_heap_size(void);
 uint32_t esp_random(void);
+void vTaskSuspendAll(void);

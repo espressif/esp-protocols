@@ -14,10 +14,10 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 
-//#define MDNS_ENABLE_DEBUG
-
-#ifdef MDNS_ENABLE_DEBUG
+#ifdef CONFIG_MDNS_ENABLE_DEBUG_PRINTS
+#define MDNS_ENABLE_DEBUG
 #define _mdns_dbg_printf(...) printf(__VA_ARGS__)
 #endif
 

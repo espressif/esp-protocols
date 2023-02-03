@@ -17,10 +17,13 @@
 #include "mdns_networking.h"
 #include "esp_log.h"
 #include "esp_random.h"
-#if CONFIG_ETH_ENABLED
+
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
 #endif
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
 #include "esp_wifi.h"
+#endif
 
 
 #ifdef MDNS_ENABLE_DEBUG
@@ -435,7 +438,10 @@ static const uint8_t *_mdns_read_fqdn(const uint8_t *packet, const uint8_t *star
                     && (strcasecmp(buf, MDNS_DEFAULT_DOMAIN) != 0)
                     && (strcasecmp(buf, "arpa") != 0)
                     && (strcasecmp(buf, "ip6") != 0)
-                    && (strcasecmp(buf, "in-addr") != 0)) {
+#ifndef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+                    && (strcasecmp(buf, "in-addr") != 0)
+#endif
+               ) {
                 strlcat(name->host, ".", sizeof(name->host));
                 strlcat(name->host, buf, sizeof(name->host));
             } else if (strcasecmp(buf, MDNS_SUB_STR) == 0) {
@@ -639,6 +645,60 @@ static inline int append_one_txt_record_entry(uint8_t *packet, uint16_t *index, 
     return len + 1;
 }
 
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+static inline int append_single_str(uint8_t *packet, uint16_t *index, const char *str, int len)
+{
+    if ((*index + len + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    if (!_mdns_append_u8(packet, index, len)) {
+        return 0;
+    }
+    memcpy(packet + *index, str, len);
+    *index += len;
+    return *index;
+}
+
+/**
+ * @brief  appends FQDN to a packet from hostname separated by dots. This API works the same way as
+ * _mdns_append_fqdn(), but refrains from DNS compression (as it's mainly used for IP addresses (many short items),
+ * where we gain very little (or compression even gets counter-productive mainly for IPv6 addresses)
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  name         name representing FQDN in '.' separated parts
+ * @param  last         true if appending the last part (domain, typically "arpa")
+ *
+ * @return length of added data: 0 on error or length on success
+ */
+static uint16_t append_fqdn_dots(uint8_t *packet, uint16_t *index, const char *name, bool last)
+{
+    int len = strlen(name);
+    char *host = (char *)name;
+    char *end = host;
+    char *start = host;
+    do  {
+        end = memchr(start, '.', len);
+        end = end ? end : host + len;
+        int part_len = end - start;
+        if (!append_single_str(packet, index, start, part_len)) {
+            return 0;
+        }
+        start = ++end;
+    } while (end < name + len);
+
+    if (!append_single_str(packet, index, "arpa", sizeof("arpa") - 1)) {
+        return 0;
+    }
+
+    //empty string so terminate
+    if (!_mdns_append_u8(packet, index, 0)) {
+        return 0;
+    }
+    return *index;
+}
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
+
 /**
  * @brief  appends FQDN to a packet, incrementing the index and
  *         compressing the output if previous occurrence of the string (or part of it) has been found
@@ -680,7 +740,7 @@ search_next:
         const uint8_t *content = _mdns_read_fqdn(packet, len_location, &name, buf, packet_len);
         if (!content) {
             //not a readable fqdn?
-            return 0;
+            goto search_next; // could be our unfinished fqdn, continue searching
         }
         if (name.parts == count) {
             uint8_t i;
@@ -1100,25 +1160,34 @@ static uint16_t _mdns_append_aaaa_record(uint8_t *packet, uint16_t *index, const
  */
 static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out_question_t *q)
 {
-    const char *str[4];
-    uint8_t str_index = 0;
     uint8_t part_length;
-    if (q->host) {
-        str[str_index++] = q->host;
-    }
-    if (q->service) {
-        str[str_index++] = q->service;
-    }
-    if (q->proto) {
-        str[str_index++] = q->proto;
-    }
-    if (q->domain) {
-        str[str_index++] = q->domain;
-    }
-
-    part_length = _mdns_append_fqdn(packet, index, str, str_index, MDNS_MAX_PACKET_SIZE);
-    if (!part_length) {
-        return 0;
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+    if (q->host && strstr(q->host, "in-addr")) {
+        part_length = append_fqdn_dots(packet, index, q->host, false);
+        if (!part_length) {
+            return 0;
+        }
+    } else
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
+    {
+        const char *str[4];
+        uint8_t str_index = 0;
+        if (q->host) {
+            str[str_index++] = q->host;
+        }
+        if (q->service) {
+            str[str_index++] = q->service;
+        }
+        if (q->proto) {
+            str[str_index++] = q->proto;
+        }
+        if (q->domain) {
+            str[str_index++] = q->domain;
+        }
+        part_length = _mdns_append_fqdn(packet, index, str, str_index, MDNS_MAX_PACKET_SIZE);
+        if (!part_length) {
+            return 0;
+        }
     }
 
     part_length += _mdns_append_u16(packet, index, q->type);
@@ -1200,6 +1269,37 @@ static uint8_t _mdns_append_host_answer(uint8_t *packet, uint16_t *index, mdns_h
     return num_records;
 }
 
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+/**
+ * @brief Appends reverse lookup PTR record
+ */
+static uint8_t _mdns_append_reverse_ptr_record(uint8_t *packet, uint16_t *index, const char *name)
+{
+    if (strstr(name, "in-addr") == NULL) {
+        return 0;
+    }
+
+    if (!append_fqdn_dots(packet, index, name, false)) {
+        return 0;
+    }
+
+    if (!_mdns_append_type(packet, index, MDNS_ANSWER_PTR, false, 10 /* TTL set to 10s*/ )) {
+        return 0;
+    }
+
+    uint16_t data_len_location = *index - 2; /* store the position of size (2=16bis) of this record */
+    const char *str[2] = { _mdns_self_host.hostname, MDNS_DEFAULT_DOMAIN };
+
+    int part_length = _mdns_append_fqdn(packet, index, str, 2, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+
+    _mdns_set_u16(packet, data_len_location, part_length);
+    return 1; /* appending only 1 record */
+}
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
+
 /**
  * @brief  Append PTR answers to packet
  *
@@ -1238,6 +1338,10 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
     if (answer->type == MDNS_TYPE_PTR) {
         if (answer->service) {
             return _mdns_append_service_ptr_answers(packet, index, answer->service, answer->flush, answer->bye);
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+        } else if (answer->host && answer->host->hostname && strstr(answer->host->hostname, "in-addr")) {
+            return _mdns_append_reverse_ptr_record(packet, index, answer->host->hostname) > 0;
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
         } else {
             return _mdns_append_ptr_record(packet, index,
                                            answer->custom_instance, answer->custom_service, answer->custom_proto,
@@ -1723,13 +1827,24 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
                 _mdns_free_tx_packet(packet);
                 return;
             }
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+        } else if (q->type == MDNS_TYPE_PTR) {
+            mdns_host_item_t *host = mdns_get_host_item(q->host);
+            if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, NULL, host, send_flush, false)) {
+                return;
+            }
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
         } else if (!_mdns_alloc_answer(&packet->answers, q->type, NULL, NULL, send_flush, false)) {
             _mdns_free_tx_packet(packet);
             return;
         }
 
         if (parsed_packet->src_port != MDNS_SERVICE_PORT &&  // Repeat the queries only for "One-Shot mDNS queries"
-                (q->type == MDNS_TYPE_ANY || q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA)) {
+                (q->type == MDNS_TYPE_ANY || q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+                 || q->type == MDNS_TYPE_PTR
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
+                )) {
             mdns_out_question_t *out_question = malloc(sizeof(mdns_out_question_t));
             if (out_question == NULL) {
                 HOOK_MALLOC_FAILED;
@@ -2948,7 +3063,11 @@ static bool _mdns_name_is_discovery(mdns_name_t *name, uint16_t type)
 static bool _mdns_name_is_ours(mdns_name_t *name)
 {
     //domain have to be "local"
-    if (_str_null_or_empty(name->domain) || strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN)) {
+    if (_str_null_or_empty(name->domain) || ( strcasecmp(name->domain, MDNS_DEFAULT_DOMAIN)
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+            && strcasecmp(name->domain, "arpa")
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
+                                            ) ) {
         return false;
     }
 
@@ -3308,6 +3427,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
     mdns_debug_packet(data, len);
 #endif
 
+#ifndef CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
     // Check if the packet wasn't sent by us
     if (packet->ip_protocol == MDNS_IP_PROTOCOL_V4) {
         esp_netif_ip_info_t if_ip_info;
@@ -3324,6 +3444,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
         }
 #endif
     }
+#endif
 
     // Check for the minimum size of mdns packet
     if (len <=  MDNS_HEAD_ADDITIONAL_OFFSET) {
@@ -3871,6 +3992,22 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
     if (action & MDNS_EVENT_ANNOUNCE_IP6) {
         _mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V6, NULL, 0, true);
     }
+
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+    if (action & MDNS_EVENT_IP4_REVERSE_LOOKUP) {
+        esp_netif_ip_info_t if_ip_info;
+        if (esp_netif_get_ip_info(_mdns_get_esp_netif(mdns_if), &if_ip_info) == ESP_OK) {
+            esp_ip4_addr_t *ip = &if_ip_info.ip;
+            char *reverse_query_name = NULL;
+            if (asprintf(&reverse_query_name, "%d.%d.%d.%d.in-addr",
+                         esp_ip4_addr4_16(ip), esp_ip4_addr3_16(ip),
+                         esp_ip4_addr2_16(ip), esp_ip4_addr1_16(ip)) > 0 && reverse_query_name) {
+                ESP_LOGD(TAG, "Registered reverse query: %s.arpa", reverse_query_name);
+                _mdns_delegate_hostname_add(reverse_query_name, NULL);
+            }
+        }
+    }
+#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
 /**
@@ -3891,6 +4028,7 @@ static inline void post_mdns_announce_pcb(mdns_predef_if_t preset_if, mdns_ip_pr
     mdns_post_custom_action_tcpip_if(mdns_if_from_preset_if(preset_if), protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ANNOUNCE_IP4 : MDNS_EVENT_ANNOUNCE_IP6);
 }
 
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
 void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                                         int32_t event_id, void *event_data)
 {
@@ -3968,6 +4106,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         }
     }
 }
+#endif /* CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH */
 
 /*
  * MDNS Search
@@ -6065,19 +6204,19 @@ void mdns_debug_packet(const uint8_t *data, size_t len)
     _mdns_dbg_printf("Packet[%u]: ", t);
 
     header.id = _mdns_read_u16(data, MDNS_HEAD_ID_OFFSET);
-    header.flags.value = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
+    header.flags = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
     header.questions = _mdns_read_u16(data, MDNS_HEAD_QUESTIONS_OFFSET);
     header.answers = _mdns_read_u16(data, MDNS_HEAD_ANSWERS_OFFSET);
     header.servers = _mdns_read_u16(data, MDNS_HEAD_SERVERS_OFFSET);
     header.additional = _mdns_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
 
     _mdns_dbg_printf("%s",
-                     (header.flags.value == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
-                     (header.flags.value == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
-                     (header.flags.value == 0) ? "\n" : " "
+                     (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
+                     (header.flags == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
+                     (header.flags == 0) ? "\n" : " "
                     );
-    if (header.flags.value && header.flags.value != MDNS_FLAGS_QR_AUTHORITATIVE) {
-        _mdns_dbg_printf("0x%04X\n", header.flags.value);
+    if (header.flags && header.flags != MDNS_FLAGS_QR_AUTHORITATIVE) {
+        _mdns_dbg_printf("0x%04X\n", header.flags);
     }
 
     if (header.questions) {

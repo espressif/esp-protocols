@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -35,14 +35,16 @@ int main(int argc, char *argv[])
 {
 
     setvbuf(stdout, NULL, _IONBF, 0);
-    const esp_netif_inherent_config_t base_cg = { .if_key = "WIFI_STA_DEF", .if_desc = "eth2" };
+    const esp_netif_inherent_config_t base_cg = { .if_key = "WIFI_STA_DEF", .if_desc = CONFIG_TEST_NETIF_NAME };
     esp_netif_config_t cfg = { .base = &base_cg  };
     esp_netif_t *sta = esp_netif_new(&cfg);
+    ESP_ERROR_CHECK(mdns_init());
+    ESP_ERROR_CHECK(mdns_hostname_set(CONFIG_TEST_HOSTNAME));
+    ESP_LOGI(TAG, "mdns hostname set to: [%s]", CONFIG_TEST_HOSTNAME);
+    ESP_ERROR_CHECK(mdns_register_netif(sta));
+    ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_IP4_REVERSE_LOOKUP));
 
-    mdns_init();
-
-    mdns_hostname_set("myesp");
-    ESP_LOGI(TAG, "mdns hostname set to: [%s]", "myesp");
+#ifdef REGISTER_SERVICE
     //set default mDNS instance name
     mdns_instance_name_set("myesp-inst");
     //structure with TXT records
@@ -51,12 +53,12 @@ int main(int argc, char *argv[])
         {"u", "user"},
         {"p", "password"}
     };
-    vTaskDelay(1000);
+    vTaskDelay(pdMS_TO_TICKS(10000));
     ESP_ERROR_CHECK(mdns_service_add("myesp-service2", "_http", "_tcp", 80, serviceTxtData, 3));
-    vTaskDelay(2000);
-
-    query_mdns_host("david-comp");
-    vTaskDelay(2000);
+#endif
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    query_mdns_host("david-work");
+    vTaskDelay(pdMS_TO_TICKS(1000));
     esp_netif_destroy(sta);
     mdns_free();
     ESP_LOGI(TAG, "Exit");
