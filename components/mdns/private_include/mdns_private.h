@@ -89,7 +89,11 @@
 #define MDNS_PACKET_QUEUE_LEN       16                      // Maximum packets that can be queued for parsing
 #define MDNS_ACTION_QUEUE_LEN       16                      // Maximum actions pending to the server
 #define MDNS_TXT_MAX_LEN            1024                    // Maximum string length of text data in TXT record
+#if defined(CONFIG_LWIP_IPV6) && defined(CONFIG_MDNS_RESPOND_REVERSE_QUERIES)
+#define MDNS_NAME_MAX_LEN           (64+4)                  // Need to account for IPv6 reverse queries (64 char address  + ".ip6" )
+#else
 #define MDNS_NAME_MAX_LEN           64                      // Maximum string length of hostname, instance, service and proto
+#endif
 #define MDNS_NAME_BUF_LEN           (MDNS_NAME_MAX_LEN+1)   // Maximum char buffer size to hold hostname, instance, service or proto
 #define MDNS_MAX_PACKET_SIZE        1460                    // Maximum size of mDNS  outgoing packet
 

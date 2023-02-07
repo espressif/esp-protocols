@@ -437,8 +437,8 @@ static const uint8_t *_mdns_read_fqdn(const uint8_t *packet, const uint8_t *star
             if (name->parts == 1 && buf[0] != '_'
                     && (strcasecmp(buf, MDNS_DEFAULT_DOMAIN) != 0)
                     && (strcasecmp(buf, "arpa") != 0)
-                    && (strcasecmp(buf, "ip6") != 0)
 #ifndef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+                    && (strcasecmp(buf, "ip6") != 0)
                     && (strcasecmp(buf, "in-addr") != 0)
 #endif
                ) {
@@ -1162,7 +1162,7 @@ static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out
 {
     uint8_t part_length;
 #ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
-    if (q->host && strstr(q->host, "in-addr")) {
+    if (q->host && (strstr(q->host, "in-addr") || strstr(q->host, "ip6"))) {
         part_length = append_fqdn_dots(packet, index, q->host, false);
         if (!part_length) {
             return 0;
@@ -1275,7 +1275,7 @@ static uint8_t _mdns_append_host_answer(uint8_t *packet, uint16_t *index, mdns_h
  */
 static uint8_t _mdns_append_reverse_ptr_record(uint8_t *packet, uint16_t *index, const char *name)
 {
-    if (strstr(name, "in-addr") == NULL) {
+    if (strstr(name, "in-addr") == NULL && strstr(name, "ip6") == NULL) {
         return 0;
     }
 
@@ -1339,7 +1339,8 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
         if (answer->service) {
             return _mdns_append_service_ptr_answers(packet, index, answer->service, answer->flush, answer->bye);
 #ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
-        } else if (answer->host && answer->host->hostname && strstr(answer->host->hostname, "in-addr")) {
+        } else if (answer->host && answer->host->hostname &&
+                   (strstr(answer->host->hostname, "in-addr") || strstr(answer->host->hostname, "ip6"))) {
             return _mdns_append_reverse_ptr_record(packet, index, answer->host->hostname) > 0;
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
         } else {
@@ -3966,6 +3967,13 @@ void _mdns_disable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
     _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].state = PCB_OFF;
 }
 
+#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+static inline char nibble_to_hex(int var)
+{
+    return var > 9 ?  var - 10 + 'a' : var + '0';
+}
+#endif
+
 /**
  * @brief  Performs interface changes based on system events or custom commands
  */
@@ -4007,6 +4015,31 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
             }
         }
     }
+
+    if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
+        esp_ip6_addr_t addr6;
+        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(mdns_if), &addr6) && !_ipv6_address_is_zero(addr6)) {
+            uint8_t *paddr = (uint8_t *)&addr6.addr;
+            const char sub[] = "ip6";
+            const size_t query_name_size = 4 * sizeof(addr6.addr) /* (2 nibbles + 2 dots)/per byte of IP address */ + sizeof(sub);
+            char *reverse_query_name = malloc(query_name_size);
+            if (reverse_query_name) {
+                char *ptr = &reverse_query_name[query_name_size];   // point to the end
+                memcpy(ptr - sizeof(sub), sub, sizeof(sub));        // copy the IP sub-domain
+                ptr -= sizeof(sub) + 1;                             // move before the sub-domain
+                while (reverse_query_name < ptr) {                  // continue populating reverse query from the end
+                    *ptr-- = '.';                                   // nibble by nibble, until we reach the beginning
+                    *ptr-- = nibble_to_hex(((*paddr) >> 4) & 0x0F);
+                    *ptr-- = '.';
+                    *ptr-- = nibble_to_hex((*paddr) & 0x0F);
+                    paddr++;
+                }
+                ESP_LOGD(TAG, "Registered reverse query: %s.arpa", reverse_query_name);
+                _mdns_delegate_hostname_add(reverse_query_name, NULL);
+            }
+        }
+    }
+
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
