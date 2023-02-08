@@ -74,6 +74,7 @@ typedef struct {
     bool                        disable_auto_reconnect;     /*!< Disable the automatic reconnect function when disconnected */
     void                        *user_context;              /*!< HTTP user data context */
     int                         task_prio;                  /*!< Websocket task priority */
+    const char                 *task_name;                  /*!< Websocket task name */
     int                         task_stack;                 /*!< Websocket task stack */
     int                         buffer_size;                /*!< Websocket buffer size */
     const char                  *cert_pem;                  /*!< Pointer to certificate data in PEM or DER format for server verify (with SSL), default is NULL, not required to verify the server. PEM-format must have a terminating NULL-character. DER-format requires the length to be passed in cert_len. */

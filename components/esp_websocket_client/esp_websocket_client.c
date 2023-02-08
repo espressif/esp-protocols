@@ -63,6 +63,7 @@ const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
 typedef struct {
+    const char                 *task_name;
     int                         task_stack;
     int                         task_prio;
     char                        *uri;
@@ -235,6 +236,8 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
     if (cfg->task_prio <= 0) {
         cfg->task_prio = WEBSOCKET_TASK_PRIORITY;
     }
+
+    cfg->task_name = config->task_name;
 
     cfg->task_stack = config->task_stack;
     if (cfg->task_stack == 0) {
@@ -869,7 +872,8 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
-    if (xTaskCreate(esp_websocket_client_task, "websocket_task", client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
+    if (xTaskCreate(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
+                    client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
