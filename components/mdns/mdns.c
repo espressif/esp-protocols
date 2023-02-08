@@ -4016,6 +4016,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
         }
     }
 
+#ifdef CONFIG_LWIP_IPV6
     if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
         esp_ip6_addr_t addr6;
         if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(mdns_if), &addr6) && !_ipv6_address_is_zero(addr6)) {
@@ -4039,7 +4040,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
             }
         }
     }
-
+#endif /* CONFIG_LWIP_IPV6 */
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
