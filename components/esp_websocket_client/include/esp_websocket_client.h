@@ -68,8 +68,8 @@ typedef struct {
     const char                  *uri;                       /*!< Websocket URI, the information on the URI can be overrides the other fields below, if any */
     const char                  *host;                      /*!< Domain or IP as string */
     int                         port;                       /*!< Port to connect, default depend on esp_websocket_transport_t (80 or 443) */
-    const char                  *username;                  /*!< Using for Http authentication - Not supported for now */
-    const char                  *password;                  /*!< Using for Http authentication - Not supported for now */
+    const char                  *username;                  /*!< Using for Http authentication, only support basic auth now */
+    const char                  *password;                  /*!< Using for Http authentication */
     const char                  *path;                      /*!< HTTP Path, if not set, default is `/` */
     bool                        disable_auto_reconnect;     /*!< Disable the automatic reconnect function when disconnected */
     void                        *user_context;              /*!< HTTP user data context */
