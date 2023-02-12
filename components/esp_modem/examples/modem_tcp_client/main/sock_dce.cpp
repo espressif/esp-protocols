@@ -16,7 +16,7 @@ namespace sock_dce {
 constexpr auto const *TAG = "sock_dce";
 
 
-bool DCE::perform()
+bool DCE::perform_sock()
 {
     if (listen_sock == -1) {
         ESP_LOGE(TAG, "Listening socket not ready");
@@ -32,13 +32,18 @@ bool DCE::perform()
         .tv_sec = 0,
         .tv_usec = 500000,
     };
+    if (state == status::PENDING) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        state = at.pending();
+        return true;
+    }
     fd_set fdset;
     FD_ZERO(&fdset);
     FD_SET(sock, &fdset);
     FD_SET(data_ready_fd, &fdset);
     int s = select(std::max(sock, data_ready_fd) + 1, &fdset, nullptr, nullptr, &tv);
     if (s == 0) {
-        ESP_LOGD(TAG, "perform select timeout...");
+        ESP_LOGV(TAG, "perform select timeout...");
         return true;
     } else if (s < 0) {
         ESP_LOGE(TAG,  "select error %d", errno);
@@ -54,68 +59,42 @@ bool DCE::perform()
     return true;
 }
 
-void DCE::forwarding(uint8_t *data, size_t len)
+void DCE::perform_at(uint8_t *data, size_t len)
 {
-    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_DEBUG);
-    if (state == status::SENDING) {
-        switch (at.send(data, len)) {
-        case Listener::state::OK:
-            state = status::IDLE;
-            signal.set(IDLE);
-            return;
-        case Listener::state::FAIL:
-            state = status::SENDING_FAILED;
-            signal.set(IDLE);
-            return;
-        case Listener::state::IN_PROGRESS:
-            break;
-//            return;
-        }
-    } else if (state == status::RECEIVING) {
-        switch (at.recv(data, len)) {
-        case Listener::state::OK:
-            state = status::IDLE;
-            signal.set(IDLE);
-            return;
-        case Listener::state::FAIL:
-            state = status::RECEIVING_FAILED;
-            signal.set(IDLE);
-            return;
-        case Listener::state::IN_PROGRESS:
-//            break;
-            return;
-        }
+    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_VERBOSE);
+    switch (at.process_data(state, data, len)) {
+    case Responder::ret::OK:
+        state = status::IDLE;
+        signal.set(IDLE);
+        return;
+    case Responder::ret::FAIL:
+        state = status::FAILED;
+        signal.set(IDLE);
+        return;
+    case Responder::ret::NEED_MORE_DATA:
+        return;
+    case Responder::ret::IN_PROGRESS:
+        break;
+    case Responder::ret::NEED_MORE_TIME:
+        state = status::PENDING;
+        return;
     }
     std::string_view response((char *)data, len);
-    at.check_async_replies(response);
-    // Notification about Data Ready could come any time
-    if (state == status::SENDING) {
-        switch (at.send(response)) {
-        case Listener::state::OK:
-            state = status::IDLE;
-            signal.set(IDLE);
-            return;
-        case Listener::state::FAIL:
-            state = status::SENDING_FAILED;
-            signal.set(IDLE);
-            return;
-        case Listener::state::IN_PROGRESS:
-            break;
-        }
-    }
-    if (state == status::CONNECTING) {
-        switch (at.connect(response)) {
-        case Listener::state::OK:
-            state = status::IDLE;
-            signal.set(IDLE);
-            return;
-        case Listener::state::FAIL:
-            state = status::CONNECTION_FAILED;
-            signal.set(IDLE);
-            return;
-        case Listener::state::IN_PROGRESS:
-            break;
-        }
+    switch (at.check_async_replies(state, response)) {
+    case Responder::ret::OK:
+        state = status::IDLE;
+        signal.set(IDLE);
+        return;
+    case Responder::ret::FAIL:
+        state = status::FAILED;
+        signal.set(IDLE);
+        return;
+    case Responder::ret::NEED_MORE_TIME:
+        state = status::PENDING;
+        return;
+    case Responder::ret::NEED_MORE_DATA:
+    case Responder::ret::IN_PROGRESS:
+        break;
     }
 }
 
@@ -125,6 +104,7 @@ void DCE::close_sock()
         close(sock);
         sock = -1;
     }
+    dte->on_read(nullptr);
     const int retries = 5;
     int i = 0;
     while (net_close() != esp_modem::command_result::OK) {
@@ -152,7 +132,7 @@ bool DCE::at_to_sock()
         return false;
     }
     state = status::RECEIVING;
-    at.start_receiving(size);
+    at.start_receiving(at.get_buf_len());
     return true;
 }
 
@@ -170,7 +150,7 @@ bool DCE::sock_to_at()
         return false;
     }
     state = status::SENDING;
-    int len = ::recv(sock, &buffer[0], size, 0);
+    int len = ::recv(sock, at.get_buf(), at.get_buf_len(), 0);
     if (len < 0) {
         ESP_LOGE(TAG,  "read error %d", errno);
         close_sock();
@@ -180,7 +160,7 @@ bool DCE::sock_to_at()
         close_sock();
         return false;
     }
-    ESP_LOG_BUFFER_HEXDUMP(TAG, &buffer[0], len, ESP_LOG_VERBOSE);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, at.get_buf(), len, ESP_LOG_VERBOSE);
     at.start_sending(len);
     return true;
 }
@@ -212,7 +192,7 @@ bool DCE::accept_sock()
     return false;
 }
 
-void DCE::init(int port)
+void DCE::init_sock(int port)
 {
     esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
     esp_vfs_eventfd_register(&config);
@@ -228,7 +208,7 @@ void DCE::init(int port)
     int opt = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     ESP_LOGI(TAG, "Socket created");
-    struct sockaddr_in addr = {  };
+    struct sockaddr_in addr = { };
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -253,7 +233,7 @@ bool DCE::start(std::string host, int port)
     dte->on_read(nullptr);
     tcp_close();
     dte->on_read([this](uint8_t *data, size_t len) {
-        this->forwarding(data, len);
+        this->perform_at(data, len);
         return esp_modem::command_result::TIMEOUT;
     });
     if (!at.start_connecting(host, port)) {
@@ -267,6 +247,7 @@ bool DCE::start(std::string host, int port)
 
 bool DCE::init_network()
 {
+    dte->on_read(nullptr);
     const int retries = 5;
     int i = 0;
     while (sync() != esp_modem::command_result::OK) {
@@ -292,6 +273,7 @@ bool DCE::init_network()
             ESP_LOGE(TAG, "Failed to open network");
             return false;
         }
+        net_close();
         esp_modem::Task::Delay(1000);
     }
     ESP_LOGD(TAG, "Network opened");
@@ -340,10 +322,5 @@ std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr
 DECLARE_SOCK_COMMANDS(return_type name(...) )
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
-
-
-
-
-
 
 } // namespace sock_dce

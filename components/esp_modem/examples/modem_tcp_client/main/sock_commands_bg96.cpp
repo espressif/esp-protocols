@@ -28,7 +28,7 @@ command_result net_open(CommandableIf *t)
     if (out.find("+QISTATE: 0") != std::string::npos) {
         ESP_LOGV(TAG, "%s", out.data() );
         ESP_LOGD(TAG, "Already there");
-        return command_result::OK;
+        return command_result::FAIL;
     } else if (out.empty()) {
         return dce_commands::generic_command(t, "AT+QIACT=1\r", "OK", "ERROR", 150000);
     }
@@ -38,6 +38,8 @@ command_result net_open(CommandableIf *t)
 command_result net_close(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__ );
+    dce_commands::generic_command(t, "AT+QICLOSE=0\r", "OK", "ERROR", 10000);
+    esp_modem::Task::Delay(1000);
     return dce_commands::generic_command(t, "AT+QIDEACT=1\r", "OK", "ERROR", 40000);
 }
 
@@ -104,103 +106,131 @@ command_result get_ip(CommandableIf *t, std::string &ip)
 
 namespace sock_dce {
 
-void Listener::start_sending(size_t len)
+void Responder::start_sending(size_t len)
 {
     data_to_send = len;
     send_stat = 0;
     send_cmd("AT+QISEND=0," + std::to_string(len) + "\r");
 }
 
-void Listener::start_receiving(size_t len)
+void Responder::start_receiving(size_t len)
 {
-    send_cmd("AT+QIRD=0," + std::to_string(size) + "\r");
+    send_cmd("AT+QIRD=0," + std::to_string(len) + "\r");
 }
 
-bool Listener::start_connecting(std::string host, int port)
+bool Responder::start_connecting(std::string host, int port)
 {
     send_cmd(R"(AT+QIOPEN=1,0,"TCP",")" + host + "\"," + std::to_string(port) + "\r");
     return true;
 }
 
-Listener::state Listener::recv(uint8_t *data, size_t len)
+Responder::ret Responder::recv(uint8_t *data, size_t len)
 {
-    const size_t MIN_MESSAGE = 6;
-    const std::string_view head = "+QIRD: ";
-    auto head_pos = (char *)std::search(data, data + len, head.begin(), head.end());
-    if (head_pos == nullptr) {
-        return state::FAIL;
-    }
+    const int MIN_MESSAGE = 6;
+    size_t actual_len = 0;
+    auto *recv_data = (char *)data;
+    if (data_to_recv == 0) {
+        const std::string_view head = "+QIRD: ";
+        auto head_pos = std::search(recv_data, recv_data + len, head.begin(), head.end());
+        if (head_pos == nullptr) {
+            return ret::FAIL;
+        }
 
-    auto next_nl = (char *)memchr(head_pos + head.size(), '\n', MIN_MESSAGE);
-    if (next_nl == nullptr) {
-        return state::FAIL;
-    }
+        auto next_nl = (char *)memchr(head_pos + head.size(), '\n', MIN_MESSAGE);
+        if (next_nl == nullptr) {
+            return ret::FAIL;
+        }
 
-    size_t actual_len;
-    if (std::from_chars(head_pos + head.size(), next_nl, actual_len).ec == std::errc::invalid_argument) {
-        ESP_LOGE(TAG, "cannot convert");
-        return state::FAIL;
-    }
+        if (std::from_chars(head_pos + head.size(), next_nl, actual_len).ec == std::errc::invalid_argument) {
+            ESP_LOGE(TAG, "cannot convert");
+            return ret::FAIL;
+        }
 
-    ESP_LOGD(TAG, "Received: actual len=%d", actual_len);
-    if (actual_len == 0) {
-        ESP_LOGD(TAG, "no data received");
-        return state::FAIL;
-    }
+        ESP_LOGD(TAG, "Received: actual len=%d", actual_len);
+        if (actual_len == 0) {
+            ESP_LOGD(TAG, "no data received");
+            return ret::FAIL;
+        }
 
-    // TODO improve : compare *actual_len* & data size (to be sure that received data is equal to *actual_len*)
-    if (actual_len > size) {
-        ESP_LOGE(TAG, "TOO BIG");
-        return state::FAIL;
+        if (actual_len > buffer_size) {
+            ESP_LOGE(TAG, "TOO BIG");
+            return ret::FAIL;
+        }
+
+        recv_data = next_nl + 1;
+        auto first_data_len = len - (recv_data - (char *)data) /* minus size of the command marker */;
+        if (actual_len > first_data_len) {
+            ::send(sock, recv_data, first_data_len, 0);
+            data_to_recv = actual_len - first_data_len;
+            return ret::NEED_MORE_DATA;
+        }
+        ::send(sock, recv_data, actual_len, 0);
+    } else if (data_to_recv > len) {    // continue sending
+        ::send(sock, recv_data, len, 0);
+        data_to_recv -= len;
+        return ret::NEED_MORE_DATA;
+    } else if (data_to_recv <= len) {    // last read -> looking for "OK" marker
+        ::send(sock, recv_data, data_to_recv, 0);
+        actual_len = data_to_recv;
     }
-    ::send(sock, next_nl + 1, actual_len, 0);
 
     // "OK" after the data
-    auto last_pos = (char *)memchr(next_nl + 1 + actual_len, 'O', MIN_MESSAGE);
-    if (last_pos == nullptr || last_pos[1] != 'K') {
-        return state::FAIL;
+    char *last_pos = nullptr;
+    if (actual_len + 1 + 2 /* OK */  > len) {
+        last_pos = (char *)memchr(recv_data + 1 + actual_len, 'O', MIN_MESSAGE);
+        if (last_pos == nullptr || last_pos[1] != 'K') {
+            data_to_recv = 0;
+            return ret::FAIL;
+        }
     }
-    if ((char *)data + len - last_pos > MIN_MESSAGE) {
+    if (last_pos != nullptr && (char *)data + len - last_pos - 2 > MIN_MESSAGE) {
         // check for async replies after the Recv header
         std::string_view response((char *)last_pos + 2 /* OK */, (char *)data + len - last_pos);
-        check_async_replies(response);
+        check_async_replies(status::RECEIVING, response);
     }
-    return state::OK;
+    // check if some other data?
+    start_receiving(0);
+    data_to_recv = 0;
+    return ret::OK;
 }
 
 
-Listener::state Listener::send(uint8_t *data, size_t len)
+Responder::ret Responder::send(uint8_t *data, size_t len)
 {
-    if (send_stat == 0) {
+    if (send_stat < 3) {
         if (memchr(data, '>', len) == NULL) {
+            if (send_stat++ < 2) {
+                return Responder::ret::NEED_MORE_DATA;
+            }
             ESP_LOGE(TAG, "Missed >");
-            return state::FAIL;
+            return ret::FAIL;
         }
         auto written = dte->write(&buffer[0], data_to_send);
         if (written != data_to_send) {
             ESP_LOGE(TAG, "written %d (%d)...", written, len);
-            return state::FAIL;
+            return ret::FAIL;
         }
         data_to_send = 0;
-        send_stat++;
+        send_stat = 3;
     }
-    return Listener::state::IN_PROGRESS;
+    return Responder::ret::IN_PROGRESS;
 }
 
-Listener::state Listener::send(std::string_view response)
+Responder::ret Responder::send(std::string_view response)
 {
-    if (send_stat == 1) {
+    if (send_stat == 3) {
         if (response.find("SEND OK") != std::string::npos) {
             send_cmd("AT+QISEND=0,0\r");
             send_stat++;
+            return ret::IN_PROGRESS;
         } else if (response.find("SEND FAIL") != std::string::npos) {
             ESP_LOGE(TAG, "Sending buffer full");
-            return state::FAIL;
+            return ret::FAIL;
         } else if (response.find("ERROR") != std::string::npos) {
             ESP_LOGE(TAG, "Failed to sent");
-            return state::FAIL;
+            return ret::FAIL;
         }
-    } else if (send_stat == 2) {
+    } else if (send_stat == 4) {
         constexpr std::string_view head = "+QISEND: ";
         if (response.find(head) != std::string::npos) {
             // Parsing +QISEND: <total_send_length>,<ackedbytes>,<unackedbytes>
@@ -215,7 +245,7 @@ Listener::state Listener::send(std::string_view response)
                 size_t value;
                 if (std::from_chars(response.data(), next_comma, value).ec == std::errc::invalid_argument) {
                     ESP_LOGE(TAG, "cannot convert");
-                    return state::FAIL;
+                    return ret::FAIL;
                 }
 
                 switch (property++) {
@@ -224,49 +254,94 @@ Listener::state Listener::send(std::string_view response)
                 case 1: ack = value;
                     break;
                 default:
-                    return state::FAIL;
+                    return ret::FAIL;
                 }
                 response = response.substr(pos + 1);
             }
             if (std::from_chars(response.data(), response.data() + pos, unack).ec == std::errc::invalid_argument) {
-                return state::FAIL;
+                return ret::FAIL;
             }
 
-            // TODO improve : need check *total* & *ack* values, or loop (every 5 sec) with 90s or 120s timeout
             if (ack < total) {
-                ESP_LOGE(TAG, "all sending data are not ack (missing %d bytes acked)", (total - ack));
+                ESP_LOGD(TAG, "all sending data are not ack (missing %d bytes acked)", (total - ack));
+                if (total - ack > 64) {
+                    ESP_LOGW(TAG, "Need a pause: missing %d bytes acked", (total - ack));
+                    return ret::NEED_MORE_TIME;
+                }
             }
-            return state::OK;
+            send_stat = 0;
+            return ret::OK;
         } else if (response.find("ERROR") != std::string::npos) {
             ESP_LOGE(TAG, "Failed to check sending");
-            return state::FAIL;
+            return ret::FAIL;
         }
 
     }
-    return Listener::state::IN_PROGRESS;
+    return Responder::ret::IN_PROGRESS;
 }
 
-Listener::state Listener::connect(std::string_view response)
+Responder::ret Responder::connect(std::string_view response)
 {
     if (response.find("+QIOPEN: 0,0") != std::string::npos) {
         ESP_LOGI(TAG, "Connected!");
-        return state::OK;
+        return ret::OK;
     }
     if (response.find("ERROR") != std::string::npos) {
         ESP_LOGE(TAG, "Failed to open");
-        return state::FAIL;
+        return ret::FAIL;
     }
-    return Listener::state::IN_PROGRESS;
+    return Responder::ret::IN_PROGRESS;
 }
 
-void Listener::check_async_replies(std::string_view &response) const
+Responder::ret Responder::check_async_replies(status state, std::string_view &response)
 {
     ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
     if (response.find("+QIURC: \"recv\",0") != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
         ESP_LOGD(TAG, "Got data on modem!");
+    } else if (response.find("+QIRD: ") != std::string::npos) {
+        static constexpr std::string_view head = "+QIRD: ";
+        size_t head_pos = response.find(head);
+        // Parsing +QIURC: <total_receive_length>,<have_read_length>,<unread_length>
+        response = response.substr(head_pos + head.size());
+        int next_cr = response.find('\r');
+        if (next_cr != std::string::npos) {
+            response = response.substr(next_cr - 2, next_cr);
+            if (response.find(",0") != std::string::npos) {
+                ESP_LOGV(TAG, "Receiving done");
+            } else {
+                uint64_t data_ready = 1;
+                write(data_ready_fd, &data_ready, sizeof(data_ready));
+                ESP_LOGD(TAG, "Got data on modem!");
+            }
+        }
+    } else if (response.find("+QIURC: \"closed\",0") != std::string::npos) {
+        return ret::FAIL;
     }
+    if (state == status::SENDING) {
+        return send(response);
+    } else if (state == status::CONNECTING) {
+        return connect(response);
+    }
+    return ret::IN_PROGRESS;
+}
+
+Responder::ret Responder::process_data(status state, uint8_t *data, size_t len)
+{
+    if (state == status::SENDING) {
+        return send(data, len);
+    }
+    if (state == status::RECEIVING) {
+        return recv(data, len);
+    }
+    return Responder::ret::IN_PROGRESS;
+}
+
+status Responder::pending()
+{
+    send_cmd("AT+QISEND=0,0\r");
+    return status::SENDING;
 }
 
 
