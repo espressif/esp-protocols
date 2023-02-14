@@ -4783,7 +4783,7 @@ static void _mdns_execute_action(mdns_action_t *action)
         _mdns_server->hostname = action->data.hostname_set.hostname;
         _mdns_self_host.hostname = action->data.hostname_set.hostname;
         _mdns_restart_all_pcbs();
-        xTaskNotifyGive(action->data.hostname_set.calling_task);
+        xSemaphoreGive(_mdns_server->action_sema);
         break;
     case ACTION_INSTANCE_SET:
         _mdns_send_bye_all_pcbs_no_instance(false);
@@ -5326,6 +5326,12 @@ esp_err_t mdns_init(void)
         goto free_lock;
     }
 
+    _mdns_server->action_sema = xSemaphoreCreateBinary();
+    if (!_mdns_server->action_sema) {
+        err = ESP_ERR_NO_MEM;
+        goto free_queue;
+    }
+
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
     if ((err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
         goto free_event_handlers;
@@ -5381,6 +5387,8 @@ free_all_and_disable_pcbs:
 free_event_handlers:
     unregister_predefined_handlers();
 #endif
+    vSemaphoreDelete(_mdns_server->action_sema);
+free_queue:
     vQueueDelete(_mdns_server->action_queue);
 free_lock:
     vSemaphoreDelete(_mdns_server->lock);
@@ -5430,6 +5438,7 @@ void mdns_free(void)
         }
         free(h);
     }
+    vSemaphoreDelete(_mdns_server->action_sema);
     vSemaphoreDelete(_mdns_server->lock);
     free(_mdns_server);
     _mdns_server = NULL;
@@ -5456,13 +5465,12 @@ esp_err_t mdns_hostname_set(const char *hostname)
     }
     action->type = ACTION_HOSTNAME_SET;
     action->data.hostname_set.hostname = new_hostname;
-    action->data.hostname_set.calling_task = xTaskGetCurrentTaskHandle();
     if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
         free(new_hostname);
         free(action);
         return ESP_ERR_NO_MEM;
     }
-    xTaskNotifyWait(0, 0x01, NULL, portMAX_DELAY);
+    xSemaphoreTake(_mdns_server->action_sema, portMAX_DELAY);
     return ESP_OK;
 }
 
