@@ -29,7 +29,7 @@
 
 extern mdns_server_t *_mdns_server;
 
-static const char *TAG = "MDNS_Networking";
+static const char *TAG = "mdns_networking";
 static bool s_run_sock_recv_task = false;
 static int create_socket(esp_netif_t *netif);
 static int join_mdns_multicast_group(int sock, esp_netif_t *netif, mdns_ip_protocol_t ip_protocol);
