@@ -276,15 +276,14 @@ void app_main(void)
      * This is typically performed in "GOT_IP" event handler, but we call it here directly
      * since the `EXAMPLE_INTERFACE` netif is connected already, to keep the example simple.
      */
-    ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ENABLE_IP4));
-    ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ANNOUNCE_IP4));
-#endif
+    ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_ENABLE_IP6));
+    ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_ANNOUNCE_IP4 | MDNS_EVENT_ANNOUNCE_IP6));
 
 #if defined(CONFIG_MDNS_RESPOND_REVERSE_QUERIES)
-    while (mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_IP4_REVERSE_LOOKUP) != ESP_OK) {
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-    }
+    ESP_ERROR_CHECK(mdns_netif_action(EXAMPLE_INTERFACE, MDNS_EVENT_IP4_REVERSE_LOOKUP | MDNS_EVENT_IP6_REVERSE_LOOKUP));
 #endif
+
+#endif // CONFIG_MDNS_ADD_CUSTOM_NETIF
 
     initialise_button();
     xTaskCreate(&mdns_example_task, "mdns_example_task", 2048, NULL, 5, NULL);

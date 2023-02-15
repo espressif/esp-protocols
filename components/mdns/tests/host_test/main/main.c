@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     ESP_ERROR_CHECK(mdns_hostname_set(CONFIG_TEST_HOSTNAME));
     ESP_LOGI(TAG, "mdns hostname set to: [%s]", CONFIG_TEST_HOSTNAME);
     ESP_ERROR_CHECK(mdns_register_netif(sta));
-    ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_IP4_REVERSE_LOOKUP));
+    ESP_ERROR_CHECK(mdns_netif_action(sta, MDNS_EVENT_ENABLE_IP4 | MDNS_EVENT_IP4_REVERSE_LOOKUP | MDNS_EVENT_IP6_REVERSE_LOOKUP));
 
 #ifdef REGISTER_SERVICE
     //set default mDNS instance name
