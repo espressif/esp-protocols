@@ -1,0 +1,25 @@
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::BrokerConfiguration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::ClientCredentials is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::Configuration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::Connection is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::Event is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::LastWill is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::Session is not documented.
+esp_mqtt_client_config.hpp:line: warning: Compound idf::mqtt::Task is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member address (variable) of struct idf::mqtt::BrokerConfiguration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member security (variable) of struct idf::mqtt::BrokerConfiguration is not documented.
+esp_mqtt.hpp:line: warning: Member operator()(esp_mqtt_client *client_handler) (function) of struct idf::mqtt::Client::MqttClientDeleter is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member username (variable) of struct idf::mqtt::ClientCredentials is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member authentication (variable) of struct idf::mqtt::ClientCredentials is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member client_id (variable) of struct idf::mqtt::ClientCredentials is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member event (variable) of struct idf::mqtt::Configuration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member task (variable) of struct idf::mqtt::Configuration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member session (variable) of struct idf::mqtt::Configuration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member connection (variable) of struct idf::mqtt::Configuration is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member data (variable) of struct idf::mqtt::DER is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member len (variable) of struct idf::mqtt::DER is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member ds_data (variable) of struct idf::mqtt::DigitalSignatureData is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member data (variable) of struct idf::mqtt::Password is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member data (variable) of struct idf::mqtt::PEM is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member hint_key (variable) of struct idf::mqtt::PSK is not documented.
+esp_mqtt_client_config.hpp:line: warning: Member last_will (variable) of struct idf::mqtt::Session is not documented.

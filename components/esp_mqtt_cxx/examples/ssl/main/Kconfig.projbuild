@@ -1,0 +1,9 @@
+menu "Example Configuration"
+
+    config BROKER_URI
+        string "Broker URL"
+        default "mqtts://mqtt.eclipseprojects.io:8883"
+        help
+            URL of the broker to connect to
+
+endmenu

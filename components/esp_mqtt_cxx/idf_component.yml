@@ -1,0 +1,8 @@
+version: "0.1.0"
+description: esp mqtt cxx
+url: https://github.com/espressif/esp-protocols/tree/master/components/esp_mqtt_cxx
+dependencies:
+  espressif/esp-idf-cxx: "^1.0.0-beta"
+  # Required IDF version
+  idf:
+    version: ">=5.0"
