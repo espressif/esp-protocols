@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,7 @@
 #include "protocol_examples_common.h"
 #include "mdns.h"
 
-static const char *TAG = "MDNS_TEST";
+static const char *TAG = "mdns_test";
 void mdns_test(char *line);
 
 static void get_string(char *line, size_t size)

@@ -10,7 +10,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 
-static const char *TAG = "MDNS_TEST_APP";
+static const char *TAG = "mdns_test_app";
 static const int RETRY_COUNT = 10;
 
 static void mdns_print_results(mdns_result_t *results)

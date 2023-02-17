@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -27,7 +27,7 @@ extern mdns_server_t *_mdns_server;
  * MDNS Server Networking
  *
  */
-static const char *TAG = "MDNS_Networking";
+static const char *TAG = "mdns_networking";
 
 static struct udp_pcb *_pcb_main = NULL;
 

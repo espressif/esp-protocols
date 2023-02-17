@@ -20,7 +20,7 @@
 #include "esp_timer.h"
 #include "esp_tls_crypto.h"
 
-static const char *TAG = "WEBSOCKET_CLIENT";
+static const char *TAG = "websocket_client";
 
 #define WEBSOCKET_TCP_DEFAULT_PORT      (80)
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)

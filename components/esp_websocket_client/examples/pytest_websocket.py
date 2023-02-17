@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import json
 import random
@@ -81,7 +81,7 @@ def test_examples_protocol_websocket(dut):
     def test_close(dut):
         code = dut.expect(
             re.compile(
-                b'WEBSOCKET: Received closed message with code=(\\d*)'))[0]
+                b'websocket: Received closed message with code=(\\d*)'))[0]
         print('Received close frame with code {}'.format(code))
 
     def test_json(dut, websocket):

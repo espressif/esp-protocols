@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -32,7 +32,7 @@
 
 #define NO_DATA_TIMEOUT_SEC 5
 
-static const char *TAG = "WEBSOCKET";
+static const char *TAG = "websocket";
 
 static TimerHandle_t shutdown_signal_timer;
 static SemaphoreHandle_t shutdown_sema;
@@ -154,9 +154,9 @@ void app_main(void)
     ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
     esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("WEBSOCKET_CLIENT", ESP_LOG_DEBUG);
-    esp_log_level_set("TRANSPORT_WS", ESP_LOG_DEBUG);
-    esp_log_level_set("TRANS_TCP", ESP_LOG_DEBUG);
+    esp_log_level_set("websocket_client", ESP_LOG_DEBUG);
+    esp_log_level_set("transport_ws", ESP_LOG_DEBUG);
+    esp_log_level_set("trans_tcp", ESP_LOG_DEBUG);
 
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());

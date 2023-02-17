@@ -45,7 +45,7 @@ mdns_server_t *_mdns_server = NULL;
 static mdns_host_item_t *_mdns_host_list = NULL;
 static mdns_host_item_t _mdns_self_host;
 
-static const char *TAG = "MDNS";
+static const char *TAG = "mdns";
 
 static volatile TaskHandle_t _mdns_service_task_handle = NULL;
 static SemaphoreHandle_t _mdns_service_semaphore = NULL;
