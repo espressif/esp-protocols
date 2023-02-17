@@ -5384,16 +5384,10 @@ esp_err_t mdns_init(void)
         s_esp_netifs[i].netif = NULL;
     }
 
-    _mdns_server->lock = xSemaphoreCreateMutex();
-    if (!_mdns_server->lock) {
-        err = ESP_ERR_NO_MEM;
-        goto free_server;
-    }
-
     _mdns_server->action_queue = xQueueCreate(MDNS_ACTION_QUEUE_LEN, sizeof(mdns_action_t *));
     if (!_mdns_server->action_queue) {
         err = ESP_ERR_NO_MEM;
-        goto free_lock;
+        goto free_server;
     }
 
     _mdns_server->action_sema = xSemaphoreCreateBinary();
@@ -5460,8 +5454,6 @@ free_event_handlers:
     vSemaphoreDelete(_mdns_server->action_sema);
 free_queue:
     vQueueDelete(_mdns_server->action_queue);
-free_lock:
-    vSemaphoreDelete(_mdns_server->lock);
 free_server:
     free(_mdns_server);
     _mdns_server = NULL;
@@ -5509,7 +5501,6 @@ void mdns_free(void)
         free(h);
     }
     vSemaphoreDelete(_mdns_server->action_sema);
-    vSemaphoreDelete(_mdns_server->lock);
     free(_mdns_server);
     _mdns_server = NULL;
 }
