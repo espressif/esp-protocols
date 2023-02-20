@@ -1,6 +1,6 @@
 mDNS 服务
 =========
-:link_to_translation:`en:[English]`
+`en:[English] <https://espressif.github.io/esp-protocols/mdns/en/index.html>`_
 
 概述
 ----
