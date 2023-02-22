@@ -1,0 +1,5 @@
+cd asio; ./generate_docs; cd ../
+cd esp_modem; ./generate_docs; cd ../
+cd esp_websocket_client; ./generate_docs; cd ../
+cd esp_mqtt_cxx; ./generate_docs; cd ../
+cd mdns; ./generate_docs; cd ../

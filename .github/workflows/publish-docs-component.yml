@@ -1,17 +1,25 @@
 name: Docs and Publish
 
-on:
-  push:
-    branches:
-      - master
+on: [push, pull_request]
+#    branches:
+#      - master
+
+env:
+  DOCS_DEPLOY_URL_BASE: ${{ secrets.DOCS_DEPLOY_URL_BASE }}
+  DOCS_DEPLOY_SERVER: ${{ secrets.DOCS_DEPLOY_SERVER }}
+  DOCS_DEPLOY_SERVER_USER: ${{ secrets.DOCS_DEPLOY_SERVER_USER }}
+  DOCS_DEPLOY_KEY: ${{ secrets.DOCS_DEPLOY_PRIVATEKEY }}
+  DOCS_DEPLOY_PATH : ${{ secrets.DOCS_DEPLOY_PATH }}
 
 jobs:
   docs_build:
     name: Docs-Build-And-Upload
+    strategy:
+      matrix:
+        ver: ["latest"]
     runs-on: ubuntu-latest
     # Skip running on forks since it won't have access to secrets
-    if: github.repository == 'espressif/esp-protocols'
-
+    #if: github.repository == 'espressif/esp-protocols'
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@master
@@ -19,52 +27,33 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           submodules: recursive
-
       - name: Generate docs
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get -y install doxygen clang python3-pip
-          python -m pip install breathe recommonmark esp-docs
-          cd $GITHUB_WORKSPACE/components/esp_modem/docs
-          ./generate_docs
-          mkdir -p $GITHUB_WORKSPACE/docs/esp_modem
-          cp -r html/. $GITHUB_WORKSPACE/docs/esp_modem
-
-          cd $GITHUB_WORKSPACE/components/esp_websocket_client/docs
-          ./generate_docs
-          mkdir -p $GITHUB_WORKSPACE/docs/esp_websocket_client
-          cp -r html/. $GITHUB_WORKSPACE/docs/esp_websocket_client
-
-          cd $GITHUB_WORKSPACE/components/mdns/docs
-          ./generate_docs
-          mkdir -p $GITHUB_WORKSPACE/docs/mdns/en
-          mkdir -p $GITHUB_WORKSPACE/docs/mdns/zh_CN
-          cp -r html_en/. $GITHUB_WORKSPACE/docs/mdns/en
-          cp -r html_zh_CN/. $GITHUB_WORKSPACE/docs/mdns/zh_CN
-
-          cd $GITHUB_WORKSPACE/components/asio/docs
-          ./generate_docs
-          mkdir -p $GITHUB_WORKSPACE/docs/asio
-          cp -r html/. $GITHUB_WORKSPACE/docs/asio
-
-          cd $GITHUB_WORKSPACE/docs
-          touch .nojekyll
-          echo '<a href="esp_modem/index.html">esp-modem</a><br>' > index.html
-          echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a><br>' >> index.html
-          echo '<a href="asio/index.html">ASIO</a><br>' >> index.html
-          echo '<a href="mdns/en/index.html">mDNS_en</a><br>' >> index.html
-          echo '<a href="mdns/zh_CN/index.html">mDNS_zh_CN</a><br>' >> index.html
-
-
-      - name: Upload components to component service
-        uses: espressif/github-actions/upload_components@master
-        with:
-          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio"
-          namespace: "espressif"
-          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
-
-      - name: Deploy generated docs
-        uses: JamesIves/github-pages-deploy-action@4.1.5
-        with:
-          branch: gh-pages
-          folder: docs
+            sudo apt-get update
+            sudo apt-get -y install doxygen clang python3-pip
+            python -m pip install breathe recommonmark esp-docs==1.4.1
+            cd $GITHUB_WORKSPACE/docs
+            ./generate_docs
+            touch .nojekyll
+            echo '<a href="esp_modem/index.html">esp-modem</a><br>' > index.html
+            echo '<a href="esp_websocket_client/index.html">esp-websocket-client</a><br>' >> index.html
+            echo '<a href="asio/index.html">ASIO</a><br>' >> index.html
+            echo '<a href="mdns/en/html/index.html">mDNS_en</a><br>' >> index.html
+            echo '<a href="mdns/zh_CN/html/index.html">mDNS_zh_CN</a><br>' >> index.html
+      - name: Deploying generated docs
+        if: always()
+        shell: bash
+        run: |
+            source $GITHUB_WORKSPACE/docs/utils.sh
+            add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
+            export GIT_VER=$(git describe --always)
+            export GITHUB_REF_NAME=${{ matrix.ver }}
+            export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs
+            deploy-docs
+#      - name: Upload components to component service
+#        uses: espressif/github-actions/upload_components@master
+#        with:
+#          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio"
+#          namespace: "espressif"
+#          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}

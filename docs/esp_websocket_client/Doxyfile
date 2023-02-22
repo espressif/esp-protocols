@@ -13,7 +13,7 @@
 # http://doxygen.nl/manual/config.html
 
 
-PROJECT_NAME = "MQTT C++ client"
+PROJECT_NAME = "ESP Protocols Programming Guide"
 
 ## The 'INPUT' statement below is used as input by script 'gen-df-input.py'
 ## to automatically generate API reference list files heder_file.inc
@@ -21,8 +21,7 @@ PROJECT_NAME = "MQTT C++ client"
 ## and used to include in API reference documentation
 
 INPUT = \
-    $(PROJECT_PATH)/include/esp_mqtt.hpp \
-    $(PROJECT_PATH)/include/esp_mqtt_client_config.hpp
+    $(PROJECT_PATH)/../components/esp_websocket_client/include/esp_websocket_client.h
 
 ## Get warnings for functions that have no documentation for their parameters or return value
 ##
@@ -63,11 +62,14 @@ GENERATE_HTML   = NO
 HAVE_DOT        = NO
 GENERATE_LATEX  = NO
 GENERATE_MAN    = YES
+GENERATE_RTF    = NO
 
 ## Skip distracting progress messages
 ##
 QUIET = YES
+
 ## Enable Section Tags for conditional documentation
 ##
 ENABLED_SECTIONS += \
-    DOC_EXCLUDE_HEADER_SECTION   ## To conditionally remove doc sections from IDF source files without affecting documentation in upstream files.
+    DOC_EXCLUDE_HEADER_SECTION \   ## To conditionally remove doc sections from IDF source files without affecting documentation in upstream files.
+    DOC_SINGLE_GROUP        ## To conditionally remove groups from the documentation and create a 'flat' document without affecting documentation in upstream files.
