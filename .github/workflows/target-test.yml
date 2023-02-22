@@ -138,7 +138,7 @@ jobs:
   build_websocket:
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["release-v5.0", "latest"]
         idf_target: ["esp32"]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -206,7 +206,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["release-v5.0", "latest"]
         idf_target: ["esp32"]
     runs-on:
       - self-hosted
