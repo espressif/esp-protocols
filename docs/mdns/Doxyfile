@@ -21,7 +21,7 @@ PROJECT_NAME = "ESP Protocols Programming Guide"
 ## and used to include in API reference documentation
 
 INPUT = \
-   $(PROJECT_PATH)/include/mdns.h
+   $(PROJECT_PATH)/../components/mdns/include/mdns.h
 
 ## Get warnings for functions that have no documentation for their parameters or return value
 ##
