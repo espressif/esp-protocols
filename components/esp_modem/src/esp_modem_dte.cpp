@@ -24,6 +24,16 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
     cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
     mode(modem_mode::UNDEF) {}
 
+DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
+    buffer(config->dte_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
+    mode(modem_mode::UNDEF) {}
+
+DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
+    buffer(dte_default_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
+    mode(modem_mode::UNDEF) {}
+
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l(internal_lock);
