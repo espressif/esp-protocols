@@ -1,0 +1,45 @@
+name: Installation or build bug report
+description: Report installation or build bugs
+labels: ['Type: Bug']
+body:
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Answers checklist.
+      description: Before submitting a new issue, please follow the checklist and try to find the answer.
+      options:
+        - label: I have read the documentation for [esp-protocols components](https://espressif.github.io/esp-protocols/) and the issue is not addressed there.
+          required: true
+        - label: I have updated my esp-protocols branch (master or release) to the latest version and checked that the issue is present there.
+          required: true
+        - label: I have searched the issue tracker for a similar issue and not found a similar issue.
+          required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: What component are you using? If you choose Other, provide details in More Information.
+      multiple: false
+      options:
+        - ASIO port
+        - esp_modem
+        - esp_websocket_client
+        - mDNS
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: idf_version
+    attributes:
+      label: IDF version.
+      description: On which IDF version does this issue occur on? Run `git describe --tags` to find it.
+      placeholder: ex. v3.2-dev-1148-g96cd3b75c
+    validations:
+      required: true
+  - type: textarea
+    id: more-info
+    attributes:
+      label: More Information.
+      description: Do you have any other information from investigating this?
+      placeholder: ex. I tried on my friend's Windows 10 PC and the command works there.
+    validations:
+      required: false
