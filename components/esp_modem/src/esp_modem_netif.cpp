@@ -87,7 +87,7 @@ void Netif::start()
 {
     ppp_dte->set_read_cb([this](uint8_t *data, size_t len) -> bool {
         receive(data, len);
-        return false;
+        return true;
     });
     esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
     signal.set(PPP_STARTED);

@@ -39,7 +39,7 @@ void Netif::start()
 {
     ppp_dte->set_read_cb([this](uint8_t *data, size_t len) -> bool {
         receive(data, len);
-        return false;
+        return true;
     });
     netif->transmit = esp_modem_dte_transmit;
     netif->ctx = (void *)this;

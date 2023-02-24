@@ -125,9 +125,7 @@ void UartTerminal::task()
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);
                 if (len && on_read) {
-                    if (on_read(nullptr, len)) {
-                        on_read = nullptr;
-                    }
+                    on_read(nullptr, len);
                 }
                 break;
             case UART_FIFO_OVF:
