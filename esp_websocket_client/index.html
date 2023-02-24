@@ -117,7 +117,7 @@
       <li><a href="#" class="icon icon-home"></a> &raquo;</li>
       <li>ESP WebSocket Client</li>
       <li class="wy-breadcrumbs-aside">
-              <a href="https://github.com/espressif/esp-docs/blob/319fce0/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
+              <a href="https://github.com/espressif/esp-docs/blob/3bf0511/docs/en/index.rst" class="fa fa-github"> Edit on GitHub</a>
       </li>
   </ul>
   <hr/>
@@ -234,7 +234,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </section>
 <section id="application-example">
 <h2>Application Example<a class="headerlink" href="#application-example" title="Permalink to this headline"></a></h2>
-<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/319fce0/examples/../examples">example </a>.</p>
+<p>A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the <a class="reference external" href="https://websocket.org">websocket.org</a> server can be found here: <a class="reference external" href="https://github.com/espressif/esp-protocols/tree/3bf0511/examples/../examples">example </a>.</p>
 <section id="sending-text-data">
 <h3>Sending Text Data<a class="headerlink" href="#sending-text-data" title="Permalink to this headline"></a></h3>
 <p>The WebSocket client supports sending data as a text data frame, which informs the application layer that the payload data is text data encoded as UTF-8. Example:</p>
@@ -248,7 +248,7 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="header-file">
 <h3>Header File<a class="headerlink" href="#header-file" title="Permalink to this headline"></a></h3>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/319fce0/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
+<li><p><a class="reference external" href="https://github.com/espressif/esp-protocols/blob/3bf0511/include/esp_websocket_client.h">include/esp_websocket_client.h</a></p></li>
 </ul>
 </section>
 <section id="functions">
@@ -284,6 +284,26 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </dd>
 <dt class="field-even">Returns</dt>
 <dd class="field-even"><p>esp_err_t </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv432esp_websocket_client_set_headers29esp_websocket_client_handle_tPKc">
+<span id="_CPPv332esp_websocket_client_set_headers29esp_websocket_client_handle_tPKc"></span><span id="_CPPv232esp_websocket_client_set_headers29esp_websocket_client_handle_tPKc"></span><span id="esp_websocket_client_set_headers__esp_websocket_client_handle_t.cCP"></span><span class="target" id="esp__websocket__client_8h_1abcd052636df1554f787dd00e5670ceca"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_client_set_headers</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv429esp_websocket_client_handle_t" title="esp_websocket_client_handle_t"><span class="n"><span class="pre">esp_websocket_client_handle_t</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">client</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">headers</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv432esp_websocket_client_set_headers29esp_websocket_client_handle_tPKc" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Set additional websocket headers for the client, when performing this behavior, the headers will replace the old ones. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> – <strong>[in]</strong> The client </p></li>
+<li><p><strong>headers</strong> – additional header strings each terminated with \r</p></li>
+</ul>
+</dd>
+<dt class="field-even">Pre</dt>
+<dd class="field-even"><p>Must stop the WebSocket client before set headers if the client has been connected</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>esp_err_t </p>
 </dd>
 </dl>
 </dd></dl>
@@ -552,6 +572,45 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <section id="structures">
 <h3>Structures<a class="headerlink" href="#structures" title="Permalink to this headline"></a></h3>
 <dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv427esp_websocket_error_codes_t">
+<span id="_CPPv327esp_websocket_error_codes_t"></span><span id="_CPPv227esp_websocket_error_codes_t"></span><span id="esp_websocket_error_codes_t"></span><span class="target" id="structesp__websocket__error__codes__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_error_codes_t</span></span></span><a class="headerlink" href="#_CPPv427esp_websocket_error_codes_t" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Websocket error code structure to be passed as a contextual information into ERROR event. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N27esp_websocket_error_codes_t20esp_tls_last_esp_errE">
+<span id="_CPPv3N27esp_websocket_error_codes_t20esp_tls_last_esp_errE"></span><span id="_CPPv2N27esp_websocket_error_codes_t20esp_tls_last_esp_errE"></span><span id="esp_websocket_error_codes_t::esp_tls_last_esp_err__esp_err_t"></span><span class="target" id="structesp__websocket__error__codes__t_1a8e4d0d1935ee716a6901b8c3948b3ea3"></span><span class="n"><span class="pre">esp_err_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_tls_last_esp_err</span></span></span><a class="headerlink" href="#_CPPv4N27esp_websocket_error_codes_t20esp_tls_last_esp_errE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>last esp_err code reported from esp-tls component </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N27esp_websocket_error_codes_t17esp_tls_stack_errE">
+<span id="_CPPv3N27esp_websocket_error_codes_t17esp_tls_stack_errE"></span><span id="_CPPv2N27esp_websocket_error_codes_t17esp_tls_stack_errE"></span><span id="esp_websocket_error_codes_t::esp_tls_stack_err__i"></span><span class="target" id="structesp__websocket__error__codes__t_1adcaab157f8089843031bf4b2d72b08da"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_tls_stack_err</span></span></span><a class="headerlink" href="#_CPPv4N27esp_websocket_error_codes_t17esp_tls_stack_errE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>tls specific error code reported from underlying tls stack </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N27esp_websocket_error_codes_t25esp_tls_cert_verify_flagsE">
+<span id="_CPPv3N27esp_websocket_error_codes_t25esp_tls_cert_verify_flagsE"></span><span id="_CPPv2N27esp_websocket_error_codes_t25esp_tls_cert_verify_flagsE"></span><span id="esp_websocket_error_codes_t::esp_tls_cert_verify_flags__i"></span><span class="target" id="structesp__websocket__error__codes__t_1a77c724ac2f1e67e3f16dd4663c48718f"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_tls_cert_verify_flags</span></span></span><a class="headerlink" href="#_CPPv4N27esp_websocket_error_codes_t25esp_tls_cert_verify_flagsE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>tls flags reported from underlying tls stack during certificate verification </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N27esp_websocket_error_codes_t28esp_ws_handshake_status_codeE">
+<span id="_CPPv3N27esp_websocket_error_codes_t28esp_ws_handshake_status_codeE"></span><span id="_CPPv2N27esp_websocket_error_codes_t28esp_ws_handshake_status_codeE"></span><span id="esp_websocket_error_codes_t::esp_ws_handshake_status_code__i"></span><span class="target" id="structesp__websocket__error__codes__t_1a8f804cf82464f89aa144f9c7b8ae1f95"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_ws_handshake_status_code</span></span></span><a class="headerlink" href="#_CPPv4N27esp_websocket_error_codes_t28esp_ws_handshake_status_codeE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>http status code of the websocket upgrade handshake </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N27esp_websocket_error_codes_t24esp_transport_sock_errnoE">
+<span id="_CPPv3N27esp_websocket_error_codes_t24esp_transport_sock_errnoE"></span><span id="_CPPv2N27esp_websocket_error_codes_t24esp_transport_sock_errnoE"></span><span id="esp_websocket_error_codes_t::esp_transport_sock_errno__i"></span><span class="target" id="structesp__websocket__error__codes__t_1a096361ffbbacce31e817db7e183ebdb2"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_transport_sock_errno</span></span></span><a class="headerlink" href="#_CPPv4N27esp_websocket_error_codes_t24esp_transport_sock_errnoE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>errno from the underlying socket </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv426esp_websocket_event_data_t">
 <span id="_CPPv326esp_websocket_event_data_t"></span><span id="_CPPv226esp_websocket_event_data_t"></span><span id="esp_websocket_event_data_t"></span><span class="target" id="structesp__websocket__event__data__t"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_event_data_t</span></span></span><a class="headerlink" href="#_CPPv426esp_websocket_event_data_t" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Websocket event data. </p>
@@ -603,6 +662,12 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 <dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_event_data_t14payload_offsetE">
 <span id="_CPPv3N26esp_websocket_event_data_t14payload_offsetE"></span><span id="_CPPv2N26esp_websocket_event_data_t14payload_offsetE"></span><span id="esp_websocket_event_data_t::payload_offset__i"></span><span class="target" id="structesp__websocket__event__data__t_1ad389aa8cd73d447415dc66322dc17cdc"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">payload_offset</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_event_data_t14payload_offsetE" title="Permalink to this definition"></a><br /></dt>
 <dd><p>Actual offset for the data associated with this event </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_event_data_t12error_handleE">
+<span id="_CPPv3N26esp_websocket_event_data_t12error_handleE"></span><span id="_CPPv2N26esp_websocket_event_data_t12error_handleE"></span><span id="esp_websocket_event_data_t::error_handle__esp_websocket_error_codes_t"></span><span class="target" id="structesp__websocket__event__data__t_1a0b9a9288428cd7a647d5f7f8b3df2c59"></span><a class="reference internal" href="#_CPPv427esp_websocket_error_codes_t" title="esp_websocket_error_codes_t"><span class="n"><span class="pre">esp_websocket_error_codes_t</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">error_handle</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_event_data_t12error_handleE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>esp-websocket error handle including esp-tls errors as well as internal websocket errors </p>
 </dd></dl>
 
 </div>
@@ -879,8 +944,41 @@ In case a host operating system has <cite>openssl</cite> and <cite>sed</cite> pa
 </dd></dl>
 
 <dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N24esp_websocket_event_id_t30WEBSOCKET_EVENT_BEFORE_CONNECTE">
+<span id="_CPPv3N24esp_websocket_event_id_t30WEBSOCKET_EVENT_BEFORE_CONNECTE"></span><span id="_CPPv2N24esp_websocket_event_id_t30WEBSOCKET_EVENT_BEFORE_CONNECTE"></span><span class="target" id="esp__websocket__client_8h_1a781bbfb5f24162bd806d09cefe317b10a630ef50443a42419342e7a2b72664625"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_EVENT_BEFORE_CONNECT</span></span></span><a class="headerlink" href="#_CPPv4N24esp_websocket_event_id_t30WEBSOCKET_EVENT_BEFORE_CONNECTE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>The event occurs before connecting </p>
+</dd></dl>
+
+<dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N24esp_websocket_event_id_t19WEBSOCKET_EVENT_MAXE">
 <span id="_CPPv3N24esp_websocket_event_id_t19WEBSOCKET_EVENT_MAXE"></span><span id="_CPPv2N24esp_websocket_event_id_t19WEBSOCKET_EVENT_MAXE"></span><span class="target" id="esp__websocket__client_8h_1a781bbfb5f24162bd806d09cefe317b10a104fe520c71c532635d64e024e9a02cb"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_EVENT_MAX</span></span></span><a class="headerlink" href="#_CPPv4N24esp_websocket_event_id_t19WEBSOCKET_EVENT_MAXE" title="Permalink to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="cpp enum">
+<dt class="sig sig-object cpp" id="_CPPv426esp_websocket_error_type_t">
+<span id="_CPPv326esp_websocket_error_type_t"></span><span id="_CPPv226esp_websocket_error_type_t"></span><span class="target" id="esp__websocket__client_8h_1ad76379d2141bca31d4657ded08cb8e26"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">esp_websocket_error_type_t</span></span></span><a class="headerlink" href="#_CPPv426esp_websocket_error_type_t" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Websocket connection error codes propagated via ERROR event. </p>
+<p><em>Values:</em></p>
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_error_type_t25WEBSOCKET_ERROR_TYPE_NONEE">
+<span id="_CPPv3N26esp_websocket_error_type_t25WEBSOCKET_ERROR_TYPE_NONEE"></span><span id="_CPPv2N26esp_websocket_error_type_t25WEBSOCKET_ERROR_TYPE_NONEE"></span><span class="target" id="esp__websocket__client_8h_1ad76379d2141bca31d4657ded08cb8e26ad2523c22e28a4f34990bdc60dd38a147"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_ERROR_TYPE_NONE</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_error_type_t25WEBSOCKET_ERROR_TYPE_NONEE" title="Permalink to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_error_type_t34WEBSOCKET_ERROR_TYPE_TCP_TRANSPORTE">
+<span id="_CPPv3N26esp_websocket_error_type_t34WEBSOCKET_ERROR_TYPE_TCP_TRANSPORTE"></span><span id="_CPPv2N26esp_websocket_error_type_t34WEBSOCKET_ERROR_TYPE_TCP_TRANSPORTE"></span><span class="target" id="esp__websocket__client_8h_1ad76379d2141bca31d4657ded08cb8e26afdad0f70b1c7ca4d009977519ae3e363"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_error_type_t34WEBSOCKET_ERROR_TYPE_TCP_TRANSPORTE" title="Permalink to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_error_type_t33WEBSOCKET_ERROR_TYPE_PONG_TIMEOUTE">
+<span id="_CPPv3N26esp_websocket_error_type_t33WEBSOCKET_ERROR_TYPE_PONG_TIMEOUTE"></span><span id="_CPPv2N26esp_websocket_error_type_t33WEBSOCKET_ERROR_TYPE_PONG_TIMEOUTE"></span><span class="target" id="esp__websocket__client_8h_1ad76379d2141bca31d4657ded08cb8e26ae4afd7452f0c5ea819c991e85091cdf0"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_ERROR_TYPE_PONG_TIMEOUT</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_error_type_t33WEBSOCKET_ERROR_TYPE_PONG_TIMEOUTE" title="Permalink to this definition"></a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N26esp_websocket_error_type_t30WEBSOCKET_ERROR_TYPE_HANDSHAKEE">
+<span id="_CPPv3N26esp_websocket_error_type_t30WEBSOCKET_ERROR_TYPE_HANDSHAKEE"></span><span id="_CPPv2N26esp_websocket_error_type_t30WEBSOCKET_ERROR_TYPE_HANDSHAKEE"></span><span class="target" id="esp__websocket__client_8h_1ad76379d2141bca31d4657ded08cb8e26a7a1c2ce0bcd89cd1027919aa2d9d6f65"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">WEBSOCKET_ERROR_TYPE_HANDSHAKE</span></span></span><a class="headerlink" href="#_CPPv4N26esp_websocket_error_type_t30WEBSOCKET_ERROR_TYPE_HANDSHAKEE" title="Permalink to this definition"></a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
