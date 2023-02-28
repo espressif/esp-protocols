@@ -26,6 +26,7 @@ jobs:
         run: |
           pip install pre-commit
           pre-commit install-hooks
+          pre-commit install --hook-type commit-msg --hook-type pre-push
       - name: Run pre-commit and check for any changes
         run: |
           echo "Commits being checked:"
