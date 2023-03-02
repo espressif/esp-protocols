@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: esp-protocols documentation
+    url: https://espressif.github.io/esp-protocols/
+    about: Documenation for esp-protocols components.
+  - name: ESP-IDF Programming Guide
+    url: https://docs.espressif.com/projects/esp-idf/en/latest/
+    about: Documentation for configuring and using ESP-IDF.
+  - name: Espressif documentation page
+    url: https://www.espressif.com/en/support/download/documents
+    about: Hardware documentation (datasheets, Technical Reference Manual, etc).
+  - name: Forum
+    url: https://esp32.com
+    about: For questions about using ESP-IDF and/or ESP32 series chips. Please submit all questions starting "How do I..." here.
