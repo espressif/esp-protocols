@@ -1,5 +1,6 @@
 version: "0.0.4"
 description: esp websocket client
+url: https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client
 dependencies:
   idf:
     version: ">=5.0"

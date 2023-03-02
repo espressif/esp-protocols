@@ -1,5 +1,6 @@
 version: "1.14.1~3"
 description: ASIO
+url: https://github.com/espressif/esp-protocols/tree/master/components/asio
 dependencies:
   idf:
     version: ">=5.0"
