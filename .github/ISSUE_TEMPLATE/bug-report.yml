@@ -28,6 +28,12 @@ body:
     validations:
       required: true
   - type: input
+    id: component_id
+    attributes:
+      label: component version
+      description: Which component version does this issue occur on? (see your `idf_component.yml`)
+      placeholder: ex. 1.0.0
+  - type: input
     id: idf_version
     attributes:
       label: IDF version.
