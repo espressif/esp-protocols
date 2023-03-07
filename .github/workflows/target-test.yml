@@ -6,56 +6,38 @@ jobs:
   build_esp_modem:
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v4.1", "release-v4.2", "release-v4.3", "release-v4.4", "release-v5.0"]
+        idf_ver: ["latest", "release-v4.2", "release-v4.3", "release-v4.4", "release-v5.0"]
         example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
-        idf_target: ["esp32"]
         exclude:
-          - idf_ver: "release-v4.1"
-            example: modem_console
-          - idf_ver: "release-v4.1"
-            example: ap_to_pppos
-          - idf_ver: "release-v4.1"
-            example: simple_cmux_client
           - idf_ver: "release-v4.2"
             example: simple_cmux_client
-
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@master
-        with:
-          path: esp-protocols
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/${{ matrix.example }}
-          idf.py build
-
-  build_esp_modem_usb:
-    strategy:
-      matrix:
-        idf_ver: ["latest", "release-v4.4", "release-v5.0"]
-        example: ["modem_console", "pppos_client"]
-        idf_target: ["esp32s2", "esp32s3"]
+        include:
+          - idf_ver: "release-v4.2"
+            skip_config: usb
+          - idf_ver: "release-v4.3"
+            skip_config: usb
+          - idf_ver: "release-v5.0"
+            example: "simple_cmux_client"
+            warning: "Warning: The smallest app partition is nearly full"
 
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        working-directory: components/esp_modem/examples/${{ matrix.example }}
+        with:
+          path: protocols
+      - if: ${{ matrix.skip_config }}
+        run: rm -f $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/${{ matrix.example }}/sdkconfig.ci.${{ matrix.skip_config }}*
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
         env:
-          IDF_TARGET: ${{ matrix.idf_target }}
+          EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          cat sdkconfig.ci.usb >> sdkconfig.defaults
-          idf.py build
+          python -m pip install idf-build-apps
+          cd $GITHUB_WORKSPACE/protocols
+          python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }}
 
   build_mdns:
     strategy:
