@@ -24,6 +24,16 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
     cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
     mode(modem_mode::UNDEF) {}
 
+DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
+    buffer(config->dte_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
+    mode(modem_mode::DUAL_MODE) {}
+
+DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
+    buffer(dte_default_buffer_size),
+    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
+    mode(modem_mode::DUAL_MODE) {}
+
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l(internal_lock);
@@ -104,9 +114,9 @@ bool DTE::set_mode(modem_mode m)
             return false;
         }
     }
-    // transitions (COMMAND|CMUX|UNDEF) -> DATA
+    // transitions (COMMAND|DUAL|CMUX|UNDEF) -> DATA
     if (m == modem_mode::DATA_MODE) {
-        if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE) {
+        if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::DUAL_MODE) {
             // mode stays the same, but need to swap terminals (as command has been switched)
             secondary_term.swap(primary_term);
         } else {
@@ -114,7 +124,7 @@ bool DTE::set_mode(modem_mode m)
         }
         return true;
     }
-    // transitions (DATA|CMUX|UNDEF) -> COMMAND
+    // transitions (DATA|DUAL|CMUX|UNDEF) -> COMMAND
     if (m == modem_mode::COMMAND_MODE) {
         if (mode == modem_mode::CMUX_MODE) {
             if (exit_cmux()) {
@@ -123,7 +133,7 @@ bool DTE::set_mode(modem_mode m)
             }
             mode = modem_mode::UNDEF;
             return false;
-        } if (mode == modem_mode::CMUX_MANUAL_MODE) {
+        } if (mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::DUAL_MODE) {
             return true;
         } else {
             mode = m;

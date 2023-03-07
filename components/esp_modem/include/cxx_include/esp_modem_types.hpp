@@ -27,8 +27,9 @@ namespace esp_modem {
  */
 enum class modem_mode {
     UNDEF,
-    COMMAND_MODE, /*!< Command mode -- the modem is supposed to send AT commands in this mode  */
+    COMMAND_MODE, /*!< Command mode -- the modem is supposed to send AT commands in this mode */
     DATA_MODE,    /*!< Data mode -- the modem communicates with network interface on PPP protocol */
+    DUAL_MODE,    /*!< Dual mode -- the modem has two real terminals. Data and commands work at the same time */
     CMUX_MODE,    /*!< CMUX (Multiplex mode) -- Simplified CMUX mode, which creates two virtual terminals,
                    *  assigning one solely to command interface and the other  to the data mode */
     CMUX_MANUAL_MODE,    /*!< Enter CMUX mode manually -- just creates two virtual terminals */

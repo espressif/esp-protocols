@@ -1,4 +1,4 @@
-version: "0.1.27"
+version: "0.1.28"
 description: esp modem
 url: https://github.com/espressif/esp-protocols/tree/master/components/esp_modem
 dependencies:
