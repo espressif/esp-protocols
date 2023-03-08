@@ -1,0 +1,82 @@
+name: "esp-modem: Build and Host tests"
+
+on:
+  push:
+    paths:
+      - 'components/esp_modem/**'
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_esp_modem:
+    if: contains(github.event.pull_request.labels.*.name, 'modem')
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v4.2", "release-v4.3", "release-v4.4", "release-v5.0"]
+        example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
+        exclude:
+          - idf_ver: "release-v4.2"
+            example: simple_cmux_client
+        include:
+          - idf_ver: "release-v4.2"
+            skip_config: usb
+          - idf_ver: "release-v4.3"
+            skip_config: usb
+          - idf_ver: "release-v5.0"
+            example: "simple_cmux_client"
+            warning: "Warning: The smallest app partition is nearly full"
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          path: protocols
+      - if: ${{ matrix.skip_config }}
+        run: rm -f $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/${{ matrix.example }}/sdkconfig.ci.${{ matrix.skip_config }}*
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: ${{ matrix.warning }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          python -m pip install idf-build-apps
+          cd $GITHUB_WORKSPACE/protocols
+          python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }}
+
+  host_test_esp_modem:
+    name: esp-modem Build and Test on Host
+    runs-on: ubuntu-20.04
+    container: espressif/idf:release-v4.3
+    env:
+      lwip: lwip-2.1.2
+      lwip_contrib: contrib-2.1.0
+      lwip_uri: http://download.savannah.nongnu.org/releases/lwip
+      COMP_DIR: esp-protocols/components/esp_modem
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          path: esp-protocols
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y gcc-8 g++-8
+          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+          export LWIP_PATH=`pwd`/${{ env.lwip }}
+          export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
+          . ${IDF_PATH}/export.sh
+          $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
+          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/linux_modem
+          idf.py build
+          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/test/host_test
+          idf.py build
+          ./build/host_modem_test.elf -r junit -o junit.xml
+
+      - name: Publish Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: esp-protocols/components/esp_modem/test/host_test/junit.xml

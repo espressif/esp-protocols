@@ -3,42 +3,6 @@ name: Build and Run Target tests
 on: [push, pull_request]
 
 jobs:
-  build_esp_modem:
-    strategy:
-      matrix:
-        idf_ver: ["latest", "release-v4.2", "release-v4.3", "release-v4.4", "release-v5.0"]
-        example: ["pppos_client", "modem_console", "ap_to_pppos", "simple_cmux_client"]
-        exclude:
-          - idf_ver: "release-v4.2"
-            example: simple_cmux_client
-        include:
-          - idf_ver: "release-v4.2"
-            skip_config: usb
-          - idf_ver: "release-v4.3"
-            skip_config: usb
-          - idf_ver: "release-v5.0"
-            example: "simple_cmux_client"
-            warning: "Warning: The smallest app partition is nearly full"
-
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          path: protocols
-      - if: ${{ matrix.skip_config }}
-        run: rm -f $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/${{ matrix.example }}/sdkconfig.ci.${{ matrix.skip_config }}*
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
-        env:
-          EXPECTED_WARNING: ${{ matrix.warning }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          python -m pip install idf-build-apps
-          cd $GITHUB_WORKSPACE/protocols
-          python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }}
-
   build_mdns:
     strategy:
       matrix:
