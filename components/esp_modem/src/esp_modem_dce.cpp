@@ -88,6 +88,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
 {
     switch (m) {
     case modem_mode::UNDEF:
+    case modem_mode::DUAL_MODE: // Only DTE can be in Dual mode
         break;
     case modem_mode::COMMAND_MODE:
         if (mode == modem_mode::COMMAND_MODE || mode >= modem_mode::CMUX_MANUAL_MODE) {
