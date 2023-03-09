@@ -49,7 +49,7 @@ std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *c
     return gnss_factory::LocalFactory::create(config, std::move(dte), netif);
 }
 
-esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, esp_modem_gps_t &gps)
+esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, sim70xx_gps_t &gps)
 {
 
     ESP_LOGV(TAG, "%s", __func__ );
@@ -293,11 +293,11 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     {
         std::string_view sats_in_view = out.substr(0, pos);
         if (sats_in_view.length() > 1) {
-            if (std::from_chars(out.data(), out.data() + pos, gps.sats_in_view).ec == std::errc::invalid_argument) {
+            if (std::from_chars(out.data(), out.data() + pos, gps.sat.num).ec == std::errc::invalid_argument) {
                 return esp_modem::command_result::FAIL;
             }
         } else {
-            gps.sats_in_view  = 0;
+            gps.sat.num  = 0;
         }
     } //clean up sats_in_view
 
@@ -332,12 +332,12 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     return esp_modem::command_result::OK;
 }
 
-esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(sim70xx_gps_t &gps)
 {
     return get_gnss_information_sim70xx_lib(dte.get(), gps);
 }
 
-esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
+esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(sim70xx_gps_t &gps)
 {
     return device->get_gnss_information_sim70xx(gps);
 }
