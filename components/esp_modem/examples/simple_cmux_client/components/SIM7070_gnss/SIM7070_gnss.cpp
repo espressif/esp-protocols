@@ -67,24 +67,26 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     }
     /**
      * Parsing +CGNSINF:
-     * <GNSS run status>,
-     * <Fix status>,
-     * <UTC date &  Time>,
-     * <Latitude>,
-     * <Longitude>,
-     * <MSL Altitude>,
-     * <Speed Over Ground>,
-     * <Course Over Ground>,
-     * <Fix Mode>,
-     * <Reserved1>,
-     * <HDOP>,
-     * <PDOP>,
-     * <VDOP>,
-     * <Reserved2>,
-     * <GNSS Satellites in View>,
-     * <Reserved3>,
-     * <HPA>,
-     * <VPA>
+    | **Index** | **Parameter**          | **Unit**           | **Range**                                                                            | **Length** |
+    |-----------|------------------------|--------------------|--------------------------------------------------------------------------------------|------------|
+    | 1         | GNSS run status        | --                 | 0-1                                                                                  | 1          |
+    | 2         | Fix status             | --                 | 0-1                                                                                  | 1          |
+    | 3         | UTC date & Time        | yyyyMMddhhmmss.sss | yyyy: [1980,2039] MM : [1,12] dd: [1,31] hh: [0,23] mm: [0,59] ss.sss:[0.000,60.999] | 18         |
+    | 4         | Latitude               | ±dd.dddddd         | [-90.000000,90.000000]                                                               | 10         |
+    | 5         | Longitude              | ±dd.dddddd         | -180.000000,180.000000]                                                              | 11         |
+    | 6         | MSL Altitude           | meters             | [0,999.99]                                                                           | 8          |
+    | 7         | Speed Over Ground      | Km/hour            | [0,360.00]                                                                           | 6          |
+    | 8         | Course Over Ground     | degrees            | 0,1,2[1]                                                                             | 6          |
+    | 9         | Fix Mode               | --                 |                                                                                      | 1          |
+    | 10        | Reserved1              |                    |                                                                                      | 0          |
+    | 11        | HDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 12        | PDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 13        | VDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 14        | Reserved2              |                    |                                                                                      | 0          |
+    | 15        | GPS Satellites in View | --                 | -- [0,99]                                                                            | 2          |
+    | 16        | Reserved3              |                    |                                                                                      | 0          |
+    | 17        | HPA[2]                 | meters             | [0,9999.9]                                                                           | 6          |
+    | 18        | VPA[2]                 | meters             | [0,9999.9]                                                                           | 6          |
      */
     out = out.substr(pattern.size());
     int pos = 0;
