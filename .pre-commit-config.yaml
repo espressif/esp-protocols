@@ -50,3 +50,9 @@ repos:
     hooks:
     -   id: astyle_py
         args: ['--style=otbs', '--attach-namespaces', '--attach-classes', '--indent=spaces=4', '--convert-tabs', '--align-pointer=name', '--align-reference=name', '--keep-one-line-statements', '--pad-header', '--pad-oper']
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v2.42.1
+    hooks:
+      - id: commitizen
+      - id: commitizen-branch
+        stages: [push]
