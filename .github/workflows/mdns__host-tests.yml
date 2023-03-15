@@ -1,0 +1,61 @@
+name: "mdns: host-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  host_test_mdns:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    name: Host test
+    runs-on: ubuntu-20.04
+    container: espressif/idf:latest
+
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          path: esp-protocols
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          apt-get update && apt-get install -y dnsutils gcc g++
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/host_test
+          idf.py build
+          ./build/mdns_host.elf &
+          dig +short -p 5353 @224.0.0.251 myesp.local > ip.txt
+          cat ip.txt | xargs dig +short -p 5353 @224.0.0.251 -x
+          cat ip.txt
+
+  build_afl_host_test_mdns:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    name: Build AFL host test
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32"]
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@master
+        with:
+          path: esp-protocols
+      - name: Install Necessary Libs
+        run: |
+          apt-get update -y
+          apt-get install -y libbsd-dev
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_afl_fuzz_host/
+          make INSTR=off

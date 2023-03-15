@@ -84,6 +84,11 @@ struct esp_modem_dte_config {
     };
 };
 
+#if ESP_IDF_VERSION_MAJOR >= 5
+#define ESP_MODEM_DEFAULT_UART_CLK      UART_SCLK_DEFAULT
+#else
+#define ESP_MODEM_DEFAULT_UART_CLK      UART_SCLK_APB
+#endif
 
 /**
  * @brief ESP Modem DTE Default Configuration
@@ -92,15 +97,15 @@ struct esp_modem_dte_config {
 #define ESP_MODEM_DTE_DEFAULT_CONFIG() \
     {                                  \
         .dte_buffer_size = 512,        \
-        .task_stack_size = 4096, \
-        .task_priority = 5,      \
+        .task_stack_size = 4096,       \
+        .task_priority = 5,            \
         .uart_config = {               \
             .port_num = UART_NUM_1,                 \
             .data_bits = UART_DATA_8_BITS,          \
             .stop_bits = UART_STOP_BITS_1,          \
             .parity = UART_PARITY_DISABLE,          \
             .flow_control = ESP_MODEM_FLOW_CONTROL_NONE,\
-            .source_clk = UART_SCLK_APB,            \
+            .source_clk = ESP_MODEM_DEFAULT_UART_CLK,   \
             .baud_rate = 115200,                    \
             .tx_io_num = 25,                        \
             .rx_io_num = 26,                        \
