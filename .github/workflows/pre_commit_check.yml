@@ -1,9 +1,6 @@
 name: Check pre-commit rules
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
     types: [opened, reopened, synchronize]
 
