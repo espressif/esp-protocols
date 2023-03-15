@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.0.9](https://github.com/espressif/esp-protocols/commits/mdns-v1.0.9)
+
+### Features
+
+- Add reverse lookup to the example and test ([d464ed7](https://github.com/espressif/esp-protocols/commit/d464ed7))
+- Add support for IPv6 reverse query ([d4825f5](https://github.com/espressif/esp-protocols/commit/d4825f5))
+
+### Bug Fixes
+
+- Reintroduce missing CHANGELOGs ([200cbb3](https://github.com/espressif/esp-protocols/commit/200cbb3))
+- use semaphore instead of task notification bits (IDFGH-9380) ([73f2800](https://github.com/espressif/esp-protocols/commit/73f2800), [IDF#10754](https://github.com/espressif/esp-idf/issues/10754))
+
+### Updated
+
+- ci(common): force scoping commit messages with components ([c55fcc0](https://github.com/espressif/esp-protocols/commit/c55fcc0))
+- Add homepage URL and License to all components ([ef3f0ee](https://github.com/espressif/esp-protocols/commit/ef3f0ee))
+- docs: fix of mdns link translation ([1c850dd](https://github.com/espressif/esp-protocols/commit/1c850dd))
+- unite all tags under common structure py test: update tags under common structure ([c6db3ea](https://github.com/espressif/esp-protocols/commit/c6db3ea))
+
 ## [1.0.8](https://github.com/espressif/esp-protocols/commits/b9b4a75)
 
 ### Features
