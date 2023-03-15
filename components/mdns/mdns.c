@@ -1385,32 +1385,40 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
 #if CONFIG_LWIP_IPV6
     else if (answer->type == MDNS_TYPE_AAAA) {
         if (answer->host == &_mdns_self_host) {
-            struct esp_ip6_addr if_ip6;
-            if (!_mdns_server->interfaces[tcpip_if].pcbs[MDNS_IP_PROTOCOL_V6].pcb && _mdns_server->interfaces[tcpip_if].pcbs[MDNS_IP_PROTOCOL_V6].state != PCB_DUP) {
+            struct esp_ip6_addr if_ip6s[NETIF_IPV6_MAX_NUMS];
+            uint8_t count = 0;
+            if (!_mdns_server->interfaces[tcpip_if].pcbs[MDNS_IP_PROTOCOL_V6].pcb &&
+                    _mdns_server->interfaces[tcpip_if].pcbs[MDNS_IP_PROTOCOL_V6].state != PCB_DUP) {
                 return 0;
             }
-            if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(tcpip_if), &if_ip6)) {
-                return 0;
-            }
-            if (_ipv6_address_is_zero(if_ip6)) {
-                return 0;
-            }
-            if (_mdns_append_aaaa_record(packet, index, _mdns_server->hostname, (uint8_t *)if_ip6.addr, answer->flush, answer->bye) <= 0) {
-                return 0;
+            count = esp_netif_get_all_ip6(_mdns_get_esp_netif(tcpip_if), if_ip6s);
+            assert(count <= NETIF_IPV6_MAX_NUMS);
+            for (int i = 0; i < count; i++) {
+                if (_ipv6_address_is_zero(if_ip6s[i])) {
+                    return 0;
+                }
+                if (_mdns_append_aaaa_record(packet, index, _mdns_server->hostname, (uint8_t *)if_ip6s[i].addr,
+                                             answer->flush, answer->bye) <= 0) {
+                    return 0;
+                }
             }
             if (!_mdns_if_is_dup(tcpip_if)) {
-                return 1;
+                return count;
             }
-            mdns_if_t other_if = _mdns_get_other_if (tcpip_if);
-            if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(other_if), &if_ip6)) {
-                return 1;
+
+            mdns_if_t other_if = _mdns_get_other_if(tcpip_if);
+            struct esp_ip6_addr other_ip6;
+            if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(other_if), &other_ip6)) {
+                return count;
             }
-            if (_mdns_append_aaaa_record(packet, index, _mdns_server->hostname, (uint8_t *)if_ip6.addr, answer->flush, answer->bye) > 0) {
-                return 2;
+            if (_mdns_append_aaaa_record(packet, index, _mdns_server->hostname, (uint8_t *)other_ip6.addr,
+                                         answer->flush, answer->bye) > 0) {
+                return 1 + count;
             }
-            return 1;
+            return count;
         } else if (answer->host != NULL) {
-            return _mdns_append_host_answer(packet, index, answer->host, ESP_IPADDR_TYPE_V6, answer->flush, answer->bye);
+            return _mdns_append_host_answer(packet, index, answer->host, ESP_IPADDR_TYPE_V6, answer->flush,
+                                            answer->bye);
         }
     }
 #endif
