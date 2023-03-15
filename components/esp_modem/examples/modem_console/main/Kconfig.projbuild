@@ -16,17 +16,18 @@ menu "Example Configuration"
     endchoice
 
     choice EXAMPLE_MODEM_DEVICE
-        depends on EXAMPLE_SERIAL_CONFIG_UART
         prompt "Choose supported modem device (DCE)"
         default EXAMPLE_MODEM_DEVICE_BG96
         help
             Select modem device connected to the ESP DTE.
         config EXAMPLE_MODEM_DEVICE_SHINY
+            depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SHINY"
             help
                 SHINY is a GSM/GPRS module.
                 It supports SHINY.
         config EXAMPLE_MODEM_DEVICE_SIM800
+            depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM800"
             help
                 SIMCom SIM800L is a GSM/GPRS module.
@@ -36,10 +37,12 @@ menu "Example Configuration"
             help
                 Quectel BG96 is a series of LTE Cat M1/Cat NB1/EGPRS module.
         config EXAMPLE_MODEM_DEVICE_SIM7000
+            depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM7000"
             help
                 SIM7000 is a Multi-Band LTE-FDD and GSM/GPRS/EDGE module.
         config EXAMPLE_MODEM_DEVICE_SIM7070
+            depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM7070"
             help
                 SIM7070 is Multi-Band CAT M and NB IoT module.
@@ -47,6 +50,11 @@ menu "Example Configuration"
             bool "SIM7600"
             help
                 SIM7600 is a Multi-Band LTE-TDD/LTE-FDD/HSPA+ and GSM/GPRS/EDGE module.
+        config EXAMPLE_MODEM_DEVICE_A7670
+            depends on EXAMPLE_SERIAL_CONFIG_USB
+            bool "A7670"
+            help
+                A7670X is Multi-Band LTE-FDD/LTE-TDD/GSM/GPRS/EDGE module.
     endchoice
 
     config EXAMPLE_MODEM_PPP_APN
