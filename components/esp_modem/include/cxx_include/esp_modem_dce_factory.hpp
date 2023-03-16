@@ -69,6 +69,10 @@ public:
         ESP_MODEM_THROW_IF_FALSE(netif != nullptr, "Null netif");
     }
 
+    explicit Creator(std::shared_ptr<DTE> dte): dte(std::move(dte)), device(nullptr), netif(nullptr)
+    {
+    }
+
     ~Creator()
     {
         if (device != nullptr) {
