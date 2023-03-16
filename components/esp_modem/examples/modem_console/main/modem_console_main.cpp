@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -48,9 +48,9 @@
         } } while (0)
 
 /**
- * Please update the default APN name here (this could be updated runtime)
+ * Default APN name is taken from Kconfig (this could be updated runtime)
  */
-#define DEFAULT_APN "my_apn"
+#define DEFAULT_APN CONFIG_EXAMPLE_MODEM_PPP_APN
 
 #define GPIO_OUTPUT_PWRKEY    (gpio_num_t)CONFIG_EXAMPLE_MODEM_PWRKEY_PIN
 #define GPIO_OUTPUT_PIN_SEL  (1ULL<<GPIO_OUTPUT_PWRKEY)
@@ -149,7 +149,18 @@ extern "C" void app_main(void)
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     while (1) {
         exit_signal.clear(1);
-        struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
+#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_BG96_USB_CONFIG();
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_SIM7600_USB_CONFIG();
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the A7670 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_A7670_USB_CONFIG();
+#else
+#error USB modem not selected
+#endif
         const esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
         ESP_LOGI(TAG, "Waiting for USB device connection...");
         auto dte = create_usb_dte(&dte_config);
@@ -159,7 +170,13 @@ extern "C" void app_main(void)
                 exit_signal.set(1);
             }
         });
+#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
         std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1 || CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
+        std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
+#else
+#error USB modem not selected
+#endif
 
 #else
 #error Invalid serial connection to modem.

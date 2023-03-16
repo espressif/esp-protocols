@@ -208,14 +208,28 @@ void app_main(void)
 
 #elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     while (1) {
+#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
         ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
-        struct esp_modem_usb_term_config usb_config = ESP_MODEM_DEFAULT_USB_CONFIG(0x2C7C, 0x0296, 2); // VID, PID and interface num of BG96 modem
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_BG96_USB_CONFIG();
+        esp_modem_dce_device_t usb_dev_type = ESP_MODEM_DCE_BG96;
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_SIM7600_USB_CONFIG();
+        esp_modem_dce_device_t usb_dev_type = ESP_MODEM_DCE_SIM7600;
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the A7670 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_A7670_USB_CONFIG();
+        esp_modem_dce_device_t usb_dev_type = ESP_MODEM_DCE_SIM7600;
+#else
+#error USB modem not selected
+#endif
         const esp_modem_dte_config_t dte_usb_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
         ESP_LOGI(TAG, "Waiting for USB device connection...");
-        esp_modem_dce_t *dce = esp_modem_new_dev_usb(ESP_MODEM_DCE_BG96, &dte_usb_config, &dce_config, esp_netif);
+        esp_modem_dce_t *dce = esp_modem_new_dev_usb(usb_dev_type, &dte_usb_config, &dce_config, esp_netif);
         assert(dce);
         esp_modem_set_error_cb(dce, usb_terminal_error_handler);
-        vTaskDelay(pdMS_TO_TICKS(1000)); // Although the DTE should be ready after USB enumeration, sometimes it fails to respond without this delay
+        ESP_LOGI(TAG, "Modem connected, waiting 10 seconds for boot...");
+        vTaskDelay(pdMS_TO_TICKS(10000)); // Give DTE some time to boot
 
 #else
 #error Invalid serial connection to modem.
