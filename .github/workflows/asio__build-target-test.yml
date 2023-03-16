@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_asio:
-    if: contains(github.event.pull_request.labels.*.name, 'asio')
+    if: contains(github.event.pull_request.labels.*.name, 'asio') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:
@@ -58,7 +58,9 @@ jobs:
 
   target_tests_asio:
     # Skip running on forks since it won't have access to secrets
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'asio') && (github.repository == 'espressif/esp-protocols') }}
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'asio') || github.event_name == 'push' )
     name: Target tests
     strategy:
       matrix:

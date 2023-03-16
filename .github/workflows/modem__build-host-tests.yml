@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_esp_modem:
-    if: contains(github.event.pull_request.labels.*.name, 'modem')
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:
@@ -47,7 +47,7 @@ jobs:
           python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }}
 
   host_test_esp_modem:
-    if: contains(github.event.pull_request.labels.*.name, 'modem')
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Host Tests
     runs-on: ubuntu-20.04
     container: espressif/idf:release-v4.3
@@ -84,7 +84,7 @@ jobs:
           files: esp-protocols/components/esp_modem/test/host_test/junit.xml
 
   host_test_gcov_esp_modem:
-    if: contains(github.event.pull_request.labels.*.name, 'modem')
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Run gcovr on esp modem host test
     runs-on: ubuntu-22.04
     container: espressif/idf:release-v4.3

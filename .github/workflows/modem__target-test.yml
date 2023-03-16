@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_esp_modem_tests:
-    if: contains(github.event.pull_request.labels.*.name, 'modem')
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Build Target tests
     strategy:
       matrix:
@@ -46,7 +46,9 @@ jobs:
 
   target_tests_esp_modem:
     # Skip running on forks since it won't have access to secrets
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'modem') && (github.repository == 'espressif/esp-protocols') }}
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push' )
     name: Run Target tests
     strategy:
       matrix:

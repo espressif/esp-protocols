@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_mdns:
-    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:
@@ -42,7 +42,7 @@ jobs:
           if-no-files-found: error
 
   build_mdns_app:
-    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Build Test Apps
     strategy:
       matrix:
@@ -91,7 +91,9 @@ jobs:
 
   target_test_apps_mdns:
     # Skip running on forks since it won't have access to secrets
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'mdns') && (github.repository == 'espressif/esp-protocols') }}
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push' )
     name: Target Test Apps
     strategy:
       matrix:
@@ -129,7 +131,9 @@ jobs:
 
   target_tests_mdns:
     # Skip running on forks since it won't have access to secrets
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'mdns') && (github.repository == 'espressif/esp-protocols') }}
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push' )
     name: Target Example and Unit tests
     strategy:
       matrix:

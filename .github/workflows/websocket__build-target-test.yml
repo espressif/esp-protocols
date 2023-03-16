@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_websocket:
-    if: contains(github.event.pull_request.labels.*.name, 'websocket')
+    if: contains(github.event.pull_request.labels.*.name, 'websocket') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:
@@ -56,7 +56,9 @@ jobs:
 
   run-target-websocket:
     # Skip running on forks since it won't have access to secrets
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'websocket') && (github.repository == 'espressif/esp-protocols') }}
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'websocket') || github.event_name == 'push' )
     name: Target test
     needs: build_websocket
     strategy:
