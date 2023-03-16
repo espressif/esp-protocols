@@ -29,6 +29,13 @@ class CMux;
 * @{
 */
 
+struct DTE_Command {
+    DTE_Command(const std::string &cmd): data((uint8_t *)cmd.c_str()), len(cmd.length()) {}
+
+    uint8_t *data;
+    size_t len;
+};
+
 /**
  * DTE (Data Terminal Equipment) class
  */
@@ -54,7 +61,9 @@ public:
      * @param len Data len to write
      * @return number of bytes written
      */
-    int write(uint8_t *data, size_t len);
+    int write(uint8_t *data, size_t len) override;
+
+    int write(DTE_Command command);
 
     /**
      * @brief Reading from the underlying terminal
@@ -69,6 +78,8 @@ public:
      * @param f Function to be called on data available
      */
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f);
+
+    void on_read(got_line_cb on_data) override;
 
     /**
      * @brief Sets DTE error callback

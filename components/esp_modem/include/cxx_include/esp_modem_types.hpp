@@ -80,6 +80,9 @@ public:
      */
     virtual command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator) = 0;
     virtual command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms) = 0;
+
+    virtual int write(uint8_t *data, size_t len) = 0;
+    virtual void on_read(got_line_cb on_data) = 0;
 };
 
 /**

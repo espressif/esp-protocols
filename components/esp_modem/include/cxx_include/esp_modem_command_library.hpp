@@ -23,6 +23,19 @@ namespace dce_commands {
  */
 
 /**
+ * @brief Generic AT command to be send with pass and fail phrases
+ *
+ * @param t Commandable object (anything that can accept commands)
+ * @param command Command to be sent do the commandable object
+ * @param pass_phrase String to be present in the reply to pass this command
+ * @param fail_phrase String to be present in the reply to fail this command
+ * @param timeout_ms Timeout in ms
+ */
+command_result generic_command(CommandableIf *t, const std::string &command,
+                               const std::string &pass_phrase,
+                               const std::string &fail_phrase, uint32_t timeout_ms);
+
+/**
  * @brief Declaration of all commands is generated from esp_modem_command_declare.inc
  */
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \

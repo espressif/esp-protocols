@@ -17,7 +17,7 @@ menu "Example Configuration"
 
     choice EXAMPLE_MODEM_DEVICE
         prompt "Choose supported modem device (DCE)"
-        default EXAMPLE_MODEM_DEVICE_BG96
+        default EXAMPLE_MODEM_DEVICE_SHINY
         help
             Select modem device connected to the ESP DTE.
         config EXAMPLE_MODEM_DEVICE_SHINY
