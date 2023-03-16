@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.0.0](https://github.com/espressif/esp-protocols/commits/modem-v1.0.0)
+
+### Major changes
+
+- Enable DTE to redefine on_read() and write(cmd) directly ([DTE to support sending and receiving raw data](https://github.com/espressif/esp-protocols/commit/bf114d3))
+
+### Features
+
+- Add mqtt example in AT-only mode ([7547267](https://github.com/espressif/esp-protocols/commit/7547267))
+- DTE to support sending and receiving raw data ([bf114d3](https://github.com/espressif/esp-protocols/commit/bf114d3))
+
+### Bug Fixes
+
+- Changelog to correctly pick references ([c59e330](https://github.com/espressif/esp-protocols/commit/c59e330))
+- AT-only example: support MQTT over TLS on BG96 ([31d4323](https://github.com/espressif/esp-protocols/commit/31d4323))
+- AT-only example: initial adaptation to BG96 ([ceedcfc](https://github.com/espressif/esp-protocols/commit/ceedcfc))
+- warning in ap-2-pppos example when using lwip/napt ([bf32e45](https://github.com/espressif/esp-protocols/commit/bf32e45))
+- trigger PR jobs based on labels ([13eca12](https://github.com/espressif/esp-protocols/commit/13eca12))
+- Reintroduce missing CHANGELOGs ([200cbb3](https://github.com/espressif/esp-protocols/commit/200cbb3), [#235](https://github.com/espressif/esp-protocols/issues/235))
+- Use default UART CLK source ([d0814bf](https://github.com/espressif/esp-protocols/commit/d0814bf), [#241](https://github.com/espressif/esp-protocols/issues/241))
+- run CI build job for all targets ([a089e0d](https://github.com/espressif/esp-protocols/commit/a089e0d))
+
+### Updated
+
+- Update examples for USB v1.1 ([610372f](https://github.com/espressif/esp-protocols/commit/610372f))
+
 
 ## [0.1.28](https://github.com/espressif/esp-protocols/commits/01c26c8)
 
