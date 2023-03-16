@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_esp_mqtt_cxx:
-    if: contains(github.event.pull_request.labels.*.name, 'mqtt')
+    if: contains(github.event.pull_request.labels.*.name, 'mqtt') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:

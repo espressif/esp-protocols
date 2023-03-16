@@ -9,7 +9,7 @@ on:
 
 jobs:
   host_test_mdns:
-    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Host test
     runs-on: ubuntu-20.04
     container: espressif/idf:latest
@@ -33,7 +33,7 @@ jobs:
           cat ip.txt
 
   build_afl_host_test_mdns:
-    if: contains(github.event.pull_request.labels.*.name, 'mdns')
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Build AFL host test
     strategy:
       matrix:
