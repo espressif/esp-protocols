@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "esp_idf_version.h"
 #include "nvs_flash.h"
+#include "lwip/netif.h"
 #include "lwip/lwip_napt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
