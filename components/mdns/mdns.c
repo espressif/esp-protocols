@@ -678,7 +678,7 @@ static uint16_t append_fqdn_dots(uint8_t *packet, uint16_t *index, const char *n
     char *end = host;
     char *start = host;
     do  {
-        end = memchr(start, '.', len);
+        end = memchr(start, '.', host + len - start);
         end = end ? end : host + len;
         int part_len = end - start;
         if (!append_single_str(packet, index, start, part_len)) {
@@ -733,6 +733,7 @@ search_next:
         //read the destination into name and compare
         name.parts = 0;
         name.sub = 0;
+        name.invalid = false;
         name.host[0] = 0;
         name.service[0] = 0;
         name.proto[0] = 0;
