@@ -55,6 +55,7 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_
         }
         tmp = tmp->ifa_next;
     }
+    freeifaddrs(addrs);
     return ESP_OK;
 }
 
