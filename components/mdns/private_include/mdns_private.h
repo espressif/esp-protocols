@@ -382,7 +382,6 @@ typedef struct mdns_server_s {
     const char *hostname;
     const char *instance;
     mdns_srv_item_t *services;
-    SemaphoreHandle_t lock;
     QueueHandle_t action_queue;
     SemaphoreHandle_t action_sema;
     mdns_tx_packet_t *tx_queue_head;

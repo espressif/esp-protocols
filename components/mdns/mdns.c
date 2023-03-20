@@ -3060,6 +3060,29 @@ static bool _mdns_name_is_discovery(mdns_name_t *name, uint16_t type)
 }
 
 /**
+ * @brief  Check if the parsed name is self-hosted, i.e. we should resolve conflicts
+ */
+static bool _mdns_name_is_selfhosted(mdns_name_t *name)
+{
+    if (_str_null_or_empty(_mdns_server->hostname)) { // self-hostname needs to be defined
+        return false;
+    }
+
+    // hostname only -- check if selfhosted name
+    if (_str_null_or_empty(name->service) && _str_null_or_empty(name->proto) &&
+            strcasecmp(name->host, _mdns_server->hostname) == 0 ) {
+        return true;
+    }
+
+    // service -- check if selfhosted service
+    mdns_srv_item_t *srv = _mdns_get_service_item(name->service, name->proto, NULL);
+    if (srv && strcasecmp(_mdns_server->hostname, srv->service->hostname) == 0) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * @brief  Check if the parsed name is ours (matches service or host name)
  */
 static bool _mdns_name_is_ours(mdns_name_t *name)
@@ -3667,7 +3690,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         }
                     }
                 }
-
+                bool is_selfhosted = _mdns_name_is_selfhosted(name);
                 if (!_mdns_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
                     continue;//error
                 }
@@ -3693,6 +3716,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         continue;
                     } else if (parsed_packet->distributed) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
+                        continue;
+                    }
+                    if (!is_selfhosted) {
                         continue;
                     }
                     //detect collision (-1=won, 0=none, 1=lost)
@@ -3785,6 +3811,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         _mdns_remove_parsed_question(parsed_packet, type, service);
                         continue;
                     }
+                    if (!_mdns_name_is_selfhosted(name)) {
+                        continue;
+                    }
                     //detect collision (-1=won, 0=none, 1=lost)
                     int col = 0;
                     if (mdns_class > 1) {
@@ -3817,6 +3846,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 } else if (ours) {
                     if (parsed_packet->questions && !parsed_packet->probe) {
                         _mdns_remove_parsed_question(parsed_packet, type, NULL);
+                        continue;
+                    }
+                    if (!_mdns_name_is_selfhosted(name)) {
                         continue;
                     }
                     //detect collision (-1=won, 0=none, 1=lost)
@@ -3867,6 +3899,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 } else if (ours) {
                     if (parsed_packet->questions && !parsed_packet->probe) {
                         _mdns_remove_parsed_question(parsed_packet, type, NULL);
+                        continue;
+                    }
+                    if (!_mdns_name_is_selfhosted(name)) {
                         continue;
                     }
                     //detect collision (-1=won, 0=none, 1=lost)
@@ -5349,16 +5384,10 @@ esp_err_t mdns_init(void)
         s_esp_netifs[i].netif = NULL;
     }
 
-    _mdns_server->lock = xSemaphoreCreateMutex();
-    if (!_mdns_server->lock) {
-        err = ESP_ERR_NO_MEM;
-        goto free_server;
-    }
-
     _mdns_server->action_queue = xQueueCreate(MDNS_ACTION_QUEUE_LEN, sizeof(mdns_action_t *));
     if (!_mdns_server->action_queue) {
         err = ESP_ERR_NO_MEM;
-        goto free_lock;
+        goto free_server;
     }
 
     _mdns_server->action_sema = xSemaphoreCreateBinary();
@@ -5425,8 +5454,6 @@ free_event_handlers:
     vSemaphoreDelete(_mdns_server->action_sema);
 free_queue:
     vQueueDelete(_mdns_server->action_queue);
-free_lock:
-    vSemaphoreDelete(_mdns_server->lock);
 free_server:
     free(_mdns_server);
     _mdns_server = NULL;
@@ -5474,7 +5501,6 @@ void mdns_free(void)
         free(h);
     }
     vSemaphoreDelete(_mdns_server->action_sema);
-    vSemaphoreDelete(_mdns_server->lock);
     free(_mdns_server);
     _mdns_server = NULL;
 }
