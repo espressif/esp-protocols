@@ -47,7 +47,7 @@ def main():
         details = '[{}](https://github.com/espressif/esp-protocols/commit/{})'.format(commit, commit)
         msg_details = git.show('-s', commit, _tty_out=False)
         # check references
-        if any(str(msg_details) in s for s in ['esp-protocols/issues', 'BREAKING CHANGE', 'MAJOR CHANGE']):
+        if any(s in str(msg_details) for s in ['esp-protocols/issues', 'BREAKING CHANGE', 'MAJOR CHANGE']):
             # Closes <issue>
             closes = re.findall(r'Closes ([^\d]+/(\d+))', str(msg_details), re.MULTILINE)
             if closes and closes[0] is not None:
