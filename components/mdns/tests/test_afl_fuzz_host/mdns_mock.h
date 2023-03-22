@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -23,4 +23,9 @@ static inline void _mdns_packet_free(mdns_rx_packet_t *packet)
 {
     free(packet->pb);
     free(packet);
+}
+
+static inline bool mdns_is_netif_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    return true;
 }

@@ -347,7 +347,6 @@ typedef struct mdns_tx_packet_s {
 
 typedef struct {
     mdns_pcb_state_t state;
-    struct udp_pcb *pcb;
     mdns_srv_item_t **probe_services;
     uint8_t probe_services_len;
     uint8_t probe_ip;
