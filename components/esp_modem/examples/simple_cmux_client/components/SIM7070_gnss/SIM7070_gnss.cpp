@@ -7,6 +7,7 @@
 // Created on: 23.08.2022
 // Author: franz
 
+#include <cstring>
 #include <string_view>
 #include <charconv>
 #include <list>
@@ -17,21 +18,25 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_command_library_utils.hpp"
 #include "esp_log.h"
+#include "generate/esp_modem_command_declare.inc"
 #include "SIM7070_gnss.hpp"
 
 constexpr auto const TAG = "SIM7070_gnss";
 
+
+#define CMD_OK    (1)
+#define CMD_FAIL  (2)
 
 namespace gnss_factory {
 using namespace esp_modem;
 using namespace dce_factory;
 
 class LocalFactory: public Factory {
-    using DCE_gnss_ret = std::unique_ptr<DCE_gnss>;   // this custom Factory manufactures only unique_ptr<DCE>'s
+    using DCE_gnss_ret = std::unique_ptr<SIM7070::DCE_gnss>;   // this custom Factory manufactures only unique_ptr<DCE>'s
 public:
     static DCE_gnss_ret create(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
     {
-        return Factory::build_generic_DCE<SIM7070_gnss, DCE_gnss, DCE_gnss_ret>
+        return Factory::build_generic_DCE<SIM7070_gnss, SIM7070::DCE_gnss, DCE_gnss_ret>
                (config, std::move(dte), netif);
     }
 };
@@ -42,14 +47,77 @@ public:
  * @brief Helper create method which employs the DCE factory for creating DCE objects templated by a custom module
  * @return unique pointer of the resultant DCE
  */
-std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
+std::unique_ptr<SIM7070::DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
         std::shared_ptr<esp_modem::DTE> dte,
         esp_netif_t *netif)
 {
     return gnss_factory::LocalFactory::create(config, std::move(dte), netif);
 }
 
-esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, esp_modem_gps_t &gps)
+
+/**
+ * @brief Definition of the command API, which makes the Shiny::DCE "command-able class"
+ * @param cmd Command to send
+ * @param got_line Recv line callback
+ * @param time_ms timeout in ms
+ * @param separator line break separator
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result SIM7070::DCE_gnss::command(const std::string &cmd, esp_modem::got_line_cb got_line, uint32_t time_ms, const char separator)
+{
+    if (!handling_urc) {
+        return dte->command(cmd, got_line, time_ms, separator);
+    }
+    handle_cmd = got_line;
+    signal.clear(CMD_OK | CMD_FAIL);
+    esp_modem::DTE_Command command{cmd};
+    dte->write(command);
+    signal.wait_any(CMD_OK | CMD_FAIL, time_ms);
+    handle_cmd = nullptr;
+    if (signal.is_any(CMD_OK)) {
+        return esp_modem::command_result::OK;
+    }
+    if (signal.is_any(CMD_FAIL)) {
+        return esp_modem::command_result::FAIL;
+    }
+    return esp_modem::command_result::TIMEOUT;
+}
+
+/**
+ * @brief Handle received data
+ *
+ * @param data Data received from the device
+ * @param len Length of the data
+ * @return standard command return code (OK|FAIL|TIMEOUT)
+ */
+esp_modem::command_result SIM7070::DCE_gnss::handle_data(uint8_t *data, size_t len)
+{
+    if (std::memchr(data, '\n', len)) {
+        if (handle_urc) {
+            handle_urc(data, len);
+        }
+        if (handle_cmd) {
+            auto ret = handle_cmd(data, len);
+            if (ret == esp_modem::command_result::TIMEOUT) {
+                return esp_modem::command_result::TIMEOUT;
+            }
+            if (ret == esp_modem::command_result::OK) {
+                signal.set(CMD_OK);
+            }
+            if (ret == esp_modem::command_result::FAIL) {
+                signal.set(CMD_FAIL);
+            }
+        }
+    }
+    return esp_modem::command_result::TIMEOUT;
+}
+
+
+
+
+
+
+esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::CommandableIf *t, sim70xx_gps_t &gps)
 {
 
     ESP_LOGV(TAG, "%s", __func__ );
@@ -67,24 +135,26 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     }
     /**
      * Parsing +CGNSINF:
-     * <GNSS run status>,
-     * <Fix status>,
-     * <UTC date &  Time>,
-     * <Latitude>,
-     * <Longitude>,
-     * <MSL Altitude>,
-     * <Speed Over Ground>,
-     * <Course Over Ground>,
-     * <Fix Mode>,
-     * <Reserved1>,
-     * <HDOP>,
-     * <PDOP>,
-     * <VDOP>,
-     * <Reserved2>,
-     * <GNSS Satellites in View>,
-     * <Reserved3>,
-     * <HPA>,
-     * <VPA>
+    | **Index** | **Parameter**          | **Unit**           | **Range**                                                                            | **Length** |
+    |-----------|------------------------|--------------------|--------------------------------------------------------------------------------------|------------|
+    | 1         | GNSS run status        | --                 | 0-1                                                                                  | 1          |
+    | 2         | Fix status             | --                 | 0-1                                                                                  | 1          |
+    | 3         | UTC date & Time        | yyyyMMddhhmmss.sss | yyyy: [1980,2039] MM : [1,12] dd: [1,31] hh: [0,23] mm: [0,59] ss.sss:[0.000,60.999] | 18         |
+    | 4         | Latitude               | ±dd.dddddd         | [-90.000000,90.000000]                                                               | 10         |
+    | 5         | Longitude              | ±dd.dddddd         | -180.000000,180.000000]                                                              | 11         |
+    | 6         | MSL Altitude           | meters             | [0,999.99]                                                                           | 8          |
+    | 7         | Speed Over Ground      | Km/hour            | [0,360.00]                                                                           | 6          |
+    | 8         | Course Over Ground     | degrees            | 0,1,2[1]                                                                             | 6          |
+    | 9         | Fix Mode               | --                 |                                                                                      | 1          |
+    | 10        | Reserved1              |                    |                                                                                      | 0          |
+    | 11        | HDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 12        | PDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 13        | VDOP                   | --                 | [0,99.9]                                                                             | 4          |
+    | 14        | Reserved2              |                    |                                                                                      | 0          |
+    | 15        | GPS Satellites in View | --                 | -- [0,99]                                                                            | 2          |
+    | 16        | Reserved3              |                    |                                                                                      | 0          |
+    | 17        | HPA[2]                 | meters             | [0,9999.9]                                                                           | 6          |
+    | 18        | VPA[2]                 | meters             | [0,9999.9]                                                                           | 6          |
      */
     out = out.substr(pattern.size());
     int pos = 0;
@@ -120,8 +190,8 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     }
     //UTC date &  Time
     {
-        std::string_view UTC_date_and_Time = out.substr(0, pos);
-        if (UTC_date_and_Time.length() > 1) {
+        std::string_view UTC_date_and_time = out.substr(0, pos);
+        if (UTC_date_and_time.length() > 1) {
             if (std::from_chars(out.data() + 0, out.data() + 4, gps.date.year).ec == std::errc::invalid_argument) {
                 return esp_modem::command_result::FAIL;
             }
@@ -162,7 +232,7 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     {
         std::string_view Latitude = out.substr(0, pos);
         if (Latitude.length() > 1) {
-            gps.latitude  = std::stof(std::string(out.substr(0, pos)));
+            gps.latitude  = std::stof(std::string(Latitude));
         } else {
             gps.latitude  = 0;
         }
@@ -175,7 +245,7 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     {
         std::string_view Longitude = out.substr(0, pos);
         if (Longitude.length() > 1) {
-            gps.longitude  = std::stof(std::string(out.substr(0, pos)));
+            gps.longitude  = std::stof(std::string(Longitude));
         } else {
             gps.longitude  = 0;
         }
@@ -188,7 +258,7 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     {
         std::string_view Altitude = out.substr(0, pos);
         if (Altitude.length() > 1) {
-            gps.altitude  = std::stof(std::string(out.substr(0, pos)));
+            gps.altitude  = std::stof(std::string(Altitude));
         } else {
             gps.altitude  = 0;
         }
@@ -291,11 +361,11 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     {
         std::string_view sats_in_view = out.substr(0, pos);
         if (sats_in_view.length() > 1) {
-            if (std::from_chars(out.data(), out.data() + pos, gps.sats_in_view).ec == std::errc::invalid_argument) {
+            if (std::from_chars(out.data(), out.data() + pos, gps.sat.num).ec == std::errc::invalid_argument) {
                 return esp_modem::command_result::FAIL;
             }
         } else {
-            gps.sats_in_view  = 0;
+            gps.sat.num  = 0;
         }
     } //clean up sats_in_view
 
@@ -330,12 +400,12 @@ esp_modem::command_result get_gnss_information_sim70xx_lib(esp_modem::Commandabl
     return esp_modem::command_result::OK;
 }
 
-esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
+esp_modem::command_result SIM7070_gnss::get_gnss_information_sim70xx(sim70xx_gps_t &gps)
 {
     return get_gnss_information_sim70xx_lib(dte.get(), gps);
 }
 
-esp_modem::command_result DCE_gnss::get_gnss_information_sim70xx(esp_modem_gps_t &gps)
+esp_modem::command_result SIM7070::DCE_gnss::get_gnss_information_sim70xx(sim70xx_gps_t &gps)
 {
     return device->get_gnss_information_sim70xx(gps);
 }
