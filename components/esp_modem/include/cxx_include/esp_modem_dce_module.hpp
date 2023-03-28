@@ -138,6 +138,15 @@ public:
 };
 
 /**
+ * @brief Specific definition of the A7600 module
+ */
+class A7600: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result set_gnss_power_mode(int mode) override;
+};
+
+/**
  * @brief Specific definition of the SIM7070 module
  */
 class SIM7070: public GenericModule {

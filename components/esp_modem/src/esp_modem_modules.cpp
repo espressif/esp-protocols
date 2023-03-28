@@ -57,6 +57,11 @@ command_result SIM7600::set_gnss_power_mode(int mode)
     return dce_commands::set_gnss_power_mode_sim76xx(dte.get(), mode);
 }
 
+command_result A7600::set_gnss_power_mode(int mode)
+{
+    return dce_commands::set_gnss_power_mode_a76xx(dte.get(), mode);
+}
+
 command_result SIM7600::power_down()
 {
     return dce_commands::power_down_sim76xx(dte.get());

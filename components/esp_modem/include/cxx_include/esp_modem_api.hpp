@@ -75,6 +75,11 @@ std::shared_ptr<DTE> create_vfs_dte(const dte_config *config);
 std::unique_ptr<DCE> create_SIM7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
 /**
+ * @brief Create DCE based on A7600 module
+ */
+std::unique_ptr<DCE> create_A7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
  * @brief Create DCE based on SIM7070 module
  */
 std::unique_ptr<DCE> create_SIM7070_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);

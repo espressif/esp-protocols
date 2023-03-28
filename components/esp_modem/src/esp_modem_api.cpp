@@ -46,6 +46,11 @@ std::unique_ptr<DCE> create_SIM7600_dce(const dce_config *config, std::shared_pt
     return create_modem_dce(dce_factory::ModemType::SIM7600, config, std::move(dte), netif);
 }
 
+std::unique_ptr<DCE> create_A7600_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
+{
+    return create_modem_dce(dce_factory::ModemType::A7600, config, std::move(dte), netif);
+}
+
 std::unique_ptr<DCE> create_SIM7070_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
 {
     return create_modem_dce(dce_factory::ModemType::SIM7070, config, std::move(dte), netif);

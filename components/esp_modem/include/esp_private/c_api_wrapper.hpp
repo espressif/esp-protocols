@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,6 +35,8 @@ inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t module)
     switch (module) {
     case ESP_MODEM_DCE_SIM7600:
         return esp_modem::dce_factory::ModemType::SIM7600;
+    case ESP_MODEM_DCE_A7600:
+        return esp_modem::dce_factory::ModemType::A7600;
     case ESP_MODEM_DCE_SIM7070:
         return esp_modem::dce_factory::ModemType::SIM7070;
     case ESP_MODEM_DCE_SIM7000:

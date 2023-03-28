@@ -574,4 +574,11 @@ command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
     return generic_command_common(t, "AT+CGPS=" + std::to_string(mode) + "\r");
 }
 
+command_result set_gnss_power_mode_a76xx(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGNSSPWR=" + std::to_string(mode) + "\r");
+}
+
+
 } // esp_modem::dce_commands
