@@ -27,7 +27,7 @@
 #endif
 #include "esp_log.h"
 #include "console_helper.hpp"
-#include "my_module_dce.hpp"
+#include "shiny_module_dce.hpp"
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
