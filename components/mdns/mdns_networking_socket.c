@@ -347,13 +347,12 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
     int sock = s_interfaces[tcpip_if].sock;
     esp_netif_t *netif = _mdns_get_esp_netif(tcpip_if);
     if (sock >= 0) {
-        mdns_ip_protocol_t other_ip_proto = ip_protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_IP_PROTOCOL_V6 : MDNS_IP_PROTOCOL_V4;
-        int err = join_mdns_multicast_group(sock, netif, other_ip_proto);
+        int err = join_mdns_multicast_group(sock, netif, ip_protocol);
         if (err < 0) {
-            ESP_LOGE(TAG, "Failed to add ipv6 multicast group for protocol %d", ip_protocol);
+            ESP_LOGE(TAG, "Failed to add missing multicast group for protocol %d", ip_protocol);
             return false;
         }
-        s_interfaces[tcpip_if].proto |= (other_ip_proto == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+        s_interfaces[tcpip_if].proto |= (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
         return true;
     }
     sock = create_socket(netif);
@@ -363,7 +362,7 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
     }
     int err = join_mdns_multicast_group(sock, netif, ip_protocol);
     if (err < 0) {
-        ESP_LOGE(TAG, "Failed to add ipv6 multicast group for protocol %d", ip_protocol);
+        ESP_LOGE(TAG, "Failed to add first multicast group for protocol %d", ip_protocol);
     }
     s_interfaces[tcpip_if].proto |= (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
     s_interfaces[tcpip_if].sock = sock;

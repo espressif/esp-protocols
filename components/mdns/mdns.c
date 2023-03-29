@@ -38,6 +38,8 @@ void mdns_debug_packet(const uint8_t *data, size_t len);
 // since the ip6_addr_t is defined in lwip and depends on using IPv6 zones
 #define _MDNS_SIZEOF_IP6_ADDR (MDNS_ANSWER_AAAA_SIZE)
 
+#define NEGATIVE_ANSWER_BITMAP (0x80000000)
+
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";
 
@@ -574,6 +576,9 @@ static inline uint8_t _mdns_append_type(uint8_t *packet, uint16_t *index, uint8_
     } else if (type == MDNS_ANSWER_AAAA) {
         _mdns_append_u16(packet, index, MDNS_TYPE_AAAA);
         _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_NSEC) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_NSEC);
+        _mdns_append_u16(packet, index, mdns_class);
     } else {
         return 0;
     }
@@ -1054,6 +1059,60 @@ static uint16_t _mdns_append_srv_record(uint8_t *packet, uint16_t *index, mdns_s
     return record_length;
 }
 
+static uint16_t _mdns_append_nsec_record(uint8_t *packet, uint16_t *index, uint32_t self_host_queries_answered)
+{
+    const char *str[] =  { _mdns_self_host.hostname, MDNS_DEFAULT_DOMAIN };
+    uint16_t record_length;
+    uint8_t part_length;
+
+    if (_str_null_or_empty(str[0])) {
+        return 0;
+    }
+
+    part_length = _mdns_append_fqdn(packet, index, str, 2, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    part_length = _mdns_append_type(packet, index, MDNS_ANSWER_NSEC, false, MDNS_ANSWER_A_TTL);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    uint16_t data_len_location = *index - 2;
+
+    part_length = _mdns_append_fqdn(packet, index, str, 2, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+    if (!_mdns_append_u8(packet, index, 0)) {
+        return 0;
+    }
+    uint8_t bitmap_size_location = *index;
+    *index += 1;
+    uint8_t bitmap_size = 0;
+    for (int i = sizeof(self_host_queries_answered) - 1; i >= 0; --i) {
+        uint8_t bitmap = 0xFF & (self_host_queries_answered >> (i * 8));
+        if (bitmap == 0) {
+            break;
+        }
+        if (!_mdns_append_u8(packet, index, bitmap)) {
+            return 0;
+        }
+        bitmap_size++;
+    }
+    packet[bitmap_size_location] = bitmap_size;
+    part_length += 2 + bitmap_size;
+
+    _mdns_set_u16(packet, data_len_location, part_length);
+
+    return 1;
+}
+
+
 /**
  * @brief  appends A record to a packet, incrementing the index
  *
@@ -1451,10 +1510,19 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     }
     _mdns_set_u16(packet, MDNS_HEAD_QUESTIONS_OFFSET, count);
 
+    uint32_t self_host_queries_not_answered = p->self_host_queries;
+    uint32_t self_host_queries_answered = 0;
     count = 0;
     a = p->answers;
     while (a) {
-        count += _mdns_append_answer(packet, &index, a, p->tcpip_if);
+        uint8_t nr_of_answers = _mdns_append_answer(packet, &index, a, p->tcpip_if);
+        count += nr_of_answers;
+        // Got a self-hosted answer?  -> reset the query bit for potential negative answer
+        if (nr_of_answers > 0 && a->host == &_mdns_self_host &&
+                (a->type == MDNS_TYPE_A || a->type == MDNS_TYPE_AAAA)) {
+            self_host_queries_not_answered &= ~(NEGATIVE_ANSWER_BITMAP >> a->type);
+            self_host_queries_answered |= NEGATIVE_ANSWER_BITMAP >> a->type;
+        }
         a = a->next;
     }
     _mdns_set_u16(packet, MDNS_HEAD_ANSWERS_OFFSET, count);
@@ -1472,6 +1540,9 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     while (a) {
         count += _mdns_append_answer(packet, &index, a, p->tcpip_if);
         a = a->next;
+    }
+    if (self_host_queries_not_answered) {   // if some self-host queries not answered, append negative reply
+        count += _mdns_append_nsec_record(packet, &index, self_host_queries_answered);
     }
     _mdns_set_u16(packet, MDNS_HEAD_ADDITIONAL_OFFSET, count);
 
@@ -1752,13 +1823,17 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
     return true;
 }
 
-static bool _mdns_create_answer_from_hostname(mdns_tx_packet_t *packet, const char *hostname, bool send_flush)
+static bool _mdns_create_answer_from_hostname(mdns_tx_packet_t *packet, const char *hostname, uint16_t type, bool send_flush)
 {
     mdns_host_item_t *host = mdns_get_host_item(hostname);
     if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_A, NULL, host, send_flush, false) ||
             !_mdns_alloc_answer(&packet->answers, MDNS_TYPE_AAAA, NULL, host, send_flush, false)) {
         return false;
     }
+    if (host == &_mdns_self_host) {
+        packet->self_host_queries |= NEGATIVE_ANSWER_BITMAP >> type;
+    }
+
     return true;
 }
 
@@ -1827,7 +1902,7 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
                 service = service->next;
             }
         } else if (q->type == MDNS_TYPE_A || q->type == MDNS_TYPE_AAAA) {
-            if (!_mdns_create_answer_from_hostname(packet, q->host, send_flush)) {
+            if (!_mdns_create_answer_from_hostname(packet, q->host, q->type, send_flush)) {
                 _mdns_free_tx_packet(packet);
                 return;
             }

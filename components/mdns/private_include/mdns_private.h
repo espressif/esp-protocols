@@ -343,6 +343,7 @@ typedef struct mdns_tx_packet_s {
     mdns_out_answer_t *additional;
     bool queued;
     uint16_t id;
+    uint32_t self_host_queries;
 } mdns_tx_packet_t;
 
 typedef struct {
