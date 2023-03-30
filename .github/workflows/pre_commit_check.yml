@@ -12,12 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
       - name: Fetch head and base refs
-        # This is necessary for pre-commit to check the changes in the PR branch
+        # This is necessary for pre-commit to check the changes in the PR branch (and to set origin/HEAD and HEAD refs)
         run: |
-          git fetch origin ${{ github.base_ref }}:base_ref
-          git fetch origin pull/${{ github.event.pull_request.number }}/head:pr_ref
+          git fetch origin ${{ github.event.pull_request.head.sha }}:pr_ref
+          git checkout pr_ref
+          git remote set-head origin --auto
       - name: Set up Python environment
         uses: actions/setup-python@master
         with:
@@ -26,13 +29,12 @@ jobs:
         run: |
           pip install pre-commit
           pre-commit install-hooks
-          pre-commit install --hook-type commit-msg --hook-type pre-push
       - name: Run pre-commit and check for any changes
         run: |
           echo "Commits being checked:"
-          git log --oneline --no-decorate base_ref..pr_ref
+          git log --oneline --no-decorate origin/HEAD..HEAD
           echo ""
-          if ! pre-commit run --from-ref base_ref --to-ref pr_ref --show-diff-on-failure ; then
+          if ! pre-commit run --from-ref origin/HEAD --to-ref HEAD --hook-stage manual --show-diff-on-failure ; then
             echo ""
             echo "::notice::It looks like the commits in this PR have been made without having pre-commit hooks installed."
             echo "::notice::Please see https://github.com/espressif/esp-protocols/CONTRIBUTING.md for instructions."
