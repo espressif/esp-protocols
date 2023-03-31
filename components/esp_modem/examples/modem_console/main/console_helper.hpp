@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -18,7 +18,7 @@
 #include "argtable3/argtable3.h"
 #include "repeat_helper.inc"
 
-#define MAX_REPEAT_NR 20
+#define MAX_REPEAT_NR 30
 
 /**
  * @brief Argument types used for ConsoleCommand
