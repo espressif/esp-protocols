@@ -27,7 +27,20 @@
 #endif
 #include "esp_log.h"
 #include "console_helper.hpp"
+
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
 #include "shiny_module_dce.hpp"
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS)
+#include "SIM7070_gnss.hpp"
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7672_GNSS)
+#include "A7672_gnss.hpp"
+#endif
+
+
+
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY) || defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS) || defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7672_GNSS)
+#define SUPPORT_URC_HANDLER 1
+#endif
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
@@ -89,15 +102,15 @@ void wakeup_modem(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
 }
 
-#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+#if defined(SUPPORT_URC_HANDLER)
 command_result handle_urc(uint8_t *data, size_t len)
 {
     ESP_LOG_BUFFER_HEXDUMP("on_read", data, len, ESP_LOG_INFO);
     return command_result::TIMEOUT;
 }
-#endif
+#endif // defined(SUPPORT_URC_HANDLER)
 
-extern "C" void app_main(void)
+extern "C" void modem_console_main(void)
 {
     static RTC_RODATA_ATTR char apn_rtc[20] = DEFAULT_APN;
     static RTC_DATA_ATTR modem_mode mode_rtc = esp_modem::modem_mode::COMMAND_MODE;
@@ -145,12 +158,23 @@ extern "C" void app_main(void)
 #elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070)
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
     auto dce = create_SIM7070_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS)
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070_GNSS module...");
+    auto dce = create_SIM7070_GNSS_dce(&dce_config, uart_dte, esp_netif);
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600)
     ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
     auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
-#else
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7600)
+    ESP_LOGI(TAG, "Initializing esp_modem for the A7600 module...");
+    auto dce = create_A7600_dce(&dce_config, uart_dte, esp_netif);
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7672_GNSS)
+    ESP_LOGI(TAG, "Initializing esp_modem for the A7672_GNSS module...");
+    auto dce = create_A7672_GNSS_dce(&dce_config, uart_dte, esp_netif);
+#elif EXAMPLE_MODEM_DEVICE_GENERIC == 1
     ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
     auto dce = create_generic_dce(&dce_config, uart_dte, esp_netif);
+#else
+#error "Unsupported device"
 #endif
 
 
@@ -365,7 +389,7 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Resetting the module...");
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
-#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+#if defined(SUPPORT_URC_HANDLER)
     const ConsoleCommand HandleURC("urc", "toggle urc handling", no_args, [&](ConsoleCommand * c) {
         static int cnt = 0;
         if (++cnt % 2) {
@@ -377,7 +401,37 @@ extern "C" void app_main(void)
         }
         return 0;
     });
-#endif
+#endif //defined(SUPPORT_URC_HANDLER)
+
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7672_GNSS)
+    const ConsoleCommand GnssPowerUp("gnss_power_up", "power up the gnss module", no_args, [&](ConsoleCommand * c) {
+        ESP_LOGI(TAG, "power up the gnss module...");
+        CHECK_ERR(dce->set_gnss_power_mode(1), ESP_LOGI(TAG, "OK"));
+    });
+
+    const ConsoleCommand GnssPowerDown("gnss_power_down", "power down the gnss module", no_args, [&](ConsoleCommand * c) {
+        ESP_LOGI(TAG, "power down the gnss module...");
+        CHECK_ERR(dce->set_gnss_power_mode(0), ESP_LOGI(TAG, "OK"));
+    });
+
+    const ConsoleCommand GetGnssInformation("get_gnss_information", "get gnss information", no_args, [&](ConsoleCommand * c) {
+        ESP_LOGI(TAG, "get gnss information...");
+        a7672_gnss_t gps;
+        CHECK_ERR(dce->get_gnss_information_a7672(gps), ESP_LOGI(TAG, "OK"));
+    });
+
+    const ConsoleCommand GetGpsInformation("get_gps_information", "get gps information", no_args, [&](ConsoleCommand * c) {
+        ESP_LOGI(TAG, "get gps information...");
+        a7672_gps_t gps;
+        CHECK_ERR(dce->get_gps_information_a7672(gps), ESP_LOGI(TAG, "OK"));
+    });
+
+#endif //defined(CONFIG_EXAMPLE_MODEM_DEVICE_A7672_GNSS)
+
+    const ConsoleCommand Sync("sync", "sync", no_args, [&](ConsoleCommand * c) {
+        ESP_LOGI(TAG, "sync...");
+        CHECK_ERR(dce->sync(), ESP_LOGI(TAG, "OK"));
+    });
 
     const struct SetApn {
         SetApn(): apn(STR1, nullptr, nullptr, "<apn>", "APN (Access Point Name)") {}
