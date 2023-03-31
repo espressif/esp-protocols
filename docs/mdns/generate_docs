@@ -1,8 +1,8 @@
 build-docs --target esp32 --language en
 build-docs --target esp32 --language zh_CN
 
-cp -rf _build/en/esp32/html html_en
-cp -rf _build/zh_CN/esp32/html html_zh_CN
+cp -rf _build/en/esp32/html en
+cp -rf _build/zh_CN/esp32/html zh_CN
 rm -rf _build __pycache__ tee
 
 # Modifes some version and target fields of index.html

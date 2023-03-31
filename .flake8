@@ -137,4 +137,4 @@ show_source = True
 statistics = True
 
 exclude =
-        components/asio/docs/conf_common.py
+        docs/asio/conf_common.py

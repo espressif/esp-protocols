@@ -57,7 +57,7 @@ slim_modem_examples:
 ignore:
   perform_check: no
   include:
-   - 'components/**/docs/**'
+   - '**/docs/**'
    - 'components/esp_modem/port/linux/**'
    - 'components/asio/examples/**'
    - 'components/mdns/**/esp_system_protocols_linux/**'
