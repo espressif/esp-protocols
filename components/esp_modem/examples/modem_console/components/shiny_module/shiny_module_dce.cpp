@@ -16,7 +16,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
-#include "my_module_dce.hpp"
+#include "shiny_module_dce.hpp"
 
 using namespace esp_modem;
 
