@@ -26,6 +26,11 @@ menu "Example Configuration"
             help
                 SHINY is a GSM/GPRS module.
                 It supports SHINY.
+        config EXAMPLE_MODEM_DEVICE_GENERIC
+            bool "GENERIC"
+            help
+                GENERIC is a GSM/GPRS module.
+                It supports GENERIC.
         config EXAMPLE_MODEM_DEVICE_SIM800
             depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM800"
@@ -46,6 +51,10 @@ menu "Example Configuration"
             bool "SIM7070"
             help
                 SIM7070 is Multi-Band CAT M and NB IoT module.
+        config EXAMPLE_MODEM_DEVICE_SIM7070_GNSS
+            bool "SIM7070_GNSS"
+            help
+                SIM7070 is Multi-Band CAT M and NB IoT module with Support for GNSS Location API
         config EXAMPLE_MODEM_DEVICE_SIM7600
             bool "SIM7600"
             help
@@ -55,6 +64,14 @@ menu "Example Configuration"
             bool "A7670"
             help
                 A7670X is Multi-Band LTE-FDD/LTE-TDD/GSM/GPRS/EDGE module.
+        config EXAMPLE_MODEM_DEVICE_A7600
+            bool "A7600"
+            help
+                A7600 is the LTE Cat 1 module that supports wireless communication modes of LTE-FDD/TDD/GSM/GPRS/EDGE.
+        config EXAMPLE_MODEM_DEVICE_A7672_GNSS
+            bool "A7672_GNSS"
+            help
+                A7672_GNSS is the LTE Cat 1 module that supports wireless communication modes of LTE-FDD/TDD/GSM/GPRS/EDGE with Support for GNSS Location API
     endchoice
 
     config EXAMPLE_MODEM_PPP_APN
