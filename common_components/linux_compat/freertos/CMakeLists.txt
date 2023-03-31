@@ -1,4 +1,5 @@
-idf_component_register(SRCS freertos_linux.c queue_unique_ptr.cpp
+idf_component_register(SRCS freertos_linux.c
+                            osal/queue.cpp osal/event_group.cpp osal/mutex.cpp
                        INCLUDE_DIRS include)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
