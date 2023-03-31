@@ -217,11 +217,47 @@ extern "C" void modem_console_main(void)
     assert(dce != nullptr);
 
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
+
+        //now we want to go back to 2-Wire mode:
+        uart_set_sw_flow_ctrl(dte_config.uart_config.port_num, true, 8, UART_FIFO_LEN - 8);
+
+
+        //sync
+        for (int i = 0; i < 15; ++i) {
+            if (command_result::OK != dce->sync()) {
+                ESP_LOGE(TAG, "sync no Success after %i try", i);
+            } else {
+                ESP_LOGI(TAG, "sync Success after %i try", i);
+                break; //exit the Loop.
+            }
+        }
+
+
+        //now we want to go back to 4-Wire mode:
+        uart_set_hw_flow_ctrl(dte_config.uart_config.port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
+
+
+
+
+        //set this mode also to the DCE.
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
         }
         ESP_LOGI(TAG, "set_flow_control OK");
+
+        //sync
+        for (int i = 0; i < 15; ++i) {
+            if (command_result::OK != dce->sync()) {
+                ESP_LOGE(TAG, "sync no Success after %i try", i);
+            } else {
+                ESP_LOGI(TAG, "sync Success after %i try", i);
+                break; //exit the Loop.
+            }
+        }
+
+    } else {
+        ESP_LOGI(TAG, "not set_flow_control, because 2-wire mode active.");
     }
 
     // init console REPL environment
