@@ -55,6 +55,7 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_
         }
         tmp = tmp->ifa_next;
     }
+    freeifaddrs(addrs);
     return ESP_OK;
 }
 
@@ -63,6 +64,29 @@ esp_err_t esp_netif_dhcpc_get_status(esp_netif_t *esp_netif, esp_netif_dhcp_stat
     return ESP_OK;
 }
 
+int esp_netif_get_all_ip6(esp_netif_t *esp_netif, esp_ip6_addr_t if_ip6[])
+{
+    if (esp_netif == NULL) {
+        return 0;
+    }
+    struct ifaddrs *addrs, *tmp;
+    int addr_count = 0;
+    getifaddrs(&addrs);
+    tmp = addrs;
+
+    while (tmp) {
+        if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET6) {
+            struct sockaddr_in6 *pAddr = (struct sockaddr_in6 *)tmp->ifa_addr;
+            if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
+                memcpy(&if_ip6[addr_count++], &pAddr->sin6_addr, 4 * 4);
+            }
+        }
+        tmp = tmp->ifa_next;
+    }
+
+    freeifaddrs(addrs);
+    return addr_count;
+}
 
 esp_err_t esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if_ip6)
 {
