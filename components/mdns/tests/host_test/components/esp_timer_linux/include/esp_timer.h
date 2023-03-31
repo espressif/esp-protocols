@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "bsd/string.h"
 
 typedef struct esp_timer *esp_timer_handle_t;
 

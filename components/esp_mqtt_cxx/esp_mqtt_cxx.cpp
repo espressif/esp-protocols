@@ -92,8 +92,35 @@ void config_client_credentials(esp_mqtt_client_config_t &mqtt_client_cfg, Client
         {
             mqtt_client_cfg.credentials.authentication.password = password.data.c_str();
         },
-        [](ClientCertificate const & certificate) {},
-        [](SecureElement const & enable_secure_element) {},
+        [&mqtt_client_cfg](ClientCertificate const & certificate)
+        {
+            std::visit(overloaded{
+                [&mqtt_client_cfg](PEM const & pem)
+                {
+                    mqtt_client_cfg.credentials.authentication.certificate = pem.data;
+                }, [&mqtt_client_cfg](DER const & der)
+                {
+                    mqtt_client_cfg.credentials.authentication.certificate = der.data;
+                    mqtt_client_cfg.credentials.authentication.certificate_len = der.len;
+                }}, certificate.certificate);
+            std::visit(overloaded{
+                [&mqtt_client_cfg](PEM const & pem)
+                {
+                    mqtt_client_cfg.credentials.authentication.key = pem.data;
+                }, [&mqtt_client_cfg](DER const & der)
+                {
+                    mqtt_client_cfg.credentials.authentication.key = der.data;
+                    mqtt_client_cfg.credentials.authentication.key_len = der.len;
+                }}, certificate.key);
+            if (certificate.key_password.has_value()) {
+                mqtt_client_cfg.credentials.authentication.key_password = certificate.key_password.value().data.c_str();
+                mqtt_client_cfg.credentials.authentication.key_password_len = static_cast<int>(certificate.key_password.value().data.size());
+            }
+        },
+        [&mqtt_client_cfg](SecureElement const & enable_secure_element)
+        {
+            mqtt_client_cfg.credentials.authentication.use_secure_element = true;
+        },
         []([[maybe_unused ]]auto & unknown)
         {
             static_assert(always_false<decltype(unknown)>, "Missing type handler for variant handler");

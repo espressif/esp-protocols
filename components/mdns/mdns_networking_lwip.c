@@ -21,15 +21,25 @@
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
 
-extern mdns_server_t *_mdns_server;
-
 /*
  * MDNS Server Networking
  *
  */
-static const char *TAG = "mdns_networking";
+enum interface_protocol {
+    PROTO_IPV4 = 1 << MDNS_IP_PROTOCOL_V4,
+    PROTO_IPV6 = 1 << MDNS_IP_PROTOCOL_V6
+};
+
+typedef struct interfaces {
+    bool ready;
+    int proto;
+} interfaces_t;
+
+static interfaces_t s_interfaces[MDNS_MAX_INTERFACES];
 
 static struct udp_pcb *_pcb_main = NULL;
+
+static const char *TAG = "mdns_networking";
 
 static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip_addr_t *raddr, uint16_t rport);
 
@@ -53,7 +63,7 @@ static esp_err_t _udp_pcb_main_init(void)
     _pcb_main->mcast_ttl = 255;
     _pcb_main->remote_port = MDNS_SERVICE_PORT;
     ip_addr_copy(_pcb_main->remote_ip, *(IP_ANY_TYPE));
-    udp_recv(_pcb_main, &_udp_recv, _mdns_server);
+    udp_recv(_pcb_main, &_udp_recv, NULL);
     return ESP_OK;
 }
 
@@ -168,34 +178,37 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
 
         //lwip does not return the proper pcb if you have more than one for the same multicast address (but different interfaces)
         struct netif *netif = NULL;
-        struct udp_pcb *pcb = NULL;
+        bool found = false;
         for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-            pcb = _mdns_server->interfaces[i].pcbs[packet->ip_protocol].pcb;
             netif = esp_netif_get_netif_impl(_mdns_get_esp_netif(i));
-            if (pcb && netif && netif == ip_current_input_netif ()) {
+            if (s_interfaces[i].proto && netif && netif == ip_current_input_netif ()) {
                 if (packet->src.type == IPADDR_TYPE_V4) {
 #if CONFIG_LWIP_IPV6
                     if ((packet->src.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr) != (netif->ip_addr.u_addr.ip4.addr & netif->netmask.u_addr.ip4.addr)) {
 #else
                     if ((packet->src.u_addr.ip4.addr & netif->netmask.addr) != (netif->ip_addr.addr & netif->netmask.addr)) {
 #endif                  //packet source is not in the same subnet
-                        pcb = NULL;
                         break;
                     }
                 }
                 packet->tcpip_if = i;
+                found = true;
                 break;
             }
-            pcb = NULL;
         }
 
-        if (!pcb || !_mdns_server || !_mdns_server->action_queue
-                || _mdns_send_rx_action(packet) != ESP_OK) {
+        if (!found || _mdns_send_rx_action(packet) != ESP_OK) {
             pbuf_free(this_pb);
             free(packet);
         }
     }
 
+}
+
+bool mdns_is_netif_ready(mdns_if_t netif, mdns_ip_protocol_t ip_proto)
+{
+    return s_interfaces[netif].ready &&
+           s_interfaces[netif].proto & (ip_proto == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
 }
 
 /**
@@ -206,7 +219,7 @@ static bool _udp_pcb_is_in_use(void)
     int i, p;
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (p = 0; p < MDNS_IP_PROTOCOL_MAX; p++) {
-            if (_mdns_server->interfaces[i].pcbs[p].pcb) {
+            if (mdns_is_netif_ready(i, p)) {
                 return true;
             }
         }
@@ -219,19 +232,9 @@ static bool _udp_pcb_is_in_use(void)
  */
 static void _udp_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    if (!_mdns_server) {
-        return;
-    }
-    mdns_pcb_t *_pcb = &_mdns_server->interfaces[tcpip_if].pcbs[ip_protocol];
-    if (_pcb->pcb) {
-        free(_pcb->probe_services);
-        _pcb->state = PCB_OFF;
-        _pcb->pcb = NULL;
-        _pcb->probe_ip = false;
-        _pcb->probe_services = NULL;
-        _pcb->probe_services_len = 0;
-        _pcb->probe_running = false;
-        _pcb->failed_probes = 0;
+    s_interfaces[tcpip_if].proto &= ~(ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+    if (s_interfaces[tcpip_if].proto == 0) {
+        s_interfaces[tcpip_if].ready = false;
         _udp_join_group(tcpip_if, ip_protocol, false);
         if (!_udp_pcb_is_in_use()) {
             _udp_pcb_main_deinit();
@@ -244,7 +247,7 @@ static void _udp_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
  */
 static esp_err_t _udp_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    if (!_mdns_server || _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].pcb) {
+    if (mdns_is_netif_ready(tcpip_if, ip_protocol)) {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -257,9 +260,9 @@ static esp_err_t _udp_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protoco
     if (err) {
         return err;
     }
+    s_interfaces[tcpip_if].proto |= (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+    s_interfaces[tcpip_if].ready = true;
 
-    _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].pcb = _pcb_main;
-    _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].failed_probes = 0;
     return ESP_OK;
 }
 
@@ -323,14 +326,13 @@ static err_t _mdns_udp_pcb_write_api(struct tcpip_api_call_data *api_call_msg)
 {
     void *nif = NULL;
     mdns_api_call_t *msg = (mdns_api_call_t *)api_call_msg;
-    mdns_pcb_t *_pcb = &_mdns_server->interfaces[msg->tcpip_if].pcbs[msg->ip_protocol];
     nif = esp_netif_get_netif_impl(_mdns_get_esp_netif(msg->tcpip_if));
-    if (!nif) {
+    if (!nif || !mdns_is_netif_ready(msg->tcpip_if, msg->ip_protocol) || _pcb_main == NULL) {
         pbuf_free(msg->pbt);
         msg->err = ERR_IF;
         return ERR_IF;
     }
-    esp_err_t err = udp_sendto_if (_pcb->pcb, msg->pbt, msg->ip, msg->port, (struct netif *)nif);
+    esp_err_t err = udp_sendto_if (_pcb_main, msg->pbt, msg->ip, msg->port, (struct netif *)nif);
     pbuf_free(msg->pbt);
     msg->err = err;
     return err;

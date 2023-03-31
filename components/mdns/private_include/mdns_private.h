@@ -33,6 +33,12 @@
 #endif
 #define MDNS_MAX_PREDEF_INTERFACES (CONFIG_MDNS_PREDEF_NETIF_STA + CONFIG_MDNS_PREDEF_NETIF_AP + CONFIG_MDNS_PREDEF_NETIF_ETH)
 
+#ifdef CONFIG_LWIP_IPV6_NUM_ADDRESSES
+#define NETIF_IPV6_MAX_NUMS CONFIG_LWIP_IPV6_NUM_ADDRESSES
+#else
+#define NETIF_IPV6_MAX_NUMS 3
+#endif
+
 /** Number of configured interfaces */
 #if MDNS_MAX_PREDEF_INTERFACES > CONFIG_MDNS_MAX_INTERFACES
 #warning Number of configured interfaces is less then number of predefined interfaces. Please update CONFIG_MDNS_MAX_INTERFACES.
@@ -341,7 +347,6 @@ typedef struct mdns_tx_packet_s {
 
 typedef struct {
     mdns_pcb_state_t state;
-    struct udp_pcb *pcb;
     mdns_srv_item_t **probe_services;
     uint8_t probe_services_len;
     uint8_t probe_ip;
@@ -382,7 +387,6 @@ typedef struct mdns_server_s {
     const char *hostname;
     const char *instance;
     mdns_srv_item_t *services;
-    SemaphoreHandle_t lock;
     QueueHandle_t action_queue;
     SemaphoreHandle_t action_sema;
     mdns_tx_packet_t *tx_queue_head;

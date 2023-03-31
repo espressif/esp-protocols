@@ -848,8 +848,8 @@ static void esp_websocket_client_task(void *pv)
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
                 if (error_handle) {
-                    esp_websocket_client_error(client, "esp_transport_connect() failed with %d,\
-                                               transport_error=%s, tls_error_code=%i, tls_flags=%i, esp_ws_handshake_status_code=%d, errno=%d",
+                    esp_websocket_client_error(client, "esp_transport_connect() failed with %d, "
+                                               "transport_error=%s, tls_error_code=%i, tls_flags=%i, esp_ws_handshake_status_code=%d, errno=%d",
                                                result, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
                                                error_handle->esp_tls_flags, client->error_handle.esp_ws_handshake_status_code, errno);
                 } else {

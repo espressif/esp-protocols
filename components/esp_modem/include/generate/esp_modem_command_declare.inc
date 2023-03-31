@@ -1,4 +1,4 @@
-// Copyright 2021 Espressif Systems (Shanghai) PTE LTD
+// Copyright 2021-2022 Espressif Systems (Shanghai) PTE LTD
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,35 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#ifndef _ESP_MODEM_COMMAND_DECLARE_INC_
-#define _ESP_MODEM_COMMAND_DECLARE_INC_
+#include "esp_modem_command_declare_helper.inc"
 
-
-// Parameters
-// * handle different parameters for C++ and C API
-// * make parameter unique names, so they could be easily referenced and forwarded
-#define _ARG(param, name) param
-#define INT_IN(param, name) int  _ARG(param, name)
-#ifdef __cplusplus
-#include <string>
-#define STRING_IN(param, name) const std::string& _ARG(param, name)
-#define STRING_OUT(param, name) std::string& _ARG(param, name)
-#define BOOL_IN(param, name) const bool  _ARG(param, name)
-#define BOOL_OUT(param, name) bool&  _ARG(param, name)
-#define INT_OUT(param, name) int&  _ARG(param, name)
-#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
-
-#define STRUCT_OUT(struct_name, p1)  struct_name& p1
-#else
-#define STRING_IN(param, name) const char* _ARG(param, name)
-#define STRING_OUT(param, name) char* _ARG(param, name)
-#define BOOL_IN(param, name) const bool _ARG(param, name)
-#define BOOL_OUT(param, name) bool* _ARG(param, name)
-#define INT_OUT(param, name) int* _ARG(param, name)
-#define INTEGER_LIST_IN(param, name) const int* _ARG(param, name)
-#define STRUCT_OUT(struct_name, p1)  esp_modem_ ## struct_name ## _t* p1
-#endif
 
 #define DECLARE_ALL_COMMAND_APIS(...) \
 /**
@@ -331,5 +306,3 @@ public:
 #endif
 
 #endif
-
-#endif // _ESP_MODEM_COMMAND_DECLARE_INC_

@@ -1,0 +1,75 @@
+name: "esp-modem: target-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_esp_modem_tests:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    name: Build Target tests
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32c3"]
+        test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client } ]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/esp_modem/${{ matrix.test.path }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Build esp-modem target tests with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+          SDKCONFIG: sdkconfig.ci.${{ matrix.test.app }}
+        shell: bash
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          . ${IDF_PATH}/export.sh
+          rm -rf sdkconfig build
+          [ -f ${SDKCONFIG} ] && cp ${SDKCONFIG} sdkconfig.defaults
+          idf.py set-target ${{ matrix.idf_target }}
+          idf.py build
+          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh ${GITHUB_WORKSPACE}/${TEST_DIR}/build
+      - uses: actions/upload-artifact@v3
+        with:
+          name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ env.TEST_DIR }}/build
+          if-no-files-found: error
+
+  target_tests_esp_modem:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push' )
+    name: Run Target tests
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32c3"]
+        test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client } ]
+    needs: build_esp_modem_tests
+    runs-on:
+      - self-hosted
+      - BrnoRPI-GH006
+    env:
+      TEST_DIR: components/esp_modem/${{ matrix.test.path }}
+    steps:
+      - name: Clear repository
+        run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ env.TEST_DIR }}/build
+      - name: Run Example Test on target
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+            python -m pytest --log-cli-level DEBUG --target=${{ matrix.idf_target }}
