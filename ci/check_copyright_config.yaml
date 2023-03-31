@@ -29,6 +29,7 @@ DEFAULT:
 # this section sets the default license for examples and unit tests of components
 examples_and_unit_tests:
   include:
+   - 'examples/**'
    - 'components/**/examples/**'
    - 'components/**/test/**'
    - 'components/**/tests/**'
