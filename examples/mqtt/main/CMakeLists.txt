@@ -1,8 +1,10 @@
-set(requires "")
-if(${IDF_TARGET} STREQUAL "linux")
-    list(APPEND requires esp_stubs esp-tls protocol_examples_common mqtt)
-endif()
-idf_component_register(SRCS "app_main.c"
-                    INCLUDE_DIRS "."
-                    REQUIRES ${requires})
+idf_component_register(SRCS "app_main.cpp"
+                    INCLUDE_DIRS ".")
+
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
+
+if(${IDF_TARGET} STREQUAL "linux")
+    if(WITH_LWIP STREQUAL "1")
+        target_compile_definitions(${COMPONENT_LIB} PUBLIC WITH_LWIP)
+    endif()
+endif()
