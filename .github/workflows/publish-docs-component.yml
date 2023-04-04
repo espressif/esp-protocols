@@ -16,6 +16,8 @@ jobs:
   docs_build:
     name: Docs-Build-And-Upload
     runs-on: ubuntu-latest
+    env:
+      COMPONENTS: "asio,esp_modem,esp_mqtt_cxx,esp_websocket_client,mdns"
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
     steps:
@@ -25,24 +27,60 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           submodules: recursive
-      - name: Generate docs
+      - name: Setup Environment
         shell: bash
         run: |
             sudo apt-get update
             sudo apt-get -y install doxygen clang python3-pip
             python -m pip install breathe recommonmark esp-docs==1.4.1
-            cd $GITHUB_WORKSPACE/docs
-            ./generate_docs
-      - name: Deploying generated docs
-        if: always()
+      - name: Checks and deploy docs version if not exists
         shell: bash
         run: |
-            source $GITHUB_WORKSPACE/docs/utils.sh
-            add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
-            export GIT_VER=$(git describe --always)
-            export GITHUB_REF_NAME=latest
-            export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs
-            deploy-docs
+            MASTER_BRANCH="master"
+            component_str=${{ env.COMPONENTS }}
+            IFS=',' read -a components <<< $component_str
+
+            for component in "${components[@]}"; do
+              YAML_FILE=components/$component/idf_component.yml
+              # Get the current version of the file
+              CURRENT_VERSION=$(grep "^version:" ${YAML_FILE} | awk '{print $2}')
+
+              # Get the version of the file on the master branch
+              MASTER_VERSION=$(git show ${MASTER_BRANCH}:${YAML_FILE} | grep "^version:" | awk '{print $2}')
+
+              # Check if the major or minor version has changed
+              IFS='.' read -ra CURRENT_VERSION_PARTS <<< "${CURRENT_VERSION}"
+              IFS='.' read -ra MASTER_VERSION_PARTS <<< "${MASTER_VERSION}"
+
+              if [ "${CURRENT_VERSION_PARTS[0]}" != "${MASTER_VERSION_PARTS[0]}" ] || [ "${CURRENT_VERSION_PARTS[1]}" != "${MASTER_VERSION_PARTS[1]}" ]; then
+                URL=$DOCS_DEPLOY_URL_BASE/$component/$CURRENT_VERSION/index.html"
+
+                # Send a GET request to the web page and store the response status code in a variable
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}")
+
+                # Check if the response status code is 200
+                if [ "${HTTP_STATUS}" -ne 200 ]; then
+                  git checkout $component-$CURRENT_VERSION # Tag should be exists
+                  echo "The web page does not exist."
+                  cd $GITHUB_WORKSPACE/docs/$component
+                  ./generate_docs
+                  mkdir generic
+                  mv html generic
+                  export GIT_VER=$(git describe --always)
+                  export GITHUB_REF_NAME=$CURRENT_VERSION
+                  export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/$component
+                  deploy-docs
+
+                  git checkout $MASTER_BRANCH
+                  cd $GITHUB_WORKSPACE/docs/$component
+                  ./generate_docs
+                  mkdir generic
+                  mv html generic
+                  export GITHUB_REF_NAME="latest"
+                  deploy-docs
+                fi
+              fi
+            done
       - name: Upload components to component service
         uses: espressif/github-actions/upload_components@master
         with:
