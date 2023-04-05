@@ -82,4 +82,34 @@ command_result SIM800::set_data_mode()
     return dce_commands::set_data_mode_sim8xx(dte.get());
 }
 
+command_result SIM7682::set_network_bands(const std::string &mode, const int *bands, int size)
+{
+    return dce_commands::set_network_bands_sim7682(dte.get(), mode, bands, size);
+}
+
+command_result SIM7682::set_gnss_power_mode(int mode)
+{
+    return dce_commands::set_gnss_power_mode_sim7682(dte.get(), mode);
+}
+
+command_result SIM7682::power_down()
+{
+    return dce_commands::power_down_sim7682(dte.get());
+}
+
+command_result QUEC91::set_network_bands(const std::string &mode, const int *bands, int size)
+{
+    return dce_commands::set_network_bands_quec91(dte.get(), mode, bands, size);
+}
+
+command_result QUEC91::set_gnss_power_mode(int mode)
+{
+    return dce_commands::set_gnss_power_mode_quec91(dte.get(), mode);
+}
+
+command_result QUEC91::power_down()
+{
+    return dce_commands::power_down_quec91(dte.get());
+}
+
 }

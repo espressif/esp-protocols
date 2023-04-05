@@ -56,6 +56,14 @@ command_result set_network_bands_sim76xx(CommandableIf *t, const std::string &mo
 command_result power_down_sim8xx(CommandableIf *t);
 command_result set_data_mode_sim8xx(CommandableIf *t);
 
+command_result set_gnss_power_mode_sim7682(CommandableIf *t, int mode);
+command_result power_down_sim7682(CommandableIf *t);
+command_result set_network_bands_sim7682(CommandableIf *t, const std::string &mode, const int *bands, int size);
+command_result set_gnss_power_mode_quec91(CommandableIf *t, int mode);
+command_result power_down_quec91(CommandableIf *t);
+command_result set_network_bands_quec91(CommandableIf *t, const std::string &mode, const int *bands, int size);
+
+
 /**
  * @}
  */
