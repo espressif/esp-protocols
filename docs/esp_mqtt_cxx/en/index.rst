@@ -36,8 +36,8 @@ Events are dispatched throug calls to member functions each one dedicated to a t
 Application Example
 -------------------
 
-* :example:`tcp <../examples/tcp>`
-* :example:`ssl <../examples/ssl>`
+* :example:`tcp <../../components/esp_mqtt_cxx/examples/tcp>`
+* :example:`ssl <../../components/esp_mqtt_cxx/examples/ssl>`
 
 API Reference
 -------------

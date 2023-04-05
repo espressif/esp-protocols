@@ -22,3 +22,8 @@
 
 * Brief introduction [README](components/asio/README.md)
 * Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/asio/index.html)
+
+### esp_mqtt_cxx
+
+* Brief introduction [README](components/esp_mqtt_cxx/README.md)
+* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/esp_mqtt_cxx/index.html)
