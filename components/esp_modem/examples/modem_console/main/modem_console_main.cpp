@@ -78,16 +78,6 @@ void config_gpio(void)
     gpio_config(&io_conf);                          //configure GPIO with the given settings
 }
 
-void wakeup_modem(void)
-{
-    /* Power on the modem */
-    ESP_LOGI(TAG, "Power on the modem");
-    gpio_set_level(GPIO_OUTPUT_PWRKEY, 1);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    gpio_set_level(GPIO_OUTPUT_PWRKEY, 0);
-
-    vTaskDelay(pdMS_TO_TICKS(2000));
-}
 
 #ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
 command_result handle_urc(uint8_t *data, size_t len)
@@ -97,8 +87,95 @@ command_result handle_urc(uint8_t *data, size_t len)
 }
 #endif
 
+// original wake up modem
+
+// void wakeup_modem(void)
+// {
+//     /* Power on the modem */
+//     ESP_LOGI(TAG, "Power on the modem");
+//     gpio_set_level(GPIO_OUTPUT_PWRKEY, 1);
+//     vTaskDelay(pdMS_TO_TICKS(1000));
+//     gpio_set_level(GPIO_OUTPUT_PWRKEY, 0);
+
+//     vTaskDelay(pdMS_TO_TICKS(2000));
+// }
+
+
+// #define ESP_PINS_SIMCOM_UART_RX 27
+// #define ESP_PINS_SIMCOM_UART_TX 26
+// #define ESP_PINS_SIMCOM_UART_FET 12
+// #define ESP_PINS_SIMCOM_UART_PWR 14
+// #define ESP_PINS_SIMCOM_UART_SEL 25
+
+#define RXD_PIN (GPIO_NUM_27)
+#define TXD_PIN (GPIO_NUM_26)
+#define FET_PIN (GPIO_NUM_12)
+#define RST_PIN (GPIO_NUM_14)
+
+#define UART UART_NUM_1
+
+void wakeup_modem(void)
+{
+
+    ESP_LOGI(TAG, "wake up modem");
+
+    gpio_pad_select_gpio(RST_PIN);
+    gpio_set_direction(RST_PIN, GPIO_MODE_OUTPUT);
+
+    gpio_set_level(RST_PIN, 0);
+
+    gpio_pad_select_gpio(FET_PIN);
+    gpio_set_direction(FET_PIN, GPIO_MODE_OUTPUT);
+    
+    vTaskDelay(pdMS_TO_TICKS(2000)); 
+    gpio_set_level(FET_PIN, 1);
+    vTaskDelay(pdMS_TO_TICKS(2000)); 
+    gpio_set_level(FET_PIN, 0);
+    vTaskDelay(pdMS_TO_TICKS(5000)); 
+    
+}
+
+void loopback_test(void){
+    
+    // setup the uart port
+    const uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB};
+
+    static const int RX_BUF_SIZE = 1024;
+    uart_driver_install(UART, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(UART, &uart_config);
+    uart_set_pin(UART, RXD_PIN, TXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+
+    wakeup_modem();
+
+    char* Txdata = (char*) malloc(100);
+    uint8_t* data = (uint8_t*) malloc(RX_BUF_SIZE+1);
+    while (1) {
+        
+        sprintf (Txdata, "AT+CREG?\r\n");
+        uart_write_bytes(UART, Txdata, strlen(Txdata));
+        
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+
+        const int rxBytes = uart_read_bytes(UART, data, RX_BUF_SIZE, 250 / portTICK_RATE_MS);
+        if (rxBytes > 0) {
+            data[rxBytes] = 0;
+            ESP_LOGI(TAG, "Read %d bytes: '%s'", rxBytes, data);
+        }
+
+    }
+}
+
 extern "C" void app_main(void)
 {
+    
+    loopback_test();
+
     static RTC_RODATA_ATTR char apn_rtc[20] = DEFAULT_APN;
     static RTC_DATA_ATTR modem_mode mode_rtc = esp_modem::modem_mode::COMMAND_MODE;
 
@@ -114,7 +191,6 @@ extern "C" void app_main(void)
     esp_netif_t *esp_netif = esp_netif_new(&ppp_netif_config);
     assert(esp_netif);
 
-#if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_UART)
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
     /* setup UART specific configuration based on kconfig options */
     dte_config.uart_config.tx_io_num = CONFIG_EXAMPLE_MODEM_UART_TX_PIN;
@@ -130,65 +206,9 @@ extern "C" void app_main(void)
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
     auto uart_dte = create_uart_dte(&dte_config);
 
-#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
-    ESP_LOGI(TAG, "Initializing esp_modem for the SHINY module...");
-    auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
-#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_BG96)
-    ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
-    auto dce = create_BG96_dce(&dce_config, uart_dte, esp_netif);
-#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM800)
-    ESP_LOGI(TAG, "Initializing esp_modem for the SIM800 module...");
-    auto dce = create_SIM800_dce(&dce_config, uart_dte, esp_netif);
-#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7000)
-    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7000 module...");
-    auto dce = create_SIM7000_dce(&dce_config, uart_dte, esp_netif);
-#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070)
-    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7070 module...");
-    auto dce = create_SIM7070_dce(&dce_config, uart_dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
-    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
-    auto dce = create_SIM7600_dce(&dce_config, uart_dte, esp_netif);
-#else
-    ESP_LOGI(TAG, "Initializing esp_modem for a generic module...");
-    auto dce = create_generic_dce(&dce_config, uart_dte, esp_netif);
-#endif
+    ESP_LOGI(TAG, "Initializing esp_modem for the SIM7682 module...");
+    auto dce = create_SIM7682_dce(&dce_config, uart_dte, esp_netif);
 
-
-#elif defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
-    while (1) {
-        exit_signal.clear(1);
-#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
-        ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
-        struct esp_modem_usb_term_config usb_config = ESP_MODEM_BG96_USB_CONFIG();
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
-        ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
-        struct esp_modem_usb_term_config usb_config = ESP_MODEM_SIM7600_USB_CONFIG();
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
-        ESP_LOGI(TAG, "Initializing esp_modem for the A7670 module...");
-        struct esp_modem_usb_term_config usb_config = ESP_MODEM_A7670_USB_CONFIG();
-#else
-#error USB modem not selected
-#endif
-        const esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_USB_CONFIG(usb_config);
-        ESP_LOGI(TAG, "Waiting for USB device connection...");
-        auto dte = create_usb_dte(&dte_config);
-        dte->set_error_cb([&](terminal_error err) {
-            ESP_LOGI(TAG, "error handler %d", err);
-            if (err == terminal_error::DEVICE_GONE) {
-                exit_signal.set(1);
-            }
-        });
-#if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
-        std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1 || CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
-        std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
-#else
-#error USB modem not selected
-#endif
-
-#else
-#error Invalid serial connection to modem.
-#endif
 
     assert(dce != nullptr);
 

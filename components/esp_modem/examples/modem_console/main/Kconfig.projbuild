@@ -102,28 +102,28 @@ menu "Example Configuration"
 
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
-            default 25
+            default 26
             range 0 31
             help
                 Pin number of UART TX.
 
         config EXAMPLE_MODEM_UART_RX_PIN
             int "RXD Pin Number"
-            default 26
+            default 27
             range 0 31
             help
                 Pin number of UART RX.
 
         config EXAMPLE_MODEM_UART_RTS_PIN
             int "RTS Pin Number"
-            default 27
+            default 1
             range 0 31
             help
                 Pin number of UART RTS.
 
         config EXAMPLE_MODEM_UART_CTS_PIN
             int "CTS Pin Number"
-            default 23
+            default 1
             range 0 31
             help
                 Pin number of UART CTS.
@@ -173,7 +173,7 @@ menu "Example Configuration"
 
     config EXAMPLE_MODEM_PWRKEY_PIN
         int "PWRKEY Pin Number"
-        default 18
+        default 14
         range 0 31
         help
             Pin number connected to modem's power key pin.
