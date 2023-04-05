@@ -53,6 +53,8 @@ typedef enum esp_modem_dce_device {
     ESP_MODEM_DCE_SIM7000,
     ESP_MODEM_DCE_BG96,
     ESP_MODEM_DCE_SIM800,
+    ESP_MODEM_DCE_SIM7682,
+    ESP_MODEM_DCE_QUEC91
 } esp_modem_dce_device_t;
 
 /**

@@ -173,6 +173,28 @@ class BG96: public GenericModule {
 };
 
 /**
+ * @brief Specific definition of the SIM7682 module
+ */
+class SIM7682: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result power_down() override;
+    command_result set_gnss_power_mode(int mode) override;
+    command_result set_network_bands(const std::string &mode, const int *bands, int size) override;
+};
+
+/**
+ * @brief Specific definition of the QUEC91 module
+ */
+class QUEC91: public GenericModule {
+    using GenericModule::GenericModule;
+public:
+    command_result power_down() override;
+    command_result set_gnss_power_mode(int mode) override;
+    command_result set_network_bands(const std::string &mode, const int *bands, int size) override;
+};
+
+/**
  * @}
  */
 

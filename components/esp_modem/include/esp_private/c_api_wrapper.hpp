@@ -43,6 +43,10 @@ inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t module)
         return esp_modem::dce_factory::ModemType::BG96;
     case ESP_MODEM_DCE_SIM800:
         return esp_modem::dce_factory::ModemType::SIM800;
+    case ESP_MODEM_DCE_SIM7682:
+        return esp_modem::dce_factory::ModemType::SIM7682;
+    case ESP_MODEM_DCE_QUEC91:
+        return esp_modem::dce_factory::ModemType::QUEC91;
     default:
     case ESP_MODEM_DCE_GENETIC:
         return esp_modem::dce_factory::ModemType::GenericModule;

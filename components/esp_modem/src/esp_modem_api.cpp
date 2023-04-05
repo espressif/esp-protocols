@@ -71,4 +71,14 @@ std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_pt
     return create_modem_dce(dce_factory::ModemType::GenericModule, config, std::move(dte), netif);
 }
 
+std::unique_ptr<DCE> create_SIM7682_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
+{
+    return create_modem_dce(dce_factory::ModemType::SIM7682, config, std::move(dte), netif);
+}
+
+std::unique_ptr<DCE> create_QUEC91_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
+{
+    return create_modem_dce(dce_factory::ModemType::QUEC91, config, std::move(dte), netif);
+}
+
 } // namespace esp_modem

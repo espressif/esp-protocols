@@ -101,6 +101,16 @@ std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<D
 std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
 /**
+ * @brief Create CUSTOM DCE base on SIM7682 (for olarm pro)
+ */
+std::unique_ptr<DCE> create_SIM7682_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
+ * @brief Create CUSTOM DCE base on Quectel 91 (for olarm long boy)
+ */
+std::unique_ptr<DCE> create_QUEC91_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
  * @}
  */
 
