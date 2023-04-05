@@ -1614,18 +1614,20 @@ static void _mdns_remove_scheduled_answer(mdns_if_t tcpip_if, mdns_ip_protocol_t
     while (q) {
         if (q->tcpip_if == tcpip_if && q->ip_protocol == ip_protocol && q->distributed) {
             mdns_out_answer_t *a = q->answers;
-            if (a->type == type && a->service == service->service) {
-                q->answers = q->answers->next;
-                free(a);
-            } else {
-                while (a->next) {
-                    if (a->next->type == type && a->next->service == service->service) {
-                        mdns_out_answer_t *b = a->next;
-                        a->next = b->next;
-                        free(b);
-                        break;
+            if (a) {
+                if (a->type == type && a->service == service->service) {
+                    q->answers = q->answers->next;
+                    free(a);
+                } else {
+                    while (a->next) {
+                        if (a->next->type == type && a->next->service == service->service) {
+                            mdns_out_answer_t *b = a->next;
+                            a->next = b->next;
+                            free(b);
+                            break;
+                        }
+                        a = a->next;
                     }
-                    a = a->next;
                 }
             }
         }
