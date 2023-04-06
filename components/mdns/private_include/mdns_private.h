@@ -55,6 +55,7 @@
 #define MDNS_ANSWER_SRV_TTL         120
 #define MDNS_ANSWER_A_TTL           120
 #define MDNS_ANSWER_AAAA_TTL        120
+#define MDNS_ANSWER_NSEC_TTL        4500
 
 #define MDNS_FLAGS_QUERY_REPSONSE   0x8000
 #define MDNS_FLAGS_AUTHORITATIVE    0x0400
@@ -77,7 +78,7 @@
 #define MDNS_ANSWER_SRV             0x02
 #define MDNS_ANSWER_A               0x01
 #define MDNS_ANSWER_AAAA            0x10
-#define MDNS_ANSWER_NSEC            0x20
+#define MDNS_ANSWER_NSEC            0x2f
 #define MDNS_ANSWER_SDPTR           0x80
 #define MDNS_ANSWER_AAAA_SIZE       16
 

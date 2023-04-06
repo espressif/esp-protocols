@@ -82,6 +82,23 @@ struct mdns_interfaces {
     mdns_if_t duplicate;
 };
 
+_mdns_bitmap_t s_mdns_bitmap;
+static void _mdns_bitmap_init()
+{
+    memset(&s_mdns_bitmap, 0x00, sizeof(_mdns_bitmap_t));
+}
+
+static void _mdns_bitmap_add_record(uint16_t rr)
+{
+    assert(rr <= _MDNS_MAX_RR_BITMAP_VALUE);
+    uint8_t filed = rr / (sizeof(uint64_t) * 8);
+    uint8_t vaule = rr % (sizeof(uint64_t) * 8);
+    s_mdns_bitmap.value[filed] |= ((uint64_t)1 << (8 * (vaule / 8) + 7 - vaule % 8));
+    if ((rr / 8) + 1 > s_mdns_bitmap.size) {
+        s_mdns_bitmap.size = (rr / 8) + 1;
+    }
+}
+
 /*
  * @brief  Internal collection of mdns supported interfaces
  *
@@ -573,6 +590,9 @@ static inline uint8_t _mdns_append_type(uint8_t *packet, uint16_t *index, uint8_
         _mdns_append_u16(packet, index, mdns_class);
     } else if (type == MDNS_ANSWER_AAAA) {
         _mdns_append_u16(packet, index, MDNS_TYPE_AAAA);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_NSEC) {
+        _mdns_append_u16(packet, index, MDNS_ANSWER_NSEC);
         _mdns_append_u16(packet, index, mdns_class);
     } else {
         return 0;
@@ -1157,6 +1177,79 @@ static uint16_t _mdns_append_aaaa_record(uint8_t *packet, uint16_t *index, const
 #endif
 
 /**
+ * @brief  appends NSEC record for service to a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  hostname     the name of host
+ * @param  service      the service to add record for
+ * @param  proto        the protocol of host support for
+ *
+ * @return length of added data: 0 on error or length on success
+ */
+static uint16_t _mdns_append_nsec_record(uint8_t *packet, uint16_t *index, const char *hostname, const char *service,
+        const char *proto, bool flush, bool bye)
+{
+    const char *str[4];
+    uint16_t record_length = 0;
+    uint8_t part_length;
+
+    str[0] = hostname;
+    str[1] = service;
+    str[2] = proto;
+    str[3] = MDNS_DEFAULT_DOMAIN;
+
+    if (_str_null_or_empty(str[0])) {
+        return 0;
+    }
+
+    part_length = _mdns_append_fqdn(packet, index, str, 4, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    part_length = _mdns_append_type(packet, index, MDNS_ANSWER_NSEC, flush, bye ? 0 : MDNS_ANSWER_NSEC_TTL);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+
+    /* nsec data length */
+    uint16_t nsec_index = *index - 2;
+    uint16_t nsec_length = 0;
+    record_length += 2;
+
+    /* nsec next domain name */
+    part_length = _mdns_append_fqdn(packet, index, str, 4, MDNS_MAX_PACKET_SIZE);
+    if (!part_length) {
+        return 0;
+    }
+    record_length += part_length;
+    nsec_length += part_length;
+
+    if (s_mdns_bitmap.size == 0) {
+        _mdns_set_u16(packet, nsec_index, nsec_length);
+        return record_length;
+    }
+
+    /* window block 0 */
+
+    /* bitmap size */
+    part_length = _mdns_append_u16(packet, index, s_mdns_bitmap.size);
+    record_length += part_length;
+    nsec_length += part_length;
+
+    /* bitmap data*/
+    memcpy(packet + *index, &s_mdns_bitmap.value, s_mdns_bitmap.size);
+    record_length += s_mdns_bitmap.size;
+    nsec_length += s_mdns_bitmap.size;
+    *index += s_mdns_bitmap.size;
+
+    _mdns_set_u16(packet, nsec_index, nsec_length);
+    return record_length;
+}
+/**
  * @brief  Append question to packet
  */
 static uint16_t _mdns_append_question(uint8_t *packet, uint16_t *index, mdns_out_question_t *q)
@@ -1336,6 +1429,10 @@ static uint8_t _mdns_append_service_ptr_answers(uint8_t *packet, uint16_t *index
  */
 static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_answer_t *answer, mdns_if_t tcpip_if)
 {
+    if (answer->type != MDNS_TYPE_NSEC) {
+        _mdns_bitmap_add_record(answer->type);
+    }
+
     if (answer->type == MDNS_TYPE_PTR) {
         if (answer->service) {
             return _mdns_append_service_ptr_answers(packet, index, answer->service, answer->flush, answer->bye);
@@ -1381,6 +1478,12 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
         } else if (answer->host != NULL) {
             return _mdns_append_host_answer(packet, index, answer->host, ESP_IPADDR_TYPE_V4, answer->flush, answer->bye);
         }
+    } else if (answer->type == MDNS_TYPE_NSEC) {
+        if (_mdns_append_nsec_record(packet, index, answer->host->hostname, answer->service->service,
+                                     answer->service->proto, answer->flush, answer->bye) <= 0) {
+            return 0;
+        }
+        return 1;
     }
 #if CONFIG_LWIP_IPV6
     else if (answer->type == MDNS_TYPE_AAAA) {
@@ -1438,6 +1541,7 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     mdns_out_answer_t *a;
     uint8_t count;
 
+    _mdns_bitmap_init();
     _mdns_set_u16(packet, MDNS_HEAD_FLAGS_OFFSET, p->flags);
     _mdns_set_u16(packet, MDNS_HEAD_ID_OFFSET, p->id);
 
@@ -1723,6 +1827,11 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
         mdns_parsed_question_t *question, bool shared, bool send_flush)
 {
     mdns_host_item_t *host = mdns_get_host_item(service->hostname);
+    if (host && host != _mdns_self_host && !host->address_list) {
+        if (!_mdns_alloc_answer(&packet->additional, MDNS_TYPE_NSEC, service, host, send_flush, false)) {
+            return false;
+        }
+    }
     if (question->type == MDNS_TYPE_PTR || question->type == MDNS_TYPE_ANY) {
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
                 !_mdns_alloc_answer(&packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
@@ -5564,7 +5673,7 @@ esp_err_t mdns_delegate_hostname_add(const char *hostname, const mdns_ip_addr_t 
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    if (_str_null_or_empty(hostname) || strlen(hostname) > (MDNS_NAME_BUF_LEN - 1) || address_list == NULL) {
+    if (_str_null_or_empty(hostname) || strlen(hostname) > (MDNS_NAME_BUF_LEN - 1)) {
         return ESP_ERR_INVALID_ARG;
     }
     char *new_hostname = strndup(hostname, MDNS_NAME_BUF_LEN - 1);

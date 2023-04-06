@@ -97,6 +97,16 @@ typedef struct mdns_result_s {
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
 } mdns_result_t;
 
+/**
+ * @brief mDNS NSEC bitmap struct definition
+ *
+ */
+#define _MDNS_MAX_RR_BITMAP_VALUE   255
+typedef struct _mdns_bitmap {
+    uint16_t size;
+    uint64_t value[((_MDNS_MAX_RR_BITMAP_VALUE + 1) / sizeof(uint64_t) * 8)];
+} _mdns_bitmap_t;
+
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
 
 /**
