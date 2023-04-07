@@ -5,7 +5,7 @@
 ### esp_modem
 
 * Brief introduction [README](components/esp_modem/README.md)
-* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/esp_modem/index.html)
+* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/esp_modem/latest/index.html)
 
 ### mDNS
 
@@ -16,14 +16,14 @@
 ### esp_websocket_client
 
 * Brief introduction [README](components/esp_websocket_client/README.md)
-* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/esp_websocket_client/index.html)
+* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/esp_websocket_client/latest/index.html)
 
 ### ASIO port
 
 * Brief introduction [README](components/asio/README.md)
-* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/asio/index.html)
+* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/asio/latest/index.html)
 
 ### esp_mqtt_cxx
 
 * Brief introduction [README](components/esp_mqtt_cxx/README.md)
-* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/esp_mqtt_cxx/index.html)
+* Full html [documentation](https://docs.espressif.com/projects/esp-protocols/esp_mqtt_cxx/latest/index.html)
