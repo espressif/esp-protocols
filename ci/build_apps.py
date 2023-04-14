@@ -7,7 +7,6 @@ This file is used in CI for esp-protocols build tests
 import argparse
 import os
 import sys
-from pathlib import Path
 
 from idf_build_apps import build_apps, find_apps, setup_logging
 from idf_build_apps.constants import SUPPORTED_TARGETS
@@ -24,6 +23,9 @@ if __name__ == '__main__':
         default='all',
         help='Build apps for given target',
     )
+    parser.add_argument('-r', '--rules', nargs='*', default=['sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default'], help='Rules how to treat configs')
+    parser.add_argument('-m', '--manifests', nargs='*', default=[], help='list of manifest files')
+    parser.add_argument('-d', '--delete', action='store_true', help='Delete build artifacts')
     args = parser.parse_args()
 
     IDF_PATH = os.environ['IDF_PATH']
@@ -32,19 +34,15 @@ if __name__ == '__main__':
     setup_logging(2)
     apps = find_apps(
         args.paths,
-        recursive=True,
+        recursive=False,
         target=args.target,
         build_dir='build_@t_@w',
-        config_rules_str=[
-            'sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default'
-        ],
+        config_rules_str=args.rules,
         build_log_path='build_log.txt',
         size_json_path='size.json',
         check_warnings=True,
-        preserve=True,
-        manifest_files=[
-            str(p) for p in Path('.').glob('**/.build-test-rules.yml')
-        ],
+        preserve=not args.delete,
+        manifest_files=args.manifests,
         default_build_targets=SUPPORTED_TARGETS,
         manifest_rootpath='.',
     )
