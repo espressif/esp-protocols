@@ -7,18 +7,18 @@
 #include <condition_variable>
 #include "osal_api.h"
 
-struct SignalGroupInternal {
-    std::condition_variable notify;
-    std::mutex m;
-    uint32_t flags{ 0 };
-};
-
-using SignalT = std::unique_ptr<SignalGroupInternal>;
 
 class SignalGroup {
-public:
 
-    explicit SignalGroup(): event_group(std::make_unique<SignalGroupInternal>()) {}
+    struct SignalGroupInternal {
+        std::condition_variable notify;
+        std::mutex m;
+        uint32_t flags{ 0 };
+    };
+
+    using SignalT = std::unique_ptr<SignalGroupInternal>;
+
+public:
 
     void set(uint32_t bits)
     {
@@ -61,10 +61,8 @@ public:
         return event_group->notify.wait_for(lock, std::chrono::milliseconds(time_ms), [&] { return flags & event_group->flags; });
     }
 
-    ~SignalGroup() = default;
-
 private:
-    SignalT event_group;
+    SignalT event_group{std::make_unique<SignalGroupInternal>()};
 };
 
 

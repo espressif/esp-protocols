@@ -32,6 +32,5 @@ typedef int             BaseType_t;
 
 #define pdMS_TO_TICKS(tick)    (tick)
 
-uint32_t esp_get_free_heap_size(void);
 uint32_t esp_random(void);
 void vTaskSuspendAll(void);

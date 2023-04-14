@@ -12,15 +12,13 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "protocol_examples_common.h"
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_netif.h"
 #include "esp_system.h"
 
 #include "esp_log.h"
 #include "mqtt_client.h"
 
-static const char *TAG = "MQTT_EXAMPLE";
+static const char *TAG = "esp_mqtt_demo";
 
 
 static void log_error_if_nonzero(const char *message, int error_code)
@@ -109,8 +107,6 @@ static void mqtt_app_start(void)
     esp_mqtt_client_start(client);
 }
 
-#include "esp_netif.h"
-#include "netdb.h"
 
 extern "C" void app_main(void)
 {
@@ -120,10 +116,10 @@ extern "C" void app_main(void)
 
     esp_log_level_set("*", ESP_LOG_INFO);
     esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-    esp_log_level_set("MQTT_EXAMPLE", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT_BASE", ESP_LOG_VERBOSE);
+    esp_log_level_set("esp_mqtt_demo", ESP_LOG_VERBOSE);
+    esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
     esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-    esp_log_level_set("TRANSPORT", ESP_LOG_VERBOSE);
+    esp_log_level_set("transport", ESP_LOG_VERBOSE);
     esp_log_level_set("outbox", ESP_LOG_VERBOSE);
 
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -135,13 +131,6 @@ extern "C" void app_main(void)
      * examples/protocols/README.md for more information about this function.
      */
     ESP_ERROR_CHECK(example_connect());
-#if CONFIG_IDF_TARGET_LINUX && WITH_LWIP
-    esp_netif_dns_info_t dns;
-    dns.ip.u_addr.ip4.addr = ipaddr_addr("8.8.8.8");
-    dns.ip.type = IPADDR_TYPE_V4;
-    ESP_ERROR_CHECK(esp_netif_set_dns_info(esp_netif_get_handle_from_ifkey("TAP"), ESP_NETIF_DNS_MAIN, &dns));
-#endif
 
     mqtt_app_start();
-    vTaskDelay(pdMS_TO_TICKS(1000));
 }

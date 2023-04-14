@@ -16,9 +16,6 @@
 template <class T>
 class Queue {
 public:
-    Queue(): q(), m(), c() {}
-    ~Queue() {}
-
     void send(std::unique_ptr<T> t)
     {
         std::lock_guard<std::mutex> lock(m);
@@ -26,11 +23,11 @@ public:
         c.notify_one();
     }
 
-    std::unique_ptr<T> receive(uint32_t ms)
+    std::unique_ptr<T> receive(std::chrono::milliseconds ms)
     {
         std::unique_lock<std::mutex> lock(m);
         while (q.empty()) {
-            if (c.wait_for(lock, std::chrono::milliseconds(ms)) == std::cv_status::timeout) {
+            if (c.wait_for(lock, ms) == std::cv_status::timeout) {
                 return nullptr;
             }
         }
@@ -40,28 +37,30 @@ public:
     }
 
 private:
-    std::queue<std::unique_ptr<T>> q;
-    mutable std::mutex m;
-    std::condition_variable c;
+    std::queue<std::unique_ptr<T>> q{};
+    mutable std::mutex m{};
+    std::condition_variable c{};
 };
+
+using item_t = std::vector<uint8_t>;
 
 void *osal_queue_create(void)
 {
-    auto *q = new Queue<std::vector<uint8_t>>();
+    auto *q = new Queue<item_t>();
     return q;
 }
 
 void osal_queue_delete(void *q)
 {
-    auto *queue = static_cast<Queue<std::vector<uint8_t>> *>(q);
+    auto *queue = static_cast<Queue<item_t> *>(q);
     delete (queue);
 }
 
 bool osal_queue_send(void *q, uint8_t *data, size_t len)
 {
-    auto v = std::make_unique<std::vector<uint8_t>>(len);
+    auto v = std::make_unique<item_t>(len);
     v->assign(data, data + len);
-    auto queue = static_cast<Queue<std::vector<uint8_t>> *>(q);
+    auto queue = static_cast<Queue<item_t> *>(q);
     queue->send(std::move(v));
     return true;
 }
@@ -69,11 +68,11 @@ bool osal_queue_send(void *q, uint8_t *data, size_t len)
 
 bool osal_queue_recv(void *q, uint8_t *data, size_t len, uint32_t ms)
 {
-    auto queue = static_cast<Queue<std::vector<uint8_t>> *>(q);
-    auto v = queue->receive(ms);
-    if (v == nullptr) {
-        return false;
+    auto queue = static_cast<Queue<item_t> *>(q);
+    auto v = queue->receive(std::chrono::milliseconds(ms));
+    if (v != nullptr) {
+        memcpy(data, (void *)v->data(), len);
+        return true;
     }
-    memcpy(data, (void *)v->data(), len);
-    return true;
+    return false;
 }

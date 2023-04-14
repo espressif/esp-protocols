@@ -6,8 +6,4 @@ menu "Example Configuration"
         help
             URL of the broker to connect to
 
-    config BROKER_URL_FROM_STDIN
-        bool
-        default y if BROKER_URL = "FROM_STDIN"
-
 endmenu

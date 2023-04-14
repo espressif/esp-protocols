@@ -117,7 +117,7 @@ void vQueueDelete( QueueHandle_t xQueue )
 {
     struct generic_queue_handle *h = xQueue;
     if (h->q) {
-        if (h->type == MUTEX) {
+        if (h->type == MUTEX || h->type == MUTEX_REC) {
             osal_mutex_delete(h->q);
         } else {
             osal_queue_delete(h->q);
