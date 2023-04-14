@@ -13,121 +13,120 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32", "esp32s2", "esp32c3"]
-        test: [ { app: example, path: "components/mdns/examples" }, { app: unit_test, path: "components/mdns/tests/unit_test" } ]
+        idf_ver: ["latest", "release-v5.0"]
+        test: [ { app: example, path: "examples" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
-        working-directory: ${{ matrix.test.path }}
         run: |
-          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
-          python $IDF_PATH/tools/ci/ci_build_apps.py . --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
-          for dir in `ls -d build_*`; do
+          python -m pip install idf-build-apps
+          # Build default configs for all targets
+          python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -m components/mdns/.build-test-rules.yml -d
+          # Build specific configs for test targets
+          python ./ci/build_apps.py components/mdns/${{ matrix.test.path }}
+          cd components/mdns/${{ matrix.test.path }}
+          for dir in `ls -d build_esp32_*`; do
           $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh `pwd`/$dir
           zip -qur artifacts.zip $dir
           done
       - uses: actions/upload-artifact@v3
-        if: ${{ matrix.idf_target }} == "esp32"
         with:
-          name: mdns_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
-          path: ${{ matrix.test.path }}/artifacts.zip
+          name: mdns_bin_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: components/mdns/${{ matrix.test.path }}/artifacts.zip
           if-no-files-found: error
 
-  build_mdns_app:
-    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
-    name: Build Test Apps
-    strategy:
-      matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32", "esp32s2", "esp32c3"]
-    runs-on: ubuntu-20.04
-    container: espressif/idf:${{ matrix.idf_ver }}
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Setup Build Environment
-        working-directory: components/mdns/tests/test_apps
-        run: |
-          . ${IDF_PATH}/export.sh
-          pip install -r $GITHUB_WORKSPACE/ci/requirements.txt
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        working-directory: components/mdns/tests/test_apps
-        run: |
-          . ${IDF_PATH}/export.sh
-          python $IDF_PATH/tools/ci/ci_build_apps.py . --target ${{ matrix.idf_target }} -vv --pytest-apps
-      - name: Merge binaries with IDF-${{ matrix.idf_ver }}
-        working-directory: components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
-      - uses: actions/upload-artifact@v2
-        with:
-          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: |
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/bootloader/bootloader.bin
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/partition_table/partition-table.bin
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/*.bin
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/*.elf
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/flasher_args.json
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/config/sdkconfig.h
-            components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/config/sdkconfig.json
-          if-no-files-found: error
+  # build_mdns_app:
+  #   if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+  #   name: Build Test Apps
+  #   strategy:
+  #     matrix:
+  #       idf_ver: ["latest"]
+  #       idf_target: ["esp32", "esp32s2", "esp32c3"]
+  #   runs-on: ubuntu-20.04
+  #   container: espressif/idf:${{ matrix.idf_ver }}
+  #   steps:
+  #     - name: Checkout esp-protocols
+  #       uses: actions/checkout@v3
+  #       with:
+  #         submodules: recursive
+  #     - name: Setup Build Environment
+  #       working-directory: components/mdns/tests/test_apps
+  #       run: |
+  #         . ${IDF_PATH}/export.sh
+  #         pip install -r $GITHUB_WORKSPACE/ci/requirements.txt
+  #     - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+  #       env:
+  #         IDF_TARGET: ${{ matrix.idf_target }}
+  #       shell: bash
+  #       working-directory: components/mdns/tests/test_apps
+  #       run: |
+  #         . ${IDF_PATH}/export.sh
+  #         python $IDF_PATH/tools/ci/ci_build_apps.py . --target ${{ matrix.idf_target }} -vv --pytest-apps
+  #     - name: Merge binaries with IDF-${{ matrix.idf_ver }}
+  #       working-directory: components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default
+  #       env:
+  #         IDF_TARGET: ${{ matrix.idf_target }}
+  #       shell: bash
+  #       run: |
+  #         . ${IDF_PATH}/export.sh
+  #         esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+  #     - uses: actions/upload-artifact@v2
+  #       with:
+  #         name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+  #         path: |
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/bootloader/bootloader.bin
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/partition_table/partition-table.bin
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/*.bin
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/*.elf
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/flasher_args.json
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/config/sdkconfig.h
+  #           components/mdns/tests/test_apps/build_${{ matrix.idf_target }}_default/config/sdkconfig.json
+  #         if-no-files-found: error
 
-  target_test_apps_mdns:
-    # Skip running on forks since it won't have access to secrets
-    if: |
-      github.repository == 'espressif/esp-protocols' &&
-      ( contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push' )
-    name: Target Test Apps
-    strategy:
-      matrix:
-        idf_ver: ["latest"]
-        idf_target: ["esp32"]
-    needs: build_mdns_app
-    runs-on:
-      - self-hosted
-      - ESP32-ETHERNET-KIT
-    steps:
-      - name: Clear repository
-        run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v2
-        with:
-          name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: components/mdns/tests/test_apps/build
-      - name: Install Python packages
-        env:
-          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
-        run: |
-            sudo apt-get install -y dnsutils
-      - name: Download Test apps to target
-        run: |
-            python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/mdns/tests/test_apps/build/flash_image.bin
-      - name: Run Example Test on target
-        working-directory: components/mdns/tests/test_apps
-        run: |
-            python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{matrix.idf_target}}
-      - uses: actions/upload-artifact@v2
-        if: always()
-        with:
-          name: test_apps_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
-          path: components/mdns/tests/test_apps/*.xml
+  # target_test_apps_mdns:
+  #   # Skip running on forks since it won't have access to secrets
+  #   if: |
+  #     github.repository == 'espressif/esp-protocols' &&
+  #     ( contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push' )
+  #   name: Target Test Apps
+  #   strategy:
+  #     matrix:
+  #       idf_ver: ["latest"]
+  #       idf_target: ["esp32"]
+  #   needs: build_mdns_app
+  #   runs-on:
+  #     - self-hosted
+  #     - ESP32-ETHERNET-KIT
+  #   steps:
+  #     - name: Clear repository
+  #       run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+  #     - uses: actions/checkout@v3
+  #     - uses: actions/download-artifact@v2
+  #       with:
+  #         name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+  #         path: components/mdns/tests/test_apps/build
+  #     - name: Install Python packages
+  #       env:
+  #         PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+  #       run: |
+  #           sudo apt-get install -y dnsutils
+  #     - name: Download Test apps to target
+  #       run: |
+  #           python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 components/mdns/tests/test_apps/build/flash_image.bin
+  #     - name: Run Example Test on target
+  #       working-directory: components/mdns/tests/test_apps
+  #       run: |
+  #           python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml --target=${{matrix.idf_target}}
+  #     - uses: actions/upload-artifact@v2
+  #       if: always()
+  #       with:
+  #         name: test_apps_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+  #         path: components/mdns/tests/test_apps/*.xml
 
   target_tests_mdns:
     # Skip running on forks since it won't have access to secrets
@@ -139,7 +138,7 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
-        test: [ { app: example, path: "components/mdns/examples" }, { app: unit_test, path: "components/mdns/tests/unit_test" } ]
+        test: [ { app: example, path: "examples" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
     needs: build_mdns
     runs-on:
       - self-hosted
@@ -151,14 +150,14 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: mdns_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
-          path: ${{ matrix.test.path }}/ci/
+          path: components/mdns/${{ matrix.test.path }}/ci/
       - name: Install Python packages
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
             sudo apt-get install -y dnsutils
       - name: Run ${{ matrix.test.app }} application on ${{ matrix.idf_target }}
-        working-directory: ${{ matrix.test.path }}
+        working-directory: components/mdns/${{ matrix.test.path }}
         run: |
             unzip ci/artifacts.zip -d ci
             for dir in `ls -d ci/build_*`; do
@@ -170,4 +169,4 @@ jobs:
         if: always()
         with:
           name: results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml
-          path: ${{ matrix.test.path }}/*.xml
+          path: components/mdns/${{ matrix.test.path }}/*.xml
