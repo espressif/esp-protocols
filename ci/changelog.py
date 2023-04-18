@@ -93,6 +93,10 @@ def main():
         updated_changelog.write(orig_items)
     git.add(filename)
 
+    # write the current changelog entry to local release-notes file
+    with open(os.path.join(root_path, 'release_notes.md'), 'w') as release_notes:
+        release_notes.write(changelog)
+
 
 if __name__ == '__main__':
     main()
