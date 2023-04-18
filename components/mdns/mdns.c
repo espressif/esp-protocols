@@ -5738,6 +5738,131 @@ bool mdns_service_exists_with_instance(const char *instance, const char *service
     return _mdns_get_service_item_instance(instance, service_type, proto, hostname) != NULL;
 }
 
+static mdns_txt_item_t *_copy_mdns_txt_items(mdns_txt_linked_item_t *items, uint8_t **txt_value_len, size_t *txt_count)
+{
+    mdns_txt_item_t *ret = NULL;
+    size_t ret_index = 0;
+    for (mdns_txt_linked_item_t *tmp = items; tmp != NULL; tmp = tmp->next) {
+        ret_index++;
+    }
+    *txt_count = ret_index;
+    ret = (mdns_txt_item_t *)calloc(ret_index, sizeof(mdns_txt_item_t));
+    *txt_value_len = (uint8_t *)calloc(ret_index, sizeof(uint8_t));
+    if (!ret || !(*txt_value_len)) {
+        HOOK_MALLOC_FAILED;
+        goto handle_error;
+    }
+    ret_index = 0;
+    for (mdns_txt_linked_item_t *tmp = items; tmp != NULL; tmp = tmp->next) {
+        size_t key_len = strlen(tmp->key);
+        char *key = (char *)malloc(key_len + 1);
+        if (!key) {
+            HOOK_MALLOC_FAILED;
+            goto handle_error;
+        }
+        memcpy(key, tmp->key, key_len);
+        key[key_len] = 0;
+        ret[ret_index].key = key;
+        char *value = (char *)malloc(tmp->value_len + 1);
+        if (!value) {
+            HOOK_MALLOC_FAILED;
+            goto handle_error;
+        }
+        memcpy(value, tmp->value, tmp->value_len);
+        value[tmp->value_len] = 0;
+        ret[ret_index].value = value;
+        (*txt_value_len)[ret_index] = tmp->value_len;
+        ret_index++;
+    }
+    return ret;
+
+handle_error:
+    for (size_t y = 0; y < ret_index + 1; y++) {
+        mdns_txt_item_t *t = &ret[y];
+        free((char *)t->key);
+        free((char *)t->value);
+    }
+    free(*txt_value_len);
+    free(ret);
+    return NULL;
+}
+
+static mdns_ip_addr_t *_copy_delegated_host_address_list(char *hostname)
+{
+    mdns_host_item_t *host = _mdns_host_list;
+    while (host) {
+        if (strcasecmp(host->hostname, hostname) == 0) {
+            return copy_address_list(host->address_list);
+        }
+    }
+    return NULL;
+}
+
+static mdns_result_t *_mdns_lookup_delegated_service(const char *instance, const char *service, const char *proto, size_t max_results)
+{
+    if (_str_null_or_empty(service) || _str_null_or_empty(proto)) {
+        return NULL;
+    }
+    mdns_result_t *results = NULL;
+    size_t num_results = 0;
+    mdns_srv_item_t *s = _mdns_server->services;
+    while (s) {
+        mdns_service_t *srv = s->service;
+        if (srv && srv->hostname && (_str_null_or_empty(_mdns_server->hostname) || strcmp(_mdns_server->hostname, srv->hostname) != 0)) {
+            if (!strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) &&
+                    (_str_null_or_empty(instance) || _mdns_instance_name_match(srv->instance, instance))) {
+                mdns_result_t *item = (mdns_result_t *)malloc(sizeof(mdns_result_t));
+                if (!item) {
+                    HOOK_MALLOC_FAILED;
+                    goto handle_error;
+                }
+                item->next = results;
+                results = item;
+                item->esp_netif = NULL;
+                item->ttl = UINT32_MAX;
+                item->ip_protocol = MDNS_IP_PROTOCOL_MAX;
+                item->instance_name = strndup(srv->instance, MDNS_NAME_BUF_LEN - 1);
+                if (!item->instance_name) {
+                    HOOK_MALLOC_FAILED;
+                    goto handle_error;
+                }
+                item->service_type = strndup(srv->service, MDNS_NAME_BUF_LEN - 1);
+                if (!item->service_type) {
+                    HOOK_MALLOC_FAILED;
+                    goto handle_error;
+                }
+                item->proto = strndup(srv->proto, MDNS_NAME_BUF_LEN - 1);
+                if (!item->proto) {
+                    HOOK_MALLOC_FAILED;
+                    goto handle_error;
+                }
+                item->hostname = strndup(srv->hostname, MDNS_NAME_BUF_LEN - 1);
+                if (!item->hostname) {
+                    HOOK_MALLOC_FAILED;
+                    goto handle_error;
+                }
+                item->port = srv->port;
+                item->txt = _copy_mdns_txt_items(srv->txt, &(item->txt_value_len), &(item->txt_count));
+                item->addr = _copy_delegated_host_address_list(item->hostname);
+                if (!item->addr) {
+                    goto handle_error;
+                }
+                if (num_results < max_results) {
+                    num_results++;
+                }
+                if (num_results >= max_results) {
+                    break;
+                }
+            }
+        }
+        s = s->next;
+    }
+    return results;
+handle_error:
+    mdns_query_results_free(results);
+    return NULL;
+}
+
 esp_err_t mdns_service_port_set_for_host(const char *instance, const char *service, const char *proto, const char *hostname, uint16_t port)
 {
     if (!_mdns_server || !_mdns_server->services || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port) {
@@ -6207,6 +6332,21 @@ esp_err_t mdns_query_txt(const char *instance, const char *service, const char *
     }
 
     return mdns_query(instance, service, proto, MDNS_TYPE_TXT, timeout, 1, result);
+}
+
+esp_err_t mdns_lookup_delegated_service(const char *instance, const char *service, const char *proto, size_t max_results,
+                                        mdns_result_t **result)
+{
+    if (!_mdns_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!result || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    MDNS_SERVICE_LOCK();
+    *result = _mdns_lookup_delegated_service(instance, service, proto, max_results);
+    MDNS_SERVICE_UNLOCK();
+    return ESP_OK;
 }
 
 esp_err_t mdns_query_a(const char *name, uint32_t timeout, esp_ip4_addr_t *addr)

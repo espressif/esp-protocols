@@ -93,8 +93,10 @@ static void mdns_print_results(mdns_result_t *results)
     mdns_ip_addr_t *a = NULL;
     int i = 1, t;
     while (r) {
-        printf("%d: Interface: %s, Type: %s, TTL: %u\n", i++, esp_netif_get_ifkey(r->esp_netif), ip_protocol_str[r->ip_protocol],
-               r->ttl);
+        if (r->esp_netif) {
+            printf("%d: Interface: %s, Type: %s, TTL: %u\n", i++, esp_netif_get_ifkey(r->esp_netif),
+                   ip_protocol_str[r->ip_protocol], r->ttl);
+        }
         if (r->instance_name) {
             printf("  PTR : %s.%s.%s\n", r->instance_name, r->service_type, r->proto);
         }
@@ -139,6 +141,27 @@ static void query_mdns_service(const char *service_name, const char *proto)
     mdns_print_results(results);
     mdns_query_results_free(results);
 }
+
+#if CONFIG_MDNS_PUBLISH_DELEGATE_HOST
+static void lookup_mdns_delegated_service(const char *service_name, const char *proto)
+{
+    ESP_LOGI(TAG, "Lookup delegated service: %s.%s.local", service_name, proto);
+
+    mdns_result_t *results = NULL;
+    esp_err_t err = mdns_lookup_delegated_service(NULL, service_name, proto, 20, &results);
+    if (err) {
+        ESP_LOGE(TAG, "Lookup Failed: %s", esp_err_to_name(err));
+        return;
+    }
+    if (!results) {
+        ESP_LOGW(TAG, "No results found!");
+        return;
+    }
+
+    mdns_print_results(results);
+    mdns_query_results_free(results);
+}
+#endif // CONFIG_MDNS_PUBLISH_DELEGATE_HOST
 
 static bool check_and_print_result(mdns_search_once_t *search)
 {
@@ -234,6 +257,9 @@ static void check_button(void)
         query_mdns_service("_smb", "_tcp");
         query_mdns_service("_ftp", "_tcp");
         query_mdns_service("_nfs", "_tcp");
+#if CONFIG_MDNS_PUBLISH_DELEGATE_HOST
+        lookup_mdns_delegated_service("_http", "_tcp");
+#endif // CONFIG_MDNS_PUBLISH_DELEGATE_HOST
     }
     old_level = new_level;
 }
