@@ -1100,8 +1100,7 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
     int wlen = 0, widx = 0;
     int ret = ESP_FAIL;
 
-    if (client == NULL || len < 0 ||
-            (opcode != WS_TRANSPORT_OPCODES_CLOSE && (data == NULL || len <= 0))) {
+    if (client == NULL || len < 0 || (data == NULL && len > 0)) {
         ESP_LOGE(TAG, "Invalid arguments");
         return ESP_FAIL;
     }
