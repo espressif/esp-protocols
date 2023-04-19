@@ -24,8 +24,8 @@ When releasing a new component version we have to:
 * Deploy the component to component registry
 * Update the documentation
 
-This process is not fully automated, the first three steps need to be performed manually by project maintainers running the `bump` command (from within this repository, rather than forks, to publish the release `tag`). Release procedure is as follows:
-* Create a branch in this repository (not from fork)
-* Run `cz bump [version]` (version number is optional, `cz` would automatically increment it if not present)
-* Check the updated `CHANGELOG.md`
-* Create and merge the branch to master
+This process is not fully automated, the first step needs to be performed manually by project maintainers running the `bump` command. Release procedure is as follows:
+* Run `ci/bump [component] [version]` (version number is optional, `cz` would automatically increment it if not present)
+* Check the updated `CHANGELOG.md` and the generated bump commit message
+* Create a PR
+Once the PR is merged, the CI job tags the merge commit, creates a new release, builds and deploys documentation and the new component to the component registry

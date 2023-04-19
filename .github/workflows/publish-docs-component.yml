@@ -13,18 +13,36 @@ env:
   DOCS_DEPLOY_PATH : ${{ secrets.DOCS_DEPLOY_PATH }}
 
 jobs:
-  docs_build:
-    name: Docs-Build-And-Upload
+  publish:
+    name: Publish Tag, Release, Docs, Component
     runs-on: ubuntu-latest
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
           submodules: recursive
+          token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Check for version update
+        shell: bash
+        run: ./ci/detect_component_bump
+      - name: Tag merge commit
+        if: env.BUMP_VERSION != ''
+        uses: anothrNick/github-tag-action@1.61.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CUSTOM_TAG: ${{ env.BUMP_TAG }}
+      - name: Create Release
+        if: env.BUMP_VERSION != ''
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: "release_notes.md"
+          tag_name: ${{ env.BUMP_TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate docs
         shell: bash
         run: |
