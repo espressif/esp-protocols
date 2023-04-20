@@ -6,7 +6,7 @@ The ESP MQTT client is a wrapper over the esp_mqtt client with the goal of provi
 
 ## Examples
 
-Get started with [examples](examples)
+Get started with [examples](https://github.com/espressif/esp-protocols/tree/master/components/esp_mqtt_cxx/examples)
 
 ## Documentation
 
