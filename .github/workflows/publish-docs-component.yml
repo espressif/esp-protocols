@@ -46,6 +46,6 @@ jobs:
       - name: Upload components to component service
         uses: espressif/github-actions/upload_components@master
         with:
-          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio"
+          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio;components/esp_mqtt_cxx"
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
