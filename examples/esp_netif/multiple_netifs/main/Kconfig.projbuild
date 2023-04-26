@@ -1,0 +1,42 @@
+menu "Connection Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 0
+        help
+            Set the Maximum retry to avoid station reconnecting. Set to 0 to keep retrying indefinitely.
+
+    config EXAMPLE_MODEM_PPP_APN
+        string "Set MODEM APN"
+        default "default.apn"
+        help
+            Set APN (Access Point Name), a logical name to choose data network
+
+    config EXAMPLE_MODEM_UART_TX_PIN
+        int "TXD Pin Number"
+        default 15
+        range 0 31
+        help
+            Pin number of UART TX.
+
+    config EXAMPLE_MODEM_UART_RX_PIN
+        int "RXD Pin Number"
+        default 14
+        range 0 31
+        help
+            Pin number of UART RX.
+
+
+endmenu
