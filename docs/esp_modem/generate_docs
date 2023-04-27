@@ -2,41 +2,20 @@
 rm -rf html
 
 # Generate C++ API header of the DCE
-cat esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_dce.hpp
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_dce.hpp
 
 # Generate C API header of the modem_api.h
-cat esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_api_commands.h
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_api_commands.h
 
 
 # RST with links to C++ API
-cat esp_modem_command_declare.inc | clang -E -P  -xc -I../../components/esp_modem/include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > en/cxx_api_links.rst
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../../components/esp_modem/include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > en/cxx_api_links.rst
 
 build-docs --target esp32 --language en
 
 cp -rf _build/en/esp32/html .
 rm -rf _build __pycache__
 
-## Modifes some version and target fields of index.html
-#echo "<script type="text/javascript">
-#window.onload =(function() {
-#    var myAnchor = document.getElementById('version-select');
-#    var mySpan = document.createElement('input');
-#    mySpan.setAttribute('type', 'text');
-#    mySpan.setAttribute('maxLength', '10');
-#    mySpan.value = 'latest';
-#    mySpan.setAttribute('disabled', true);
-#    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
-#
-#    var myAnchor = document.getElementById('target-select');
-#    var mySpan = document.createElement('input');
-#    mySpan.setAttribute('type', 'text');
-#    mySpan.setAttribute('maxLength', '10');
-#    mySpan.value = 'all targets';
-#    mySpan.setAttribute('disabled', true);
-#    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
-#
-#})();
-#</script>" >> html/index.html
 
 # Modifes some version and target fields of index.html
 echo "<script type='text/javascript'>
