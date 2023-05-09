@@ -49,8 +49,16 @@ jobs:
             sudo apt-get update
             sudo apt-get -y install doxygen clang python3-pip
             python -m pip install breathe recommonmark esp-docs==1.4.1
-            cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
-            ./generate_docs ${{ env.BUMP_VERSION }}
+            for comp in  `ls components`; do
+              cd $GITHUB_WORKSPACE/docs/${comp}
+              if [[ "${{ env.BUMP_COMPONENT }}" == "${comp}" ]]; then
+                echo "Building specific version of ${comp} (${{ env.BUMP_VERSION }})"
+                ./generate_docs ${{ env.BUMP_VERSION }}
+              else
+                echo "Building latest version of ${comp}"
+                ./generate_docs
+              fi
+            done
       - name: Deploying generated docs
         shell: bash
         run: |
@@ -58,14 +66,17 @@ jobs:
             add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
             export GIT_VER=$(git describe --always)
             export GITHUB_REF_NAME=latest
-            export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
-            export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH/${{ env.BUMP_COMPONENT }}
-            cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
-            ls docs/generic/html/
-            # Deploy docs with latest path
-            deploy-docs
+            for comp in  `ls components`; do
+              echo "Deploying latest of ${comp}"
+              export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
+              export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH/${comp}
+              cd $GITHUB_WORKSPACE/docs/${comp}
+              deploy-docs
+            done;
             # Deploy docs with version path
-            if [ ${{ env.BUMP_VERSION }} != '' ]; then
+            if [[ "${{ env.BUMP_VERSION }}" != "" ]]; then
+                echo "Deploying specific version of ${comp} (${{ env.BUMP_VERSION }})"
+                cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
                 export GITHUB_REF_NAME=${{ env.BUMP_VERSION }}
                 deploy-docs
             fi
