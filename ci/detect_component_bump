@@ -9,7 +9,7 @@ fi
 
 for comp in  `ls components`; do
 if git log -1 -m --name-only --pretty="" | grep -q components/${comp}/idf_component.yml; then
-    echo "${comp}: Component version has been updated"
+    echo "${comp}: Component version file has changed"
     version=`grep version: components/${comp}/.cz.yaml`
     version=${version#*version: }
 
@@ -17,20 +17,25 @@ if git log -1 -m --name-only --pretty="" | grep -q components/${comp}/idf_compon
     tag_format=${tag_format#*tag_format: }
 
     eval tag=$tag_format
+    # check if the tag is already created
+    if [ $(git tag -l "$tag") ]; then
+        echo "${comp}: version (${tag}) already exits"
+    else
+        echo "${comp}: Component version has been updated to ${version}"
+        # creates release notes from the last entry (between first two "## sections")
+        awk '/^## \[/{a++};{if(a==1){print}}' components/${comp}/CHANGELOG.md > release_notes.md
 
-    # creates release notes from the last entry (between first two "## sections")
-    awk '/^## \[/{a++};{if(a==1){print}}' components/${comp}/CHANGELOG.md > release_notes.md
+        echo "BUMP_VERSION=${version}"
+        echo "BUMP_COMPONENT=${comp}"
+        echo "BUMP_TAG=${tag}"
 
-    echo "BUMP_VERSION=${version}"
-    echo "BUMP_COMPONENT=${comp}"
-    echo "BUMP_TAG=${tag}"
+        # export the findings to github env, so it could be used in other jobs
+        echo "BUMP_VERSION=${version}" >> "$GITHUB_ENV"
+        echo "BUMP_COMPONENT=${comp}" >> "$GITHUB_ENV"
+        echo "BUMP_TAG=${tag}" >> "$GITHUB_ENV"
 
-    # export the findings to github env, so it could be used in other jobs
-    echo "BUMP_VERSION=${version}" >> "$GITHUB_ENV"
-    echo "BUMP_COMPONENT=${comp}" >> "$GITHUB_ENV"
-    echo "BUMP_TAG=${tag}" >> "$GITHUB_ENV"
-
-    exit 0;
+        exit 0;
+    fi
 fi
 done
 echo "No changes in component version file"
