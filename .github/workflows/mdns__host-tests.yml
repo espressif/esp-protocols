@@ -12,7 +12,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Host test
     runs-on: ubuntu-20.04
-    container: espressif/idf:latest
+    container: espressif/idf:release-v5.1
 
     steps:
       - name: Checkout esp-protocols
