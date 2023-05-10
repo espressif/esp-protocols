@@ -10,7 +10,7 @@ env:
   DOCS_DEPLOY_SERVER: ${{ secrets.DOCS_DEPLOY_SERVER }}
   DOCS_DEPLOY_SERVER_USER: ${{ secrets.DOCS_DEPLOY_SERVER_USER }}
   DOCS_DEPLOY_KEY: ${{ secrets.DOCS_DEPLOY_PRIVATEKEY }}
-  DOCS_DEPLOY_PATH : ${{ secrets.DOCS_DEPLOY_PATH }}
+  DOCS_DEPLOY_PATH_ORIG : ${{ secrets.DOCS_DEPLOY_PATH }}
 
 jobs:
   publish:
@@ -69,7 +69,7 @@ jobs:
             for comp in  `ls components`; do
               echo "Deploying latest of ${comp}"
               export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
-              export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH/${comp}
+              export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH_ORIG/${comp}
               cd $GITHUB_WORKSPACE/docs/${comp}
               deploy-docs
             done;
@@ -81,8 +81,13 @@ jobs:
                 deploy-docs
             fi
       - name: Upload components to component service
-        uses: espressif/github-actions/upload_components@master
+        uses: espressif/upload-components-ci-action@v1
         with:
-          directories: "components/esp_modem;components/esp_websocket_client;components/mdns;components/asio;components/esp_mqtt_cxx"
+          directories: >
+            components/asio;
+            components/esp_modem;
+            components/esp_mqtt_cxx;
+            components/esp_websocket_client;
+            components/mdns;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
