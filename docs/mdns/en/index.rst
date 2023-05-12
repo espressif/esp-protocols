@@ -1,6 +1,6 @@
 mDNS Service
 ============
-`zh_CN:[中文] <https://espressif.github.io/esp-protocols/mdns/zh_CN/index.html>`_
+`[中文] <https://docs.espressif.com/projects/esp-protocols/mdns/docs/latest/zh_CN/index.html>`_
 
 Overview
 --------
@@ -195,7 +195,7 @@ Please check `Minimizing RAM Usage <https://docs.espressif.com/projects/esp-idf/
 Application Example
 -------------------
 
-mDNS server/scanner example: :example:`<../examples>`.
+mDNS server/scanner `example <https://github.com/espressif/esp-protocols/tree/master/components/mdns/examples>`_
 
 API Reference
 -------------
