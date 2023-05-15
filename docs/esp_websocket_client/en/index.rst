@@ -109,7 +109,7 @@ Limitations and Known Issues
 
 Application Example
 -------------------
-A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the `websocket.org <https://websocket.org>`_ server can be found here: :example:`example <../examples>`.
+A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the `websocket.org <https://websocket.org>`_ server can be found here: `example <https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client/examples>`_
 
 Sending Text Data
 ^^^^^^^^^^^^^^^^^
