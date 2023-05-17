@@ -1107,7 +1107,7 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
     }
 
     if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
-        ESP_LOGE(TAG, "Could not lock ws-client within %d timeout", timeout);
+        ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
         return ESP_FAIL;
     }
 
