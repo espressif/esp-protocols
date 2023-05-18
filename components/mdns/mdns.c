@@ -5561,6 +5561,17 @@ esp_err_t mdns_hostname_set(const char *hostname)
     return ESP_OK;
 }
 
+esp_err_t mdns_hostname_get(char *hostname)
+{
+    if (!_mdns_server || !hostname) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    MDNS_SERVICE_LOCK();
+    strncpy(hostname, _mdns_server->hostname, strnlen(_mdns_server->hostname, MDNS_NAME_BUF_LEN));
+    MDNS_SERVICE_UNLOCK();
+    return ESP_OK;
+}
+
 esp_err_t mdns_delegate_hostname_add(const char *hostname, const mdns_ip_addr_t *address_list)
 {
     if (!_mdns_server) {
@@ -5798,7 +5809,7 @@ static mdns_ip_addr_t *_copy_delegated_host_address_list(char *hostname)
     return NULL;
 }
 
-static mdns_result_t *_mdns_lookup_delegated_service(const char *instance, const char *service, const char *proto, size_t max_results)
+static mdns_result_t *_mdns_lookup_service(const char *instance, const char *service, const char *proto, size_t max_results, bool selfhost)
 {
     if (_str_null_or_empty(service) || _str_null_or_empty(proto)) {
         return NULL;
@@ -5808,7 +5819,13 @@ static mdns_result_t *_mdns_lookup_delegated_service(const char *instance, const
     mdns_srv_item_t *s = _mdns_server->services;
     while (s) {
         mdns_service_t *srv = s->service;
-        if (srv && srv->hostname && (_str_null_or_empty(_mdns_server->hostname) || strcmp(_mdns_server->hostname, srv->hostname) != 0)) {
+        if (!srv || !srv->hostname) {
+            s = s->next;
+            continue;
+        }
+        bool is_service_selfhosted = !_str_null_or_empty(_mdns_server->hostname) && !strcasecmp(_mdns_server->hostname, srv->hostname);
+        bool is_service_delegated = _str_null_or_empty(_mdns_server->hostname) || strcasecmp(_mdns_server->hostname, srv->hostname);
+        if ((selfhost && is_service_selfhosted) || (!selfhost && is_service_delegated)) {
             if (!strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) &&
                     (_str_null_or_empty(instance) || _mdns_instance_name_match(srv->instance, instance))) {
                 mdns_result_t *item = (mdns_result_t *)malloc(sizeof(mdns_result_t));
@@ -5819,7 +5836,7 @@ static mdns_result_t *_mdns_lookup_delegated_service(const char *instance, const
                 item->next = results;
                 results = item;
                 item->esp_netif = NULL;
-                item->ttl = UINT32_MAX;
+                item->ttl = _str_null_or_empty(instance) ? MDNS_ANSWER_PTR_TTL : MDNS_ANSWER_SRV_TTL;
                 item->ip_protocol = MDNS_IP_PROTOCOL_MAX;
                 item->instance_name = strndup(srv->instance, MDNS_NAME_BUF_LEN - 1);
                 if (!item->instance_name) {
@@ -5843,9 +5860,14 @@ static mdns_result_t *_mdns_lookup_delegated_service(const char *instance, const
                 }
                 item->port = srv->port;
                 item->txt = _copy_mdns_txt_items(srv->txt, &(item->txt_value_len), &(item->txt_count));
-                item->addr = _copy_delegated_host_address_list(item->hostname);
-                if (!item->addr) {
-                    goto handle_error;
+                // We should not append addresses for selfhost lookup result as we don't know which interface's address to append.
+                if (selfhost) {
+                    item->addr = NULL;
+                } else {
+                    item->addr = _copy_delegated_host_address_list(item->hostname);
+                    if (!item->addr) {
+                        goto handle_error;
+                    }
                 }
                 if (num_results < max_results) {
                     num_results++;
@@ -6344,7 +6366,22 @@ esp_err_t mdns_lookup_delegated_service(const char *instance, const char *servic
         return ESP_ERR_INVALID_ARG;
     }
     MDNS_SERVICE_LOCK();
-    *result = _mdns_lookup_delegated_service(instance, service, proto, max_results);
+    *result = _mdns_lookup_service(instance, service, proto, max_results, false);
+    MDNS_SERVICE_UNLOCK();
+    return ESP_OK;
+}
+
+esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *service, const char *proto, size_t max_results,
+        mdns_result_t **result)
+{
+    if (!_mdns_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!result || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    MDNS_SERVICE_LOCK();
+    *result = _mdns_lookup_service(instance, service, proto, max_results, true);
     MDNS_SERVICE_UNLOCK();
     return ESP_OK;
 }
