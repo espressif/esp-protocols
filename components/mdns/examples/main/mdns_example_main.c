@@ -163,6 +163,23 @@ static void lookup_mdns_delegated_service(const char *service_name, const char *
 }
 #endif // CONFIG_MDNS_PUBLISH_DELEGATE_HOST
 
+static void lookup_mdns_selfhosted_service(const char *service_name, const char *proto)
+{
+    ESP_LOGI(TAG, "Lookup selfhosted service: %s.%s.local", service_name, proto);
+    mdns_result_t *results = NULL;
+    esp_err_t err = mdns_lookup_selfhosted_service(NULL, service_name, proto, 20, &results);
+    if (err) {
+        ESP_LOGE(TAG, "Lookup Failed: %s", esp_err_to_name(err));
+        return;
+    }
+    if (!results) {
+        ESP_LOGW(TAG, "No results found!");
+        return;
+    }
+    mdns_print_results(results);
+    mdns_query_results_free(results);
+}
+
 static bool check_and_print_result(mdns_search_once_t *search)
 {
     // Check if any result is available
@@ -260,6 +277,7 @@ static void check_button(void)
 #if CONFIG_MDNS_PUBLISH_DELEGATE_HOST
         lookup_mdns_delegated_service("_http", "_tcp");
 #endif // CONFIG_MDNS_PUBLISH_DELEGATE_HOST
+        lookup_mdns_selfhosted_service("_http", "_tcp");
     }
     old_level = new_level;
 }
