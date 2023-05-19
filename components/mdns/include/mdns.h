@@ -26,7 +26,6 @@ extern "C" {
  */
 typedef struct mdns_search_once_s mdns_search_once_t;
 
-
 typedef enum {
     MDNS_EVENT_ENABLE_IP4                   = 1 << 1,
     MDNS_EVENT_ENABLE_IP6                   = 1 << 2,
@@ -128,6 +127,19 @@ void mdns_free(void);
  *     - ESP_ERR_NO_MEM memory error
  */
 esp_err_t mdns_hostname_set(const char *hostname);
+
+/**
+ * @brief Get the hostname for mDNS server
+ *
+ * @param hostname      pointer to the hostname, it should be allocated
+ *                      and hold at least MDNS_NAME_BUF_LEN chars
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_INVALID_STATE when mdns is not initialized
+ */
+esp_err_t mdns_hostname_get(char *hostname);
 
 /**
  * @brief  Adds a hostname and address to be delegated
@@ -247,7 +259,6 @@ esp_err_t mdns_service_add_for_host(const char *instance_name, const char *servi
  *     - false  Service not found.
  */
 bool mdns_service_exists(const char *service_type, const char *proto, const char *hostname);
-
 
 /**
  * @brief  Check whether a service has been added.
@@ -686,6 +697,42 @@ esp_err_t mdns_query_srv(const char *instance_name, const char *service_type, co
  *     - ESP_ERR_INVALID_ARG    parameter error
  */
 esp_err_t mdns_query_txt(const char *instance_name, const char *service_type, const char *proto, uint32_t timeout, mdns_result_t **result);
+
+/**
+ * @brief Look up delegated services.
+ *
+ * @param  instance         instance name (NULL for uncertain instance)
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  max_results      maximum results to be collected
+ * @param  result           pointer to the result of the search
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running
+ *     - ESP_ERR_NO_MEM         memory error
+ *     - ESP_ERR_INVALID_ARG    parameter error
+ */
+esp_err_t mdns_lookup_delegated_service(const char *instance, const char *service_type, const char *proto, size_t max_results,
+                                        mdns_result_t **result);
+
+/**
+ * @brief Look up self hosted services.
+ *
+ * @param  instance         instance name (NULL for uncertain instance)
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  max_results      maximum results to be collected
+ * @param  result           pointer to the result of the search
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running
+ *     - ESP_ERR_NO_MEM         memory error
+ *     - ESP_ERR_INVALID_ARG    parameter error
+ */
+esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *service_type, const char *proto, size_t max_results,
+        mdns_result_t **result);
 
 /**
  * @brief  Query mDNS for A record

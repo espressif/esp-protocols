@@ -6,8 +6,8 @@ The `esp-websocket_client` component is a managed component for `esp-idf` that c
 
 ## Examples
 
-Get started with example test [Example](examples/README.md):
+Get started with example test [example](https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client/examples):
 
 ## Documentation
 
-* View the full [html documentation](https://espressif.github.io/esp-protocols/esp_websocket_client/index.html)
+* View the full [html documentation](https://docs.espressif.com/projects/esp-protocols/esp_websocket_client/docs/latest/index.html)

@@ -424,7 +424,9 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         free(client->if_name);
     }
     esp_websocket_client_destroy_config(client);
-    esp_transport_list_destroy(client->transport_list);
+    if (client->transport_list) {
+        esp_transport_list_destroy(client->transport_list);
+    }
     vQueueDelete(client->lock);
     free(client->tx_buffer);
     free(client->rx_buffer);
@@ -1105,7 +1107,7 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
     }
 
     if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
-        ESP_LOGE(TAG, "Could not lock ws-client within %d timeout", timeout);
+        ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
         return ESP_FAIL;
     }
 

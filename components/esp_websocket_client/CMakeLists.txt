@@ -10,4 +10,3 @@ idf_component_register(SRCS "esp_websocket_client.c"
                     INCLUDE_DIRS "include"
                     REQUIRES lwip esp-tls tcp_transport http_parser
                     PRIV_REQUIRES esp_timer esp_event)
-target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")

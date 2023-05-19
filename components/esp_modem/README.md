@@ -17,5 +17,5 @@ Get started with one of the examples:
 
 ## Documentation
 
-* Continue with esp-modem [brief overview](docs/README.md)
-* View the full [html documentation](https://espressif.github.io/esp-protocols/esp_modem/index.html)
+* Continue with esp-modem [brief overview](https://github.com/espressif/esp-protocols/tree/master/docs/esp_modem/en/README.rst)
+* View the full [html documentation](https://docs.espressif.com/projects/esp-protocols/esp_modem/docs/latest/index.html)

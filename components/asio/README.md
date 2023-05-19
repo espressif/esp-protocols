@@ -6,8 +6,8 @@ Asio is a cross-platform C++ library, see https://think-async.com/Asio/. It prov
 
 ## Examples
 
-Get started with example test :example:`examples <examples/..>`:
+Get started with examples [examples](https://github.com/espressif/esp-protocols/tree/master/components/asio/examples)
 
 ## Documentation
 
-* View the full [html documentation](https://espressif.github.io/esp-protocols/asio/index.html)
+* View the full [html documentation](https://docs.espressif.com/projects/esp-protocols/asio/docs/latest/index.html)
