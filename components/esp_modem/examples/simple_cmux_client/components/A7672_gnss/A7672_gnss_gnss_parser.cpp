@@ -50,12 +50,12 @@ esp_modem::command_result get_gnss_information_a7672_lib(esp_modem::CommandableI
         | GPS-SVs     | 09           |          | GPS satellite valid numbers scope: 00-12                                                 |
         | GLONASS-SVs | 05           |          | GLONASS satellite valid numbers scope: 00-12 (the A7678 SERIES project is not supported) |
         | BEIDOU-SVs  | 00           |          | BEIDOU satellite valid numbers scope: 00-12                                              |
-        | lat         | 3113.330650  |          | Latitude of current position. Output format is ddmm.mmmmmm.                              |
+        | lat         | 3113.330650  |          | Latitude of current position.Output format is dd.ddddd                                   |
         | N/S         | N            |          | N/S Indicator, N=north or S=south.                                                       |
-        | log         | 12121.262554 |          | Longitude of current position. Output format is dddmm.mmmmmm.                            |
+        | log         | 12121.262554 |          | Longitude of current position. Output format is ddd.ddddd.                               |
         | E/W         | E            |          | E/W Indicator, E=east or W=west.                                                         |
         | date        | 131117       |          | Date. Output format is ddmmyy.                                                           |
-        | UTC-time    | 091918.0     |          | UTC Time. Output format is hhmmss.s.                                                     |
+        | UTC-time    | 091918.0     |          | UTC Time. Output format is hhmmss.ss                                                     |
         | alt         | 32.9         | meters   | MSL Altitude. Unit is meters.                                                            |
         | speed       | 0.0          | knots    | Speed Over Ground. Unit is knots.                                                        |
         | course      | 255.0        | Degrees  | Course. Degrees.                                                                         |

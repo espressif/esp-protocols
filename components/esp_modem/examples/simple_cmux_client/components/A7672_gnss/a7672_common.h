@@ -102,7 +102,7 @@ typedef struct {
  *
  */
 typedef struct {
-    float degrees;                                              /*!< Latitude (degrees) */
+    float degrees;                                                /*!< Latitude (degrees) */
     gps_ns_t latitude_ns;                                         /*!< Latitude N/S Indicator, N=north or S=south. */
 } latitude_gnss_t;
 
@@ -122,7 +122,7 @@ typedef struct {
  *
  */
 typedef struct {
-    float degrees;                                             /*!< Longitude (degrees) */
+    float degrees;                                               /*!< Longitude (degrees) */
     gps_ew_t longitude_ew;                                       /*!< Longitude E/W Indicator, E=east or W=west. */
 } longitude_gnss_t;
 

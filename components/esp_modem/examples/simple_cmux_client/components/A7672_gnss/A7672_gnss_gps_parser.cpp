@@ -51,7 +51,7 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
         | log      | 12121.234064 |          | Longitude of current position. Output format is dddmm.mmmmmm. |
         | E/W      | E            |          | E/W Indicator, E=east or W=west.                              |
         | date     | 250311       |          | Date. Output format is ddmmyy                                 |
-        | UTC time | 072809.3     |          | UTC Time. Output format is hhmmss.s.                          |
+        | UTC time | 072809.3     |          | UTC Time. Output format is hhmmss.ss.                         |
         | alt      | 44.1         | meters   | MSL Altitude. Unit is meters.                                 |
         | speed    | 0.0          | knots    | Speed Over Ground. Unit is knots.                             |
         | course   | 0            | Degrees  | Course. Degrees.                                              |
