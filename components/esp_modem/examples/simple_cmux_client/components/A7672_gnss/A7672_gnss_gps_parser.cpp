@@ -66,9 +66,14 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
     {
         std::string_view Latitude = out.substr(0, pos);
         if (Latitude.length() > 1) {
-            gps.latitude  = std::stof(std::string(Latitude));
+            if (std::from_chars(out.data() + 0, out.data() + 2, gps.latitude.degrees).ec == std::errc::invalid_argument) {
+                return esp_modem::command_result::FAIL;
+            }
+            std::string_view Latitude_min = out.substr(2, pos);
+            gps.latitude.minutes  = std::stof(std::string(Latitude_min));
         } else {
-            gps.latitude  = 0;
+            gps.latitude.minutes  = 0;
+            gps.latitude.degrees  = 0;
         }
     } //clean up Latitude
     out = out.substr(pos + 1);
@@ -78,20 +83,20 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
     //Latitude N/S Indicator, N=north or S=south.
     {
         std::string_view Latitude_ns = out.substr(0, pos);
-        if (Latitude_ns.length() > 1) {
+        if (Latitude_ns.length() >= 1) {
             switch (std::string(Latitude_ns).c_str()[0]) {
             case 'N':
-                gps.latitude_ns  = GPS_N;
+                gps.latitude.latitude_ns  = GPS_N;
                 break;
             case 'S':
-                gps.latitude_ns  = GPS_S;
+                gps.latitude.latitude_ns  = GPS_S;
                 break;
             default:
-                gps.latitude_ns  = GPS_NS_INVALID;
+                gps.latitude.latitude_ns  = GPS_NS_INVALID;
                 break;
             }
         } else {
-            gps.latitude_ns  = GPS_NS_INVALID;
+            gps.latitude.latitude_ns  = GPS_NS_INVALID;
         }
     } //clean up Latitude N/S Indicator, N=north or S=south.
     out = out.substr(pos + 1);
@@ -102,9 +107,14 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
     {
         std::string_view Longitude = out.substr(0, pos);
         if (Longitude.length() > 1) {
-            gps.longitude  = std::stof(std::string(Longitude));
+            if (std::from_chars(out.data() + 0, out.data() + 3, gps.longitude.degrees).ec == std::errc::invalid_argument) {
+                return esp_modem::command_result::FAIL;
+            }
+            std::string_view Longitude_min = out.substr(3, pos);
+            gps.longitude.minutes  = std::stof(std::string(Longitude_min));
         } else {
-            gps.longitude  = 0;
+            gps.longitude.minutes  = 0;
+            gps.longitude.degrees = 0;
         }
     } //clean up Longitude
     out = out.substr(pos + 1);
@@ -114,20 +124,20 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
     //Longitude E/W Indicator, E=east or W=west.
     {
         std::string_view Longitude_ew = out.substr(0, pos);
-        if (Longitude_ew.length() > 1) {
+        if (Longitude_ew.length() >= 1) {
             switch (std::string(Longitude_ew).c_str()[0]) {
             case 'E':
-                gps.longitude_ew  = GPS_E;
+                gps.longitude.longitude_ew  = GPS_E;
                 break;
             case 'W':
-                gps.longitude_ew  = GPS_W;
+                gps.longitude.longitude_ew  = GPS_W;
                 break;
             default:
-                gps.longitude_ew  = GPS_EW_INVALID;
+                gps.longitude.longitude_ew  = GPS_EW_INVALID;
                 break;
             }
         } else {
-            gps.longitude_ew  = GPS_EW_INVALID;
+            gps.longitude.longitude_ew  = GPS_EW_INVALID;
         }
     } //clean up Longitude E/W Indicator, E=east or W=west.
     out = out.substr(pos + 1);
@@ -209,9 +219,6 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
         }
     } //clean up Speed Over Ground knots
     out = out.substr(pos + 1);
-    if ((pos = out.find(',')) == std::string::npos) {
-        return esp_modem::command_result::FAIL;
-    }
     //Course Over Ground degrees
     {
         std::string_view gps_cog = out.substr(0, pos);
@@ -221,10 +228,6 @@ esp_modem::command_result get_gps_information_a7672_lib(esp_modem::CommandableIf
             gps.cog  = 0;
         }
     } //clean up gps_cog
-    out = out.substr(pos + 1);
-    if ((pos = out.find(',')) == std::string::npos) {
-        return esp_modem::command_result::FAIL;
-    }
     return esp_modem::command_result::OK;
 }
 

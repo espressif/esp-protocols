@@ -26,10 +26,8 @@ struct a7672_gnss {
     gps_satellite_t sat_gps;                                       /*!< GPS satellite valid numbers scope: 00-12 */
     gps_satellite_t sat_glonass;                                   /*!< GLONASS satellite valid numbers scope: 00-12 */
     gps_satellite_t sat_beidou;                                    /*!< BEIDOU satellite valid numbers scope: 00-12 */
-    float latitude;                                                /*!< Latitude (degrees) */
-    gps_ns_t latitude_ns;                                          /*!< Latitude N/S Indicator, N=north or S=south. */
-    float longitude;                                               /*!< Longitude (degrees) */
-    gps_ew_t longitude_ew;                                         /*!< Longitude E/W Indicator, E=east or W=west. */
+    latitude_gnss_t latitude;                                      /*!< Latitude (degrees) */
+    longitude_gnss_t longitude;                                    /*!< Longitude (degrees) */
     gps_date_t date;                                               /*!< Fix date */
     gps_time_t tim;                                                /*!< time in UTC */
     float altitude;                                                /*!< Altitude (meters) */

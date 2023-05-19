@@ -97,6 +97,46 @@ typedef struct {
 
 
 
+/**
+ * @brief GPS Latitude for GNSS
+ *
+ */
+typedef struct {
+    float degrees;                                              /*!< Latitude (degrees) */
+    gps_ns_t latitude_ns;                                         /*!< Latitude N/S Indicator, N=north or S=south. */
+} latitude_gnss_t;
+
+/**
+ * @brief GPS Latitude for GPS
+ *
+ */
+
+typedef struct {
+    uint8_t degrees;                                              /*!< Latitude (degrees) */
+    float minutes;                                                /*!< Latitude (minutes) */
+    gps_ns_t latitude_ns;                                         /*!< Latitude N/S Indicator, N=north or S=south. */
+} latitude_gps_t;
+
+/**
+ * @brief GPS Longitude  for GNSS
+ *
+ */
+typedef struct {
+    float degrees;                                             /*!< Longitude (degrees) */
+    gps_ew_t longitude_ew;                                       /*!< Longitude E/W Indicator, E=east or W=west. */
+} longitude_gnss_t;
+
+/**
+ * @brief GPS Longitude  for GPS
+ *
+ */
+typedef struct {
+    uint8_t degrees;                                             /*!< Longitude (degrees) */
+    float minutes;                                               /*!< Longitude (minutes) */
+    gps_ew_t longitude_ew;                                       /*!< Longitude E/W Indicator, E=east or W=west. */
+} longitude_gps_t;
+
+
 #ifdef __cplusplus
 }
 #endif

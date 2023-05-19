@@ -22,10 +22,8 @@ extern "C" {
  *
  */
 struct a7672_gps {
-    float latitude;                                                /*!< Latitude (degrees) */
-    gps_ns_t latitude_ns;                                          /*!< Latitude N/S Indicator, N=north or S=south. */
-    float longitude;                                               /*!< Longitude (degrees) */
-    gps_ew_t longitude_ew;                                         /*!< Longitude E/W Indicator, E=east or W=west. */
+    latitude_gps_t latitude;                                       /*!< Latitude (degrees) */
+    longitude_gps_t longitude;                                     /*!< Longitude (degrees) */
     gps_date_t date;                                               /*!< Fix date */
     gps_time_t tim;                                                /*!< time in UTC */
     float altitude;                                                /*!< Altitude (meters) */
