@@ -93,6 +93,13 @@ def main():
         updated_changelog.write(orig_items)
     git.add(filename)
 
+    # write the current changelog entry to a local text file (removing links, captions and extra newlines)
+    changelog = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', changelog)
+    changelog = re.sub(r'\#\#[\#\s]*(.+)', r'\1', changelog)
+    changelog = re.sub(r'\n\n', '\n', changelog)
+    with open(os.path.join(root_path, 'release_notes.txt'), 'w') as release_notes:
+        release_notes.write(changelog)
+
 
 if __name__ == '__main__':
     main()

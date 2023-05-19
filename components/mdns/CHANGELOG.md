@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.1.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.1.0)
+
+### Features
+
+- Decouple main module from mdns-networking ([d238e93](https://github.com/espressif/esp-protocols/commit/d238e93))
+
+### Bug Fixes
+
+- Use idf-build-apps package for building mdns ([1a0a41f](https://github.com/espressif/esp-protocols/commit/1a0a41f))
+- socket networking to init interfaces properly ([ee9b04f](https://github.com/espressif/esp-protocols/commit/ee9b04f))
+- Removed unused internal lock from mdns_server struct ([a06fb77](https://github.com/espressif/esp-protocols/commit/a06fb77))
+- Resolve conflicts only on self hosted items ([e69a9eb](https://github.com/espressif/esp-protocols/commit/e69a9eb), [#185](https://github.com/espressif/esp-protocols/issues/185))
+- Fix memory issues reported by valgrind ([0a682e7](https://github.com/espressif/esp-protocols/commit/0a682e7))
+
+### Updated
+
+- docs(common): updated component and example links ([f48d9b2](https://github.com/espressif/esp-protocols/commit/f48d9b2))
+- Add APIs to look up delegated services ([87dcd7d](https://github.com/espressif/esp-protocols/commit/87dcd7d))
+- Fix deadly mdns crash ([4fa3023](https://github.com/espressif/esp-protocols/commit/4fa3023))
+- docs(common): improving documentation ([ca3fce0](https://github.com/espressif/esp-protocols/commit/ca3fce0))
+- append all ipv6 address in mdns answer ([5ed3e9a](https://github.com/espressif/esp-protocols/commit/5ed3e9a))
+- test(mdns): Host tests to use IDF's esp_event_stub ([537d170](https://github.com/espressif/esp-protocols/commit/537d170))
+
 ## [1.0.9](https://github.com/espressif/esp-protocols/commits/mdns-v1.0.9)
 
 ### Features

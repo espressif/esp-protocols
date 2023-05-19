@@ -1,21 +1,70 @@
+#!/bin/bash
+
+# Cleanup the generated html
+rm -rf html docs
+
+# Generate C++ API header of the DCE
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_dce.hpp
+
+# Generate C API header of the modem_api.h
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_api_commands.h
+
+
+# RST with links to C++ API
+cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../../components/esp_modem/include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > en/cxx_api_links.rst
+
 build-docs --target esp32 --language en
 
-cp -rf _build/en/esp32/html .
+mkdir -p docs/generic
+mv _build/en/esp32/html docs/generic
+
 rm -rf _build __pycache__
+
+URL="https://docs.espressif.com/projects/esp-protocols/esp_modem/docs/latest/en/index.html"
+RELEASES_STR=$(curl $URL | awk '/var RELEASES = \[/,/];/' | sed 's/var RELEASES = \[//' | sed 's/];$//' | tr -d '",')
+
+declare -a RELEASES=($RELEASES_STR)
+
+if [ -n "$1" ] && [ -n "${1}" ]; then
+    RELEASES+=(\'$1\')
+fi
+
+for i in "${!RELEASES[@]}"; do
+    RELEASES[i]="${RELEASES[$i]},\n"
+done
 
 # Modifes some version and target fields of index.html
 echo "<script type="text/javascript">
 window.onload =(function() {
     var myAnchor = document.getElementById('version-select');
-    var mySpan = document.createElement('input');
-    mySpan.setAttribute('type', 'text');
-    mySpan.setAttribute('maxLength', '10');
-    mySpan.value = 'latest';
-    mySpan.setAttribute('disabled', true);
+    var mySpan = document.createElement('select');
+    mySpan.style.float = 'left';
+
+    var latest_ver = document.createElement('option');
+    latest_ver.value = 'latest';
+    latest_ver.textContent = 'latest(master)';
+    mySpan.append(latest_ver);
+
+    var RELEASES = [
+    $(echo -e ${RELEASES[@]})
+    ];
+
+    for (var i = RELEASES.length - 1; i >= 0; i--) {
+      var current_ver = document.createElement('option');
+      current_ver.value = RELEASES[i];
+      current_ver.textContent = 'release-v'+ RELEASES[i];
+      mySpan.append(current_ver);
+    }
+
+
     myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+    mySpan.addEventListener('change', function() {
+      window.location.href='https://docs.espressif.com/projects/esp-protocols/esp_modem/docs/'+event.target.value+'/index.html'
+    });
 
     var myAnchor = document.getElementById('target-select');
     var mySpan = document.createElement('input');
+    mySpan.style.float = 'left';
     mySpan.setAttribute('type', 'text');
     mySpan.setAttribute('maxLength', '10');
     mySpan.value = 'all targets';
@@ -23,4 +72,4 @@ window.onload =(function() {
     myAnchor.parentNode.replaceChild(mySpan, myAnchor);
 
 })();
-</script>" >> html/index.html
+</script>" >> docs/generic/html/index.html

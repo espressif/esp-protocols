@@ -1,23 +1,57 @@
+#!/bin/bash
+
+rm -rf docs
 build-docs --target esp32 --language en
 build-docs --target esp32 --language zh_CN
 
-cp -rf _build/en/esp32/html en
-cp -rf _build/zh_CN/esp32/html zh_CN
+mkdir -p docs/en
+mv _build/en/esp32/html docs/en
+mkdir -p docs/zh_CN
+mv _build/zh_CN/esp32/html docs/zh_CN
+
 rm -rf _build __pycache__ tee
 
+URL="https://docs.espressif.com/projects/esp-protocols/mdns/docs/latest/en/index.html"
+RELEASES_STR=$(curl $URL | awk '/var RELEASES = \[/,/];/' | sed 's/var RELEASES = \[//' | sed 's/];$//' | tr -d '",')
+
+declare -a RELEASES=($RELEASES_STR)
+
+if [ -n "$1" ] && [ -n "${1}" ]; then
+    RELEASES+=(\'$1\')
+fi
+
+for i in "${!RELEASES[@]}"; do
+    RELEASES[i]="${RELEASES[$i]},\n"
+done
+
+
 # Modifes some version and target fields of index.html
-echo "<script type="text/javascript">
+echo "<script type='text/javascript'>
 window.onload =(function() {
     var myAnchor = document.getElementById('version-select');
-    var mySpan = document.createElement('input');
-    mySpan.setAttribute('type', 'text');
-    mySpan.setAttribute('maxLength', '10');
-    mySpan.value = 'latest';
-    mySpan.setAttribute('disabled', true);
-    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+    var mySpan = document.createElement('select');
+    mySpan.style.float = 'left';
 
+    var latest_ver = document.createElement('option');
+    latest_ver.value = 'latest';
+    latest_ver.textContent = 'latest(master)';
+    mySpan.append(latest_ver);
+    var RELEASES = [
+    $(echo -e ${RELEASES[@]})
+    ];
+    for (var i = RELEASES.length - 1; i >= 0; i--) {
+      var current_ver = document.createElement('option');
+      current_ver.value = RELEASES[i];
+      current_ver.textContent = 'release-v'+ RELEASES[i];
+      mySpan.append(current_ver);
+    }
+    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+    mySpan.addEventListener('change', function() {
+      window.location.href='https://docs.espressif.com/projects/esp-protocols/mdns/docs/'+event.target.value+'/en/index.html'
+    });
     var myAnchor = document.getElementById('target-select');
     var mySpan = document.createElement('input');
+    mySpan.style.float = 'left';
     mySpan.setAttribute('type', 'text');
     mySpan.setAttribute('maxLength', '10');
     mySpan.value = 'all targets';
@@ -25,4 +59,42 @@ window.onload =(function() {
     myAnchor.parentNode.replaceChild(mySpan, myAnchor);
 
 })();
-</script>" | tee -a html_en/index.html html_zh_CN/index.html > /dev/null
+</script>" >> docs/en/html/index.html
+
+# Modifes some version and target fields of index.html
+echo "<script type="text/javascript">
+window.onload =(function() {
+    var myAnchor = document.getElementById('version-select');
+    var mySpan = document.createElement('select');
+    mySpan.style.float = 'left';
+
+    var latest_ver = document.createElement('option');
+    latest_ver.value = 'latest';
+    latest_ver.textContent = 'latest(master)';
+    mySpan.append(latest_ver);
+
+    for (var i = RELEASES.length - 1; i >= 0; i--) {
+      var current_ver = document.createElement('option');
+      current_ver.value = RELEASES[i];
+      current_ver.textContent = 'release-v'+ RELEASES[i];
+      mySpan.append(current_ver);
+    }
+    var RELEASES = [
+    $(echo -e ${RELEASES[@]})
+    ];
+    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+    mySpan.addEventListener('change', function() {
+      window.location.href='https://docs.espressif.com/projects/esp-protocols/mdns/docs/'+event.target.value+'/zh_CN/index.html'
+    });
+
+    var myAnchor = document.getElementById('target-select');
+    var mySpan = document.createElement('input');
+    mySpan.style.float = 'left';
+    mySpan.setAttribute('type', 'text');
+    mySpan.setAttribute('maxLength', '10');
+    mySpan.value = 'all targets';
+    mySpan.setAttribute('disabled', true);
+    myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+
+})();
+</script>" >> docs/zh_CN/html/index.html

@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include "esp_modem_command_declare_helper.inc"
+#include "generate/esp_modem_command_declare_helper.inc"
 
 
 #define DECLARE_ALL_COMMAND_APIS(...) \

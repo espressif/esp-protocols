@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+    echo "Usage: bump component [version]"
+    exit 1;
+fi
+
+comp=$1; shift;
+
+cd components/${comp}
+if ! cz bump --dry-run; then
+    echo "Commitizen bump commad failed!"
+    exit 1;
+fi
+
+cz_bump_out=`cz bump --files-only "$@"`
+commit_title=`echo "${cz_bump_out}" | head -1`
+commit_body=`cat ../../release_notes.txt`
+
+git add -u .
+git commit -m $"${commit_title}
+
+${commit_body}"

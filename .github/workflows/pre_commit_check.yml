@@ -15,12 +15,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.base_ref }}
+          fetch-depth: 20
       - name: Fetch head and base refs
         # This is necessary for pre-commit to check the changes in the PR branch (and to set origin/HEAD and HEAD refs)
         run: |
           git fetch origin ${{ github.event.pull_request.head.sha }}:pr_ref
           git checkout pr_ref
           git remote set-head origin --auto
+          git merge-base origin/HEAD HEAD || ( echo "Your PR is far behind origin/HEAD, please rebase" && exit 1 )
       - name: Set up Python environment
         uses: actions/setup-python@master
         with:
