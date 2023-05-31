@@ -31,9 +31,9 @@ namespace dce_commands {
  * @param fail_phrase String to be present in the reply to fail this command
  * @param timeout_ms Timeout in ms
  */
-command_result generic_command(CommandableIf *t, const std::string &command,
-                               const std::string &pass_phrase,
-                               const std::string &fail_phrase, uint32_t timeout_ms);
+command_result generic_command(CommandableIf *t, std::string_view command,
+                               std::string_view pass_phrase,
+                               std::string_view fail_phrase, uint32_t timeout_ms);
 
 /**
  * @brief Declaration of all commands is generated from esp_modem_command_declare.inc
