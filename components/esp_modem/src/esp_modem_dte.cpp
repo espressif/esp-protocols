@@ -34,7 +34,7 @@ DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
     cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
     mode(modem_mode::DUAL_MODE) {}
 
-command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
+command_result DTE::command(std::string_view command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l(internal_lock);
     result = command_result::TIMEOUT;
@@ -56,7 +56,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         buffer.consumed += len;
         return false;
     });
-    primary_term->write((uint8_t *)command.c_str(), command.length());
+    primary_term->write((uint8_t *)command.data(), command.length());
     auto got_lf = signal.wait(GOT_LINE, time_ms);
     if (got_lf && result == command_result::TIMEOUT) {
         ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
@@ -66,7 +66,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     return result;
 }
 
-command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)
+command_result DTE::command(std::string_view cmd, got_line_cb got_line, uint32_t time_ms)
 {
     return command(cmd, got_line, time_ms, '\n');
 }
