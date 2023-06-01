@@ -1725,13 +1725,16 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
         mdns_parsed_question_t *question, bool shared, bool send_flush)
 {
     mdns_host_item_t *host = mdns_get_host_item(service->hostname);
+    bool is_delegated = (host != &_mdns_self_host);
     if (question->type == MDNS_TYPE_PTR || question->type == MDNS_TYPE_ANY) {
+        // According to RFC6763-section12.1, for DNS-SD, SRV, TXT and all address records
+        // should be included in additional records.
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
-                !_mdns_alloc_answer(&packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
-                !_mdns_alloc_answer(&packet->answers, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
-                !_mdns_alloc_answer(shared ? &packet->additional : &packet->answers, MDNS_TYPE_A, service, host, send_flush,
+                !_mdns_alloc_answer(is_delegated ? &packet->additional : &packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
+                !_mdns_alloc_answer(is_delegated ? &packet->additional : &packet->answers, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
+                !_mdns_alloc_answer((shared || is_delegated) ? &packet->additional : &packet->answers, MDNS_TYPE_A, service, host, send_flush,
                                     false) ||
-                !_mdns_alloc_answer(shared ? &packet->additional : &packet->answers, MDNS_TYPE_AAAA, service, host,
+                !_mdns_alloc_answer((shared || is_delegated) ? &packet->additional : &packet->answers, MDNS_TYPE_AAAA, service, host,
                                     send_flush, false)) {
             return false;
         }
