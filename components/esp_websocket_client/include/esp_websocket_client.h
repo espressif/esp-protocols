@@ -254,6 +254,9 @@ int esp_websocket_client_send_text(esp_websocket_client_handle_t client, const c
  * @param[in]  len     The length
  * @param[in]  timeout Write data timeout in RTOS ticks
  *
+ *  Notes:
+ *  - In order to send a zero payload, data and len should be set to NULL/0
+ *
  * @return
  *     - Number of data was sent
  *     - (-1) if any errors
