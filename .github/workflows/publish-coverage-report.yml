@@ -1,0 +1,43 @@
+name: Publish coverage report to Github Pages
+
+on:
+  workflow_run:
+    workflows: ["websocket: build/host-tests", "esp-modem: build/host-tests"]
+    types:
+      - completed
+
+jobs:
+  publish_github_pages:
+    runs-on: ubuntu-latest
+    if: github.repository == 'espressif/esp-protocols'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      - name: Download Websocket Artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: websocket__build-host-tests.yml
+          workflow_conclusion: success
+          name: websocket_coverage_report
+          path: websocket_coverage_report_artifact
+      - name: Download Modem Artifact
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: modem__build-host-tests.yml
+          workflow_conclusion: success
+          name: modem_coverage_report
+          path: modem_coverage_report_artifact
+      - name: Merge HTML files
+        run: |
+          echo "<html><body>" > index.html
+          cat modem_coverage_report_artifact/index.html >> index.html
+          cat websocket_coverage_report_artifact/index.html >> index.html
+          echo "</body></html>" >> index.html
+          mkdir coverage_report
+          mv index.html coverage_report
+
+      - name: Deploy generated docs
+        uses: JamesIves/github-pages-deploy-action@4.1.5
+        with:
+          branch: gh-pages
+          folder: coverage_report

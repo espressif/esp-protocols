@@ -19,6 +19,9 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_tls_crypto.h"
+#include "esp_system.h"
+#include <errno.h>
+#include <arpa/inet.h>
 
 static const char *TAG = "websocket_client";
 

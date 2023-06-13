@@ -1,0 +1,20 @@
+name: "websocket: build/host-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+
+jobs:
+  host_test_websocket:
+    if: contains(github.event.pull_request.labels.*.name, 'websocket') || github.event_name == 'push'
+    uses: "./.github/workflows/run-host-tests.yml"
+    with:
+        idf_version: "latest"
+        app_name: "websocket"
+        app_path: "esp-protocols/components/esp_websocket_client/examples/linux"
+        component_path: "esp-protocols/components/esp_websocket_client"
+        upload_artifacts: true
