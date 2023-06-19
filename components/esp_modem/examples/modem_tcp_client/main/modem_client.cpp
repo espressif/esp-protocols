@@ -15,14 +15,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_netif.h"
-#include "esp_netif_ppp.h"
 #include "mqtt_client.h"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include "sock_dce.hpp"
 #include "esp_log.h"
+#include "tcp_transport_mbedtls.h"
+#include "tcp_transport_at.h"
 
 #define BROKER_URL "mqtt.eclipseprojects.io"
+#define BROKER_PORT 8883
+
 
 static const char *TAG = "modem_client";
 static EventGroupHandle_t event_group = NULL;
@@ -70,6 +73,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+
 extern "C" void app_main(void)
 {
 
@@ -101,24 +105,29 @@ extern "C" void app_main(void)
 
     /* create the DCE and initialize network manually (using AT commands) */
     auto dce = sock_dce::create(&dce_config, std::move(dte));
-    if (!dce->init_network()) {
+    if (!dce->init()) {
         ESP_LOGE(TAG,  "Failed to setup network");
         return;
     }
 
-    dce->init_sock(8883);
     esp_mqtt_client_config_t mqtt_config = {};
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
+    mqtt_config.broker.address.port = BROKER_PORT;
     mqtt_config.session.message_retransmit_timeout = 10000;
+#ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
+    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
+    dce->start_listening(BROKER_PORT);
 #else
-    mqtt_config.uri = "mqtt://127.0.0.1";
-    mqtt_config.message_retransmit_timeout = 10000;
+    mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
+    esp_transport_handle_t at = esp_transport_at_init(dce.get());
+    esp_transport_handle_t ssl = esp_transport_tls_init(at);
+
+    mqtt_config.network.transport = ssl;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
-    if (!dce->start(BROKER_URL, 8883)) {
+#ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
+    if (!dce->connect(BROKER_URL, BROKER_PORT)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }
@@ -128,13 +137,16 @@ extern "C" void app_main(void)
         }
         ESP_LOGE(TAG, "Loop exit.. retrying");
         // handle disconnections errors
-        if (!dce->init_network()) {
+        if (!dce->init()) {
             ESP_LOGE(TAG, "Failed to reinit network");
             return;
         }
-        if (!dce->start("test.mosquitto.org", 1883)) {
+        if (!dce->connect(BROKER_URL, BROKER_PORT)) {
             ESP_LOGI(TAG, "Network reinitialized, retrying");
         }
     }
+#else
+    vTaskDelay(portMAX_DELAY);
+#endif
 
 }

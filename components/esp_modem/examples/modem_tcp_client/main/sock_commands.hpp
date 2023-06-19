@@ -13,8 +13,6 @@
 
 namespace sock_commands {
 
-//using namespace esp_modem;
-
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
         esp_modem::return_type name(esp_modem::CommandableIf *t, ## __VA_ARGS__);
 
