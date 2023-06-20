@@ -9,6 +9,11 @@
 #include <stdint.h>
 #include "bsd/string.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef struct esp_timer *esp_timer_handle_t;
 
 typedef void (*esp_timer_cb_t)(void *arg);
@@ -32,3 +37,9 @@ esp_err_t esp_timer_start_periodic(esp_timer_handle_t timer, uint64_t period);
 esp_err_t esp_timer_stop(esp_timer_handle_t timer);
 
 esp_err_t esp_timer_delete(esp_timer_handle_t timer);
+
+int64_t esp_timer_get_time(void);
+
+#ifdef __cplusplus
+}
+#endif

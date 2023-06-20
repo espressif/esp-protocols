@@ -16,7 +16,9 @@
 typedef void *SemaphoreHandle_t;
 typedef void *QueueHandle_t;
 typedef void *TaskHandle_t;
+typedef void *EventGroupHandle_t;
 typedef uint32_t TickType_t;
+typedef TickType_t               EventBits_t;
 
 typedef void (*TaskFunction_t)( void * );
 typedef unsigned int    UBaseType_t;
@@ -30,6 +32,5 @@ typedef int             BaseType_t;
 
 #define pdMS_TO_TICKS(tick)    (tick)
 
-uint32_t esp_get_free_heap_size(void);
 uint32_t esp_random(void);
 void vTaskSuspendAll(void);

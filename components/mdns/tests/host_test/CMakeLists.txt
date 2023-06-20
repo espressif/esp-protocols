@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(EXTRA_COMPONENT_DIRS "../..")
+set(EXTRA_COMPONENT_DIRS "../.." "../../../../common_components/linux_compat")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 set(COMPONENTS main esp_netif_linux)

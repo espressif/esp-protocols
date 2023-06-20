@@ -7,6 +7,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <pthread.h>
 
 void *create_tt(esp_timer_cb_t cb);
 
@@ -36,4 +37,11 @@ esp_err_t esp_timer_delete(esp_timer_handle_t timer)
 {
     destroy_tt(timer);
     return ESP_OK;
+}
+
+int64_t esp_timer_get_time(void)
+{
+    struct timespec spec;
+    clock_gettime(CLOCK_REALTIME, &spec);
+    return spec.tv_nsec / 1000 + spec.tv_sec * 1000000;
 }

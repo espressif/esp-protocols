@@ -6,7 +6,7 @@ endif()
 
 idf_build_get_property(target IDF_TARGET)
 if(${target} STREQUAL "linux")
-    set(dependencies esp_netif_linux esp_timer_linux esp_system)
+    set(dependencies esp_netif_linux esp_timer esp_system)
     set(srcs "mdns.c" ${MDNS_NETWORKING})
 else()
     set(dependencies lwip console esp_netif)
