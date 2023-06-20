@@ -8,6 +8,11 @@
 #include "esp_modem_config.h"
 #include "uart_resource.hpp"
 
+#ifndef UART_HW_FIFO_LEN
+// to build with IDF <= v5.1
+#define UART_HW_FIFO_LEN(uart_nr) UART_FIFO_LEN
+#endif
+
 namespace esp_modem {
 
 uart_resource::~uart_resource()
@@ -18,7 +23,7 @@ uart_resource::~uart_resource()
 }
 
 uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHandle_t *event_queue, int fd)
-    : port(-1)
+    : port(UART_NUM_MAX)
 {
     esp_err_t res;
 
@@ -44,9 +49,9 @@ uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHand
     ESP_MODEM_THROW_IF_ERROR(res, "config uart gpio failed");
     /* Set flow control threshold */
     if (config->flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
-        res = uart_set_hw_flow_ctrl(config->port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_FIFO_LEN - 8);
+        res = uart_set_hw_flow_ctrl(config->port_num, UART_HW_FLOWCTRL_CTS_RTS, UART_HW_FIFO_LEN(config->port_num) - 8);
     } else if (config->flow_control == ESP_MODEM_FLOW_CONTROL_SW) {
-        res = uart_set_sw_flow_ctrl(config->port_num, true, 8, UART_FIFO_LEN - 8);
+        res = uart_set_sw_flow_ctrl(config->port_num, true, 8, UART_HW_FIFO_LEN(config->port_num) - 8);
     }
     ESP_MODEM_THROW_IF_ERROR(res, "config uart flow control failed");
 
