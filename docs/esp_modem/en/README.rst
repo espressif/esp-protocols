@@ -130,3 +130,43 @@ Is defined using standard configuration structures for ``DTE`` and
 
 - :cpp:class:``esp_modem_dte_config_t``
 - :cpp:class:``esp_modem_dce_config_t``
+
+Known issues
+------------
+
+There are certain issues, especially in using CMUX mode which you can
+experience with some devices:
+
+1) Some modems (e.g. A76xx serries) use 2 bytes CMUX payload, which
+might cause buffer overflow when trying to defragment the payload.
+It's recommended to disable ``ESP_MODEM_CMUX_DEFRAGMENT_PAYLOAD``,
+which will fix the issue, but may occasional cause reception of AT command
+replies in fragments.
+
+2) Some devices (such as SIM7000) do not support CMUX mode at all.
+
+3) Device A7670 does no not correctly exit CMUX mode. You can apply
+this patch to adapt the exit sequence https://github.com/espressif/esp-protocols/commit/28de34571012d36f2e87708955dcd435ee5eab70
+
+::
+
+      diff --git a/components/esp_modem/src/esp_modem_cmux.cpp b/components/esp_modem/src/esp_modem_cmux.cpp
+      index 0c480f8..4418c3d 100644
+      --- a/components/esp_modem/src/esp_modem_cmux.cpp
+      +++ b/components/esp_modem/src/esp_modem_cmux.cpp
+      @@ -206,6 +206,15 @@ bool CMux::on_header(CMuxFrame &frame)
+      }
+      size_t payload_offset = std::min(frame.len, 4 - frame_header_offset);
+      memcpy(frame_header + frame_header_offset, frame.ptr, payload_offset);
+      +    if (frame_header[1] == 0xEF) {
+      +        dlci = 0;
+      +        type = frame_header[1];
+      +        payload_len = 0;
+      +        data_available(&frame.ptr[0], payload_len); // Notify DISC
+      +        frame.advance(payload_offset);
+      +        state = cmux_state::FOOTER;
+      +        return true;
+      +    }
+      if ((frame_header[3] & 1) == 0) {
+            if (frame_header_offset + frame.len <= 4) {
+                  frame_header_offset += frame.len;

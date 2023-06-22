@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.1](https://github.com/espressif/esp-protocols/commits/modem-v1.0.1)
+
+### Bug Fixes
+
+- Support UART clean build with IDF v5.2 ([e620eb5](https://github.com/espressif/esp-protocols/commit/e620eb5))
+- enable code coverage publishing to github pages ([4910e89](https://github.com/espressif/esp-protocols/commit/4910e89))
+- fix esp_modem build issue ([ab94566](https://github.com/espressif/esp-protocols/commit/ab94566))
+- Example to use 1.0.0 ([afb6930](https://github.com/espressif/esp-protocols/commit/afb6930))
+- Changelog to correctly pick references ([423e965](https://github.com/espressif/esp-protocols/commit/423e965))
+
+### Updated
+
+- docs(esp_modem): updated documents to show missed topics ([0534853](https://github.com/espressif/esp-protocols/commit/0534853))
+- docs(common): improving documentation ([ca3fce0](https://github.com/espressif/esp-protocols/commit/ca3fce0))
+
 ## [1.0.0](https://github.com/espressif/esp-protocols/commits/modem-v1.0.0)
 
 ### Major changes

@@ -58,7 +58,7 @@ jobs:
     needs: build_esp_modem_tests
     runs-on:
       - self-hosted
-      - BrnoRPI-GH006
+      - modem
     env:
       TEST_DIR: components/esp_modem/${{ matrix.test.path }}
     steps:
