@@ -1,4 +1,4 @@
-menu "Connection Configuration"
+menu "Example Configuration"
 
     config ESP_WIFI_SSID
         string "WiFi SSID"
@@ -24,19 +24,34 @@ menu "Connection Configuration"
         help
             Set APN (Access Point Name), a logical name to choose data network
 
-    config EXAMPLE_MODEM_UART_TX_PIN
+    config EXAMPLE_PPP_UART_TX_PIN
         int "TXD Pin Number"
         default 15
         range 0 31
         help
             Pin number of UART TX.
 
-    config EXAMPLE_MODEM_UART_RX_PIN
+    config EXAMPLE_PPP_UART_RX_PIN
         int "RXD Pin Number"
         default 14
         range 0 31
         help
             Pin number of UART RX.
 
+    choice EXAMPLE_PPP_CONNECT
+        prompt "Connect to PPP server"
+        default EXAMPLE_PPP_CONNECT_ESP_MODEM
+        help
+            Choose modem interface library.
+            We use esp_modem by default, but in some
+            simple cases (and a very constrained environment)
+            we could simply connect UART directly to lwIP.
+            To experiment with this option, choose EXAMPLE_PPP_CONNECT_SIMPLE
+
+        config EXAMPLE_PPP_CONNECT_ESP_MODEM
+            bool "Using esp_modem library"
+        config EXAMPLE_PPP_CONNECT_SIMPLE
+            bool "Using simple UART-PPP driver"
+    endchoice
 
 endmenu

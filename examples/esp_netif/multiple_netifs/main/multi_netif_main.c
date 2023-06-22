@@ -23,9 +23,9 @@
 #include "nvs_flash.h"
 #include "iface_info.h"
 
-iface_info_t *setup_eth(int prio);
-iface_info_t *setup_wifi(int prio);
-iface_info_t *setup_ppp(int prio);
+iface_info_t *eth_init(int prio);
+iface_info_t *wifi_init(int prio);
+iface_info_t *ppp_init(int prio);
 esp_err_t check_connectivity(const char *host);
 
 #define HOST        "www.espressif.com"
@@ -69,9 +69,9 @@ void app_main(void)
 
     // all interfaces
     iface_info_t *ifaces[] = {
-        setup_eth(ETH_PRIO),
-        setup_wifi(WIFI_PRIO),
-        setup_ppp(PPP_PRIO),
+        eth_init(ETH_PRIO),
+        wifi_init(WIFI_PRIO),
+        ppp_init(PPP_PRIO),
     };
     size_t num_of_ifaces = sizeof(ifaces) / sizeof(ifaces[0]);
 
@@ -123,7 +123,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Stop and cleanup all interfaces");
     for (int i = 0; i < num_of_ifaces; ++i) {
         if (ifaces[i]) {
-            ifaces[i]->teardown(ifaces[i]);
+            ifaces[i]->destroy(ifaces[i]);
         }
     }
 }

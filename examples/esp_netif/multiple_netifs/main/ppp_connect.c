@@ -17,16 +17,10 @@
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "mqtt_client.h"
-#include "esp_modem_api.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "iface_info.h"
-
-struct ppp_info_t {
-    iface_info_t parent;
-    esp_modem_dce_t *dce;
-    bool stop_task;
-};
+#include "ppp_connect.h"
 
 static const int CONNECT_BIT = BIT0;
 static const char *TAG = "pppos_connect";
@@ -79,105 +73,23 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 }
 
 
-static void teardown_ppp(iface_info_t *info)
+static void ppp_destroy(iface_info_t *info)
 {
     struct ppp_info_t *ppp_info = __containerof(info, struct ppp_info_t, parent);
 
     esp_netif_action_disconnected(ppp_info->parent.netif, 0, 0, 0);
     esp_netif_action_stop(ppp_info->parent.netif, 0, 0, 0);
-    esp_err_t err = esp_modem_set_mode(ppp_info->dce, ESP_MODEM_MODE_COMMAND);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
-        return;
-    }
-    esp_modem_destroy(ppp_info->dce);
+    ppp_destroy_context(ppp_info);
     vEventGroupDelete(event_group);
     ppp_info->stop_task = true;
     free(info);
 }
 
-static void ppp_task(void *args)
-{
-    struct ppp_info_t *ppp_info = args;
-    int backoff_time = 15000;
-    const int max_backoff = 60000;
-    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
-    esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
-    dte_config.uart_config.tx_io_num = CONFIG_EXAMPLE_MODEM_UART_TX_PIN;
-    dte_config.uart_config.rx_io_num = CONFIG_EXAMPLE_MODEM_UART_RX_PIN;
-
-    ppp_info->dce = esp_modem_new(&dte_config, &dce_config, ppp_info->parent.netif);
-
-    int rssi, ber;
-    esp_err_t ret = esp_modem_get_signal_quality(ppp_info->dce, &rssi, &ber);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d %s", ret, esp_err_to_name(ret));
-        goto failed;
-    }
-    ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
-    ret = esp_modem_set_mode(ppp_info->dce, ESP_MODEM_MODE_DATA);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_DATA) failed with %d", ret);
-        goto failed;
-    }
-
-failed:
-
-#define CONTINUE_LATER() backoff_time *= 2;             \
-                         if (backoff_time > max_backoff) { backoff_time = max_backoff; } \
-                         continue;
-
-    // now let's keep retrying
-    while (!ppp_info->stop_task) {
-        vTaskDelay(pdMS_TO_TICKS(backoff_time));
-        if (ppp_info->parent.connected) {
-            backoff_time = 5000;
-            continue;
-        }
-        // try if the modem got stuck in data mode
-        ESP_LOGI(TAG, "Trying to Sync with modem");
-        ret = esp_modem_sync(ppp_info->dce);
-        if (ret != ESP_OK) {
-            ESP_LOGI(TAG, "Switching to command mode");
-            esp_modem_set_mode(ppp_info->dce, ESP_MODEM_MODE_COMMAND);
-            ESP_LOGI(TAG, "Retry sync 3 times");
-            for (int i = 0; i < 3; ++i) {
-                ret = esp_modem_sync(ppp_info->dce);
-                if (ret == ESP_OK) {
-                    break;
-                }
-                vTaskDelay(pdMS_TO_TICKS(1000));
-            }
-            if (ret != ESP_OK) {
-                CONTINUE_LATER();
-            }
-        }
-        ESP_LOGI(TAG, "Manual hang-up before reconnecting");
-        ret = esp_modem_at(ppp_info->dce, "ATH", NULL, 2000);
-        if (ret != ESP_OK) {
-            CONTINUE_LATER();
-        }
-        ret = esp_modem_get_signal_quality(ppp_info->dce, &rssi, &ber);
-        if (ret != ESP_OK) {
-            CONTINUE_LATER();
-        }
-        ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
-        ret = esp_modem_set_mode(ppp_info->dce, ESP_MODEM_MODE_DATA);
-        if (ret != ESP_OK) {
-            CONTINUE_LATER();
-        }
-    }
-
-#undef CONTINUE_LATER
-
-    vTaskDelete(NULL);
-}
-
-iface_info_t *setup_ppp(int prio)
+iface_info_t *init_ppp(int prio)
 {
     struct ppp_info_t *ppp_info = calloc(1, sizeof(struct ppp_info_t));
     assert(ppp_info);
-    ppp_info->parent.teardown = teardown_ppp;
+    ppp_info->parent.destroy = ppp_destroy;
     ppp_info->parent.name = "Modem";
     event_group = xEventGroupCreate();
 
@@ -187,6 +99,7 @@ iface_info_t *setup_ppp(int prio)
     esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_PPP();
     base_netif_cfg.route_prio = prio;
     esp_netif_config_t netif_ppp_config = { .base = &base_netif_cfg,
+                                            .driver = ppp_driver_cfg,
                                             .stack = ESP_NETIF_NETSTACK_DEFAULT_PPP
                                           };
 
@@ -205,6 +118,6 @@ iface_info_t *setup_ppp(int prio)
 
 err:
 
-    teardown_ppp(&ppp_info->parent);
+    ppp_destroy(&ppp_info->parent);
     return NULL;
 }

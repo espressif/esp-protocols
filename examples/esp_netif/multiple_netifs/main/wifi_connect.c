@@ -66,7 +66,7 @@ static void event_handler(void *args, esp_event_base_t event_base,
     }
 }
 
-static void teardown_wifi(iface_info_t *info)
+static void wifi_destroy(iface_info_t *info)
 {
     esp_netif_action_disconnected(info->netif, 0, 0, 0);
     esp_netif_action_stop(info->netif, 0, 0, 0);
@@ -75,11 +75,11 @@ static void teardown_wifi(iface_info_t *info)
     free(info);
 }
 
-iface_info_t *setup_wifi(int prio)
+iface_info_t *wifi_init(int prio)
 {
     struct iface_info_t *wifi_info = malloc(sizeof(iface_info_t));
     assert(wifi_info);
-    wifi_info->teardown = teardown_wifi;
+    wifi_info->destroy = wifi_destroy;
     wifi_info->name = "WiFi station";
     s_wifi_event_group = xEventGroupCreate();
 
@@ -115,13 +115,13 @@ iface_info_t *setup_wifi(int prio)
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
                  CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
-        teardown_wifi(wifi_info);
+        wifi_destroy(wifi_info);
         wifi_info = NULL;
     } else if (CONFIG_ESP_MAXIMUM_RETRY == 0) {
         ESP_LOGI(TAG, "No connection at the moment, will keep retrying...");
     } else {
         ESP_LOGE(TAG, "Failed to connect withing specified timeout");
-        teardown_wifi(wifi_info);
+        wifi_destroy(wifi_info);
         wifi_info = NULL;
     }
     return wifi_info;

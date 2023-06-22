@@ -82,7 +82,7 @@ static void got_ip_event_handler(void *args, esp_event_base_t event_base,
 }
 
 
-static void teardown_eth(iface_info_t *info)
+static void eth_destroy(iface_info_t *info)
 {
     struct eth_info_t *eth_info = __containerof(info, struct eth_info_t, parent);
 
@@ -95,11 +95,11 @@ static void teardown_eth(iface_info_t *info)
     free(eth_info);
 }
 
-iface_info_t *setup_eth(int prio)
+iface_info_t *eth_init(int prio)
 {
     struct eth_info_t *eth_info = malloc(sizeof(struct eth_info_t));
     assert(eth_info);
-    eth_info->parent.teardown = teardown_eth;
+    eth_info->parent.destroy = eth_destroy;
     eth_info->parent.name = "Ethernet";
 
     // Init common MAC and PHY configs to default

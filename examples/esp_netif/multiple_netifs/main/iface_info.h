@@ -18,7 +18,7 @@
 struct iface_info_t {
     esp_netif_t *netif;
     esp_netif_dns_info_t dns[2];
-    void (*teardown)(struct iface_info_t *);
+    void (*destroy)(struct iface_info_t *);
     const char *name;
     bool connected;
 };
