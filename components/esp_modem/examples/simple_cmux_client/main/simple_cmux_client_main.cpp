@@ -175,6 +175,9 @@ extern "C" void app_main(void)
 #endif
     assert(dce);
 
+    /* Try to connect to the network and publish an mqtt topic */
+    StatusHandler handler;
+
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
@@ -215,8 +218,6 @@ extern "C" void app_main(void)
     }
 #endif
 
-    /* Try to connect to the network and publish an mqtt topic */
-    StatusHandler handler;
     if (!handler.wait_for(StatusHandler::IP_Event, 60000)) {
         ESP_LOGE(TAG, "Cannot get IP within specified timeout... exiting");
         return;

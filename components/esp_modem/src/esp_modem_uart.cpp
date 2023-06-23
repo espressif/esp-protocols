@@ -64,7 +64,6 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
-        ESP_MODEM_THROW_IF_FALSE(signal.wait(TASK_PARAMS, 1000), "Failed to set UART task params");
         on_read = std::move(f);
     }
 
@@ -91,7 +90,6 @@ private:
     static const size_t TASK_INIT = BIT0;
     static const size_t TASK_START = BIT1;
     static const size_t TASK_STOP = BIT2;
-    static const size_t TASK_PARAMS = BIT3;
 
     QueueHandle_t event_queue;
     uart_resource uart;
@@ -118,9 +116,7 @@ void UartTerminal::task()
         return; // exits to the static method where the task gets deleted
     }
     while (signal.is_any(TASK_START)) {
-        signal.set(TASK_PARAMS);
         if (get_event(event, 100)) {
-            signal.clear(TASK_PARAMS);
             switch (event.type) {
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);

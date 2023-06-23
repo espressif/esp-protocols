@@ -39,6 +39,7 @@ static bool exit_data(DTE &dte, ModuleIf &device, Netif &netif)
     });
     netif.wait_until_ppp_exits();
     if (!signal->wait(1, 2000)) {
+        dte.set_read_cb(nullptr);
         if (!device.set_mode(modem_mode::COMMAND_MODE)) {
             return false;
         }
