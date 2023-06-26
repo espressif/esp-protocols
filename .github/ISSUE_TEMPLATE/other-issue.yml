@@ -7,7 +7,7 @@ body:
       label: Answers checklist.
       description: Before submitting a new issue, please follow the checklist and try to find the answer.
       options:
-        - label: I have read the documentation for [esp-protocols components](https://espressif.github.io/esp-protocols/) and the issue is not addressed there.
+        - label: I have read the documentation for esp-protocols [components](https://github.com/espressif/esp-protocols#readme) and the issue is not addressed there.
           required: true
         - label: I have updated my esp-protocols branch (master or release) to the latest version and checked that the issue is present there.
           required: true
