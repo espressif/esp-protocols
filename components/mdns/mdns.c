@@ -2993,6 +2993,27 @@ static void free_address_list(mdns_ip_addr_t *address_list)
     }
 }
 
+
+static bool _mdns_delegate_hostname_set_address(const char *hostname, mdns_ip_addr_t *address_list)
+{
+    if (!_str_null_or_empty(_mdns_server->hostname) &&
+            strcasecmp(hostname, _mdns_server->hostname) == 0) {
+        return false;
+    }
+    mdns_host_item_t *host = _mdns_host_list;
+    while (host != NULL) {
+        if (strcasecmp(hostname, host->hostname) == 0) {
+            // free previous address list
+            free_address_list(host->address_list);
+            // set current address list to the host
+            host->address_list = address_list;
+            return true;
+        }
+        host = host->next;
+    }
+    return false;
+}
+
 static mdns_ip_addr_t *copy_address_list(const mdns_ip_addr_t *address_list)
 {
     mdns_ip_addr_t *head = NULL;
@@ -4845,6 +4866,7 @@ static void _mdns_free_action(mdns_action_t *action)
     case ACTION_RX_HANDLE:
         _mdns_packet_free(action->data.rx_handle.packet);
         break;
+    case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
     case ACTION_DELEGATE_HOSTNAME_ADD:
         free((char *)action->data.delegate_hostname.hostname);
         free_address_list(action->data.delegate_hostname.address_list);
@@ -5064,6 +5086,13 @@ static void _mdns_execute_action(mdns_action_t *action)
             free((char *)action->data.delegate_hostname.hostname);
             free_address_list(action->data.delegate_hostname.address_list);
         }
+        break;
+    case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
+        if (!_mdns_delegate_hostname_set_address(action->data.delegate_hostname.hostname,
+                action->data.delegate_hostname.address_list)) {
+            free_address_list(action->data.delegate_hostname.address_list);
+        }
+        free((char *)action->data.delegate_hostname.hostname);
         break;
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         _mdns_delegate_hostname_remove(action->data.delegate_hostname.hostname);
@@ -5626,6 +5655,36 @@ esp_err_t mdns_delegate_hostname_remove(const char *hostname)
     }
     action->type = ACTION_DELEGATE_HOSTNAME_REMOVE;
     action->data.delegate_hostname.hostname = new_hostname;
+    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+        free(new_hostname);
+        free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+esp_err_t mdns_delegate_hostname_set_address(const char *hostname, const mdns_ip_addr_t *address_list)
+{
+    if (!_mdns_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (_str_null_or_empty(hostname) || strlen(hostname) > (MDNS_NAME_BUF_LEN - 1)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    char *new_hostname = strndup(hostname, MDNS_NAME_BUF_LEN - 1);
+    if (!new_hostname) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        free(new_hostname);
+        return ESP_ERR_NO_MEM;
+    }
+    action->type = ACTION_DELEGATE_HOSTNAME_SET_ADDR;
+    action->data.delegate_hostname.hostname = new_hostname;
+    action->data.delegate_hostname.address_list = copy_address_list(address_list);
     if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
         free(new_hostname);
         free(action);

@@ -159,6 +159,21 @@ esp_err_t mdns_hostname_get(char *hostname);
 esp_err_t mdns_delegate_hostname_add(const char *hostname, const mdns_ip_addr_t *address_list);
 
 /**
+ * @brief  Set the address to a delegated hostname
+ *
+ * @param  hostname     Hostname to set
+ * @param  address_list The IP address list of the host
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE mDNS is not running
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NO_MEM memory error
+ *
+ */
+esp_err_t mdns_delegate_hostname_set_address(const char *hostname, const mdns_ip_addr_t *address_list);
+
+/**
  * @brief  Remove a delegated hostname
  *         All the services added to this host will also be removed.
  *
