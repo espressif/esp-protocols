@@ -236,6 +236,14 @@ public:
         return nullptr;
     }
 
+    template <typename T_Module>
+    static std::unique_ptr<DCE> create_unique_dce_from(const esp_modem::dce_config *config,
+            std::shared_ptr<esp_modem::DTE> dte,
+            esp_netif_t *netif)
+    {
+        return build_generic_DCE<T_Module, DCE, std::unique_ptr<DCE>>(config, std::move(dte), netif);
+    }
+
 private:
     ModemType m;
 
