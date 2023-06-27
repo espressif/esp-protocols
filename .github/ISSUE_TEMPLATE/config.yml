@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
-  - name: esp-protocols documentation
-    url: https://espressif.github.io/esp-protocols/
+  - name: esp-protocols documentation links
+    url: https://github.com/espressif/esp-protocols#readme
     about: Documenation for esp-protocols components.
   - name: ESP-IDF Programming Guide
     url: https://docs.espressif.com/projects/esp-idf/en/latest/
