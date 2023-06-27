@@ -65,9 +65,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
 
 void Netif::receive(uint8_t *data, size_t len)
 {
-    if (signal.is_any(PPP_STARTED)) {
-        esp_netif_receive(driver.base.netif, data, len, nullptr);
-    }
+    esp_netif_receive(driver.base.netif, data, len, nullptr);
 }
 
 Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
@@ -89,8 +87,8 @@ void Netif::start()
         receive(data, len);
         return true;
     });
-    esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
     signal.set(PPP_STARTED);
+    esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
 }
 
 void Netif::stop()
