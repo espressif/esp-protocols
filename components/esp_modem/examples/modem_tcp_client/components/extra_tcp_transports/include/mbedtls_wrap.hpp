@@ -6,28 +6,32 @@
 #pragma once
 
 #include <utility>
+#include <span>
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 
-using  const_buf = std::pair<const unsigned char *, std::size_t>;
-using  buf = std::pair<unsigned char *, std::size_t>;
+using  const_buf = std::span<const unsigned char>;
 
 class Tls {
 public:
+    enum class is_server : bool {};
+    enum class do_verify : bool {};
+
     Tls();
-    bool init(bool is_server, bool verify);
+    virtual ~Tls();
+    bool init(is_server server, do_verify verify);
     int handshake();
     int write(const unsigned char *buf, size_t len);
     int read(unsigned char *buf, size_t len);
-    bool set_own_cert(const_buf crt, const_buf key);
-    bool set_ca_cert(const_buf crt);
+    [[nodiscard]] bool set_own_cert(const_buf crt, const_buf key);
+    [[nodiscard]] bool set_ca_cert(const_buf crt);
     virtual int send(const unsigned char *buf, size_t len) = 0;
     virtual int recv(unsigned char *buf, size_t len) = 0;
     size_t get_available_bytes();
 
-private:
+protected:
     mbedtls_ssl_context ssl_{};
     mbedtls_x509_crt public_cert_{};
     mbedtls_pk_context pk_key_{};
@@ -35,7 +39,9 @@ private:
     mbedtls_ssl_config conf_{};
     mbedtls_ctr_drbg_context ctr_drbg_{};
     mbedtls_entropy_context entropy_{};
+    virtual void delay() {}
 
+private:
     static void print_error(const char *function, int error_code);
     static int bio_write(void *ctx, const unsigned char *buf, size_t len);
     static int bio_read(void *ctx, unsigned char *buf, size_t len);

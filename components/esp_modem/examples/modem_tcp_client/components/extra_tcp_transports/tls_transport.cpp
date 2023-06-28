@@ -3,6 +3,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_transport.h"
 #include "mbedtls_wrap.hpp"
@@ -19,8 +21,9 @@ public:
 private:
     esp_transport_handle_t transport_{};
     int connect(const char *host, int port, int timeout_ms);
+    void delay() override;
 
-    struct priv {
+    struct transport {
         static int connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms);
         static int read(esp_transport_handle_t t, char *buffer, int len, int timeout_ms);
         static int write(esp_transport_handle_t t, const char *buffer, int len, int timeout_ms);
@@ -57,7 +60,7 @@ int TlsTransport::recv(unsigned char *buf, size_t len)
 
 bool TlsTransport::set_func(esp_transport_handle_t tls_transport)
 {
-    return esp_transport_set_func(tls_transport, TlsTransport::priv::connect, TlsTransport::priv::read, TlsTransport::priv::write, TlsTransport::priv::close, TlsTransport::priv::poll_read, TlsTransport::priv::poll_write, TlsTransport::priv::destroy) == ESP_OK;
+    return esp_transport_set_func(tls_transport, TlsTransport::transport::connect, TlsTransport::transport::read, TlsTransport::transport::write, TlsTransport::transport::close, TlsTransport::transport::poll_read, TlsTransport::transport::poll_write, TlsTransport::transport::destroy) == ESP_OK;
 }
 
 int TlsTransport::connect(const char *host, int port, int timeout_ms)
@@ -65,22 +68,24 @@ int TlsTransport::connect(const char *host, int port, int timeout_ms)
     return esp_transport_connect(transport_, host, port, timeout_ms);
 }
 
-int TlsTransport::priv::connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+void TlsTransport::delay()
 {
-    ESP_LOGI("tag", "SSL connect!");
-    auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
-    tls->init(false, false);
+    vTaskDelay(pdMS_TO_TICKS(500));
+}
 
-    ESP_LOGI("tag", "TCP connect!");
+int TlsTransport::transport::connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
+{
+    auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
+    tls->init(is_server{false}, do_verify{false});
+
     auto ret = tls->connect(host, port, timeout_ms);
     if (ret < 0) {
-        ESP_LOGI("tag", "TCP connect fail!");
         return ret;
     }
     return tls->handshake();
 }
 
-int TlsTransport::priv::read(esp_transport_handle_t t, char *buffer, int len, int timeout_ms)
+int TlsTransport::transport::read(esp_transport_handle_t t, char *buffer, int len, int timeout_ms)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     if (tls->get_available_bytes() <= 0) {
@@ -95,7 +100,7 @@ int TlsTransport::priv::read(esp_transport_handle_t t, char *buffer, int len, in
     return tls->read(reinterpret_cast<unsigned char *>(buffer), len);
 }
 
-int TlsTransport::priv::write(esp_transport_handle_t t, const char *buffer, int len, int timeout_ms)
+int TlsTransport::transport::write(esp_transport_handle_t t, const char *buffer, int len, int timeout_ms)
 {
     int poll;
     if ((poll = esp_transport_poll_write(t, timeout_ms)) <= 0) {
@@ -107,25 +112,25 @@ int TlsTransport::priv::write(esp_transport_handle_t t, const char *buffer, int 
     return tls->write(reinterpret_cast<const unsigned char *>(buffer), len);
 }
 
-int TlsTransport::priv::close(esp_transport_handle_t t)
+int TlsTransport::transport::close(esp_transport_handle_t t)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     return esp_transport_close(tls->transport_);
 }
 
-int TlsTransport::priv::poll_read(esp_transport_handle_t t, int timeout_ms)
+int TlsTransport::transport::poll_read(esp_transport_handle_t t, int timeout_ms)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     return esp_transport_poll_read(tls->transport_, timeout_ms);
 }
 
-int TlsTransport::priv::poll_write(esp_transport_handle_t t, int timeout_ms)
+int TlsTransport::transport::poll_write(esp_transport_handle_t t, int timeout_ms)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     return esp_transport_poll_write(tls->transport_, timeout_ms);
 }
 
-int TlsTransport::priv::destroy(esp_transport_handle_t t)
+int TlsTransport::transport::destroy(esp_transport_handle_t t)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     return esp_transport_destroy(tls->transport_);

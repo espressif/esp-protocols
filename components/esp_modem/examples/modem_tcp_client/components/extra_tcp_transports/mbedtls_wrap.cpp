@@ -7,24 +7,24 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls_wrap.hpp"
 
-bool Tls::init(bool is_server, bool verify)
+bool Tls::init(is_server server, do_verify verify)
 {
     const char pers[] = "mbedtls_wrapper";
     mbedtls_entropy_init(&entropy_);
     mbedtls_ctr_drbg_seed(&ctr_drbg_, mbedtls_entropy_func, &entropy_, (const unsigned char *)pers, sizeof(pers));
-    int ret = mbedtls_ssl_config_defaults(&conf_, is_server ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
+    int ret = mbedtls_ssl_config_defaults(&conf_, server == is_server{true} ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
     if (ret) {
         print_error("mbedtls_ssl_config_defaults", ret);
         return false;
     }
     mbedtls_ssl_conf_rng(&conf_, mbedtls_ctr_drbg_random, &ctr_drbg_);
-    mbedtls_ssl_conf_authmode(&conf_, verify ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_NONE);
+    mbedtls_ssl_conf_authmode(&conf_, verify == do_verify{true} ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_NONE);
     ret = mbedtls_ssl_conf_own_cert(&conf_, &public_cert_, &pk_key_);
     if (ret) {
         print_error("mbedtls_ssl_conf_own_cert", ret);
         return false;
     }
-    if (verify) {
+    if (verify == do_verify{true}) {
         mbedtls_ssl_conf_ca_chain(&conf_, &ca_cert_, nullptr);
     }
     ret = mbedtls_ssl_setup(&ssl_, &conf_);
@@ -43,12 +43,9 @@ void Tls::print_error(const char *function, int error_code)
     printf("%s() returned -0x%04X\n", function, -error_code);
     printf("-0x%04X: %s\n", -error_code, error_buf);
 }
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_log.h"
+
 int Tls::handshake()
 {
-    ESP_LOGI("TLS", "handshake");
     int ret = 0;
     mbedtls_ssl_set_bio(&ssl_, this, bio_write, bio_read, nullptr);
 
@@ -57,9 +54,8 @@ int Tls::handshake()
             print_error( "mbedtls_ssl_handshake returned", ret );
             return -1;
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        delay();
     }
-    ESP_LOGI("TLS", "handshake done with %d", ret);
     return ret;
 }
 
@@ -87,12 +83,12 @@ int Tls::read(unsigned char *buf, size_t len)
 
 bool Tls::set_own_cert(const_buf crt, const_buf key)
 {
-    int ret = mbedtls_x509_crt_parse(&public_cert_, crt.first, crt.second);
+    int ret = mbedtls_x509_crt_parse(&public_cert_, crt.data(), crt.size());
     if (ret < 0) {
         print_error("mbedtls_x509_crt_parse", ret);
         return false;
     }
-    ret = mbedtls_pk_parse_key(&pk_key_, key.first, key.second, nullptr, 0);
+    ret = mbedtls_pk_parse_key(&pk_key_, key.data(), key.size(), nullptr, 0);
     if (ret < 0) {
         print_error("mbedtls_pk_parse_keyfile", ret);
         return false;
@@ -102,7 +98,7 @@ bool Tls::set_own_cert(const_buf crt, const_buf key)
 
 bool Tls::set_ca_cert(const_buf crt)
 {
-    int ret = mbedtls_x509_crt_parse(&ca_cert_, crt.first, crt.second);
+    int ret = mbedtls_x509_crt_parse(&ca_cert_, crt.data(), crt.size());
     if (ret < 0) {
         print_error("mbedtls_x509_crt_parse", ret);
         return false;
@@ -126,4 +122,13 @@ int Tls::mbedtls_pk_parse_key(mbedtls_pk_context *ctx, const unsigned char *key,
 size_t Tls::get_available_bytes()
 {
     return ::mbedtls_ssl_get_bytes_avail(&ssl_);
+}
+
+Tls::~Tls()
+{
+    ::mbedtls_ssl_config_free(&conf_);
+    ::mbedtls_ssl_free(&ssl_);
+    ::mbedtls_pk_free(&pk_key_);
+    ::mbedtls_x509_crt_free(&public_cert_);
+    ::mbedtls_x509_crt_free(&ca_cert_);
 }

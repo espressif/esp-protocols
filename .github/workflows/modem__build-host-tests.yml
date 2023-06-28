@@ -22,6 +22,8 @@ jobs:
             example: modem_tcp_client
           - idf_ver: "release-v4.3"
             example: modem_tcp_client
+          - idf_ver: "release-v4.4"
+            example: modem_tcp_client
         include:
           - idf_ver: "release-v4.2"
             skip_config: usb
