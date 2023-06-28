@@ -32,7 +32,11 @@ if __name__ == '__main__':
 
     IDF_PATH = os.environ['IDF_PATH']
 
-    ignore_warning = os.environ['EXPECTED_WARNING'] if 'EXPECTED_WARNING' in os.environ else None
+    # Compose the ignore warning strings from the global list and from the environment
+    ignore_warning_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),'ignore_build_warnings.txt')
+    ignore_warning = open(ignore_warning_file).read().rstrip('\n').split('\n')
+    if 'EXPECTED_WARNING' in os.environ:
+        ignore_warning += os.environ['EXPECTED_WARNING'].split('\n')
     if args.linux:
         SUPPORTED_TARGETS.append('linux')
         ignore_warning = 'warning: '  # Ignore all common warnings on linux builds
