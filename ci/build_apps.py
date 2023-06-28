@@ -26,20 +26,29 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--rules', nargs='*', default=['sdkconfig.ci=default', 'sdkconfig.ci.*=', '=default'], help='Rules how to treat configs')
     parser.add_argument('-m', '--manifests', nargs='*', default=[], help='list of manifest files')
     parser.add_argument('-d', '--delete', action='store_true', help='Delete build artifacts')
+    parser.add_argument('-c', '--recursive', action='store_true', help='Build recursively')
+    parser.add_argument('-l', '--linux', action='store_true', help='Include linux build (dont check warnings)')
     args = parser.parse_args()
 
     IDF_PATH = os.environ['IDF_PATH']
 
-    print(args.paths)
+    # Compose the ignore warning strings from the global list and from the environment
+    ignore_warning_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),'ignore_build_warnings.txt')
+    ignore_warning = open(ignore_warning_file).read().rstrip('\n').split('\n')
+    if 'EXPECTED_WARNING' in os.environ:
+        ignore_warning += os.environ['EXPECTED_WARNING'].split('\n')
+    if args.linux:
+        SUPPORTED_TARGETS.append('linux')
+        ignore_warning = 'warning: '  # Ignore all common warnings on linux builds
     setup_logging(2)
     apps = find_apps(
         args.paths,
-        recursive=False,
+        recursive=args.recursive,
         target=args.target,
         build_dir='build_@t_@w',
         config_rules_str=args.rules,
         build_log_path='build_log.txt',
-        size_json_path='size.json',
+        size_json_path='size.json' if not args.linux else None,
         check_warnings=True,
         preserve=not args.delete,
         manifest_files=args.manifests,
@@ -54,5 +63,5 @@ if __name__ == '__main__':
         build_apps(apps,
                    dry_run=False,
                    keep_going=False,
-                   ignore_warning_strs=os.environ['EXPECTED_WARNING']
-                   if 'EXPECTED_WARNING' in os.environ else None))
+                   ignore_warning_strs=ignore_warning)
+    )

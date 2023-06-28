@@ -1,2 +1,0 @@
-CONFIG_IDF_TARGET="linux"
-# CONFIG_ESP_EVENT_POST_FROM_ISR is not set
