@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.0)
+
+### Features
+
+- add an API for setting address to a delegated host ([ddc3eb6](https://github.com/espressif/esp-protocols/commit/ddc3eb6))
+- Add support for lwip build under linux ([588465d](https://github.com/espressif/esp-protocols/commit/588465d))
+- Allow for adding a delegated host with no address ([c562461](https://github.com/espressif/esp-protocols/commit/c562461))
+- Add APIs for looking up self hosted services and getting the self hostname ([f0df12d](https://github.com/espressif/esp-protocols/commit/f0df12d))
+
+### Bug Fixes
+
+- Refactor freertos linux compat layers ([79a0e57](https://github.com/espressif/esp-protocols/commit/79a0e57))
+- Fix delegated service PTR response ([cab0e1d](https://github.com/espressif/esp-protocols/commit/cab0e1d))
+- Added unit tests to CI + minor fix to pass it ([c974c14](https://github.com/espressif/esp-protocols/commit/c974c14))
+
+### Updated
+
+- docs: update documentation links ([4de5298](https://github.com/espressif/esp-protocols/commit/4de5298))
+
 ## [1.1.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.1.0)
 
 ### Features
