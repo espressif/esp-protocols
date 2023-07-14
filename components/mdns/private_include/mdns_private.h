@@ -93,7 +93,7 @@
 #define MDNS_SERVICE_ADD_TIMEOUT_MS CONFIG_MDNS_SERVICE_ADD_TIMEOUT_MS
 
 #define MDNS_PACKET_QUEUE_LEN       16                      // Maximum packets that can be queued for parsing
-#define MDNS_ACTION_QUEUE_LEN       16                      // Maximum actions pending to the server
+#define MDNS_ACTION_QUEUE_LEN       CONFIG_MDNS_ACTION_QUEUE_LEN  // Maximum actions pending to the server
 #define MDNS_TXT_MAX_LEN            1024                    // Maximum string length of text data in TXT record
 #if defined(CONFIG_LWIP_IPV6) && defined(CONFIG_MDNS_RESPOND_REVERSE_QUERIES)
 #define MDNS_NAME_MAX_LEN           (64+4)                  // Need to account for IPv6 reverse queries (64 char address  + ".ip6" )
