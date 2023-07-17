@@ -828,7 +828,9 @@ INPUT = \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_types.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_terminal.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_cmux.hpp \
-    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce.hpp
+    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce.hpp \
+    $(PROJECT_PATH)/../docs/esp_modem/en/esp_modem_api_commands.h \
+    $(PROJECT_PATH)/../docs/esp_modem/en/esp_modem_dce.hpp
 
 
 # The last two are generated
