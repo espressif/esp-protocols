@@ -27,6 +27,13 @@ menu "mDNS"
             higher than priorities of system tasks. Compile time warning/error
             would be emitted if the chosen task priority were too high.
 
+    config MDNS_ACTION_QUEUE_LEN
+        int "Maximum actions pending to the server"
+        range 8 64
+        default 16
+        help
+            Allows setting the length of mDNS action queue.
+
     config MDNS_TASK_STACK_SIZE
         int "mDNS task stack size"
         default 4096
