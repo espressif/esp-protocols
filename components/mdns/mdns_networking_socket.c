@@ -372,7 +372,7 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 
 esp_err_t _mdns_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    ESP_LOGI(TAG, "_mdns_pcb_init(tcpip_if=%d, ip_protocol=%d)", tcpip_if, ip_protocol);
+    ESP_LOGI(TAG, "_mdns_pcb_init(tcpip_if=%lu, ip_protocol=%lu)", (unsigned long)tcpip_if, (unsigned long)ip_protocol);
     if (!create_pcb(tcpip_if, ip_protocol)) {
         return ESP_FAIL;
     }

@@ -120,14 +120,14 @@ bool DCE::at_to_sock()
 {
     uint64_t data;
     read(data_ready_fd, &data, sizeof(data));
-    ESP_LOGD(TAG, "select read: modem data available %x", data);
+    ESP_LOGD(TAG, "select read: modem data available %" PRIu64, data);
     if (!signal.wait(IDLE, 1000)) {
         ESP_LOGE(TAG, "Failed to get idle");
         close_sock();
         return false;
     }
     if (state != status::IDLE) {
-        ESP_LOGE(TAG, "Unexpected state %d", state);
+        ESP_LOGE(TAG, "Unexpected state %d", static_cast<int>(state));
         close_sock();
         return false;
     }
@@ -145,7 +145,7 @@ bool DCE::sock_to_at()
         return false;
     }
     if (state != status::IDLE) {
-        ESP_LOGE(TAG,  "Unexpected state %d", state);
+        ESP_LOGE(TAG,  "Unexpected state %d", static_cast<int>(state));
         close_sock();
         return false;
     }

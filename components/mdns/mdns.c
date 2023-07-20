@@ -1476,7 +1476,7 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     _mdns_set_u16(packet, MDNS_HEAD_ADDITIONAL_OFFSET, count);
 
 #ifdef MDNS_ENABLE_DEBUG
-    _mdns_dbg_printf("\nTX[%u][%u]: ", p->tcpip_if, p->ip_protocol);
+    _mdns_dbg_printf("\nTX[%lu][%lu]: ", (unsigned long)p->tcpip_if, (unsigned long)p->ip_protocol);
     if (p->dst.type == ESP_IPADDR_TYPE_V4) {
         _mdns_dbg_printf("To: " IPSTR ":%u, ", IP2STR(&p->dst.u_addr.ip4), p->port);
     } else {
@@ -3492,7 +3492,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
     mdns_search_once_t *search_result = NULL;
 
 #ifdef MDNS_ENABLE_DEBUG
-    _mdns_dbg_printf("\nRX[%u][%u]: ", packet->tcpip_if, (uint32_t)packet->ip_protocol);
+    _mdns_dbg_printf("\nRX[%lu][%lu]: ", (unsigned long)packet->tcpip_if, (unsigned long)packet->ip_protocol);
     if (packet->src.type == ESP_IPADDR_TYPE_V4) {
         _mdns_dbg_printf("From: " IPSTR ":%u, To: " IPSTR ", ", IP2STR(&packet->src.u_addr.ip4), packet->src_port, IP2STR(&packet->dest.u_addr.ip4));
     } else {
@@ -6537,7 +6537,7 @@ void mdns_debug_packet(const uint8_t *data, size_t len)
     mdns_name_t *name = &n;
     memset(name, 0, sizeof(mdns_name_t));
 
-    _mdns_dbg_printf("Packet[%u]: ", t);
+    _mdns_dbg_printf("Packet[%" PRIu32 "]: ", t);
 
     header.id = _mdns_read_u16(data, MDNS_HEAD_ID_OFFSET);
     header.flags = _mdns_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
@@ -6675,7 +6675,7 @@ void mdns_debug_packet(const uint8_t *data, size_t len)
             if (flush) {
                 _mdns_dbg_printf("FLUSH ");
             }
-            _mdns_dbg_printf("%u ", ttl);
+            _mdns_dbg_printf("%" PRIu32, ttl);
             _mdns_dbg_printf("[%u] ", data_len);
             if (type == MDNS_TYPE_PTR) {
                 if (!_mdns_parse_fqdn(data, data_ptr, name, len)) {

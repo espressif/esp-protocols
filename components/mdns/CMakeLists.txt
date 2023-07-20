@@ -20,7 +20,6 @@ idf_component_register(
         PRIV_INCLUDE_DIRS "private_include"
         REQUIRES ${dependencies}
         PRIV_REQUIRES ${private_dependencies})
-target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 
 if(${target} STREQUAL "linux")
     target_link_libraries(${COMPONENT_LIB} PRIVATE "-lbsd")

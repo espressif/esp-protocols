@@ -173,7 +173,7 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Waiting for USB device connection...");
         auto dte = create_usb_dte(&dte_config);
         dte->set_error_cb([&](terminal_error err) {
-            ESP_LOGI(TAG, "error handler %d", err);
+            ESP_LOGI(TAG, "error handler %d", (int)err);
             if (err == terminal_error::DEVICE_GONE) {
                 exit_signal.set(1);
             }
@@ -482,7 +482,7 @@ extern "C" void app_main(void)
     // wait for exit
     exit_signal.wait_any(1, UINT32_MAX);
     s_repl->del(s_repl);
-    ESP_LOGI(TAG, "Exiting...%d", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "Exiting...%" PRIu32, esp_get_free_heap_size());
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
     // USB example runs in a loop to demonstrate hot-plugging and sudden disconnection features.
 } // while (1)

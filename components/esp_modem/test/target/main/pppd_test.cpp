@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -27,7 +27,7 @@ static void on_modem_event(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
     if (event_base == IP_EVENT) {
-        ESP_LOGD(TAG, "IP event! %d", event_id);
+        ESP_LOGD(TAG, "IP event! %" PRId32, event_id);
         if (event_id == IP_EVENT_PPP_GOT_IP) {
             esp_netif_dns_info_t dns_info;
 
@@ -61,7 +61,7 @@ static void on_modem_event(void *arg, esp_event_base_t event_base,
 static void on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
-    ESP_LOGI(TAG, "PPP state changed event %d", event_id);
+    ESP_LOGI(TAG, "PPP state changed event %" PRId32, event_id);
     if (event_id == NETIF_PPP_ERRORUSER) {
         /* User interrupted event from esp-netif */
         esp_netif_t *netif = static_cast<esp_netif_t *>(event_data);

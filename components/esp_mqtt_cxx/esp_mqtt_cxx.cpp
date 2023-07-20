@@ -153,7 +153,7 @@ Client::Client(esp_mqtt_client_config_t const &config) :  handler(esp_mqtt_clien
 
 void Client::mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) noexcept
 {
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIu32, base, event_id);
     auto *event = static_cast<esp_mqtt_event_t *>(event_data);
     auto &client = *static_cast<Client *>(handler_args);
     switch (event->event_id) {

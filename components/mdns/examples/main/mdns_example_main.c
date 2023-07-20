@@ -94,7 +94,7 @@ static void mdns_print_results(mdns_result_t *results)
     int i = 1, t;
     while (r) {
         if (r->esp_netif) {
-            printf("%d: Interface: %s, Type: %s, TTL: %u\n", i++, esp_netif_get_ifkey(r->esp_netif),
+            printf("%d: Interface: %s, Type: %s, TTL: %" PRIu32 "\n", i++, esp_netif_get_ifkey(r->esp_netif),
                    ip_protocol_str[r->ip_protocol], r->ttl);
         }
         if (r->instance_name) {
