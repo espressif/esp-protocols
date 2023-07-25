@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.0.1)
+
+### Bug Fixes
+
+- esp_websocket_client client allow sending 0 byte packets ([b5177cb](https://github.com/espressif/esp-protocols/commit/b5177cb))
+- Cleaned up printf/format warnings (-Wno-format) ([e085826](https://github.com/espressif/esp-protocols/commit/e085826))
+- Added unit tests to CI + minor fix to pass it ([c974c14](https://github.com/espressif/esp-protocols/commit/c974c14))
+- Reintroduce missing CHANGELOGs ([200cbb3](https://github.com/espressif/esp-protocols/commit/200cbb3), [#235](https://github.com/espressif/esp-protocols/issues/235))
+
+### Updated
+
+- docs(common): updated component and example links ([f48d9b2](https://github.com/espressif/esp-protocols/commit/f48d9b2))
+- docs(common): improving documentation ([ca3fce0](https://github.com/espressif/esp-protocols/commit/ca3fce0))
+- Fix weird error message spacings ([8bb207e](https://github.com/espressif/esp-protocols/commit/8bb207e))
+
 ## [1.0.0](https://github.com/espressif/esp-protocols/commits/996fef7)
 
 ### Updated
