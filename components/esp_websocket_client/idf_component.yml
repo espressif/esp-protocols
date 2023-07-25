@@ -1,4 +1,4 @@
-version: "1.0.0"
+version: "1.1.0"
 description: esp websocket client
 url: https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client
 dependencies:
