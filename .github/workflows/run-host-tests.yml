@@ -1,0 +1,86 @@
+name: Run on host
+
+on:
+    workflow_call:
+        inputs:
+            idf_version:
+                required: true
+                type: string
+            app_name:
+                type: string
+                required: true
+            app_path:
+                type: string
+                required: true
+            component_path:
+                type: string
+                required: true
+            upload_artifacts:
+                type: boolean
+                required: true
+
+jobs:
+  build:
+      name: Build App
+      runs-on: ubuntu-20.04
+      permissions:
+        contents: write
+      container: espressif/idf:${{inputs.idf_version}}
+      steps:
+        - name: Checkout esp-protocols
+          uses: actions/checkout@v3
+          with:
+            path: esp-protocols
+        - name: Build ${{ inputs.app_name }} with IDF-${{ inputs.idf_version }}
+          shell: bash
+          run: |
+            . ${IDF_PATH}/export.sh
+            cd $GITHUB_WORKSPACE/${{inputs.app_path}}
+            rm -rf sdkconfig sdkconfig.defaults build
+            cp sdkconfig.ci.linux sdkconfig.defaults
+            idf.py build
+            ./build/${{inputs.app_name}}.elf
+        - name: Build with Coverage Enabled
+          shell: bash
+          run: |
+            . ${IDF_PATH}/export.sh
+            cd $GITHUB_WORKSPACE/${{inputs.app_path}}
+            rm -rf build sdkconfig sdkconfig.defaults
+            cp sdkconfig.ci.coverage sdkconfig.defaults
+            idf.py fullclean
+            idf.py build
+            ./build/${{inputs.app_name}}.elf
+        - name: Run Coverage
+          shell: bash
+          run: |
+            apt-get update && apt-get install -y gcc-8 g++-8 python3-pip rsync
+            python -m pip install gcovr
+            cd $GITHUB_WORKSPACE/${{inputs.component_path}}
+            gcov `find . -name "*gcda"`
+            gcovr --gcov-ignore-parse-errors -g -k -r . --html index.html -x ${{inputs.app_name}}_coverage.xml
+            mkdir ${{inputs.app_name}}_coverage_report
+            touch ${{inputs.app_name}}_coverage_report/.nojekyll
+            cp index.html ${{inputs.app_name}}_coverage_report
+            cp -rf ${{inputs.app_name}}_coverage_report ${{inputs.app_name}}_coverage.xml $GITHUB_WORKSPACE
+        - name: Code Coverage Summary Report
+          uses: irongut/CodeCoverageSummary@v1.3.0
+          with:
+            filename: esp-protocols/**/${{inputs.app_name}}_coverage.xml
+            badge: true
+            fail_below_min: false
+            format: markdown
+            hide_branch_rate: false
+            hide_complexity: false
+            indicators: true
+            output: both
+            thresholds: '60 80'
+        - name: Write to Job Summary
+          run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+        - name: Upload files to artifacts for run-target job
+          uses: actions/upload-artifact@v3
+          if: ${{inputs.upload_artifacts}}
+          with:
+            name: ${{inputs.app_name}}_coverage_report
+            path: |
+              ${{inputs.component_path}}/${{inputs.app_name}}_coverage_report
+            if-no-files-found: error

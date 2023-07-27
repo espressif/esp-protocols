@@ -109,7 +109,6 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          apt-get update
           apt-get update && apt-get install -y gcc-8 g++-8 python3-pip
           apt-get install -y rsync
           update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
@@ -129,9 +128,9 @@ jobs:
           cd $GITHUB_WORKSPACE/${{ env.COMP_DIR }}
           gcov-8 `find . -name "esp_modem*gcda" -printf '%h\n' | head -n 1`/*
           gcovr --gcov-ignore-parse-errors -g -k -r . --html index.html  -x esp_modem_coverage.xml
-          mkdir docs_gcovr
-          cp $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/index.html docs_gcovr
-          cp -rf docs_gcovr $GITHUB_WORKSPACE
+          mkdir modem_coverage_report
+          cp $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/index.html modem_coverage_report
+          cp -rf modem_coverage_report $GITHUB_WORKSPACE
       - name: Code Coverage Summary Report
         uses: irongut/CodeCoverageSummary@v1.3.0
         with:
@@ -151,13 +150,7 @@ jobs:
         uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: docs_gcovr
+          name: modem_coverage_report
           path: |
-            ${{ env.COMP_DIR }}/docs_gcovr
+            ${{ env.COMP_DIR }}/modem_coverage_report
           if-no-files-found: error
-      - name: Deploy code coverage results
-        if: github.ref == 'refs/heads/master'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs_gcovr
