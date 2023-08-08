@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -4157,6 +4157,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
     }
 
     esp_netif_dhcp_status_t dcst;
+#if CONFIG_ESP_WIFI_ENABLED
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
         case WIFI_EVENT_STA_CONNECTED:
@@ -4180,51 +4181,52 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         default:
             break;
         }
-    }
+    } else
+#endif
 #if CONFIG_ETH_ENABLED
-    else if (event_base == ETH_EVENT) {
-        switch (event_id) {
-        case ETHERNET_EVENT_CONNECTED:
-            if (!esp_netif_dhcpc_get_status(esp_netif_from_preset_if(MDNS_IF_ETH), &dcst)) {
-                if (dcst == ESP_NETIF_DHCP_STOPPED) {
+        if (event_base == ETH_EVENT) {
+            switch (event_id) {
+            case ETHERNET_EVENT_CONNECTED:
+                if (!esp_netif_dhcpc_get_status(esp_netif_from_preset_if(MDNS_IF_ETH), &dcst)) {
+                    if (dcst == ESP_NETIF_DHCP_STOPPED) {
+                        post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                    }
+                }
+                break;
+            case ETHERNET_EVENT_DISCONNECTED:
+                post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V6);
+                break;
+            default:
+                break;
+            }
+        } else
+#endif
+            if (event_base == IP_EVENT) {
+                switch (event_id) {
+                case IP_EVENT_STA_GOT_IP:
+                    post_mdns_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
+                    post_mdns_announce_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
+                    break;
+#if CONFIG_ETH_ENABLED
+                case IP_EVENT_ETH_GOT_IP:
                     post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                    break;
+#endif
+                case IP_EVENT_GOT_IP6: {
+                    ip_event_got_ip6_t *event = (ip_event_got_ip6_t *) event_data;
+                    mdns_if_t mdns_if = _mdns_get_if_from_esp_netif(event->esp_netif);
+                    if (mdns_if < MDNS_MAX_INTERFACES) {
+                        post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
+                        post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
+                    }
+
+                }
+                break;
+                default:
+                    break;
                 }
             }
-            break;
-        case ETHERNET_EVENT_DISCONNECTED:
-            post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
-            post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V6);
-            break;
-        default:
-            break;
-        }
-    }
-#endif
-    else if (event_base == IP_EVENT) {
-        switch (event_id) {
-        case IP_EVENT_STA_GOT_IP:
-            post_mdns_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
-            post_mdns_announce_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
-            break;
-#if CONFIG_ETH_ENABLED
-        case IP_EVENT_ETH_GOT_IP:
-            post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
-            break;
-#endif
-        case IP_EVENT_GOT_IP6: {
-            ip_event_got_ip6_t *event = (ip_event_got_ip6_t *) event_data;
-            mdns_if_t mdns_if = _mdns_get_if_from_esp_netif(event->esp_netif);
-            if (mdns_if < MDNS_MAX_INTERFACES) {
-                post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
-                post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
-            }
-
-        }
-        break;
-        default:
-            break;
-        }
-    }
 }
 #endif /* CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH */
 
@@ -5357,7 +5359,7 @@ static inline void set_default_duplicated_interfaces(void)
 
 static inline void unregister_predefined_handlers(void)
 {
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
+#if defined(CONFIG_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
 #endif
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
@@ -5454,7 +5456,7 @@ esp_err_t mdns_init(void)
         goto free_queue;
     }
 
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
+#if defined(CONFIG_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     if ((err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
         goto free_event_handlers;
     }
