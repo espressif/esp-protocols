@@ -1,5 +1,11 @@
 # Collection of protocol components for ESP-IDF
 
+## How to use
+
+The [ESP-Protocols](https://github.com/espressif/esp-protocols) repository contains a collection of protocol components for [ESP-IDF](https://github.com/espressif/esp-idf).
+Additionally, each component is available in [IDF Component Registry](https://components.espressif.com). 
+Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
+
 ## Components
 
 ### esp_modem
