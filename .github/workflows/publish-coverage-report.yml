@@ -5,6 +5,8 @@ on:
     workflows: ["websocket: build/host-tests", "esp-modem: build/host-tests"]
     types:
       - completed
+    branches:
+      - master
 
 jobs:
   publish_github_pages:
