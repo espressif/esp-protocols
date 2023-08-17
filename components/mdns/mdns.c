@@ -5850,7 +5850,7 @@ static mdns_txt_item_t *_copy_mdns_txt_items(mdns_txt_linked_item_t *items, uint
     return ret;
 
 handle_error:
-    for (size_t y = 0; y < ret_index + 1; y++) {
+    for (size_t y = 0; y < ret_index + 1 && ret != NULL; y++) {
         mdns_txt_item_t *t = &ret[y];
         free((char *)t->key);
         free((char *)t->value);
