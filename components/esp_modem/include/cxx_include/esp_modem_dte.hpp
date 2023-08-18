@@ -125,7 +125,8 @@ private:
     static const size_t GOT_LINE = SignalGroup::bit0;       /*!< Bit indicating response available */
 
     [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
-    [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode */
+    [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
+    void exit_cmux_internal();                              /*!< Cleanup CMUX */
 
     Lock internal_lock{};                                   /*!< Locks DTE operations */
     unique_buffer buffer;                                   /*!< DTE buffer */

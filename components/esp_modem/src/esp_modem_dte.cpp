@@ -76,12 +76,21 @@ bool DTE::exit_cmux()
     if (!cmux_term->deinit()) {
         return false;
     }
+    exit_cmux_internal();
+    return true;
+}
+
+void DTE::exit_cmux_internal()
+{
+    if (!cmux_term) {
+        return;
+    }
+
     auto ejected = cmux_term->detach();
     // return the ejected terminal and buffer back to this DTE
     primary_term = std::move(ejected.first);
     buffer = std::move(ejected.second);
     secondary_term = primary_term;
-    return true;
 }
 
 bool DTE::setup_cmux()
@@ -90,14 +99,21 @@ bool DTE::setup_cmux()
     if (cmux_term == nullptr) {
         return false;
     }
+
     if (!cmux_term->init()) {
+        exit_cmux_internal();
+        cmux_term = nullptr;
         return false;
     }
-    primary_term = std::make_unique<CMuxInstance>(cmux_term, 0);
-    if (primary_term == nullptr) {
-        return false;
-    }
+
+    primary_term   = std::make_unique<CMuxInstance>(cmux_term, 0);
     secondary_term = std::make_unique<CMuxInstance>(cmux_term, 1);
+    if (primary_term == nullptr || secondary_term == nullptr) {
+        exit_cmux_internal();
+        cmux_term = nullptr;
+        return false;
+    }
+
     return true;
 }
 
