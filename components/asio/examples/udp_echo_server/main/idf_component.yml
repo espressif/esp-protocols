@@ -1,0 +1,4 @@
+dependencies:
+  ## Required IDF version
+  idf: ">=5.0"
+  espressif/asio: ">=1.0.1"
