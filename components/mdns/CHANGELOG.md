@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.0)
+
+### Features
+
+- Allow setting length of mDNS action queue in menuconfig ([28cd898](https://github.com/espressif/esp-protocols/commit/28cd898))
+
+### Bug Fixes
+
+- added idf_component.yml for examples ([d273e10](https://github.com/espressif/esp-protocols/commit/d273e10))
+- added guard check for null pointer ([71bb461](https://github.com/espressif/esp-protocols/commit/71bb461))
+
 ## [1.2.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.0)
 
 ### Features
