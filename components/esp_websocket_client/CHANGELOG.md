@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.1.0)
+
+### Features
+
+- Added linux port for websocket ([a22391a](https://github.com/espressif/esp-protocols/commit/a22391a))
+
+### Bug Fixes
+
+- added idf_component.yml for examples ([d273e10](https://github.com/espressif/esp-protocols/commit/d273e10))
+
 ## [1.0.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.0.1)
 
 ### Bug Fixes
