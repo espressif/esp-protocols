@@ -1,5 +1,10 @@
 menu "Example Configuration"
 
+    config EXAMPLE_CUSTOM_TCP_TRANSPORT
+        bool "Custom TCP transport"
+        help
+            Use custom TCP transport to connect to MQTT broker
+
     choice EXAMPLE_MODEM_DEVICE
         prompt "Choose supported modem device (DCE)"
         default EXAMPLE_MODEM_DEVICE_BG96

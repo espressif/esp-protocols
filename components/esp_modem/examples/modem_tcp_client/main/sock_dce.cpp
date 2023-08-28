@@ -192,14 +192,8 @@ bool DCE::accept_sock()
     return false;
 }
 
-void DCE::init_sock(int port)
+void DCE::start_listening(int port)
 {
-    esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
-    esp_vfs_eventfd_register(&config);
-
-    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
-    assert(data_ready_fd > 0);
-
     listen_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (listen_sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
@@ -228,7 +222,7 @@ void DCE::init_sock(int port)
 
 }
 
-bool DCE::start(std::string host, int port)
+bool DCE::connect(std::string host, int port)
 {
     dte->on_read(nullptr);
     tcp_close();
@@ -245,8 +239,14 @@ bool DCE::start(std::string host, int port)
     return true;
 }
 
-bool DCE::init_network()
+bool DCE::init()
 {
+    esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
+    esp_vfs_eventfd_register(&config);
+
+    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
+    assert(data_ready_fd > 0);
+
     dte->on_read(nullptr);
     const int retries = 5;
     int i = 0;

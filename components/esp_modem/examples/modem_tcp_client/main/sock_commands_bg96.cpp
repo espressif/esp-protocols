@@ -6,7 +6,6 @@
 
 #include <charconv>
 #include <cstring>
-#include <sys/socket.h>
 #include "sock_commands.hpp"
 #include "cxx_include/esp_modem_command_library_utils.hpp"
 #include "sock_dce.hpp"
@@ -132,7 +131,7 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     if (data_to_recv == 0) {
         const std::string_view head = "+QIRD: ";
         auto head_pos = std::search(recv_data, recv_data + len, head.begin(), head.end());
-        if (head_pos == nullptr) {
+        if (head_pos == recv_data + len) {
             return ret::FAIL;
         }
 
@@ -160,17 +159,17 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
         recv_data = next_nl + 1;
         auto first_data_len = len - (recv_data - (char *)data) /* minus size of the command marker */;
         if (actual_len > first_data_len) {
-            ::send(sock, recv_data, first_data_len, 0);
+            on_read(recv_data, first_data_len);
             data_to_recv = actual_len - first_data_len;
             return ret::NEED_MORE_DATA;
         }
-        ::send(sock, recv_data, actual_len, 0);
+        on_read(recv_data, actual_len);
     } else if (data_to_recv > len) {    // continue sending
-        ::send(sock, recv_data, len, 0);
+        on_read(recv_data, len);
         data_to_recv -= len;
         return ret::NEED_MORE_DATA;
     } else if (data_to_recv <= len) {    // last read -> looking for "OK" marker
-        ::send(sock, recv_data, data_to_recv, 0);
+        on_read(recv_data, data_to_recv);
         actual_len = data_to_recv;
     }
 
