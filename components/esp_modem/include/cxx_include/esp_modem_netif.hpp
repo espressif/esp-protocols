@@ -54,8 +54,9 @@ public:
      */
     void stop();
 
-private:
     void receive(uint8_t *data, size_t len);
+
+private:
 
     static esp_err_t esp_modem_dte_transmit(void *h, void *buffer, size_t len);
 

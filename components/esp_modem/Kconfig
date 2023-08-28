@@ -16,6 +16,17 @@ menu "esp-modem"
             in command mode might come fragmented in rare cases so might need to retry
             AT commands.
 
+    config ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
+        bool "Use inflatable buffer in DCE"
+        default n
+        help
+            If enabled we will process the ongoing AT command by growing the current
+            buffer (if we've run out the preconfigured buffer).
+            If disabled, we simply report a failure.
+            Use this if additional allocation is not a problem and you need to reliably process
+            all commands, usually with sporadically longer responses than the configured buffer.
+            Could be also used to defragment AT replies in CMUX mode if CMUX_DEFRAGMENT_PAYLOAD=n
+
     config ESP_MODEM_CMUX_DELAY_AFTER_DLCI_SETUP
         int "Delay in ms to wait before creating another virtual terminal"
         default 0
