@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -753,6 +753,18 @@ esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client,
     esp_err_t ret = esp_transport_ws_set_headers(client->transport, headers);
     xSemaphoreGiveRecursive(client->lock);
 
+    return ret;
+}
+
+esp_err_t esp_websocket_client_set_header(esp_websocket_client_handle_t client, const char *key, const char *value)
+{
+    if (client == NULL || client->state != WEBSOCKET_STATE_CONNECTED || key == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    esp_err_t ret = esp_transport_ws_set_header(client->transport, key, value);
+    xSemaphoreGiveRecursive(client->lock);
     return ret;
 }
 

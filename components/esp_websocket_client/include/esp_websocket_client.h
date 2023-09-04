@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -164,6 +164,21 @@ esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, con
  * @return     esp_err_t
  */
 esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client, const char *headers);
+
+/**
+ * @brief      Set websocket headers for the client
+ *
+ *  Notes:
+ *  - should not be used together with `esp_websocket_client_set_headers`
+ *
+ * @param[in]  client  The client
+ * @param[in]  key     The header key
+ * @param[in]  value   The header value
+
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_set_header(esp_websocket_client_handle_t client, const char *key, const char *value);
 
 /**
  * @brief      Open the WebSocket connection
