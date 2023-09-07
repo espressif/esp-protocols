@@ -574,4 +574,73 @@ command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
     return generic_command_common(t, "AT+CGPS=" + std::to_string(mode) + "\r");
 }
 
+
+command_result set_gnss_power_mode_sim7682(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGPS=" + std::to_string(mode) + "\r");
+}
+
+command_result power_down_sim7682(CommandableIf *t)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CPOF\r", 1000);
+}
+
+
+// mode is expected to be 64bit string (in hex)
+// any_mode = "0xFFFFFFFF7FFFFFFF";
+command_result set_network_bands_sim7682(CommandableIf *t, const std::string &mode, const int *bands, int size)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    static const char *hexDigits = "0123456789ABCDEF";
+    uint64_t band_bits = 0;
+    int hex_len = 16;
+    std::string band_string(hex_len, '0');
+    for (int i = 0; i < size; ++i) {
+        // OR-operation to add bands
+        auto band = bands[i] - 1; // Sim7600 has 0-indexed band selection (band 20 has to be shifted 19 places)
+        band_bits |= 1 << band;
+    }
+    for (int i = hex_len; i > 0; i--) {
+        band_string[i - 1] = hexDigits[(band_bits >> ((hex_len - i) * 4)) & 0xF];
+    }
+    return generic_command_common(t, "AT+CNBP=" + mode + ",0x" + band_string + "\r");
+}
+
+command_result set_gnss_power_mode_quec91(CommandableIf *t, int mode)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CGPS=" + std::to_string(mode) + "\r");
+}
+
+command_result power_down_quec91(CommandableIf *t)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return generic_command_common(t, "AT+CPOF\r", 1000);
+}
+
+
+// mode is expected to be 64bit string (in hex)
+// any_mode = "0xFFFFFFFF7FFFFFFF";
+command_result set_network_bands_quec91(CommandableIf *t, const std::string &mode, const int *bands, int size)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    static const char *hexDigits = "0123456789ABCDEF";
+    uint64_t band_bits = 0;
+    int hex_len = 16;
+    std::string band_string(hex_len, '0');
+    for (int i = 0; i < size; ++i) {
+        // OR-operation to add bands
+        auto band = bands[i] - 1; // Sim7600 has 0-indexed band selection (band 20 has to be shifted 19 places)
+        band_bits |= 1 << band;
+    }
+    for (int i = hex_len; i > 0; i--) {
+        band_string[i - 1] = hexDigits[(band_bits >> ((hex_len - i) * 4)) & 0xF];
+    }
+    return generic_command_common(t, "AT+CNBP=" + mode + ",0x" + band_string + "\r");
+}
+
+
+
 } // esp_modem::dce_commands
