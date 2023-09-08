@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -158,12 +158,29 @@ esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, con
  * @brief      Set additional websocket headers for the client, when performing this behavior, the headers will replace the old ones
  * @pre        Must stop the WebSocket client before set headers if the client has been connected
  *
+ *  Notes:
+ *  - To set multiple headers, you can concatenate them in a single line using the "\r\n" symbol.
+ *    Example:  websocket_cfg.headers="Sec-WebSocket-Key: my_key\r\nPassword: my_pass\r\n";
+ *
  * @param[in]  client  The client
  * @param headers  additional header strings each terminated with \r\n
  *
  * @return     esp_err_t
  */
 esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client, const char *headers);
+
+/**
+ * @brief      Appends new key value for to the headers of websocket client
+ *  Notes:
+ *  - This API should be called before websocket client start
+ *
+ * @param[in]  client  The client
+ * @param[in]  key     key which will be appended
+ * @param[in]  value   Value of the key
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t client, const char *key, const char *value);
 
 /**
  * @brief      Open the WebSocket connection

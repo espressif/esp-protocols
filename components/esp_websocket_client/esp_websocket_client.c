@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -358,6 +358,7 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
     }
     if (config->headers) {
         free(cfg->headers);
+        ESP_LOGI(TAG, "line = %d", __LINE__);
         cfg->headers = strdup(config->headers);
         ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->headers, return ESP_ERR_NO_MEM);
     }
@@ -754,6 +755,38 @@ esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client,
     xSemaphoreGiveRecursive(client->lock);
 
     return ret;
+}
+
+esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t client, const char *key, const char *value)
+{
+    if (client == NULL  || key == NULL || value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    websocket_config_storage_t *cfg = client->config;
+    size_t len = strlen(key) + strlen(value) + 3 + 2; // Length for "key: value\r\n"
+
+    if (cfg->headers == NULL) {
+        cfg->headers = (char *)malloc(len);
+        if (cfg->headers == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
+        snprintf(cfg->headers, len, "%s: %s\r\n", key, value);
+        return ESP_OK;
+    }
+
+    char *new_headers;
+    size_t current_len = strlen(cfg->headers);
+    size_t new_len = current_len + len;
+
+    new_headers = (char *)realloc(cfg->headers, new_len);
+    if (new_headers == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    snprintf(new_headers + current_len, len, "%s: %s\r\n", key, value);
+    cfg->headers = new_headers;
+
+    return ESP_OK;
 }
 
 static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)

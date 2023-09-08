@@ -141,12 +141,15 @@ static void websocket_app_start(void)
 
 #else
     websocket_cfg.uri = CONFIG_WEBSOCKET_URI;
+    //websocket_cfg.headers = "Sec-WebSocket-Key: my_key\r\nPassword: my_pass\r\n";
 #endif /* CONFIG_WEBSOCKET_URI_FROM_STDIN */
 
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
 
     esp_websocket_client_handle_t client = esp_websocket_client_init(&websocket_cfg);
     esp_websocket_register_events(client, WEBSOCKET_EVENT_ANY, websocket_event_handler, (void *)client);
+    esp_websocket_client_append_header(client, "Sec-WebSocket-Key", "my_key");
+    esp_websocket_client_append_header(client, "Password", "my_pass");
 
     esp_websocket_client_start(client);
     xTimerStart(shutdown_signal_timer, portMAX_DELAY);
