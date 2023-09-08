@@ -79,6 +79,9 @@ static void websocket_app_start(void)
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
 
     esp_websocket_client_handle_t client = esp_websocket_client_init(&websocket_cfg);
+    // This call demonstrates adding another header; it's called to increase code coverage
+    esp_websocket_client_append_header(client, "HeaderNewKey", "value");
+
     esp_websocket_register_events(client, WEBSOCKET_EVENT_ANY, websocket_event_handler, (void *)client);
 
     esp_websocket_client_start(client);
@@ -92,6 +95,14 @@ static void websocket_app_start(void)
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+
+    ESP_LOGI(TAG, "Sending fragmented message");
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    memset(data, 'a', sizeof(data));
+    esp_websocket_client_send_text_partial(client, data, sizeof(data), portMAX_DELAY);
+    memset(data, 'b', sizeof(data));
+    esp_websocket_client_send_cont_msg(client, data, sizeof(data), portMAX_DELAY);
+    esp_websocket_client_send_fin(client, portMAX_DELAY);
 
     esp_websocket_client_destroy(client);
 }

@@ -158,12 +158,30 @@ esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, con
  * @brief      Set additional websocket headers for the client, when performing this behavior, the headers will replace the old ones
  * @pre        Must stop the WebSocket client before set headers if the client has been connected
  *
- * @param[in]  client  The client
- * @param headers  additional header strings each terminated with \r\n
+ *    - This API should be used after the WebSocket client connection has succeeded (i.e., once the transport layer is initialized).
+ *    - If you wish to set or append headers before the WebSocket client connection is established(before handshake), consider the following options:
+ *       1. Input headers directly into the config options, terminating each item with [CR][LF]. This approach will replace any previous headers.
+ *          Example: websocket_cfg.headers = "Sec-WebSocket-Key: my_key\r\nPassword: my_pass\r\n";
+ *       2. Use the `esp_websocket_client_append_header` API to append a single header to the current set.
+ *
+ * @param[in]  client  The WebSocket client handle
+ * @param[in]  headers Additional header strings each terminated with [CR][LF]
  *
  * @return     esp_err_t
  */
 esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client, const char *headers);
+
+/**
+ * @brief      Appends a new key-value pair to the headers of a WebSocket client.
+ * @pre        Ensure that this function is called before starting the WebSocket client.
+ *
+ * @param[in]  client  The WebSocket client handle
+ * @param[in]  key     The header key to append
+ * @param[in]  value   The associated value for the given key
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t client, const char *key, const char *value);
 
 /**
  * @brief      Open the WebSocket connection
