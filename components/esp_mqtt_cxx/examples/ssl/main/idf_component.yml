@@ -3,3 +3,4 @@ dependencies:
   idf: ">=5.0"
   espressif/esp_mqtt_cxx:
     version: "^0.1.0"
+    override_path: "../../../"

@@ -1,6 +1,9 @@
 version: "0.2.0"
-description: esp mqtt cxx
+description: C++ APIs for ESP-MQTT library
 url: https://github.com/espressif/esp-protocols/tree/master/components/esp_mqtt_cxx
+issues: https://github.com/espressif/esp-protocols/issues
+documentation: https://docs.espressif.com/projects/esp-protocols/esp_mqtt_cxx/docs/latest/index.html
+repository: https://github.com/espressif/esp-protocols.git
 dependencies:
   espressif/esp-idf-cxx: "^1.0.0-beta"
   # Required IDF version
