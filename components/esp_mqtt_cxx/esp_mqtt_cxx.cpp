@@ -215,7 +215,6 @@ void Client::on_disconnected(esp_mqtt_event_handle_t const event)
 }
 void Client::on_subscribed(esp_mqtt_event_handle_t const event)
 {
-    printf("Subscribed to %.*s\r\n", event->topic_len, event->topic);
 }
 void Client::on_unsubscribed(esp_mqtt_event_handle_t const event)
 {
