@@ -166,11 +166,6 @@ struct ClientCredentials {
     std::optional<std::string > client_id = std::nullopt;
 };
 
-struct Event {
-    mqtt_event_callback_t event_handle;     /*!< handle for MQTT events as a callback in legacy mode */
-    esp_event_loop_handle_t event_loop_handle; /*!< handle for MQTT event loop library */
-};
-
 struct LastWill {
     const char *lwt_topic;                  /*!< LWT (Last Will and Testament) message topic (NULL by default) */
     const char *lwt_msg;                    /*!< LWT message (NULL by default) */
@@ -201,7 +196,6 @@ struct Connection {
 };
 
 struct Configuration {
-    Event event;
     Task task;
     Session session;
     Connection connection;
