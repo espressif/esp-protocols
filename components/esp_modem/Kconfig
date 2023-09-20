@@ -36,4 +36,13 @@ menu "esp-modem"
             The typical reason for failing SABM request without a delay is that
             some devices (SIM800) send MSC requests just after opening a new DLCI.
 
+    config ESP_MODEM_CMUX_USE_SHORT_PAYLOADS_ONLY
+        bool "CMUX to support only short payloads (<128 bytes)"
+        default n
+        help
+            If enabled, the CMUX protocol would only use 1 byte size field.
+            You can use this option for devices that support only short CMUX payloads
+            to make the protocol more robust on noisy environments or when underlying
+            transport gets corrupted often (for example by Rx buffer overflows)
+
 endmenu

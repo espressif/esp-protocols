@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -115,6 +115,13 @@ public:
      */
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, char separator) override;
 
+    /**
+     * @brief Allows this DTE to recover from a generic connection issue
+     *
+     * @return true if success
+     */
+    bool recover();
+
 protected:
     /**
      * @brief Allows for locking the DTE
@@ -130,6 +137,7 @@ protected:
     friend class Scoped<DTE>;                               /*!< Declaring "Scoped<DTE> lock(dte)" locks this instance */
 private:
 
+    void handle_error(terminal_error err);                  /*!< Performs internal error handling */
     [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
     void exit_cmux_internal();                              /*!< Cleanup CMUX */
@@ -141,6 +149,7 @@ private:
     std::shared_ptr<Terminal> secondary_term;               /*!< Secondary terminal for this DTE */
     modem_mode mode;                                        /*!< DTE operation mode */
     std::function<bool(uint8_t *data, size_t len)> on_data; /*!< on data callback for current terminal */
+    std::function<void(terminal_error err)> user_error_cb;  /*!< user callback on error event from attached terminals */
 
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
     /**
@@ -189,7 +198,10 @@ private:
         command_result result{};                                /*!< Command return code */
         SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
         bool process_line(uint8_t *data, size_t consumed, size_t len);  /*!< Lets the processing callback handle one line (processing unit) */
-        bool wait_for_line(uint32_t time_ms);                   /*!< Waiting for command processing */
+        bool wait_for_line(uint32_t time_ms)                    /*!< Waiting for command processing */
+        {
+            return signal.wait_any(command_cb::GOT_LINE, time_ms);
+        }
         void set(got_line_cb l, char s = '\n')                  /*!< Sets the command callback atomically */
         {
             Scoped<Lock> lock(line_lock);
@@ -197,6 +209,11 @@ private:
                 // if we set the line callback, we have to reset the signal and the result
                 signal.clear(GOT_LINE);
                 result = command_result::TIMEOUT;
+            } else {
+                // if we clear the line callback, we check consistency (since we've locked the line processing)
+                if (signal.is_any(command_cb::GOT_LINE) && result == command_result::TIMEOUT) {
+                    ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
+                }
             }
             got_line = std::move(l);
             separator = s;

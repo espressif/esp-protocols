@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -86,9 +86,30 @@ public:
      */
     int write(int i, uint8_t *data, size_t len);
 
+    /**
+     * @brief Recovers the protocol
+     *
+     * This restarts the CMUX state machine, which could have been in a wrong state due to communication
+     * issue on a lower layer.
+     *
+     * @return true on success
+     */
+    bool recover();
+
 private:
+
+    enum class protocol_mismatch_reason {
+        MISSED_LEAD_SOF,
+        MISSED_TRAIL_SOF,
+        WRONG_CRC,
+        UNEXPECTED_HEADER,
+        UNEXPECTED_DATA,
+        READ_BEHIND_BUFFER,
+        UNKNOWN
+    };
+
     static uint8_t fcs_crc(const uint8_t frame[6]);     /*!< Utility to calculate FCS CRC */
-    void data_available(uint8_t *data, size_t len);     /*!< Called when valid data available */
+    bool data_available(uint8_t *data, size_t len);     /*!< Called when valid data available (returns false on unexpected data format) */
     void send_sabm(size_t i);                           /*!< Sending initial SABM */
     void send_disconnect(size_t i);                     /*!< Sending closing request for each virtual or control terminal */
     bool on_cmux_data(uint8_t *data, size_t len);       /*!< Called from terminal layer when raw CMUX protocol data available */
@@ -105,6 +126,7 @@ private:
     bool on_header(CMuxFrame &frame);
     bool on_payload(CMuxFrame &frame);
     bool on_footer(CMuxFrame &frame);
+    void recover_protocol(protocol_mismatch_reason reason);
 
     std::function<bool(uint8_t *data, size_t len)> read_cb[MAX_TERMINALS_NUM];  /*!< Function pointers to read callbacks */
     std::shared_ptr<Terminal> term;                   /*!< The original terminal */

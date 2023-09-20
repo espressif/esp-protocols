@@ -84,6 +84,11 @@ public:
         return mode.set(dte.get(), device.get(), netif, m);
     }
 
+    bool recover()
+    {
+        return dte->recover();
+    }
+
 protected:
     std::shared_ptr<DTE> dte;
     std::shared_ptr<SpecificModule> device;

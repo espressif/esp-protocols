@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -115,6 +115,19 @@ void DTE::set_command_callbacks()
         return true;
 #endif
     });
+    primary_term->set_error_cb([this](terminal_error err) {
+        if (user_error_cb) {
+            user_error_cb(err);
+        }
+        handle_error(err);
+    });
+    secondary_term->set_error_cb([this](terminal_error err) {
+        if (user_error_cb) {
+            user_error_cb(err);
+        }
+        handle_error(err);
+    });
+
 }
 
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
@@ -272,8 +285,8 @@ void DTE::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
 
 void DTE::set_error_cb(std::function<void(terminal_error err)> f)
 {
-    secondary_term->set_error_cb(f);
-    primary_term->set_error_cb(f);
+    user_error_cb = std::move(f);
+    set_command_callbacks();
 }
 
 int DTE::read(uint8_t **d, size_t len)
@@ -330,13 +343,21 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
     return false;
 }
 
-bool DTE::command_cb::wait_for_line(uint32_t time_ms)
+bool DTE::recover()
 {
-    auto got_lf = signal.wait(command_cb::GOT_LINE, time_ms);
-    if (got_lf && result == command_result::TIMEOUT) {
-        ESP_MODEM_THROW_IF_ERROR(ESP_ERR_INVALID_STATE);
+    if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::DUAL_MODE) {
+        return cmux_term->recover();
     }
-    return got_lf;
+    return false;
+}
+
+void DTE::handle_error(terminal_error err)
+{
+    if (err == terminal_error::BUFFER_OVERFLOW ||
+            err == terminal_error::CHECKSUM_ERROR ||
+            err == terminal_error::UNEXPECTED_CONTROL_FLOW) {
+        recover();
+    }
 }
 
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
