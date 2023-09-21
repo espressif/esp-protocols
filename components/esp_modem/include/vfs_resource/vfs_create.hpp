@@ -31,7 +31,7 @@
  */
 struct esp_modem_vfs_uart_creator {
     const char *dev_name;                       /*!< VFS device name, e.g. /dev/uart/n */
-    const struct esp_modem_uart_term_config uart;     /*!< UART driver init struct */
+    struct esp_modem_uart_term_config uart;     /*!< UART driver init struct */
 };
 
 /**
