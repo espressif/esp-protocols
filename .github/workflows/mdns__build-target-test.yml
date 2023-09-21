@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.0"]
-        test: [ { app: example, path: "examples" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
+        test: [ { app: example, path: "examples/query_advertise" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -50,7 +50,7 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
-        test: [ { app: example, path: "examples" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
+        test: [ { app: example, path: "examples/query_advertise" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
     needs: build_mdns
     runs-on:
       - self-hosted
