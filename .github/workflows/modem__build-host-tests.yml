@@ -64,7 +64,7 @@ jobs:
       COMP_DIR: esp-protocols/components/esp_modem
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@master
+        uses: actions/checkout@v3
         with:
           path: esp-protocols
 

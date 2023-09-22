@@ -122,9 +122,7 @@ void FdTerminal::task()
         } else {
             if (FD_ISSET(f.fd, &rfds)) {
                 if (on_read_priv) {
-                    if (on_read_priv(nullptr, 0)) {
-                        on_read_priv = nullptr;
-                    }
+                    on_read_priv(nullptr, 0);
                 }
             }
         }
