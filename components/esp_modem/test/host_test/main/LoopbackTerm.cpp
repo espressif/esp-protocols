@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -21,6 +21,7 @@ void LoopbackTerm::stop()
 int LoopbackTerm::write(uint8_t *data, size_t len)
 {
     if (inject_by) {    // injection test: ignore what we write, but respond with injected data
+        signal.clear(1);
         auto ret = std::async(&LoopbackTerm::batch_read, this);
         async_results.push_back(std::move(ret));
         return len;
@@ -66,6 +67,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
             data_len = response.length();
             loopback_data.resize(data_len);
             memcpy(&loopback_data[0], &response[0], data_len);
+            signal.clear(1);
             auto ret = std::async(on_read, nullptr, data_len);
             return len;
         }
@@ -81,6 +83,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     loopback_data.resize(data_len + len);
     memcpy(&loopback_data[data_len], data, len);
     data_len += len;
+    signal.clear(1);
     auto ret = std::async(on_read, nullptr, data_len);
     return len;
 }
@@ -102,9 +105,15 @@ int LoopbackTerm::read(uint8_t *data, size_t len)
     return read_len;
 }
 
-LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), is_bg96(is_bg96), inject_by(0) {}
+LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), is_bg96(is_bg96), inject_by(0)
+{
+    init_signal();
+}
 
-LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), is_bg96(false), inject_by(0) {}
+LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), is_bg96(false), inject_by(0)
+{
+    init_signal();
+}
 
 int LoopbackTerm::inject(uint8_t *data, size_t len, size_t injected_by, size_t delay_before, size_t delay_after)
 {
@@ -132,6 +141,29 @@ void LoopbackTerm::batch_read()
         }
         Task::Delay(delay_after_inject);
     }
+    signal.set(1);
 }
 
-LoopbackTerm::~LoopbackTerm() = default;
+LoopbackTerm::~LoopbackTerm()
+{
+    data_len = 0;
+    signal.wait(1, INT32_MAX); // wait "very long" to let the std::async() finish
+}
+
+void LoopbackTerm::init_signal()
+{
+    // This indicates, that we can safely exit
+    // we clear the signal upon an async operation, so the destructor needs to wait until
+    // it's finished
+    signal.set(1);
+}
+
+void LoopbackTerm::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
+{
+    user_on_read = std::move(f);
+    on_read = [this](uint8_t *data, size_t len) {
+        auto ret = user_on_read(data, len);
+        signal.set(1);
+        return ret;
+    };
+}

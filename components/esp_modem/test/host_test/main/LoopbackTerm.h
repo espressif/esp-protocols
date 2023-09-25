@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -31,11 +31,7 @@ public:
 
     int read(uint8_t *data, size_t len) override;
 
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
-    {
-        Scoped<Lock> lock(on_read_guard);
-        on_read = std::move(f);
-    }
+    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override;
 
 private:
     enum class status_t {
@@ -43,8 +39,10 @@ private:
         STOPPED
     };
     void batch_read();
+    std::function<bool(uint8_t *data, size_t len)> user_on_read;
     status_t status;
     SignalGroup signal;
+    void init_signal();
     std::vector<uint8_t> loopback_data;
     size_t data_len;
     bool pin_ok;
