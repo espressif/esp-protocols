@@ -128,7 +128,7 @@ esp_modem::return_type name(__VA_ARGS__);
             return false;
         }
         if (state != status::IDLE) {
-            ESP_LOGE("dce", "Unexpected state %d", state);
+            ESP_LOGE("dce", "Unexpected state %d", static_cast<int>(state));
             return false;
         }
         return true;

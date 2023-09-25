@@ -27,7 +27,6 @@ idf_component_register(SRCS ${asio_sources}
                     INCLUDE_DIRS "asio/asio/include" "port/include"
                     PRIV_INCLUDE_DIRS ${asio_priv_includes}
                     REQUIRES lwip)
-target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 
 if(CONFIG_ASIO_SSL_SUPPORT)
     if(CONFIG_ASIO_USE_ESP_WOLFSSL)

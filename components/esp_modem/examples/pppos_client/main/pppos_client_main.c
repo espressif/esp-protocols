@@ -60,7 +60,7 @@ if ((xEventGroupGetBits(event_group) & USB_DISCONNECTED_BIT) == USB_DISCONNECTED
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%d", base, event_id);
+    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIu32, base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
     int msg_id;
@@ -102,7 +102,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 static void on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
-    ESP_LOGI(TAG, "PPP state changed event %d", event_id);
+    ESP_LOGI(TAG, "PPP state changed event %" PRIu32, event_id);
     if (event_id == NETIF_PPP_ERRORUSER) {
         /* User interrupted event from esp-netif */
         esp_netif_t *netif = event_data;
@@ -114,7 +114,7 @@ static void on_ppp_changed(void *arg, esp_event_base_t event_base,
 static void on_ip_event(void *arg, esp_event_base_t event_base,
                         int32_t event_id, void *event_data)
 {
-    ESP_LOGD(TAG, "IP event! %d", event_id);
+    ESP_LOGD(TAG, "IP event! %" PRIu32, event_id);
     if (event_id == IP_EVENT_PPP_GOT_IP) {
         esp_netif_dns_info_t dns_info;
 
