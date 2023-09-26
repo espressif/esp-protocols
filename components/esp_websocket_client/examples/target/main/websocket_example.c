@@ -161,6 +161,14 @@ static void websocket_app_start(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
+    ESP_LOGI(TAG, "Sending fragmented message");
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    memset(data, 'a', sizeof(data));
+    esp_websocket_client_send_text_partial(client, data, sizeof(data), portMAX_DELAY);
+    memset(data, 'b', sizeof(data));
+    esp_websocket_client_send_cont_msg(client, data, sizeof(data), portMAX_DELAY);
+    esp_websocket_client_send_fin(client, portMAX_DELAY);
+
     xSemaphoreTake(shutdown_sema, portMAX_DELAY);
     esp_websocket_client_close(client, portMAX_DELAY);
     ESP_LOGI(TAG, "Websocket Stopped");
