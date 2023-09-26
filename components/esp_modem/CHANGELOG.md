@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/espressif/esp-protocols/commits/modem-v1.0.3)
+
+### Bug Fixes
+
+- Fix to allow MSC frame (SIM800 CMUX) after v1.0.2 ([8d5947e](https://github.com/espressif/esp-protocols/commit/8d5947e), [#366](https://github.com/espressif/esp-protocols/issues/366))
+- Add CMUX example to target tests ([4f2ebaa](https://github.com/espressif/esp-protocols/commit/4f2ebaa))
+
 ## [1.0.2](https://github.com/espressif/esp-protocols/commits/modem-v1.0.2)
 
 ### Features

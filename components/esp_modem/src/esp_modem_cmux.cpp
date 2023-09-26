@@ -144,7 +144,7 @@ bool CMux::data_available(uint8_t *data, size_t len)
             return false;
         }
     } else if ((type & FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
-        if (len > 0 && (data[0] & 0xE1) == 0xE1) {
+        if ((len > 0 && (data[0] & 0xE1) == 0xE1) || (data == nullptr)) {
             // Not a DISC, ignore (MSC frame)
             return true;
         }
