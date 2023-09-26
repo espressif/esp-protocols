@@ -5597,9 +5597,14 @@ esp_err_t mdns_hostname_set(const char *hostname)
 
 esp_err_t mdns_hostname_get(char *hostname)
 {
-    if (!_mdns_server || !hostname) {
+    if (!hostname) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    if (!_mdns_server || !_mdns_server->hostname) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     MDNS_SERVICE_LOCK();
     strncpy(hostname, _mdns_server->hostname, strnlen(_mdns_server->hostname, MDNS_NAME_BUF_LEN));
     MDNS_SERVICE_UNLOCK();
@@ -5902,10 +5907,14 @@ static mdns_result_t *_mdns_lookup_service(const char *instance, const char *ser
                 item->esp_netif = NULL;
                 item->ttl = _str_null_or_empty(instance) ? MDNS_ANSWER_PTR_TTL : MDNS_ANSWER_SRV_TTL;
                 item->ip_protocol = MDNS_IP_PROTOCOL_MAX;
-                item->instance_name = strndup(srv->instance, MDNS_NAME_BUF_LEN - 1);
-                if (!item->instance_name) {
-                    HOOK_MALLOC_FAILED;
-                    goto handle_error;
+                if (srv->instance) {
+                    item->instance_name = strndup(srv->instance, MDNS_NAME_BUF_LEN - 1);
+                    if (!item->instance_name) {
+                        HOOK_MALLOC_FAILED;
+                        goto handle_error;
+                    }
+                } else {
+                    item->instance_name = NULL;
                 }
                 item->service_type = strndup(srv->service, MDNS_NAME_BUF_LEN - 1);
                 if (!item->service_type) {
