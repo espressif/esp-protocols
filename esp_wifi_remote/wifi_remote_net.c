@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "esp_wifi.h"
 #include <esp_private/wifi.h>
 #include "esp_err.h"
 #include <rpc_wrapper.h>

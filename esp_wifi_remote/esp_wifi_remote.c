@@ -5,6 +5,7 @@
  */
 
 #include "esp_wifi.h"
+#include "esp_private/wifi_os_adapter.h"
 #include "esp_log.h"
 #include "esp_wifi_remote.h"
 
