@@ -133,6 +133,10 @@ def test_examples_protocol_websocket(dut):
                                 \nreceived: {}\nwith length {}'.format(
                         send_msg, len(send_msg), recv_msg, len(recv_msg)))
 
+    def test_fragmented_msg(dut):
+        dut.expect('Received=' + 32 * 'a' + 32 * 'b')
+        print('Fragmented data received')
+
     # Starting of the test
     try:
         if dut.app.sdkconfig.get('WEBSOCKET_URI_FROM_STDIN') is True:
@@ -156,6 +160,7 @@ def test_examples_protocol_websocket(dut):
             # Message length should exceed DUT's buffer size to test fragmentation, default is 1024 byte
             test_recv_long_msg(dut, ws, 2000, 3)
             test_json(dut, ws)
+            test_fragmented_msg(dut)
             test_close(dut)
     else:
         print('DUT connecting to {}'.format(uri))

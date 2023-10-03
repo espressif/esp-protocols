@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -543,6 +543,42 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
         return ESP_FAIL;
     }
     return ESP_OK;
+}
+
+static bool esp_websocket_client_send_with_exact_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
+{
+    int ret = -1;
+    int need_write = len;
+    int wlen = 0, widx = 0;
+
+    while (widx < len || opcode) {  // allow for sending "current_opcode" only message with len==0
+        if (need_write > client->buffer_size) {
+            need_write = client->buffer_size;
+        }
+        memcpy(client->tx_buffer, data + widx, need_write);
+        // send with ws specific way and specific opcode
+        wlen = esp_transport_ws_send_raw(client->transport, opcode, (char *)client->tx_buffer, need_write,
+                                         (timeout == portMAX_DELAY) ? -1 : timeout * portTICK_PERIOD_MS);
+        if (wlen < 0 || (wlen == 0 && need_write != 0)) {
+            ret = wlen;
+            esp_websocket_free_buf(client, true);
+            esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
+            if (error_handle) {
+                esp_websocket_client_error(client, "esp_transport_write() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
+                                           ret, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                           error_handle->esp_tls_flags, errno);
+            } else {
+                esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
+            }
+            esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+            return false;
+        }
+        opcode = 0;
+        widx += wlen;
+        need_write = len - widx;
+    }
+    esp_websocket_free_buf(client, true);
+    return true;
 }
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
@@ -1092,17 +1128,33 @@ int esp_websocket_client_send_text(esp_websocket_client_handle_t client, const c
     return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_TEXT, (const uint8_t *)data, len, timeout);
 }
 
+int esp_websocket_client_send_text_partial(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
+{
+    return esp_websocket_client_send_with_exact_opcode(client, WS_TRANSPORT_OPCODES_TEXT, (const uint8_t *)data, len, timeout);
+}
+
+int esp_websocket_client_send_cont_msg(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
+{
+    return esp_websocket_client_send_with_exact_opcode(client, WS_TRANSPORT_OPCODES_CONT, (const uint8_t *)data, len, timeout);
+}
+
 int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
 {
     return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_BINARY, (const uint8_t *)data, len, timeout);
 }
 
+int esp_websocket_client_send_bin_partial(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
+{
+    return esp_websocket_client_send_with_exact_opcode(client, WS_TRANSPORT_OPCODES_BINARY, (const uint8_t *)data, len, timeout);
+}
+
+int esp_websocket_client_send_fin(esp_websocket_client_handle_t client, TickType_t timeout)
+{
+    return esp_websocket_client_send_with_exact_opcode(client, WS_TRANSPORT_OPCODES_FIN, NULL, 0, timeout);
+}
+
 int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
-    int need_write = len;
-    int wlen = 0, widx = 0;
-    int ret = ESP_FAIL;
-
     if (client == NULL || len < 0 || (data == NULL && len > 0)) {
         ESP_LOGE(TAG, "Invalid arguments");
         return ESP_FAIL;
@@ -1126,41 +1178,13 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
         ESP_LOGE(TAG, "Failed to setup tx buffer");
         goto unlock_and_return;
     }
-    uint32_t current_opcode = opcode;
-    while (widx < len || current_opcode) {  // allow for sending "current_opcode" only message with len==0
-        if (need_write > client->buffer_size) {
-            need_write = client->buffer_size;
-        } else {
-            current_opcode |= WS_TRANSPORT_OPCODES_FIN;
-        }
-        memcpy(client->tx_buffer, data + widx, need_write);
-        // send with ws specific way and specific opcode
-        wlen = esp_transport_ws_send_raw(client->transport, current_opcode, (char *)client->tx_buffer, need_write,
-                                         (timeout == portMAX_DELAY) ? -1 : timeout * portTICK_PERIOD_MS);
-        if (wlen < 0 || (wlen == 0 && need_write != 0)) {
-            ret = wlen;
-            esp_websocket_free_buf(client, true);
-            esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
-            if (error_handle) {
-                esp_websocket_client_error(client, "esp_transport_write() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                           ret, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
-                                           error_handle->esp_tls_flags, errno);
-            } else {
-                esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
-            }
-            esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
-            goto unlock_and_return;
-        }
-        current_opcode = 0;
-        widx += wlen;
-        need_write = len - widx;
-
+    if (esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout) != true) {
+        ESP_LOGE(TAG, "Failed to send the buffer");
+        goto unlock_and_return;
     }
-    ret = widx;
-    esp_websocket_free_buf(client, true);
 unlock_and_return:
     xSemaphoreGiveRecursive(client->lock);
-    return ret;
+    return ESP_FAIL;
 }
 
 bool esp_websocket_client_is_connected(esp_websocket_client_handle_t client)
