@@ -1,0 +1,6 @@
+version: 1.0.0
+url: https://github.com/espressif/esp-protocols/tree/master/components/console_simple_init
+description: The component provides helper functions for easy initialization and start of esp console.
+dependencies:
+  idf:
+    version: '>=5.0'

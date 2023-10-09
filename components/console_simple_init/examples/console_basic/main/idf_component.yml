@@ -1,0 +1,6 @@
+dependencies:
+  idf:
+    version: '*'
+  console_simple_init:
+    version: "*"
+    override_path: '../../../'
