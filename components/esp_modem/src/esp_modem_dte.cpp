@@ -313,6 +313,7 @@ void DTE::on_read(got_line_cb on_read_cb)
     if (on_read_cb == nullptr) {
         primary_term->set_read_cb(nullptr);
         internal_lock.unlock();
+        set_command_callbacks();
         return;
     }
     internal_lock.lock();
