@@ -3048,6 +3048,7 @@ static void free_delegated_hostnames(void)
         host = host->next;
         free(item);
     }
+    _mdns_host_list = NULL;
 }
 
 static bool _mdns_delegate_hostname_remove(const char *hostname)
