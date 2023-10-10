@@ -1,4 +1,6 @@
 dependencies:
   ## Required IDF version
   idf: ">=5.0"
-  espressif/asio: ">=1.0.1"
+  espressif/asio:
+    version: "^1.14.1"
+    override_path: '../../../'
