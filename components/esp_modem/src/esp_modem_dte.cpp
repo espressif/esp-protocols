@@ -33,7 +33,7 @@ DTE::DTE(std::unique_ptr<Terminal> terminal):
 DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
     buffer(config->dte_buffer_size),
     cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
-    mode(modem_mode::UNDEF)
+    mode(modem_mode::DUAL_MODE)
 {
     set_command_callbacks();
 }
@@ -41,7 +41,7 @@ DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::u
 DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
     buffer(dte_default_buffer_size),
     cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
-    mode(modem_mode::UNDEF)
+    mode(modem_mode::DUAL_MODE)
 {
     set_command_callbacks();
 }
