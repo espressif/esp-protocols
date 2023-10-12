@@ -1,8 +1,8 @@
 ---
 commitizen:
-  bump_message: 'bump(console_simple_init): $current_version -> $new_version'
+  bump_message: 'bump(console): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py console_simple_init
-  tag_format: console_simple_init-v$version
-  version: 1.0.0
+  tag_format: console-v$version
+  version: 1.0.1
   version_files:
   - idf_component.yml
