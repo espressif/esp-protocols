@@ -78,8 +78,8 @@ jobs:
               fi
             done;
             # Deploy docs with version path
-            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
-                echo "Deploying specific version of ${comp} (${{ env.BUMP_VERSION }})"
+            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} ]]; then
+                echo "Deploying specific version of $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} (${{ env.BUMP_VERSION }})"
                 cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
                 export GITHUB_REF_NAME=${{ env.BUMP_VERSION }}
                 deploy-docs
