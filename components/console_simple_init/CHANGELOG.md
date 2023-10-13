@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1](https://github.com/espressif/esp-protocols/commits/console_simple_init-v1.0.1)
+
+### Bug Fixes
+
+- Fixed versioning, publishing and changelog generation ([878c3741ee](https://github.com/espressif/esp-protocols/commit/878c3741ee))
+
 ## [1.0.0](https://github.com/espressif/esp-protocols/commits/console_simple_init-v1.0.0)
 
 
