@@ -50,7 +50,7 @@ jobs:
             sudo apt-get -y install doxygen clang python3-pip
             python -m pip install breathe recommonmark esp-docs==1.4.1
             for comp in  `ls components`; do
-              if [ -d $GITHUB_WORKSPACE/docs/${comp} ]; then
+              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
                 cd $GITHUB_WORKSPACE/docs/${comp}
                 if [[ "${{ env.BUMP_COMPONENT }}" == "${comp}" ]]; then
                   echo "Building specific version of ${comp} (${{ env.BUMP_VERSION }})"
@@ -69,7 +69,7 @@ jobs:
             export GIT_VER=$(git describe --always)
             export GITHUB_REF_NAME=latest
             for comp in  `ls components`; do
-              if [ -d $GITHUB_WORKSPACE/docs/${comp} ]; then
+              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
                 echo "Deploying latest of ${comp}"
                 export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
                 export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH_ORIG/${comp}
@@ -78,8 +78,8 @@ jobs:
               fi
             done;
             # Deploy docs with version path
-            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
-                echo "Deploying specific version of ${comp} (${{ env.BUMP_VERSION }})"
+            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} ]]; then
+                echo "Deploying specific version of ${{ env.BUMP_COMPONENT }} (${{ env.BUMP_VERSION }})"
                 cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
                 export GITHUB_REF_NAME=${{ env.BUMP_VERSION }}
                 deploy-docs

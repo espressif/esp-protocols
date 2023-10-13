@@ -10,7 +10,7 @@
 
 int do_user_cmd(int argc, char **argv)
 {
-    printf("Hello from user command\n");
+    printf("Hello from user command.\n");
     return 0;
 }
 

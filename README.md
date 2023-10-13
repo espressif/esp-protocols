@@ -33,3 +33,7 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 
 * Brief introduction [README](components/esp_mqtt_cxx/README.md)
 * Full html [documentation](https://docs.espressif.com/projects/esp-protocols/esp_mqtt_cxx/docs/latest/index.html)
+
+### console_simple_init
+
+* Brief introduction [README](components/console_simple_init/README.md)
