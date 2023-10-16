@@ -792,6 +792,51 @@ esp_err_t esp_websocket_client_set_headers(esp_websocket_client_handle_t client,
     return ret;
 }
 
+esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t client, const char *key, const char *value)
+{
+    // Validate the input parameters
+    if (client == NULL || key == NULL || value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    websocket_config_storage_t *cfg = client->config;
+
+    // Calculate the length for "key: value\r\n"
+    size_t len = strlen(key) + strlen(value) + 5; // 5 accounts for ": \r\n" and null-terminator
+
+    // If no previous headers exist
+    if (cfg->headers == NULL) {
+        cfg->headers = (char *)malloc(len);
+        if (cfg->headers == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate...");
+            return ESP_ERR_NO_MEM;
+        }
+        snprintf(cfg->headers, len, "%s: %s\r\n", key, value);
+        return ESP_OK;
+    }
+
+    // Extend the current headers to accommodate the new key-value pair
+    size_t current_len = strlen(cfg->headers);
+    size_t new_len = current_len + len;
+
+    // Allocate memory for new headers
+    char *new_headers = (char *)malloc(new_len);
+    if (new_headers == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate...");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // Copy old headers and append the new header
+    strcpy(new_headers, cfg->headers);
+    snprintf(new_headers + current_len, len, "%s: %s\r\n", key, value);
+
+    // Free old headers and assign the new header pointer to cfg->headers
+    free(cfg->headers);
+    cfg->headers = new_headers;
+
+    return ESP_OK;
+}
+
 static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
 {
     int rlen;
