@@ -31,6 +31,11 @@ def main():
         'breaking': 'Breaking changes',
         'major': 'Major changes'
     }
+
+    res = git('show-ref', '--tags', _tty_out=False)
+    if old_ref not in res:
+        old_ref = git('rev-list', '--max-parents=0', 'HEAD', _tty_out=False).strip()
+
     brief_log = git.log('--oneline', '{}..HEAD'.format(old_ref), '--', 'components/' + component, _tty_out=False)
     for oneline in brief_log.splitlines():
         [commit, brief_msg] = oneline.split(' ', 1)
@@ -80,6 +85,11 @@ def main():
                 changelog += '- {}\n'.format(it)
     changelog += '\n'
     filename = os.path.join(root_path, 'components', component, 'CHANGELOG.md')
+    # Check if the changelog file exists.
+    if not os.path.exists(filename):
+        # File does not exist, create it
+        with open(filename, 'w') as file:
+            file.write('# Changelog\n\n')
     # insert the actual changelog to the beginning of the file, just after the title (2nd line)
     with open(filename, 'r') as orig_changelog:
         changelog_title = orig_changelog.readline(

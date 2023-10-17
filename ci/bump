@@ -14,7 +14,7 @@ if ! cz bump --dry-run; then
 fi
 
 cz_bump_out=`cz bump --files-only "$@"`
-commit_title=`echo "${cz_bump_out}" | head -1`
+commit_title=`echo "${cz_bump_out}" | grep "bump(" | head -1`
 commit_body=`cat ../../release_notes.txt`
 
 git add -u .
