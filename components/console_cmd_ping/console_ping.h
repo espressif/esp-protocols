@@ -3,14 +3,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-
 #include "console_simple_init.h"
 
 
 /**
- * @brief Registers the ifconfig command.
+ * @brief Registers the ping command.
  *
  * @return
  *          - esp_err_t
  */
-esp_err_t console_cmd_ifconfig_register(void);
+esp_err_t console_cmd_ping_register(void);

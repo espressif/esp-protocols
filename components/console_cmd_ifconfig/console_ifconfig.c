@@ -13,7 +13,6 @@
 #include "esp_eth.h"
 #include "esp_console.h"
 #include "esp_event.h"
-#include "nvs_flash.h"
 #include "argtable3/argtable3.h"
 #include "esp_log.h"
 #include "esp_netif_net_stack.h"
@@ -42,7 +41,7 @@ esp_err_t ifcfg_lwip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 esp_err_t ifcfg_basic_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
 esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
 esp_err_t ifcfg_napt_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_dhcp_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
+esp_err_t ifcfg_addr_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
 esp_err_t ifcfg_netif_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
 esp_err_t ifcfg_eth_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
 
@@ -51,7 +50,7 @@ static const char *TAG = "console_ifconfig";
 netif_op cmd_list[] = {
     {.name = "help",      .operation = ifcfg_help_op,   .arg_cnt = 2, .start_index = 1, .netif_flag = false,  .help = "ifconfig help: Prints the help text for all ifconfig commands"},
     {.name = "netif",     .operation = ifcfg_netif_op,  .arg_cnt = 4, .start_index = 1, .netif_flag = false,  .help = "ifconfig netif create/destroy <ethernet handle id>/<iface>: Create or destroy a network interface with the specified ethernet handle or interface name"},
-    {.name = "eth",       .operation = ifcfg_eth_op,    .arg_cnt = 3, .start_index = 1, .netif_flag = false,  .help = "ifconfig eth show: Display a list of available ethernet handle"},
+    {.name = "eth",       .operation = ifcfg_eth_op,    .arg_cnt = 3, .start_index = 1, .netif_flag = false,  .help = "ifconfig eth init/deinit/show: Initialize, deinitialize and display a list of available ethernet handle"},
     {.name = "ifconfig",  .operation = ifcfg_print_op,  .arg_cnt = 1, .start_index = 0, .netif_flag = false,  .help = "ifconfig: Display a list of all esp_netif interfaces along with their information"},
     {.name = "ifconfig",  .operation = ifcfg_print_op,  .arg_cnt = 2, .start_index = 0, .netif_flag = true,   .help = "ifconfig <iface>: Provide the details of the named interface"},
     {.name = "default",   .operation = ifcfg_basic_op,  .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> default: Set the specified interface as the default interface"},
@@ -59,11 +58,12 @@ netif_op cmd_list[] = {
     {.name = "up",        .operation = ifcfg_lwip_op,   .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> up: Enable the specified interface"},
     {.name = "down",      .operation = ifcfg_lwip_op,   .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> down: Disable the specified interface"},
     {.name = "link",      .operation = ifcfg_lwip_op,   .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> link <up/down>: Enable or disable the link of the specified interface"},
+    {.name = "napt",      .operation = ifcfg_napt_op,   .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> napt <enable/disable>: Enable or disable NAPT on the specified interface."},
     {.name = "ip",        .operation = ifcfg_ip_op,     .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> ip <ipv4 addr>: Set the IPv4 address of the specified interface"},
     {.name = "mask",      .operation = ifcfg_ip_op,     .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> mask <ipv4 addr>: Set the subnet mask of the specified interface"},
     {.name = "gw",        .operation = ifcfg_ip_op,     .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> gw <ipv4 addr>: Set the default gateway of the specified interface"},
-    {.name = "napt",      .operation = ifcfg_napt_op,   .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> napt <enable/disable>: Enable or disable NAPT on the specified interface."},
-    {.name = "dhcp",      .operation = ifcfg_dhcp_op,   .arg_cnt = 5, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> dhcp server <enable/disable>: Enable or disable the DHCP server.(Note: DHCP server is not supported yet)\n ifconfig <iface> dhcp client <enable/disable>: Enable or disable the DHCP client\nNote: Disabling the DHCP server and client enables the use of static IP configuration."},
+    {.name = "staticip",  .operation = ifcfg_addr_op,   .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> staticip: Enables static ip"},
+    {.name = "dhcp",      .operation = ifcfg_addr_op,   .arg_cnt = 5, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> dhcp server <enable/disable>: Enable or disable the DHCP server.(Note: DHCP server is not supported yet)\n ifconfig <iface> dhcp client <enable/disable>: Enable or disable the DHCP client.\nNote: Disabling the DHCP server and client enables the use of static IP configuration."},
 };
 
 
@@ -164,10 +164,9 @@ esp_err_t ifcfg_lwip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 
 esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
-    esp_netif_ip_info_t ip_info;
+    esp_netif_ip_info_t ip_info = {0};
 
     esp_netif_dhcpc_stop(esp_netif);
-    memset(&ip_info, 0, sizeof(esp_netif_ip_info_t));
     esp_netif_get_ip_info(esp_netif, &ip_info);
 
     if (!strcmp("ip", argv[self->start_index])) {
@@ -176,17 +175,13 @@ esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_n
         inet_aton(argv[self->start_index + 1], &ip_info.ip.addr);
         esp_netif_set_ip_info(esp_netif, &ip_info);
         return ESP_OK;
-    }
-
-    if (!strcmp("mask", argv[self->start_index])) {
+    } else if (!strcmp("mask", argv[self->start_index])) {
         ESP_LOGI(TAG, "Setting mask: %s", argv[self->start_index + 1]);
 
         inet_aton(argv[self->start_index + 1], &ip_info.netmask.addr);
         esp_netif_set_ip_info(esp_netif, &ip_info);
         return ESP_OK;
-    }
-
-    if (!strcmp("gw", argv[self->start_index])) {
+    } else if (!strcmp("gw", argv[self->start_index])) {
         ESP_LOGI(TAG, "Setting gw: %s", argv[self->start_index + 1]);
 
         inet_aton(argv[self->start_index + 1], &ip_info.gw.addr);
@@ -249,10 +244,13 @@ esp_err_t ifcfg_napt_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 }
 
 
-esp_err_t ifcfg_dhcp_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+esp_err_t ifcfg_addr_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
-    /* Server */
-    if (!strcmp("server", argv[self->start_index + 1])) {
+    if (!strcmp("staticip", argv[self->start_index])) {
+        esp_netif_dhcpc_stop(esp_netif);
+        //esp_netif_dhcps_stop(esp_netif);
+        return ESP_OK;
+    } else if (!strcmp("server", argv[self->start_index + 1])) { // Server
         if (!strcmp("enable", argv[self->start_index + 2])) {
             ESP_LOGW(TAG, "DHCP Server configuration is not supported yet.");    // TBD
             //esp_netif_dhcps_start(esp_netif);
@@ -261,24 +259,22 @@ esp_err_t ifcfg_dhcp_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
             ESP_LOGW(TAG, "DHCP Server configuration is not supported yet.");    // TBD
             //esp_netif_dhcps_stop(esp_netif);
             return ESP_OK;
-        } else {
-            ESP_LOGE(TAG, "Invalid argument");
-            return ESP_FAIL;
         }
-    }
 
-    /* Client */
-    if (!strcmp("client", argv[self->start_index + 1])) {
+        ESP_LOGE(TAG, "Invalid argument");
+        return ESP_FAIL;
+
+    } else if (!strcmp("client", argv[self->start_index + 1])) { // Client
         if (!strcmp("enable", argv[self->start_index + 2])) {
             esp_netif_dhcpc_start(esp_netif);
             return ESP_OK;
         } else if (!strcmp("disable", argv[self->start_index + 2])) {
             esp_netif_dhcpc_stop(esp_netif);
             return ESP_OK;
-        } else {
-            ESP_LOGE(TAG, "Invalid argument");
-            return ESP_FAIL;
         }
+
+        ESP_LOGE(TAG, "Invalid argument");
+        return ESP_FAIL;
     }
 
     return ESP_FAIL;
@@ -304,11 +300,15 @@ void print_iface_details(esp_netif_t *esp_netif)
         return;
     }
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
     if (esp_netif_get_default_netif() == esp_netif) {
         ESP_LOGI(TAG, "Interface Name: %s (DEF)", interface);
     } else {
         ESP_LOGI(TAG, "Interface Name: %s", interface);
     }
+#else
+    ESP_LOGI(TAG, "Interface Name: %s", interface);
+#endif
     ESP_LOGI(TAG, "Interface Number: %d", lwip_netif->num);
 
     /* Print MAC address */
@@ -318,7 +318,7 @@ void print_iface_details(esp_netif_t *esp_netif)
 
     /* Print DHCP status */
     if (ESP_OK == esp_netif_dhcps_get_status(esp_netif, &status)) {
-        ESP_LOGI(TAG, "DHCP Server Status: %d", status);
+        ESP_LOGI(TAG, "DHCP Server Status: %s", status ? "enabled" : "disabled");
     } else if ((ESP_OK == esp_netif_dhcpc_get_status(esp_netif, &status))) {
         if (ESP_NETIF_DHCP_STOPPED == status) {
             ESP_LOGI(TAG, "Static IP");
@@ -370,18 +370,27 @@ esp_err_t ifcfg_print_op(netif_op *self, int argc, char *argv[], esp_netif_t *es
 /* Maximum number of interface that can be added */
 #define MAX_ETH_NETIF_COUNT     (10)
 
+typedef enum {
+    UNINITIALIZED = 0,
+    ETH_INITIALIZED = 1,
+    NETIF_CREATED = 2,
+    NETIF_DESTROYED = 3,
+    ETH_DEINITIALIZED = 4
+} iface_state;
+
 typedef struct {
-    esp_netif_t *esp_netif[MAX_ETH_NETIF_COUNT];
-    uint8_t created_flag[MAX_ETH_NETIF_COUNT];
-    uint8_t netif_count;
-} esp_netif_list;
+    esp_netif_t *esp_netif;
+    esp_eth_handle_t *eth_handle;
+    esp_eth_netif_glue_handle_t eth_glue;
+    iface_state state;
+} iface_desc;
 
+iface_desc iface_list[MAX_ETH_NETIF_COUNT];
+uint8_t netif_count;
 uint8_t eth_init_flag = false;
-uint8_t eth_port_cnt = 0;
-esp_eth_handle_t *eth_handle = NULL;
+uint8_t eth_port_cnt_g = 0;
 
-
-esp_err_t get_netif_config(uint16_t id, esp_netif_config_t *eth_cfg_o)
+static esp_err_t get_netif_config(uint16_t id, esp_netif_config_t *eth_cfg_o)
 {
     /* Create new default instance of esp-netif for Ethernet */
     char *if_key;
@@ -404,7 +413,7 @@ esp_err_t get_netif_config(uint16_t id, esp_netif_config_t *eth_cfg_o)
 }
 
 
-void free_config(esp_netif_config_t *eth_cfg)
+static void free_config(esp_netif_config_t *eth_cfg)
 {
     if ((NULL != eth_cfg) && (NULL != eth_cfg->base)) {
         free((void *)(eth_cfg->base->if_key));
@@ -415,40 +424,41 @@ void free_config(esp_netif_config_t *eth_cfg)
 
 esp_err_t ifcfg_netif_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
-    static esp_netif_list netif_list;
     int eth_handle_id = atoi(argv[self->start_index + 2]);
 
     if (!strcmp(argv[self->start_index + 1], "create")) {
         /* Validate ethernet handle */
-        if ((eth_handle_id + 1 > eth_port_cnt) || (eth_handle_id < 0)) {
+        if ((eth_handle_id + 1 > eth_port_cnt_g) || (eth_handle_id < 0)) {
             ESP_LOGE(TAG, "Invalid ethernet handle: %s", argv[self->start_index + 2]);
             return ESP_FAIL;
         }
-        esp_netif_config_t eth_cfg = ESP_NETIF_DEFAULT_ETH();
+
+        esp_netif_config_t eth_cfg;
         ESP_ERROR_CHECK(get_netif_config(eth_handle_id, &eth_cfg));
         for (int i = 0; i < MAX_ETH_NETIF_COUNT; i++) {
-            if (netif_list.created_flag[i] == 0) {
+            if (iface_list[i].state == ETH_INITIALIZED) {
                 esp_netif = esp_netif_new(&eth_cfg);
                 if (esp_netif == NULL) {
                     ESP_LOGE(TAG, "Interface with key %s already exists", argv[self->start_index + 2]);
                     return ESP_FAIL;
                 }
-                netif_list.esp_netif[i] = esp_netif;
-                netif_list.created_flag[i] = 1;
-                netif_list.netif_count++;
 
-                esp_eth_netif_glue_handle_t eth_glue = esp_eth_new_netif_glue(eth_handle[eth_handle_id]);
-                if (eth_glue == NULL) {
+                iface_list[i].eth_glue = esp_eth_new_netif_glue(iface_list[i].eth_handle);
+                if (iface_list[i].eth_glue == NULL) {
                     ESP_LOGE(TAG, "%s: eth_glue is NULL", __func__);
+                    esp_netif_destroy(esp_netif);
+                    return ESP_FAIL;
                 }
-                ESP_ERROR_CHECK(esp_netif_attach(netif_list.esp_netif[i], eth_glue));
 
-                sleep(10);
+                iface_list[i].esp_netif = esp_netif;
+                ESP_ERROR_CHECK(esp_netif_attach(iface_list[i].esp_netif, iface_list[i].eth_glue));
 
                 // start Ethernet driver state machine
-                ESP_ERROR_CHECK(esp_eth_start(eth_handle[eth_handle_id]));
+                ESP_ERROR_CHECK(esp_eth_start(iface_list[i].eth_handle));
 
                 free_config(&eth_cfg);
+                iface_list[i].state = NETIF_CREATED;
+                netif_count++;
                 break;
             }
         }
@@ -462,40 +472,108 @@ esp_err_t ifcfg_netif_op(netif_op *self, int argc, char *argv[], esp_netif_t *es
         }
 
         for (int i = 0; i < MAX_ETH_NETIF_COUNT; i++) {
-            if (esp_netif == netif_list.esp_netif[i]) {
-                netif_list.created_flag[i] = 0;
+            if (esp_netif == iface_list[i].esp_netif) {
+                if (iface_list[i].state == NETIF_CREATED) {
+                    esp_eth_stop(iface_list[i].eth_handle);
+                    esp_eth_del_netif_glue(iface_list[i].eth_glue);
+                    esp_netif_destroy(iface_list[i].esp_netif);
+                    iface_list[i].state = NETIF_DESTROYED;
+                    netif_count--;
+                    return ESP_OK;
+                } else {
+                    ESP_LOGE(TAG, "Netif is not in created state");
+                    return ESP_FAIL;
+                }
                 break;
             }
         }
-        esp_netif_destroy(esp_netif);
-        netif_list.netif_count--;
 
-        return ESP_OK;
+        ESP_LOGE(TAG, "Something is very wrong. Unauthorized Interface.");
+        return ESP_FAIL;
     }
 
     return ESP_FAIL;
 }
 
 
+static void print_eth_info(eth_dev_info_t eth_info, int id)
+{
+    if (eth_info.type == ETH_DEV_TYPE_INTERNAL_ETH) {
+        printf("Internal(%s): pins: %2d,%2d, Id: %d\n", eth_info.name, eth_info.pin.eth_internal_mdc, eth_info.pin.eth_internal_mdio, id);
+    } else if (eth_info.type == ETH_DEV_TYPE_SPI) {
+        printf("     SPI(%s): pins: %2d,%2d, Id: %d\n", eth_info.name, eth_info.pin.eth_spi_cs, eth_info.pin.eth_spi_int, id);
+    } else {
+        printf("ethernet handle id(ETH_DEV_TYPE_UNKNOWN): %d\n", id);
+    }
+}
+
+
 esp_err_t ifcfg_eth_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
-    if (!strcmp(argv[self->start_index + 1], "show")) {
+    static esp_eth_handle_t *eth_handle_g = NULL;
+    eth_dev_info_t eth_info;
+
+    if (!strcmp(argv[self->start_index + 1], "init")) {
 
         /* Check if ethernet is initialized */
         if (eth_init_flag == false) {
             // Initialize Ethernet driver
-            if (ethernet_init(&eth_handle, &eth_port_cnt) != ESP_OK) {
+            if (ethernet_init_all(&eth_handle_g, &eth_port_cnt_g) != ESP_OK) {
                 ESP_LOGE(TAG, "Unable to initialize ethernet");
                 return ESP_FAIL;
             }
             eth_init_flag = true;
+
+            for (int i = 0; i < eth_port_cnt_g; i++) {
+                for (int j = 0; j < MAX_ETH_NETIF_COUNT; j++) {
+                    if (iface_list[j].state == UNINITIALIZED) {
+                        iface_list[j].eth_handle = eth_handle_g[i];
+                        iface_list[j].state = ETH_INITIALIZED;
+                        break;
+                    }
+                }
+            }
+
+            if (eth_port_cnt_g > MAX_ETH_NETIF_COUNT) {
+                ESP_LOGW(TAG, "Not all ethernet ports can be assigned a network interface.\nPlease reconfigure MAX_ETH_NETIF_COUNT to a higher value.");
+            }
+
+        } else {
+            ESP_LOGW(TAG, "Ethernet already initialized");
         }
 
         /* Display available ethernet handles */
-        for (int i = 0; i < eth_port_cnt; i++) {
-            printf("ethernet handle id: %d\n", i);
+        for (int i = 0; i < eth_port_cnt_g; i++) {
+            eth_info = ethernet_init_get_dev_info(iface_list[i].eth_handle);
+            print_eth_info(eth_info, i);
+        }
+    } else if (!strcmp(argv[self->start_index + 1], "show")) {
+        /* Check if ethernet is initialized */
+        if (eth_init_flag == false) {
+            // Initialize Ethernet driver
+            ESP_LOGE(TAG, "Ethernet is not initialized.");
+            return ESP_OK;
         }
 
+        /* Display available ethernet handles */
+        for (int i = 0; i < eth_port_cnt_g; i++) {
+            eth_info = ethernet_init_get_dev_info(iface_list[i].eth_handle);
+            print_eth_info(eth_info, i);
+        }
+    } else if (!strcmp(argv[self->start_index + 1], "deinit")) {
+        /* Check if ethernet is initialized */
+        if (eth_init_flag == false) {
+            // Initialize Ethernet driver
+            ESP_LOGE(TAG, "Ethernet is not initialized.");
+            return ESP_OK;
+        }
+
+        /* Stop and Deinit ethernet here */
+        ethernet_deinit_all(eth_handle_g);
+        eth_port_cnt_g = 0;
+        eth_init_flag = false;
+    } else {
+        return ESP_FAIL;
     }
 
     return ESP_OK;
@@ -533,7 +611,6 @@ static int do_cmd_ifconfig(int argc, char **argv)
                         ESP_LOGE(TAG, "Usage:\n%s", cmd.help);
                         return 0;
                     }
-
                 }
                 return 0;
             }
@@ -546,13 +623,25 @@ static int do_cmd_ifconfig(int argc, char **argv)
 }
 
 
-esp_console_cmd_t register_ifconfig(void)
+/**
+ * @brief Registers the ifconfig command.
+ *
+ * @return
+ *          - esp_err_t
+ */
+esp_err_t console_cmd_ifconfig_register(void)
 {
+    esp_err_t ret;
     esp_console_cmd_t command = {
         .command = "ifconfig",
         .help = "Command for network interface configuration and monitoring\nFor more info run 'ifconfig help'",
         .func = &do_cmd_ifconfig
     };
 
-    return command;
+    ret = esp_console_cmd_register(&command);
+    if (ret) {
+        ESP_LOGE(TAG, "Unable to register ifconfig");
+    }
+
+    return ret;
 }

@@ -1,8 +1,10 @@
-version: 0.0.4
-url: https://github.com/espressif-abhikroy/esp-protocols/tree/components/console_cmd_ifconfig/components/console_cmd_ifconfig
+version: 0.0.9
+url: https://github.com/espressif/esp-protocols/tree/master/components/console_cmd_ifconfig
 description: The component offers a console that enables runtime network interface configuration and monitoring.
 dependencies:
   idf:
-    version: '>=4.1'
-  ethernet_init:
-    version: '>=0.0.1'
+    version: '>=5.0'
+  espressif/console_simple_init:
+    version: '>=1.0.2'
+  espressif/ethernet_init:
+    version: '>=0.0.7'

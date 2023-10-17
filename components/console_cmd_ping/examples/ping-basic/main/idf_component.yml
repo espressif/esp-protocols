@@ -1,0 +1,6 @@
+dependencies:
+  idf:
+    version: '*'
+  console_cmd_ping:
+    version: "*"
+    override_path: '../../../'
