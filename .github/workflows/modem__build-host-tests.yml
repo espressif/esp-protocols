@@ -54,105 +54,12 @@ jobs:
 
   host_test_esp_modem:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
-    name: Host Tests
-    runs-on: ubuntu-20.04
-    container: espressif/idf:release-v4.3
-    env:
-      lwip: lwip-2.1.2
-      lwip_contrib: contrib-2.1.0
-      lwip_uri: http://download.savannah.nongnu.org/releases/lwip
-      COMP_DIR: esp-protocols/components/esp_modem
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          path: esp-protocols
-
-      - name: Build and Test
-        shell: bash
-        run: |
-          apt-get update && apt-get install -y gcc-8 g++-8
-          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-          export LWIP_PATH=`pwd`/${{ env.lwip }}
-          export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
-          . ${IDF_PATH}/export.sh
-          $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/examples/linux_modem
-          idf.py build
-          cd $GITHUB_WORKSPACE/esp-protocols/components/esp_modem/test/host_test
-          idf.py build
-          ./build/host_modem_test.elf -r junit -o junit.xml
-
-      - name: Publish Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        if: always()
-        with:
-          files: esp-protocols/components/esp_modem/test/host_test/junit.xml
-
-  host_test_gcov_esp_modem:
-    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
-    name: Run gcovr on esp modem host test
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    container: espressif/idf:release-v4.3
-    env:
-      lwip: lwip-2.1.2
-      lwip_contrib: contrib-2.1.0
-      lwip_uri: http://download.savannah.nongnu.org/releases/lwip
-      COMP_DIR: esp-protocols/components/esp_modem
-    steps:
-      - name: Checkout esp-protocols
-        uses: actions/checkout@v3
-        with:
-          path: esp-protocols
-          repository: ''
-          persist-credentials: false
-      - name: Build and Test
-        shell: bash
-        run: |
-          apt-get update && apt-get install -y gcc-8 g++-8 python3-pip
-          apt-get install -y rsync
-          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
-          export DEBIAN_FRONTEND=noninteractive
-          export LWIP_PATH=`pwd`/${{ env.lwip }}
-          export LWIP_CONTRIB_PATH=`pwd`/${{ env.lwip_contrib }}
-          . ${IDF_PATH}/export.sh
-          ${{ env.COMP_DIR }}/test/host_test/env.sh $lwip $lwip_uri $lwip_contrib
-          cd $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/test/host_test
-          cat sdkconfig.ci.coverage >> sdkconfig.defaults
-          idf.py build
-          ./build/host_modem_test.elf
-      - name: Run gcovr
-        shell: bash
-        run: |
-          python -m pip install gcovr
-          cd $GITHUB_WORKSPACE/${{ env.COMP_DIR }}
-          gcov-8 `find . -name "esp_modem*gcda" -printf '%h\n' | head -n 1`/*
-          gcovr --gcov-ignore-parse-errors -g -k -r . --html index.html  -x esp_modem_coverage.xml
-          mkdir modem_coverage_report
-          cp $GITHUB_WORKSPACE/${{ env.COMP_DIR }}/index.html modem_coverage_report
-          cp -rf modem_coverage_report $GITHUB_WORKSPACE
-      - name: Code Coverage Summary Report
-        uses: irongut/CodeCoverageSummary@v1.3.0
-        with:
-          filename: esp-protocols/**/esp_modem_coverage.xml
-          badge: true
-          fail_below_min: false
-          format: markdown
-          hide_branch_rate: false
-          hide_complexity: false
-          indicators: true
-          output: both
-          thresholds: '60 80'
-      - name: Write to Job Summary
-        run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: modem_coverage_report
-          path: |
-            ${{ env.COMP_DIR }}/modem_coverage_report
-          if-no-files-found: error
+    uses: "./.github/workflows/run-host-tests.yml"
+    with:
+        idf_version: "release-v4.3"
+        app_name: "host_modem_test"
+        app_path: "esp-protocols/components/esp_modem/test/host_test"
+        component_path: "esp-protocols/components/esp_modem"
+        upload_artifacts: true
+        pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"
+        publish_unit_test_result: true

@@ -18,6 +18,12 @@ on:
             upload_artifacts:
                 type: boolean
                 required: true
+            pre_run_script:
+                type: string
+                required: false
+            publish_unit_test_result:
+                type: boolean
+                required: false
 
 jobs:
   build:
@@ -34,20 +40,35 @@ jobs:
         - name: Build ${{ inputs.app_name }} with IDF-${{ inputs.idf_version }}
           shell: bash
           run: |
+            component=$(basename ${{ inputs.component_path }})
+            if [ -f "${{ inputs.pre_run_script }}" ]; then
+              source ${{ inputs.pre_run_script }} ${{ inputs.idf_version }} $component
+            fi
             . ${IDF_PATH}/export.sh
-            cd $GITHUB_WORKSPACE/${{inputs.app_path}}
+            cd ${{inputs.app_path}}
             rm -rf sdkconfig sdkconfig.defaults build
+            # The sdkconfig.ci.linux specifies Linux as the build target with apropriate settings.
             cp sdkconfig.ci.linux sdkconfig.defaults
             idf.py build
-            ./build/${{inputs.app_name}}.elf
+            ./build/${{inputs.app_name}}.elf -r junit -o junit.xml
+        - name: Publish Unit Test Result
+          uses: EnricoMi/publish-unit-test-result-action@v2
+          if: ${{ inputs.publish_unit_test_result }}
+          with:
+            files: ${{inputs.component_path}}/**/*junit.xml
         - name: Build with Coverage Enabled
           shell: bash
           run: |
+            component=$(basename ${{ inputs.component_path }})
+            if [ -f "${{ inputs.pre_run_script }}" ]; then
+              source ${{ inputs.pre_run_script }} ${{ inputs.idf_version }} $component
+            fi
             . ${IDF_PATH}/export.sh
             cd $GITHUB_WORKSPACE/${{inputs.app_path}}
             rm -rf build sdkconfig sdkconfig.defaults
-            cp sdkconfig.ci.coverage sdkconfig.defaults
             idf.py fullclean
+             # The sdkconfig.ci.coverage specifies Linux as the build target with apropriate settings (CONFIG_GCOV_ENABLED=y).
+            cp sdkconfig.ci.coverage sdkconfig.defaults
             idf.py build
             ./build/${{inputs.app_name}}.elf
         - name: Run Coverage
@@ -56,7 +77,8 @@ jobs:
             apt-get update && apt-get install -y python3-pip rsync
             python -m pip install gcovr
             cd $GITHUB_WORKSPACE/${{inputs.component_path}}
-            gcov `find . -name "*gcda"`
+            component=$(basename ${{ inputs.component_path }})
+            gcov `find . -name "$component*gcda"`
             gcovr --gcov-ignore-parse-errors -g -k -r . --html index.html -x ${{inputs.app_name}}_coverage.xml
             mkdir ${{inputs.app_name}}_coverage_report
             touch ${{inputs.app_name}}_coverage_report/.nojekyll
