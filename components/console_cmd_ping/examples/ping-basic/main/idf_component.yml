@@ -1,6 +1,6 @@
 dependencies:
   idf:
-    version: '*'
+    version: ">=5.0"
   console_cmd_ping:
     version: "*"
     override_path: '../../../'

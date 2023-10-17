@@ -24,30 +24,30 @@
 #endif
 
 
-typedef struct netif_op_ netif_op;
+typedef struct netif_op_ netif_op_t;
 
 typedef struct netif_op_ {
     char *name;
-    esp_err_t (*operation)(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
+    esp_err_t (*operation)(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
     int arg_cnt;
     int start_index;
     char *help;
     int netif_flag;
-} netif_op;
+} netif_op_t;
 
-esp_err_t ifcfg_help_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_print_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_lwip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_basic_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_napt_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_addr_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_netif_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
-esp_err_t ifcfg_eth_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_help_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_print_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_lwip_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_basic_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_ip_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_napt_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_addr_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_netif_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+static esp_err_t ifcfg_eth_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
 
 static const char *TAG = "console_ifconfig";
 
-netif_op cmd_list[] = {
+netif_op_t cmd_list[] = {
     {.name = "help",      .operation = ifcfg_help_op,   .arg_cnt = 2, .start_index = 1, .netif_flag = false,  .help = "ifconfig help: Prints the help text for all ifconfig commands"},
     {.name = "netif",     .operation = ifcfg_netif_op,  .arg_cnt = 4, .start_index = 1, .netif_flag = false,  .help = "ifconfig netif create/destroy <ethernet handle id>/<iface>: Create or destroy a network interface with the specified ethernet handle or interface name"},
     {.name = "eth",       .operation = ifcfg_eth_op,    .arg_cnt = 3, .start_index = 1, .netif_flag = false,  .help = "ifconfig eth init/deinit/show: Initialize, deinitialize and display a list of available ethernet handle"},
@@ -67,7 +67,7 @@ netif_op cmd_list[] = {
 };
 
 
-esp_err_t ifcfg_help_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_help_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     int cmd_count = sizeof(cmd_list) / sizeof(cmd_list[0]);
 
@@ -81,15 +81,14 @@ esp_err_t ifcfg_help_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 }
 
 
-esp_netif_t *get_esp_netif_from_ifname(char *if_name)
+static esp_netif_t *get_esp_netif_from_ifname(char *if_name)
 {
     esp_netif_t *esp_netif = NULL;
     esp_err_t ret = ESP_FAIL;
     char interface[10];
 
-    /* Get interface details and own global ipv6 address */
-    for (int i = 0; i < esp_netif_get_nr_of_ifs(); ++i) {
-        esp_netif = esp_netif_next(esp_netif);
+    /* Get interface details and obtain the global IPv6 address */
+    while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
         ret = esp_netif_get_netif_impl_name(esp_netif, interface);
 
         if ((ESP_FAIL == ret) || (NULL == esp_netif)) {
@@ -106,7 +105,7 @@ esp_netif_t *get_esp_netif_from_ifname(char *if_name)
 }
 
 
-esp_err_t ifcfg_basic_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_basic_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     /* Set Default */
     if (!strcmp("default", argv[self->start_index])) {
@@ -124,7 +123,7 @@ esp_err_t ifcfg_basic_op(netif_op *self, int argc, char *argv[], esp_netif_t *es
 }
 
 
-esp_err_t ifcfg_lwip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_lwip_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     struct netif *lwip_netif = esp_netif_get_netif_impl(esp_netif);
     if (NULL == lwip_netif) {
@@ -162,7 +161,7 @@ esp_err_t ifcfg_lwip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 }
 
 
-esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_ip_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     esp_netif_ip_info_t ip_info = {0};
 
@@ -194,7 +193,7 @@ esp_err_t ifcfg_ip_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_n
 
 
 #if IP_NAPT
-esp_err_t set_napt(char *if_name, bool state)
+static esp_err_t set_napt(char *if_name, bool state)
 {
     esp_netif_t *esp_netif = NULL;
     esp_err_t ret = ESP_FAIL;
@@ -222,7 +221,7 @@ esp_err_t set_napt(char *if_name, bool state)
 #endif
 
 
-esp_err_t ifcfg_napt_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_napt_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
 #if IP_NAPT
     if (!strcmp("napt", argv[self->start_index])) {
@@ -244,7 +243,7 @@ esp_err_t ifcfg_napt_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 }
 
 
-esp_err_t ifcfg_addr_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_addr_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     if (!strcmp("staticip", argv[self->start_index])) {
         esp_netif_dhcpc_stop(esp_netif);
@@ -281,7 +280,7 @@ esp_err_t ifcfg_addr_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp
 }
 
 
-void print_iface_details(esp_netif_t *esp_netif)
+static void print_iface_details(esp_netif_t *esp_netif)
 {
     esp_netif_ip_info_t ip_info;
     uint8_t mac[NETIF_MAX_HWADDR_LEN];
@@ -318,7 +317,7 @@ void print_iface_details(esp_netif_t *esp_netif)
 
     /* Print DHCP status */
     if (ESP_OK == esp_netif_dhcps_get_status(esp_netif, &status)) {
-        ESP_LOGI(TAG, "DHCP Server Status: %s", status ? "enabled" : "disabled");
+        ESP_LOGI(TAG, "DHCP Server Status: %s", (status == ESP_NETIF_DHCP_STARTED) || (status == ESP_NETIF_DHCP_STOPPED) ? "enabled" : "disabled");
     } else if ((ESP_OK == esp_netif_dhcpc_get_status(esp_netif, &status))) {
         if (ESP_NETIF_DHCP_STOPPED == status) {
             ESP_LOGI(TAG, "Static IP");
@@ -349,7 +348,7 @@ void print_iface_details(esp_netif_t *esp_netif)
 }
 
 
-esp_err_t ifcfg_print_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_print_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     /* Print interface details */
     if (2 == argc) {
@@ -385,10 +384,10 @@ typedef struct {
     iface_state state;
 } iface_desc;
 
-iface_desc iface_list[MAX_ETH_NETIF_COUNT];
-uint8_t netif_count;
-uint8_t eth_init_flag = false;
-uint8_t eth_port_cnt_g = 0;
+static iface_desc iface_list[MAX_ETH_NETIF_COUNT];
+static uint8_t netif_count;
+static uint8_t eth_init_flag = false;
+static uint8_t eth_port_cnt_g = 0;
 
 static esp_err_t get_netif_config(uint16_t id, esp_netif_config_t *eth_cfg_o)
 {
@@ -422,7 +421,7 @@ static void free_config(esp_netif_config_t *eth_cfg)
 }
 
 
-esp_err_t ifcfg_netif_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_netif_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     int eth_handle_id = atoi(argv[self->start_index + 2]);
 
@@ -508,7 +507,7 @@ static void print_eth_info(eth_dev_info_t eth_info, int id)
 }
 
 
-esp_err_t ifcfg_eth_op(netif_op *self, int argc, char *argv[], esp_netif_t *esp_netif)
+static esp_err_t ifcfg_eth_op(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif)
 {
     static esp_eth_handle_t *eth_handle_g = NULL;
     eth_dev_info_t eth_info;
@@ -585,7 +584,7 @@ static int do_cmd_ifconfig(int argc, char **argv)
 {
     esp_netif_t *esp_netif = NULL;
     int cmd_count = sizeof(cmd_list) / sizeof(cmd_list[0]);
-    netif_op cmd;
+    netif_op_t cmd;
 
     for (int i = 0; i < cmd_count; i++) {
         cmd = cmd_list[i];
