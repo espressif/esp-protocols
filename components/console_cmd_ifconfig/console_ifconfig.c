@@ -24,11 +24,9 @@
 #endif
 
 
-typedef struct netif_op_ netif_op_t;
-
-typedef struct netif_op_ {
+typedef struct netif_op_t {
     char *name;
-    esp_err_t (*operation)(netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
+    esp_err_t (*operation)(struct netif_op_t *self, int argc, char *argv[], esp_netif_t *esp_netif);
     int arg_cnt;
     int start_index;
     char *help;
