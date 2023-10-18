@@ -94,5 +94,6 @@ jobs:
             components/esp_websocket_client;
             components/mdns;
             components/console_simple_init;
+            components/console_cmd_ping;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
