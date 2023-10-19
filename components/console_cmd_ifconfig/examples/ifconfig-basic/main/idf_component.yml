@@ -1,6 +1,6 @@
 dependencies:
   idf:
     version: ">=5.0"
-  console_simple_init:
+  console_cmd_ifconfig:
     version: "*"
     override_path: '../../../'
