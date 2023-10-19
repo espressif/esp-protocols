@@ -17,7 +17,7 @@ jobs:
     name: Publish Tag, Release, Docs, Component
     runs-on: ubuntu-latest
     # Skip running on forks since it won't have access to secrets
-    #if: github.repository == 'espressif/esp-protocols'
+    if: github.repository == 'espressif/esp-protocols'
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
@@ -43,57 +43,56 @@ jobs:
           tag_name: ${{ env.BUMP_TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#      - name: Generate docs
-#        shell: bash
-#        run: |
-#            sudo apt-get update
-#            sudo apt-get -y install doxygen clang python3-pip
-#            python -m pip install breathe recommonmark esp-docs==1.4.1
-#            for comp in  `ls components`; do
-#              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
-#                cd $GITHUB_WORKSPACE/docs/${comp}
-#                if [[ "${{ env.BUMP_COMPONENT }}" == "${comp}" ]]; then
-#                  echo "Building specific version of ${comp} (${{ env.BUMP_VERSION }})"
-#                  ./generate_docs ${{ env.BUMP_VERSION }}
-#                else
-#                  echo "Building latest version of ${comp}"
-#                  ./generate_docs
-#                fi
-#              fi
-#            done
-#      - name: Deploying generated docs
-#        shell: bash
-#        run: |
-#            source $GITHUB_WORKSPACE/docs/utils.sh
-#            add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
-#            export GIT_VER=$(git describe --always)
-#            export GITHUB_REF_NAME=latest
-#            for comp in  `ls components`; do
-#              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
-#                echo "Deploying latest of ${comp}"
-#                export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
-#                export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH_ORIG/${comp}
-#                cd $GITHUB_WORKSPACE/docs/${comp}
-#                deploy-docs
-#              fi
-#            done;
-#            # Deploy docs with version path
-#            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} ]]; then
-#                echo "Deploying specific version of ${{ env.BUMP_COMPONENT }} (${{ env.BUMP_VERSION }})"
-#                cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
-#                export GITHUB_REF_NAME=${{ env.BUMP_VERSION }}
-#                deploy-docs
-#            fi
-#      - name: Upload components to component service
-#        uses: espressif/upload-components-ci-action@v1
-#        with:
-#          directories: >
-#            components/asio;
-#            components/esp_modem;
-#            components/esp_mqtt_cxx;
-#            components/esp_websocket_client;
-#            components/mdns;
-#            components/console_simple_init;
-#            components/console_cmd_ifconfig;
-#          namespace: "espressif"
-#          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
+      - name: Generate docs
+        shell: bash
+        run: |
+            sudo apt-get update
+            sudo apt-get -y install doxygen clang python3-pip
+            python -m pip install breathe recommonmark esp-docs==1.4.1
+            for comp in  `ls components`; do
+              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
+                cd $GITHUB_WORKSPACE/docs/${comp}
+                if [[ "${{ env.BUMP_COMPONENT }}" == "${comp}" ]]; then
+                  echo "Building specific version of ${comp} (${{ env.BUMP_VERSION }})"
+                  ./generate_docs ${{ env.BUMP_VERSION }}
+                else
+                  echo "Building latest version of ${comp}"
+                  ./generate_docs
+                fi
+              fi
+            done
+      - name: Deploying generated docs
+        shell: bash
+        run: |
+            source $GITHUB_WORKSPACE/docs/utils.sh
+            add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
+            export GIT_VER=$(git describe --always)
+            export GITHUB_REF_NAME=latest
+            for comp in  `ls components`; do
+              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
+                echo "Deploying latest of ${comp}"
+                export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
+                export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH_ORIG/${comp}
+                cd $GITHUB_WORKSPACE/docs/${comp}
+                deploy-docs
+              fi
+            done;
+            # Deploy docs with version path
+            if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} ]]; then
+                echo "Deploying specific version of ${{ env.BUMP_COMPONENT }} (${{ env.BUMP_VERSION }})"
+                cd $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }}
+                export GITHUB_REF_NAME=${{ env.BUMP_VERSION }}
+                deploy-docs
+            fi
+      - name: Upload components to component service
+        uses: espressif/upload-components-ci-action@v1
+        with:
+          directories: >
+            components/asio;
+            components/esp_modem;
+            components/esp_mqtt_cxx;
+            components/esp_websocket_client;
+            components/mdns;
+            components/console_simple_init;
+          namespace: "espressif"
+          api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
