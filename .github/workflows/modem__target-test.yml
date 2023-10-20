@@ -16,6 +16,10 @@ jobs:
         idf_ver: ["latest"]
         idf_target: ["esp32c3"]
         test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
+        include:
+          - idf_ver: "latest"
+            idf_target: "esp32s2"
+            test: { app: usb_a7670_s2, path: examples/pppos_client }
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -55,6 +59,10 @@ jobs:
         idf_ver: ["latest"]
         idf_target: ["esp32c3"]
         test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
+        include:
+          - idf_ver: "latest"
+            idf_target: "esp32s2"
+            test: { app: usb_a7670_s2, path: examples/pppos_client }
     needs: build_esp_modem_tests
     runs-on:
       - self-hosted
