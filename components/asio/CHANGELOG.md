@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.28.0~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.0~0)
+
+### Features
+
+- Updates asio to 1.28 ([b310abe](https://github.com/espressif/esp-protocols/commit/b310abe))
+
+### Bug Fixes
+
+- Makes the examples to override path ([842b2b2](https://github.com/espressif/esp-protocols/commit/842b2b2))
+- Removes esp_exception and make all examples to use exceptions ([c1c9350](https://github.com/espressif/esp-protocols/commit/c1c9350))
+- removed Wno-format flag and fixed formatting warnings ([c48e442](https://github.com/espressif/esp-protocols/commit/c48e442))
+- added idf_component.yml for examples ([d273e10](https://github.com/espressif/esp-protocols/commit/d273e10))
+- Reintroduce missing CHANGELOGs ([200cbb3](https://github.com/espressif/esp-protocols/commit/200cbb3), [#235](https://github.com/espressif/esp-protocols/issues/235))
+
+### Updated
+
+- docs(common): updated component and example links ([f48d9b2](https://github.com/espressif/esp-protocols/commit/f48d9b2))
+- docs(common): improving documentation ([ca3fce0](https://github.com/espressif/esp-protocols/commit/ca3fce0))
+- Add homepage URL and License to all components ([ef3f0ee](https://github.com/espressif/esp-protocols/commit/ef3f0ee))
+- Added badges with version of components to the respective README files ([e4c8a59](https://github.com/espressif/esp-protocols/commit/e4c8a59))
+- CI: Fix ASIO example test ([6e2bb51](https://github.com/espressif/esp-protocols/commit/6e2bb51))
+- Examples: using pytest.ini from top level directory ([aee016d](https://github.com/espressif/esp-protocols/commit/aee016d))
+- CI: fixing the files to be complient with pre-commit hooks ([945bd17](https://github.com/espressif/esp-protocols/commit/945bd17))
+
 ## [1.14.1~3](https://github.com/espressif/esp-protocols/commits/f148c98)
 
 ### Updated
