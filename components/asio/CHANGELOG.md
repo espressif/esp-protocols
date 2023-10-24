@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.28.0~1](https://github.com/espressif/esp-protocols/commits/asio-v1.28.0_1)
+
+- Updated only metadata, previous tag wasn't created.
+
 ## [1.28.0~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.0~0)
 
 ### Features
