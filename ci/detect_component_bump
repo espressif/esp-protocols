@@ -12,6 +12,7 @@ if git log -1 -m --name-only --pretty="" | grep -q components/${comp}/idf_compon
     echo "${comp}: Component version file has changed"
     version=`grep version: components/${comp}/.cz.yaml`
     version=${version#*version: }
+    version="${version//\~/_}"
 
     tag_format=`grep tag_format: components/${comp}/.cz.yaml`
     tag_format=${tag_format#*tag_format: }
