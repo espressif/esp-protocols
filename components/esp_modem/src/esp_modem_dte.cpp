@@ -78,9 +78,9 @@ void DTE::set_command_callbacks()
             if (command_cb.process_line(data, 0, len)) {
                 return true;
             }
-            // cannot inflate and the processing hasn't finishes in the first iteration -> report a failure
-            command_cb.give_up();
-            return true;
+            // cannot inflate and the processing hasn't finishes in the first iteration, but continue
+            // (will post next fragments to the parser, since we might be just missing a last token or OK
+            return false;
 #endif
         }
         // data == nullptr: Terminals which request users to read current data
