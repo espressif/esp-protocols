@@ -1,0 +1,13 @@
+[sections:console_cmd_desc]
+entries:
+    .console_cmd_desc
+
+[scheme:console_cmd_desc_default]
+entries:
+    console_cmd_desc -> flash_rodata
+
+[mapping:console_cmd_desc]
+archive: *
+entries:
+    * (console_cmd_desc_default);
+        console_cmd_desc -> flash_rodata KEEP() SORT(name) SURROUND(console_cmd_array)

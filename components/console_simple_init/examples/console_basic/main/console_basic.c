@@ -30,6 +30,9 @@ void app_main(void)
     // Register user command
     ESP_ERROR_CHECK(console_cmd_user_register("user", do_user_cmd));
 
+    // Register all the plugin commands added to this example
+    ESP_ERROR_CHECK(console_cmd_all_register());
+
     // start console REPL
     ESP_ERROR_CHECK(console_cmd_start());
 

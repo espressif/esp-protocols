@@ -8,13 +8,13 @@
 #include "esp_log.h"
 #include "console_simple_init.h"
 
+
 static esp_console_repl_t *repl = NULL;
 static const char *TAG = "console_simple_init";
 
 /**
  * @brief Initializes the esp console
- * @return
- *          - esp_err_t
+ * @return ESP_OK on success
  */
 esp_err_t console_cmd_init(void)
 {
@@ -40,13 +40,12 @@ esp_err_t console_cmd_init(void)
 }
 
 /**
- * @brief Initialize Ethernet driver based on Espressif IoT Development Framework Configuration
+ * @brief Register a user supplied command
  *
  * @param[in] cmd string that is the user defined command
  * @param[in] do_user_cmd Function pointer for a user-defined command callback function
  *
- * @return
- *          - esp_err_t
+ * @return ESP_OK on success
  */
 esp_err_t console_cmd_user_register(char *cmd, esp_console_cmd_func_t do_user_cmd)
 {
@@ -67,10 +66,36 @@ esp_err_t console_cmd_user_register(char *cmd, esp_console_cmd_func_t do_user_cm
     return ret;
 }
 
+
+/**
+ * @brief Register all the console commands in .console_cmd_desc section
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t console_cmd_all_register(void)
+{
+    esp_err_t ret = ESP_FAIL;
+    extern const console_cmd_plugin_desc_t _console_cmd_array_start;
+    extern const console_cmd_plugin_desc_t _console_cmd_array_end;
+
+    ESP_LOGI(TAG, "List of Console commands:\n");
+    for (const console_cmd_plugin_desc_t *it = &_console_cmd_array_start; it != &_console_cmd_array_end; ++it) {
+        ESP_LOGI(TAG, "- Command '%s', function plugin_regd_fn=%p\n", it->name, it->plugin_regd_fn);
+        if (it->plugin_regd_fn != NULL) {
+            ret = (it->plugin_regd_fn)();
+            if (ret != ESP_OK) {
+                return ret;
+            }
+        }
+    }
+
+    return ESP_OK;
+}
+
+
 /**
  * @brief Starts the esp console
- * @return
- *          - esp_err_t
+ * @return ESP_OK on success
  */
 esp_err_t console_cmd_start(void)
 {
