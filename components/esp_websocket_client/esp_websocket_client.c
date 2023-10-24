@@ -1200,6 +1200,7 @@ int esp_websocket_client_send_fin(esp_websocket_client_handle_t client, TickType
 
 int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
+    int ret = ESP_OK;
     if (client == NULL || len < 0 || (data == NULL && len > 0)) {
         ESP_LOGE(TAG, "Invalid arguments");
         return ESP_FAIL;
@@ -1212,24 +1213,28 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
 
     if (!esp_websocket_client_is_connected(client)) {
         ESP_LOGE(TAG, "Websocket client is not connected");
+        ret = ESP_FAIL;
         goto unlock_and_return;
     }
 
     if (client->transport == NULL) {
         ESP_LOGE(TAG, "Invalid transport");
+        ret = ESP_FAIL;
         goto unlock_and_return;
     }
     if (esp_websocket_new_buf(client, true) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to setup tx buffer");
+        ret = ESP_FAIL;
         goto unlock_and_return;
     }
     if (esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout) != true) {
         ESP_LOGE(TAG, "Failed to send the buffer");
+        ret = ESP_FAIL;
         goto unlock_and_return;
     }
 unlock_and_return:
     xSemaphoreGiveRecursive(client->lock);
-    return ESP_FAIL;
+    return ret;
 }
 
 bool esp_websocket_client_is_connected(esp_websocket_client_handle_t client)
