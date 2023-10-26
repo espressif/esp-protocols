@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(mqtt_cxx): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py esp_mqtt_cxx
+  tag_format: mqtt_cxx-v$version
+  version: 0.2.0
+  version_files:
+  - idf_component.yml
