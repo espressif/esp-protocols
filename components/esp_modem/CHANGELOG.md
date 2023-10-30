@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.4](https://github.com/espressif/esp-protocols/commits/modem-v1.0.4)
+
+### Bug Fixes
+
+- Added USB runner with ESP32S2 with A7670 ([edeb936](https://github.com/espressif/esp-protocols/commit/edeb936))
+- Extend docs on AT client example ([1f2ceed](https://github.com/espressif/esp-protocols/commit/1f2ceed))
+- Fix pytest exclusion, gitignore, and changelog checks ([2696221](https://github.com/espressif/esp-protocols/commit/2696221))
+- Fix DTE to post fragments to parsers for USB term ([1db1e15](https://github.com/espressif/esp-protocols/commit/1db1e15))
+- Fix DUAL_MODE regression from cb6e03ac ([2aada0f](https://github.com/espressif/esp-protocols/commit/2aada0f))
+- Fix AT client example to use custom AT processing ([1a5ba98](https://github.com/espressif/esp-protocols/commit/1a5ba98), [#352](https://github.com/espressif/esp-protocols/issues/352))
+
 ## [1.0.3](https://github.com/espressif/esp-protocols/commits/modem-v1.0.3)
 
 ### Bug Fixes
