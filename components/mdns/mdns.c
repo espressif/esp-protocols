@@ -25,6 +25,12 @@
 #include "esp_wifi.h"
 #endif
 
+#if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 1, 0)
+// IDF <= v5.1 does not support enabling/disabling esp-wifi
+#define MDNS_ESP_WIFI_ENABLED 1
+#else
+#define MDNS_ESP_WIFI_ENABLED CONFIG_ESP_WIFI_ENABLED
+#endif
 
 #ifdef MDNS_ENABLE_DEBUG
 void mdns_debug_packet(const uint8_t *data, size_t len);
@@ -4158,7 +4164,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
     }
 
     esp_netif_dhcp_status_t dcst;
-#if CONFIG_ESP_WIFI_ENABLED
+#if MDNS_ESP_WIFI_ENABLED
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
         case WIFI_EVENT_STA_CONNECTED:
@@ -5360,7 +5366,7 @@ static inline void set_default_duplicated_interfaces(void)
 
 static inline void unregister_predefined_handlers(void)
 {
-#if defined(CONFIG_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
+#if defined(MDNS_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
 #endif
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
@@ -5457,7 +5463,7 @@ esp_err_t mdns_init(void)
         goto free_queue;
     }
 
-#if defined(CONFIG_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
+#if defined(MDNS_ESP_WIFI_ENABLED) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     if ((err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
         goto free_event_handlers;
     }
