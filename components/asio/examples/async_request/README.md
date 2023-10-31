@@ -25,6 +25,7 @@ The control of lifetime of the class, done by `std::shared_ptr` usage, guarantee
 async operations until it's not needed any more. This makes necessary that all of the async operation class must start
 its lifetime as a `std::shared_ptr` due to the usage of `std::enable_shared_from_this`.
 
+```
 
      User creates a shared_ptr──┐
      of AddressResolution and   │
@@ -47,6 +48,7 @@ its lifetime as a `std::shared_ptr` due to the usage of `std::enable_shared_from
                                 is called.                   │
                                                              └────►Completion Handler()
 
+```
 
 The previous diagram shows the process and the life span of each of the tasks in this examples. At each stage the
 object responsible for the last action inject itself to the completion handler of the next stage for reuse.

@@ -17,7 +17,6 @@ ESP platform port currently supports only network asynchronous socket operations
 SSL/TLS support is disabled by default and could be enabled in component configuration menu by choosing TLS library from
 
 - mbedTLS with OpenSSL translation layer (default option)
-- wolfSSL
 
 SSL support is very basic at this stage and it does include following features:
 
@@ -32,11 +31,13 @@ Internal asio settings for ESP include
 
 Application Example
 -------------------
-ESP examples are based on standard asio :example:`examples <../examples>`:
+ESP examples are based on standard asio :example:`examples <../../../components/asio/examples>`:
 
-- :example:`udp_echo_server <../examples/udp_echo_server>`
-- :example:`tcp_echo_server <../examples/tcp_echo_server>`
-- :example:`asio_chat <../examples/asio_chat>`
-- :example:`ssl_client_server <../examples/ssl_client_server>`
+- :example:`asio_chat <../../../components/asio/examples/asio_chat>`
+- :example:`async_request <../../../components/asio/examples/async_request>`
+- :example:`socks4 <../../../components/asio/examples/socks4>`
+- :example:`ssl_client_server <../../../components/asio/examples/ssl_client_server>`
+- :example:`tcp_echo_server <../../../components/asio/examples/tcp_echo_server>`
+- :example:`udp_echo_server <../../../components/asio/examples/udp_echo_server>`
 
 Please refer to the specific example README.md for details
