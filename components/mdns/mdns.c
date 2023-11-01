@@ -5613,7 +5613,9 @@ esp_err_t mdns_hostname_get(char *hostname)
     }
 
     MDNS_SERVICE_LOCK();
-    strncpy(hostname, _mdns_server->hostname, strnlen(_mdns_server->hostname, MDNS_NAME_BUF_LEN));
+    size_t len = strnlen(_mdns_server->hostname, MDNS_NAME_BUF_LEN - 1);
+    strncpy(hostname, _mdns_server->hostname, len);
+    hostname[len] = 0;
     MDNS_SERVICE_UNLOCK();
     return ESP_OK;
 }
