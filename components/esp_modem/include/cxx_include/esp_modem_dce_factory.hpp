@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@
  * @brief DCE modem factory
  */
 
+#define esp_modem_create_dce_from dce_factory::Factory::create_unique_dce_from
 
 namespace esp_modem::dce_factory {
 
@@ -236,12 +237,12 @@ public:
         return nullptr;
     }
 
-    template <typename T_Module>
-    static std::unique_ptr<DCE> create_unique_dce_from(const esp_modem::dce_config *config,
-            std::shared_ptr<esp_modem::DTE> dte,
-            esp_netif_t *netif)
+    template <typename T_Module, typename Ptr = std::unique_ptr<DCE>>
+    static Ptr create_unique_dce_from(const esp_modem::dce_config *config,
+                                      std::shared_ptr<esp_modem::DTE> dte,
+                                      esp_netif_t *netif)
     {
-        return build_generic_DCE<T_Module, DCE, std::unique_ptr<DCE>>(config, std::move(dte), netif);
+        return build_generic_DCE<T_Module, DCE, Ptr>(config, std::move(dte), netif);
     }
 
 private:

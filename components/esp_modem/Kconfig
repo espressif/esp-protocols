@@ -45,4 +45,22 @@ menu "esp-modem"
             to make the protocol more robust on noisy environments or when underlying
             transport gets corrupted often (for example by Rx buffer overflows)
 
+    config ESP_MODEM_ADD_CUSTOM_MODULE
+        bool "Add support for custom module in C-API"
+        default n
+        help
+            If enabled, we adapt the C-API to create a DCE from a user defined class
+
+    config ESP_MODEM_CUSTOM_MODULE_HEADER
+        string "Header file name which defines custom DCE creation"
+        depends on ESP_MODEM_ADD_CUSTOM_MODULE
+        default "custom_module.hpp"
+        help
+            Name of the header file in the main component which implements esp_modem_create_custom_dce()
+            called from C-API for creating esp_modem_dce object.
+            This header provides definition of the custom module with some additional and/or updated commands
+            and API. It also defines creation of DCE based on this custom module, typically calling:
+            dce_factory::Factory::create_unique_dce_from<CustomModule, DCE*>(dce_config, std::move(dte), netif)
+            Please refer to the pppos_client example for more details.
+
 endmenu

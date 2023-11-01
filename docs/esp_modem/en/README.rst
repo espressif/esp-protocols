@@ -110,6 +110,10 @@ commands might have a different implementation. Adding a new device
 means to provide a new implementation as a class derived from
 ``GenericModule``, where we could add new commands or modify the
 existing ones.
+If you have to support a custom device with C-API, please refer to
+the example ``examples/pppos_client`` and enable ``ESP_MODEM_ADD_CUSTOM_MODULE``.
+For advanced use-case, mainly with C++ API and/or usage of esp_modem's
+Factory class, please read <advanced_api>.
 
 Configuration
 -------------
