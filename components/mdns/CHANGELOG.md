@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.2)
+
+### Bug Fixes
+
+- add terminator for the getting host name ([b6a4d94](https://github.com/espressif/esp-protocols/commit/b6a4d94))
+- Enable ESP_WIFI_CONFIG when ESP-IDF <= 5.1 ([0b783c0](https://github.com/espressif/esp-protocols/commit/0b783c0))
+- set host list NULL on destroy ([ea54eef](https://github.com/espressif/esp-protocols/commit/ea54eef))
+- removed Wno-format flag and fixed formatting warnings ([c48e442](https://github.com/espressif/esp-protocols/commit/c48e442))
+- remove the the range of MDNS_MAX_SERVICES and fix issues of string functions ([3dadce2](https://github.com/espressif/esp-protocols/commit/3dadce2))
+
 ## [1.2.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.1)
 
 ### Features
