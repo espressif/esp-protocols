@@ -235,7 +235,9 @@ extern "C" void app_main(void)
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
             modem_mode dev_mode;
-            if (mode == "CMUX1") {
+            if (mode == "UNDEF") {
+                dev_mode = esp_modem::modem_mode::UNDEF;
+            } else if (mode == "CMUX1") {
                 dev_mode = esp_modem::modem_mode::CMUX_MANUAL_MODE;
             } else if (mode == "CMUX2") {
                 dev_mode = esp_modem::modem_mode::CMUX_MANUAL_EXIT;

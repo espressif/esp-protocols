@@ -151,10 +151,14 @@ command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32
 
 bool DTE::exit_cmux()
 {
+    if (!cmux_term) {
+        return false;
+    }
     if (!cmux_term->deinit()) {
         return false;
     }
     exit_cmux_internal();
+    cmux_term.reset();
     return true;
 }
 
@@ -174,6 +178,10 @@ void DTE::exit_cmux_internal()
 
 bool DTE::setup_cmux()
 {
+    if (cmux_term) {
+        ESP_LOGE("esp_modem_dte", "Cannot setup_cmux(), cmux_term already exists");
+        return false;
+    }
     cmux_term = std::make_shared<CMux>(primary_term, std::move(buffer));
     if (cmux_term == nullptr) {
         return false;
@@ -198,6 +206,11 @@ bool DTE::setup_cmux()
 
 bool DTE::set_mode(modem_mode m)
 {
+    // transitions (any) -> UNDEF
+    if (m == modem_mode::UNDEF) {
+        mode = m;
+        return true;
+    }
     // transitions (COMMAND|UNDEF) -> CMUX
     if (m == modem_mode::CMUX_MODE) {
         if (mode == modem_mode::UNDEF || mode == modem_mode::COMMAND_MODE) {
@@ -246,7 +259,7 @@ bool DTE::set_mode(modem_mode m)
         return false;
     }
     // manual CMUX transitions: Exit CMUX
-    if (m == modem_mode::CMUX_MANUAL_EXIT && mode == modem_mode::CMUX_MANUAL_MODE) {
+    if (m == modem_mode::CMUX_MANUAL_EXIT && (mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::UNDEF))  {
         if (exit_cmux()) {
             mode = modem_mode::COMMAND_MODE;
             return true;
@@ -255,7 +268,7 @@ bool DTE::set_mode(modem_mode m)
         return false;
     }
     // manual CMUX transitions: Swap terminals
-    if (m == modem_mode::CMUX_MANUAL_SWAP && mode == modem_mode::CMUX_MANUAL_MODE) {
+    if (m == modem_mode::CMUX_MANUAL_SWAP && (mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::UNDEF)) {
         secondary_term.swap(primary_term);
         set_command_callbacks();
         return true;

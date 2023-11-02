@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -96,6 +96,11 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
 {
     switch (m) {
     case modem_mode::UNDEF:
+        if (!dte->set_mode(m)) {
+            return false;
+        }
+        mode = m;
+        return true;
     case modem_mode::DUAL_MODE: // Only DTE can be in Dual mode
         break;
     case modem_mode::COMMAND_MODE:
@@ -151,7 +156,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
         mode = modem_mode::CMUX_MANUAL_MODE;
         return true;
     case modem_mode::CMUX_MANUAL_EXIT:
-        if (mode != modem_mode::CMUX_MANUAL_MODE) {
+        if (mode != modem_mode::CMUX_MANUAL_MODE && mode != modem_mode::UNDEF) {
             return false;
         }
         if (!dte->set_mode(m)) {
@@ -160,7 +165,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
         mode = modem_mode::COMMAND_MODE;
         return true;
     case modem_mode::CMUX_MANUAL_SWAP:
-        if (mode != modem_mode::CMUX_MANUAL_MODE) {
+        if (mode != modem_mode::CMUX_MANUAL_MODE && mode != modem_mode::UNDEF) {
             return false;
         }
         if (!dte->set_mode(m)) {
@@ -168,12 +173,12 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
         }
         return true;
     case modem_mode::CMUX_MANUAL_DATA:
-        if (mode != modem_mode::CMUX_MANUAL_MODE) {
+        if (mode != modem_mode::CMUX_MANUAL_MODE && mode != modem_mode::UNDEF) {
             return false;
         }
         return transitions::enter_data(*dte, *device, netif);
     case modem_mode::CMUX_MANUAL_COMMAND:
-        if (mode != modem_mode::CMUX_MANUAL_MODE) {
+        if (mode != modem_mode::CMUX_MANUAL_MODE && mode != modem_mode::UNDEF) {
             return false;
         }
         return transitions::exit_data(*dte, *device, netif);
