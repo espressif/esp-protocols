@@ -76,6 +76,7 @@ public:
      * @param command Command to be sent
      * @param got_line callback if a line received
      * @param time_ms timeout in milliseconds
+     * @param separator Character treated as a line separator, typically '\n'
      * @return OK, FAIL or TIMEOUT
      */
     virtual command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator) = 0;

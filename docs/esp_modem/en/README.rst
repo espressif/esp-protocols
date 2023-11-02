@@ -67,22 +67,19 @@ supports SIM800, BG96, SIM7600.
 Use cases
 ---------
 
-Users interact with the esp-modem using the DCE’s interface, to
-basically
+Users interact with the esp-modem using the DCE's interface, to basically
 
 - Switch between command and data mode to connect to the internet via cellular network.
-- Send various commands to the device (e.g. send SMS)
+- Send various commands to the device (e.g. send SMS)
 
 The applications typically register handlers for network events to
 receive notification on the network availability and IP address changes.
 
 Common use cases of the esp-modem are also listed as the examples:
 
-- ``examples/pppos_client`` – simple client which reads some module properties and switches to the data mode to connect to a public mqtt broker.
-- ``examples/modem_console`` – is an example to exercise all possible module commands in a console application.
-- ``examples/ap_to_pppos`` – this example focuses on the network
-connectivity of the esp-modem and provides a WiFi AP that forwards
-packets (and uses NAT) to and from the PPPoS connection.
+- ``examples/pppos_client`` simple client which reads some module properties and switches to the data mode to connect to a public mqtt broker.
+- ``examples/modem_console`` is an example to exercise all possible module commands in a console application.
+- ``examples/ap_to_pppos`` this example focuses on the network connectivity of the esp-modem and provides a WiFi AP that forwards packets (and uses NAT) to and from the PPPoS connection.
 
 Extensibility
 -------------
@@ -95,8 +92,8 @@ allows users to also issue commands in the data mode, after creating
 multiple virtual terminals, designating some of them solely to data
 mode, others solely to command mode.
 
-DTE’s
-~~~~~
+DTE
+~~~
 
 Currently, we support only UART (and USB as a preview feature), but
 modern modules support other communication interfaces, such as USB, SPI.
