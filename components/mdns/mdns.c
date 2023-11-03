@@ -17,6 +17,7 @@
 #include "mdns_networking.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "lwip/opt.h"
 
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
@@ -184,7 +185,7 @@ static inline void _mdns_clean_netif_ptr(mdns_if_t tcpip_if)
 static mdns_if_t _mdns_get_if_from_esp_netif(esp_netif_t *esp_netif)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; ++i) {
-        if (esp_netif == s_esp_netifs[i].netif) {
+        if (esp_netif == s_esp_netifs[i].netif || (s_esp_netifs[i].predefined && esp_netif == esp_netif_from_preset_if(s_esp_netifs[i].predef_if))) {
             return i;
         }
     }
@@ -1360,7 +1361,9 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
         return _mdns_append_txt_record(packet, index, answer->service, answer->flush, answer->bye) > 0;
     } else if (answer->type == MDNS_TYPE_SDPTR) {
         return _mdns_append_sdptr_record(packet, index, answer->service, answer->flush, answer->bye) > 0;
-    } else if (answer->type == MDNS_TYPE_A) {
+    }
+#if LWIP_IPV4
+    else if (answer->type == MDNS_TYPE_A) {
         if (answer->host == &_mdns_self_host) {
             esp_netif_ip_info_t if_ip_info;
             if (!mdns_is_netif_ready(tcpip_if, MDNS_IP_PROTOCOL_V4) && _mdns_server->interfaces[tcpip_if].pcbs[MDNS_IP_PROTOCOL_V4].state != PCB_DUP) {
@@ -1387,7 +1390,8 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
             return _mdns_append_host_answer(packet, index, answer->host, ESP_IPADDR_TYPE_V4, answer->flush, answer->bye);
         }
     }
-#if CONFIG_LWIP_IPV6
+#endif /* LWIP_IPV4 */
+#if LWIP_IPV6
     else if (answer->type == MDNS_TYPE_AAAA) {
         if (answer->host == &_mdns_self_host) {
             struct esp_ip6_addr if_ip6s[NETIF_IPV6_MAX_NUMS];
@@ -1425,7 +1429,7 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
                                             answer->bye);
         }
     }
-#endif
+#endif /* LWIP_IPV6 */
     return 0;
 }
 
@@ -2877,6 +2881,7 @@ static void _mdns_dup_interface(mdns_if_t tcpip_if)
     }
 }
 
+#if LWIP_IPV4
 /**
  * @brief  Detect IPv4 address collision
  */
@@ -2890,7 +2895,6 @@ static int _mdns_check_a_collision(esp_ip4_addr_t *ip, mdns_if_t tcpip_if)
     if (esp_netif_get_ip_info(_mdns_get_esp_netif(tcpip_if), &if_ip_info)) {
         return 1;//they win
     }
-
     int ret = memcmp((uint8_t *)&if_ip_info.ip.addr, (uint8_t *)&ip->addr, sizeof(esp_ip4_addr_t));
     if (ret > 0) {
         return -1;//we win
@@ -2911,8 +2915,9 @@ static int _mdns_check_a_collision(esp_ip4_addr_t *ip, mdns_if_t tcpip_if)
     }
     return 0;//same
 }
+#endif // LWIP_IPV4
 
-#if CONFIG_LWIP_IPV6
+#if LWIP_IPV6
 /**
  * @brief  Detect IPv6 address collision
  */
@@ -2946,7 +2951,7 @@ static int _mdns_check_aaaa_collision(esp_ip6_addr_t *ip, mdns_if_t tcpip_if)
     }
     return 0;//same
 }
-#endif
+#endif /* LWIP_IPV6 */
 
 static bool _hostname_is_ours(const char *hostname)
 {
@@ -3509,22 +3514,28 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
 
 #ifndef CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
     // Check if the packet wasn't sent by us
+#if LWIP_IPV4
     if (packet->ip_protocol == MDNS_IP_PROTOCOL_V4) {
         esp_netif_ip_info_t if_ip_info;
         if (esp_netif_get_ip_info(_mdns_get_esp_netif(packet->tcpip_if), &if_ip_info) == ESP_OK &&
                 memcmp(&if_ip_info.ip.addr, &packet->src.u_addr.ip4.addr, sizeof(esp_ip4_addr_t)) == 0) {
             return;
         }
-#if CONFIG_LWIP_IPV6
-    } else {
-        struct esp_ip6_addr if_ip6;
-        if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(packet->tcpip_if), &if_ip6) == ESP_OK &&
-                memcmp(&if_ip6, &packet->src.u_addr.ip6, sizeof(esp_ip6_addr_t)) == 0) {
-            return;
-        }
-#endif
     }
+#endif // LWIP_IPV4
+#if LWIP_IPV4 && LWIP_IPV6
+    else
 #endif
+#if LWIP_IPV6
+        if (packet->ip_protocol == MDNS_IP_PROTOCOL_V6) {
+            struct esp_ip6_addr if_ip6;
+            if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(packet->tcpip_if), &if_ip6) == ESP_OK &&
+                    memcmp(&if_ip6, &packet->src.u_addr.ip6, sizeof(esp_ip6_addr_t)) == 0) {
+                return;
+            }
+        }
+#endif // LWIP_IPV6
+#endif // CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
 
     // Check for the minimum size of mdns packet
     if (len <=  MDNS_HEAD_ADDITIONAL_OFFSET) {
@@ -3887,7 +3898,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 }
 
             }
-#if CONFIG_LWIP_IPV6
+#if LWIP_IPV6
             else if (type == MDNS_TYPE_AAAA) {//ipv6
                 esp_ip_addr_t ip6;
                 ip6.type = ESP_IPADDR_TYPE_V6;
@@ -3940,7 +3951,8 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 }
 
             }
-#endif
+#endif /* LWIP_IPV6 */
+#if LWIP_IPV4
             else if (type == MDNS_TYPE_A) {
                 esp_ip_addr_t ip;
                 ip.type = ESP_IPADDR_TYPE_V4;
@@ -3993,6 +4005,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 }
 
             }
+#endif /* LWIP_IPV4 */
         }
         //end while
         if (parsed_packet->authoritative) {
@@ -4094,6 +4107,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
     }
 
 #ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
+#if LWIP_IPV4
     if (action & MDNS_EVENT_IP4_REVERSE_LOOKUP) {
         esp_netif_ip_info_t if_ip_info;
         if (esp_netif_get_ip_info(_mdns_get_esp_netif(mdns_if), &if_ip_info) == ESP_OK) {
@@ -4107,14 +4121,13 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
             }
         }
     }
-
-#ifdef CONFIG_LWIP_IPV6
+#endif /* LWIP_IPV4 */
+#if LWIP_IPV6
     if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
         esp_ip6_addr_t addr6;
         if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(mdns_if), &addr6) && !_ipv6_address_is_zero(addr6)) {
             uint8_t *paddr = (uint8_t *)&addr6.addr;
             const char sub[] = "ip6";
-            const size_t query_name_size = 4 * sizeof(addr6.addr) /* (2 nibbles + 2 dots)/per byte of IP address */ + sizeof(sub);
             char *reverse_query_name = malloc(query_name_size);
             if (reverse_query_name) {
                 char *ptr = &reverse_query_name[query_name_size];   // point to the end
@@ -4132,7 +4145,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
             }
         }
     }
-#endif /* CONFIG_LWIP_IPV6 */
+#endif /* LWIP_IPV6 */
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
@@ -5483,22 +5496,25 @@ esp_err_t mdns_init(void)
 #endif
 
     uint8_t i;
-#if CONFIG_LWIP_IPV6
+#if LWIP_IPV6
     esp_ip6_addr_t tmp_addr6;
 #endif
+#if LWIP_IPV4
     esp_netif_ip_info_t if_ip_info;
+#endif
 
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-#if CONFIG_LWIP_IPV6
+#if LWIP_IPV6
         if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(i), &tmp_addr6) && !_ipv6_address_is_zero(tmp_addr6)) {
             _mdns_enable_pcb(i, MDNS_IP_PROTOCOL_V6);
         }
 #endif
+#if LWIP_IPV4
         if (!esp_netif_get_ip_info(_mdns_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
             _mdns_enable_pcb(i, MDNS_IP_PROTOCOL_V4);
         }
+#endif
     }
-
     if (_mdns_service_task_start()) {
         //service start failed!
         err = ESP_FAIL;
