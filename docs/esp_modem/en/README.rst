@@ -84,16 +84,68 @@ Common use cases of the esp-modem are also listed as the examples:
 connectivity of the esp-modem and provides a WiFi AP that forwards
 packets (and uses NAT) to and from the PPPoS connection.
 
+Working modes
+~~~~~~~~~~~~~
+
+Modem devices could work in multiple different modes, esp-modem library
+uses these states to describe them:
+- Standard modes:
+      - Command mode -- This mode is used for sending AT commands
+      - Data or PPP mode -- This mode is used for data communication (to create PPPoS tunnel between the device and the library)
+- Multiplexing modes:
+      - CMUX mode -- This mode creates two virtual channels and uses one for sending AT commands and the other one for data communication.
+      - DUAL mode -- This mode uses two physical channels the same way as CMUX. This mode is supported only by certain devices, usually with USB interface.
+- Manual CMUX modes -- These modes are designed for applications to have better control over CMUX mode transitions. It allows setting up the virtual channels,
+  switching between channels, transitioning between data and command modes for each channel separately, and exiting the CMUX.
+
+Switching between common modes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The diagram below depicts allowed transitions between the most common modes
+
+::
+
+      +---------+    +---------+
+      | COMMAND |<-->|   DATA  |
+      +---------+    +---------+
+           ^
+           |
+           v
+      +-------+
+      | CMUX  |
+      +-------+
+
+Note that it is possible to switch from any mode to the "UNDEF" mode and vice-versa.
+
+Switching between manual modes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The diagram below depicts allowed transitions between manual CMUX modes
+
+::
+                             +------------------------------------
+                             |                                   |
+      +----------+    +-------------+    +------------+    +----------+
+      |          |<-->| MANUAL_DATA |<-->| MANUAL_CMD |<-->| COMMAND  |
+      | CMUX     |    +-------------+    +------------+    |  (CMUX   |
+      | MANUAL   |           |                             |  MANUAL  |
+      |          |    +-------------+                      |  EXIT)   |
+      |          |<-->| MANUAL_SWAP |<-------------------->|          |
+      +----------+    +-------------+                      +----------+
+           |                                                     |
+           +-----------------------------------------------------+
+
+Note that transitioning between "MANUAL_DATA" and "MANUAL_CMD" switches the secondary terminal (dedicated to PPP session) and could be used for recovering data communication if PPP session gets dropped.
+
 Extensibility
 -------------
 
 CMUX
 ~~~~
 
-Implementation of virtual terminals is an experimental feature, which
-allows users to also issue commands in the data mode, after creating
-multiple virtual terminals, designating some of them solely to data
-mode, others solely to command mode.
+Implements virtual terminals which allow users to also issue commands in the data mode;
+after creating two virtual terminals, designating one of them solely to data mode, and
+another one solely to command mode.
 
 DTE’s
 ~~~~~
