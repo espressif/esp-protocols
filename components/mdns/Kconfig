@@ -56,10 +56,10 @@ menu "mDNS"
     endchoice
 
     config MDNS_TASK_AFFINITY
-        hex
+        int
+        default FREERTOS_CORE0_AFFINITY if MDNS_TASK_AFFINITY_CPU0
+        default FREERTOS_CORE1_AFFINITY if MDNS_TASK_AFFINITY_CPU1
         default FREERTOS_NO_AFFINITY if MDNS_TASK_AFFINITY_NO_AFFINITY
-        default 0x0 if MDNS_TASK_AFFINITY_CPU0
-        default 0x1 if MDNS_TASK_AFFINITY_CPU1
 
     config MDNS_SERVICE_ADD_TIMEOUT_MS
         int "mDNS adding service timeout (ms)"
