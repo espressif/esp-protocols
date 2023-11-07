@@ -74,7 +74,7 @@ public:
         return device.get();
     }
 
-    command_result command(std::string_view command, got_line_cb got_line, uint32_t time_ms)
+    command_result command(char_span command, got_line_cb got_line, uint32_t time_ms)
     {
         return dte->command(command, std::move(got_line), time_ms);
     }

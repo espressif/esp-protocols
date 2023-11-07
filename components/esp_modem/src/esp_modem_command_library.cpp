@@ -5,36 +5,42 @@
  */
 
 #include <charconv>
-#include <span>
 
 #include "esp_log.h"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "cxx_include/esp_modem_command_library.hpp"
-#include "cxx_include/esp_modem_command_library_utils.hpp"
+#include "cxx_include/cxx17/esp_modem_command_library_utils.hpp"
 
 namespace esp_modem::dce_commands {
 
 static const char *TAG = "command_lib";
 
+using sv_list = lw_span<std::string_view>;
+
+char_span sv_to_charspan(std::string_view sv)
+{
+    return char_span(sv.data(), sv.size());
+}
+
 command_result generic_command(CommandableIf *t, std::string_view command,
-                               std::span<const std::string_view> pass_phrase,
-                               std::span<const std::string_view> fail_phrase,
+                               sv_list pass_phrase,
+                               sv_list fail_phrase,
                                uint32_t timeout_ms)
 {
     ESP_LOGD(TAG, "%s command %.*s\n", __func__, command.size(), command.data());
-    return t->command(command, [&](uint8_t *data, size_t len) {
+    return t->command(sv_to_charspan(command), [&](uint8_t *data, size_t len) {
         std::string_view response((char *)data, len);
         if (data == nullptr || len == 0 || response.empty()) {
             return command_result::TIMEOUT;
         }
         ESP_LOGD(TAG, "Response: %.*s\n", (int)response.length(), response.data());
-        for (auto &it : pass_phrase)
-            if (response.find(it) != std::string::npos) {
+        for (auto i = 0; i < pass_phrase.len; ++i)
+            if (response.find(pass_phrase.ptr[i]) != std::string::npos) {
                 return command_result::OK;
             }
-        for (auto &it : fail_phrase)
-            if (response.find(it) != std::string::npos) {
+        for (auto i = 0; i < fail_phrase.len; ++i)
+            if (response.find(fail_phrase.ptr[i]) != std::string::npos) {
                 return command_result::FAIL;
             }
         return command_result::TIMEOUT;
@@ -47,15 +53,13 @@ command_result generic_command(CommandableIf *t, std::string_view command,
                                std::string_view fail_phrase, uint32_t timeout_ms)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    const std::string_view pass[] { pass_phrase };
-    const std::string_view fail[] { fail_phrase };
-    return generic_command(t, command, pass, fail, timeout_ms);
+    return generic_command(t, command, sv_list({ pass_phrase }), sv_list({ fail_phrase }), timeout_ms);
 }
 
 static command_result generic_get_string(CommandableIf *t, std::string_view command, std::string_view &output, uint32_t timeout_ms = 500)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    return t->command(command, [&](uint8_t *data, size_t len) {
+    return t->command(sv_to_charspan(command), [&](uint8_t *data, size_t len) {
         size_t pos = 0;
         std::string_view response((char *)data, len);
         while ((pos = response.find('\n')) != std::string::npos) {
@@ -288,11 +292,13 @@ command_result resume_data_mode(CommandableIf *t)
     return generic_command(t, "ATO\r", "CONNECT", "ERROR", 5000);
 }
 
+using namespace std::string_view_literals;
+
 command_result set_command_mode(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__ );
-    const std::string_view pass[] {"NO CARRIER", "OK"};
-    const std::string_view fail[] {"ERROR"};
+    const sv_list pass({"NO CARRIER"sv, "OK"sv});
+    const sv_list fail({"ERROR"sv});
     return generic_command(t, "+++", pass, fail, 5000);
 }
 

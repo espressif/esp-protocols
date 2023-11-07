@@ -406,7 +406,7 @@ extern "C" esp_err_t esp_modem_command(esp_modem_dce_t *dce_wrap, const char *co
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || command == nullptr || got_line_fn == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    std::string cmd(command);
+    char_span cmd(command, strlen(command));
     return command_response_to_esp_err(dce_wrap->dce->command(cmd, [got_line_fn](uint8_t *data, size_t len) {
         switch (got_line_fn(data, len)) {
         case ESP_OK:

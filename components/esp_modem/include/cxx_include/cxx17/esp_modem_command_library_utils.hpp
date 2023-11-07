@@ -7,7 +7,6 @@
 #pragma once
 
 #include <string_view>
-#include <span>
 
 namespace esp_modem::dce_commands {
 

@@ -10,6 +10,7 @@
 #include <string>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace esp_modem {
 
@@ -60,6 +61,19 @@ struct PdpContext {
     std::string apn;
 };
 
+template <typename T>
+struct lw_span {
+    T *ptr;
+    std::size_t len;
+
+    template<std::size_t SIZE>
+    explicit lw_span(T(&&array)[SIZE]): ptr(array), len(SIZE) {}
+
+    explicit lw_span(T *p, std::size_t l): ptr(p), len(l) {}
+};
+
+using char_span = lw_span<const char>;
+
 /**
  * @brief Interface for classes eligible to send AT commands (Modules, DCEs, DTEs)
  */
@@ -78,8 +92,19 @@ public:
      * @param time_ms timeout in milliseconds
      * @return OK, FAIL or TIMEOUT
      */
-    virtual command_result command(std::string_view command, got_line_cb got_line, uint32_t time_ms, const char separator) = 0;
-    virtual command_result command(std::string_view command, got_line_cb got_line, uint32_t time_ms) = 0;
+    virtual command_result command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms, const char separator)
+    {
+        return command(char_span(cmd.c_str(), cmd.length()), std::move(got_line), time_ms, separator);
+    }
+    virtual command_result command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)
+    {
+        return command(char_span(cmd.c_str(), cmd.length()), std::move(got_line), time_ms, '\n');
+    }
+    virtual command_result command(char_span cmd, got_line_cb got_line, uint32_t time_ms, const char separator = '\n')
+    {
+        std::string str_command(cmd.ptr, cmd.len);
+        return command(str_command, got_line, time_ms, separator);
+    }
 
     virtual int write(uint8_t *data, size_t len) = 0;
     virtual void on_read(got_line_cb on_data) = 0;

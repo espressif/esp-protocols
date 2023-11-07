@@ -39,13 +39,7 @@ public:
     using DCE_T<MyShinyModem>::DCE_T;
 
     command_result
-    command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms) override
-    {
-        return command(cmd, got_line, time_ms, '\n');
-    }
-
-    command_result
-    command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms, const char separator) override;
+    command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms, const char separator = '\n') override;
 
     int write(uint8_t *data, size_t len) override
     {

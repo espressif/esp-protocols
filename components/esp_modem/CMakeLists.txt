@@ -35,12 +35,13 @@ idf_component_register(SRCS "${srcs}"
                     PRIV_INCLUDE_DIRS private_include
                     REQUIRES ${dependencies})
 
-
-set_target_properties(${COMPONENT_LIB} PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS ON
-)
+if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_LESS "5.0")
+    set_target_properties(${COMPONENT_LIB} PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS ON
+    )
+endif()
 
 
 if(${target} STREQUAL "linux")
