@@ -27,12 +27,12 @@ jobs:
         with:
           workflow: modem__build-host-tests.yml
           workflow_conclusion: success
-          name: modem_coverage_report
-          path: modem_coverage_report_artifact
+          name: host_modem_test_coverage_report
+          path: host_modem_test_coverage_report_artifact
       - name: Merge HTML files
         run: |
           echo "<html><body>" > index.html
-          cat modem_coverage_report_artifact/index.html >> index.html
+          cat host_modem_test_coverage_report_artifact/index.html >> index.html
           cat websocket_coverage_report_artifact/index.html >> index.html
           echo "</body></html>" >> index.html
           mkdir coverage_report
