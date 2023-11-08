@@ -1,6 +1,6 @@
 dependencies:
   idf:
-    version: '*'
+    version: ">=5.0"
   console_simple_init:
     version: "*"
     override_path: '../../../'
