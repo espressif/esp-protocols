@@ -30,6 +30,7 @@ jobs:
       name: Build App
       runs-on: ubuntu-20.04
       permissions:
+        checks: write
         contents: write
       container: espressif/idf:${{inputs.idf_version}}
       steps:
