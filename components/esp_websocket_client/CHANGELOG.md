@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.0)
+
+### Features
+
+- Added new API `esp_websocket_client_append_header` ([39e9725](https://github.com/espressif/esp-protocols/commit/39e9725))
+- Added new APIs to support fragmented messages transmission ([fae80e2](https://github.com/espressif/esp-protocols/commit/fae80e2))
+  * `esp_websocket_client_send_text_partial`,
+  * `esp_websocket_client_send_bin_partial`
+  * `esp_websocket_client_send_cont_mgs`
+  * `esp_websocket_client_send_fin`
+  * `esp_websocket_client_send_with_exact_opcode`
+
+### Bug Fixes
+
+- reference protocol_examples_common from IDF ([025ede1](https://github.com/espressif/esp-protocols/commit/025ede1))
+- specify override_path in example manifests ([d5e7898](https://github.com/espressif/esp-protocols/commit/d5e7898))
+- Return status code correctly on esp_websocket_client_send_with_opcode ([ac8f1de](https://github.com/espressif/esp-protocols/commit/ac8f1de))
+- Fix pytest exclusion, gitignore, and changelog checks ([2696221](https://github.com/espressif/esp-protocols/commit/2696221))
+
 ## [1.1.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.1.0)
 
 ### Features
