@@ -2,4 +2,7 @@ dependencies:
   ## Required IDF version
   idf: ">=5.0"
   espressif/esp_mqtt_cxx:
-    version: "^0.1.0"
+    version: "~0"
+    override_path: "../../../"
+  protocol_examples_common:
+    path: ${IDF_PATH}/examples/common_components/protocol_examples_common

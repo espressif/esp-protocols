@@ -1,9 +1,6 @@
 # This project serves as a demo to enable using esp-mqtt on ESP platform targets as well as on linux
 cmake_minimum_required(VERSION 3.16)
 
-# For ESP32 platform target
-set(EXTRA_COMPONENT_DIRS $ENV{IDF_PATH}/examples/common_components/protocol_examples_common)
-
 if("${IDF_TARGET}" STREQUAL "linux")
 # For linux-target we have two options:
 # - With lwIP (must be defined on command line, e.g. idf.py -DWITH_LWIP=1)

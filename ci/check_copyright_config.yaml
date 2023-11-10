@@ -62,4 +62,3 @@ ignore:
    - 'components/esp_modem/port/linux/**'
    - 'components/asio/examples/**'
    - 'components/mdns/**/esp_system_protocols_linux/**'
-   - 'common_components/protocol_examples_common/**'

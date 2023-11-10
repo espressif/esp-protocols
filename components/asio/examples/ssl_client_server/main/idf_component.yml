@@ -3,4 +3,6 @@ dependencies:
   idf: ">=5.0"
   espressif/asio:
     version: "^1.14.1"
-    override_path: '../../../'
+    override_path: "../../../"
+  protocol_examples_common:
+    path: ${IDF_PATH}/examples/common_components/protocol_examples_common

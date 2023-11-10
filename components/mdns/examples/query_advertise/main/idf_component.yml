@@ -1,7 +1,7 @@
 dependencies:
   ## Required IDF version
   idf: ">=5.0"
-  espressif/esp_websocket_client:
+  espressif/mdns:
     version: "^1.0.0"
     override_path: "../../../"
   protocol_examples_common:
