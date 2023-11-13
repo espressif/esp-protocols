@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.28.2~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.2_0)
+
+### Bug Fixes
+
+- reference protocol_examples_common from IDF ([09abb18](https://github.com/espressif/esp-protocols/commit/09abb18))
+- specify override_path in example manifest files ([1d8923c](https://github.com/espressif/esp-protocols/commit/1d8923c))
+
+### Updated
+
+- docs(asio): Updates asio docs ([ce9337d](https://github.com/espressif/esp-protocols/commit/ce9337d))
+
 ## [1.28.0~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.0~0)
 
 ### Features
