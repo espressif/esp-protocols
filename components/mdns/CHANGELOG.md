@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.3)
+
+### Bug Fixes
+
+- enable CONFIG_ESP_WIFI_ENABLED if CONFIG_SOC_WIFI_SUPPORTED is also enabled (for ESP-IDF <= 5.1) ([d20a718](https://github.com/espressif/esp-protocols/commit/d20a718))
+- remove protocol_examples_common ([1ee9dae](https://github.com/espressif/esp-protocols/commit/1ee9dae))
+- move the example into a subdirectory ([d28232b](https://github.com/espressif/esp-protocols/commit/d28232b))
+- reference protocol_examples_common from IDF ([c83b76e](https://github.com/espressif/esp-protocols/commit/c83b76e))
+
 ## [1.2.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.2)
 
 ### Bug Fixes
