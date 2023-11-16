@@ -64,8 +64,8 @@ static void on_ppp_changed(void *arg, esp_event_base_t event_base,
     ESP_LOGI(TAG, "PPP state changed event %" PRId32, event_id);
     if (event_id == NETIF_PPP_ERRORUSER) {
         /* User interrupted event from esp-netif */
-        esp_netif_t *netif = static_cast<esp_netif_t *>(event_data);
-        ESP_LOGI(TAG, "User interrupted event from netif:%p", netif);
+        auto p_netif = static_cast<esp_netif_t **>(event_data);
+        ESP_LOGI(TAG, "User interrupted event from netif:%p", *p_netif);
         xEventGroupSetBits(event_group, 2);
     }
 }
