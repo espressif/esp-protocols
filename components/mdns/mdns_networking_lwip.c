@@ -21,6 +21,18 @@
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
 
+#if defined(CONFIG_MDNS_IPV4) && !LWIP_IPV4
+#error "Please enable IPv4 in LwIP to use IPv4 in mDNS component"
+#endif
+
+#if defined(CONFIG_MDNS_IPV6) && !LWIP_IPV6
+#error "Please enable IPv6 in LwIP to use IPv6 in mDNS component"
+#endif
+
+#if !defined(CONFIG_MDNS_IPV4) && !defined(CONFIG_MDNS_IPV6)
+#error "Neither IPv4 nor IPv6 is used in mDNS component"
+#endif
+
 /*
  * MDNS Server Networking
  *
@@ -112,23 +124,20 @@ static esp_err_t _udp_join_group(mdns_if_t if_inx, mdns_ip_protocol_t ip_protoco
         }
     }
 #endif // LWIP_IPV4
-#if LWIP_IPV4 && LWIP_IPV6
-    else
-#endif
 #if LWIP_IPV6
-        if (ip_protocol == MDNS_IP_PROTOCOL_V6) {
-            ip_addr_t multicast_addr = IPADDR6_INIT(0x000002ff, 0, 0, 0xfb000000);
+    if (ip_protocol == MDNS_IP_PROTOCOL_V6) {
+        ip_addr_t multicast_addr = IPADDR6_INIT(0x000002ff, 0, 0, 0xfb000000);
 
-            if (join) {
-                if (mld6_joingroup_netif(netif, ip_2_ip6(&multicast_addr))) {
-                    return ESP_ERR_INVALID_STATE;
-                }
-            } else {
-                if (mld6_leavegroup_netif(netif, ip_2_ip6(&multicast_addr))) {
-                    return ESP_ERR_INVALID_STATE;
-                }
+        if (join) {
+            if (mld6_joingroup_netif(netif, ip_2_ip6(&multicast_addr))) {
+                return ESP_ERR_INVALID_STATE;
+            }
+        } else {
+            if (mld6_leavegroup_netif(netif, ip_2_ip6(&multicast_addr))) {
+                return ESP_ERR_INVALID_STATE;
             }
         }
+    }
 #endif // LWIP_IPV6
     return ESP_OK;
 }
@@ -162,7 +171,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         memcpy(&packet->src.u_addr, &raddr->u_addr, sizeof(raddr->u_addr));
 #elif LWIP_IPV4
         packet->src.type = IPADDR_TYPE_V4;
-        packet->src.u_addr.ip4.addr = raddr.addr;
+        packet->src.u_addr.ip4.addr = raddr->addr;
 #elif LWIP_IPV6
         packet->src.type = IPADDR_TYPE_V6;
         memcpy(&packet->src.u_addr.ip6, raddr, sizeof(ip_addr_t));

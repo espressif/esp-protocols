@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -27,6 +27,13 @@
 #include <net/if.h>
 #endif
 
+#if defined(CONFIG_IDF_TARGET_LINUX)
+#define SOCKET_IPV4 1
+#define SOCKET_IPV6 CONFIG_LWIP_IPV6
+#else
+#define SOCKET_IPV4 LWIP_IPV4
+#define SOCKET_IPV6 LWIP_IPV6
+#endif
 enum interface_protocol {
     PROTO_IPV4 = 1 << MDNS_IP_PROTOCOL_V4,
     PROTO_IPV6 = 1 << MDNS_IP_PROTOCOL_V6
@@ -116,13 +123,13 @@ esp_err_t _mdns_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 }
 
 #if defined(CONFIG_IDF_TARGET_LINUX)
-#ifdef CONFIG_LWIP_IPV6
+#if SOCKET_IPV6
 static char *inet6_ntoa_r(struct in6_addr addr, char *ptr, size_t size)
 {
     inet_ntop(AF_INET6, &(addr.s6_addr32[0]), ptr, size);
     return ptr;
 }
-#endif // CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV6
 static char *inet_ntoa_r(struct in_addr addr, char *ptr, size_t size)
 {
     char *res = inet_ntoa(addr);
@@ -138,11 +145,13 @@ static inline char *get_string_address(struct sockaddr_storage *source_addr)
     static char address_str[40]; // 40=(8*4+7+term) is the max size of ascii IPv6 addr "XXXX:XX...XX:XXXX"
     char *res = NULL;
     // Convert ip address to string
+#if SOCKET_IPV4
     if (source_addr->ss_family == PF_INET) {
         res = inet_ntoa_r(((struct sockaddr_in *)source_addr)->sin_addr, address_str, sizeof(address_str));
     }
-#ifdef CONFIG_LWIP_IPV6
-    else if (source_addr->ss_family == PF_INET6) {
+#endif
+#if SOCKET_IPV6
+    if (source_addr->ss_family == PF_INET6) {
         res = inet6_ntoa_r(((struct sockaddr_in6 *)source_addr)->sin6_addr, address_str, sizeof(address_str));
     }
 #endif
@@ -157,6 +166,7 @@ static inline size_t espaddr_to_inet(const esp_ip_addr_t *addr, const uint16_t p
 {
     size_t ss_addr_len = 0;
     memset(in_addr, 0, sizeof(struct sockaddr_storage));
+#if SOCKET_IPV4
     if (ip_protocol == MDNS_IP_PROTOCOL_V4 && addr->type == ESP_IPADDR_TYPE_V4) {
         in_addr->ss_family = PF_INET;
 #if !defined(CONFIG_IDF_TARGET_LINUX)
@@ -167,8 +177,9 @@ static inline size_t espaddr_to_inet(const esp_ip_addr_t *addr, const uint16_t p
         in_addr_ip4->sin_port = port;
         in_addr_ip4->sin_addr.s_addr = addr->u_addr.ip4.addr;
     }
-#if CONFIG_LWIP_IPV6
-    else if (ip_protocol == MDNS_IP_PROTOCOL_V6 && addr->type == ESP_IPADDR_TYPE_V6) {
+#endif
+#if SOCKET_IPV6
+    if (ip_protocol == MDNS_IP_PROTOCOL_V6 && addr->type == ESP_IPADDR_TYPE_V6) {
         memset(in_addr, 0, sizeof(struct sockaddr_storage));
         in_addr->ss_family = PF_INET6;
 #if !defined(CONFIG_IDF_TARGET_LINUX)
@@ -183,7 +194,7 @@ static inline size_t espaddr_to_inet(const esp_ip_addr_t *addr, const uint16_t p
         u32_addr[2] = addr->u_addr.ip6.addr[2];
         u32_addr[3] = addr->u_addr.ip6.addr[3];
     }
-#endif // CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV6
     return ss_addr_len;
 }
 
@@ -212,6 +223,7 @@ size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, c
 
 static inline void inet_to_espaddr(const struct sockaddr_storage *in_addr, esp_ip_addr_t *addr, uint16_t *port)
 {
+#if SOCKET_IPV4
     if (in_addr->ss_family == PF_INET) {
         struct sockaddr_in *in_addr_ip4 = (struct sockaddr_in *)in_addr;
         memset(addr, 0, sizeof(esp_ip_addr_t));
@@ -219,8 +231,9 @@ static inline void inet_to_espaddr(const struct sockaddr_storage *in_addr, esp_i
         addr->u_addr.ip4.addr = in_addr_ip4->sin_addr.s_addr;
         addr->type = ESP_IPADDR_TYPE_V4;
     }
-#if CONFIG_LWIP_IPV6
-    else if (in_addr->ss_family == PF_INET6) {
+#endif /* SOCKET_IPV4 */
+#if SOCKET_IPV6
+    if (in_addr->ss_family == PF_INET6) {
         struct sockaddr_in6 *in_addr_ip6 = (struct sockaddr_in6 *)in_addr;
         memset(addr, 0, sizeof(esp_ip_addr_t));
         *port = in_addr_ip6->sin6_port;
@@ -383,7 +396,7 @@ esp_err_t _mdns_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 
 static int create_socket(esp_netif_t *netif)
 {
-#if CONFIG_LWIP_IPV6
+#if SOCKET_IPV6
     int sock = socket(PF_INET6, SOCK_DGRAM, 0);
 #else
     int sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -398,8 +411,8 @@ static int create_socket(esp_netif_t *netif)
         ESP_LOGE(TAG, "Failed setsockopt() to set SO_REUSEADDR. errno=%d: %s\n", errno, strerror(errno));
     }
     // Bind the socket to any address
-#if CONFIG_LWIP_IPV6
-    struct sockaddr_in6 saddr = { INADDR_ANY };
+#if SOCKET_IPV6
+    struct sockaddr_in6 saddr = { 0 };
     saddr.sin6_family = AF_INET6;
     saddr.sin6_port = htons(5353);
     bzero(&saddr.sin6_addr.s6_addr, sizeof(saddr.sin6_addr.s6_addr));
@@ -418,7 +431,7 @@ static int create_socket(esp_netif_t *netif)
         ESP_LOGE(TAG, "Failed to bind socket. errno=%d: %s", errno, strerror(errno));
         goto err;
     }
-#endif // CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV6
     struct ifreq ifr;
     esp_netif_get_netif_impl_name(netif, ifr.ifr_name);
     int ret = setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,  (void *)&ifr, sizeof(struct ifreq));
@@ -434,7 +447,7 @@ err:
     return -1;
 }
 
-#if CONFIG_LWIP_IPV6
+#if SOCKET_IPV6
 static int socket_add_ipv6_multicast_group(int sock, esp_netif_t *netif)
 {
     int ifindex = esp_netif_get_netif_impl_index(netif);
@@ -455,8 +468,9 @@ static int socket_add_ipv6_multicast_group(int sock, esp_netif_t *netif)
     }
     return err;
 }
-#endif // CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV6
 
+#if SOCKET_IPV4
 static int socket_add_ipv4_multicast_group(int sock, esp_netif_t *netif)
 {
     struct ip_mreq imreq = { 0 };
@@ -481,16 +495,19 @@ static int socket_add_ipv4_multicast_group(int sock, esp_netif_t *netif)
 err:
     return err;
 }
+#endif // SOCKET_IPV4
 
 static int join_mdns_multicast_group(int sock, esp_netif_t *netif, mdns_ip_protocol_t ip_protocol)
 {
+#if SOCKET_IPV4
     if (ip_protocol == MDNS_IP_PROTOCOL_V4) {
         return socket_add_ipv4_multicast_group(sock, netif);
     }
-#if CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV4
+#if SOCKET_IPV6
     if (ip_protocol == MDNS_IP_PROTOCOL_V6) {
         return socket_add_ipv6_multicast_group(sock, netif);
     }
-#endif // CONFIG_LWIP_IPV6
+#endif // SOCKET_IPV6
     return -1;
 }
