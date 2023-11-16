@@ -25,8 +25,8 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
     \
 /**
  * @brief Reads the operator name
- * @param[out] operator name
- * @param[out] access technology
+ * @param[out] name operator name
+ * @param[out] act access technology
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 2, STRING_OUT(p1, name), INT_OUT(p2, act)) \
@@ -46,7 +46,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
     \
 /**
  * @brief Execute the supplied AT command
- * @param[in] at AT command
+ * @param[in] cmd AT command
  * @param[out] out Command output string
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
@@ -252,6 +252,8 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_preferred_mode, command_result, 1, INT_IN(p1, 
 /**
  * @brief Set network bands for CAT-M or NB-IoT
  * @param[in] mode CAT-M or NB-IoT
+ * @param[in] bands bitmap in hex representing bands
+ * @param[in] size size of teh bands bitmap
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_network_bands, command_result, 3, STRING_IN(p1, mode), INTEGER_LIST_IN(p2, bands), INT_IN(p3, size)) \

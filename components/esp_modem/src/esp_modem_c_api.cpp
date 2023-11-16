@@ -1,9 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <cstring>
 #include <cassert>
 #include "cxx_include/esp_modem_dte.hpp"
 #include "uart_terminal.hpp"
@@ -14,7 +15,6 @@
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
 #include "esp_private/c_api_wrapper.hpp"
-#include "cstring"
 
 #ifndef ESP_MODEM_C_API_STR_MAX
 #define ESP_MODEM_C_API_STR_MAX 64
@@ -22,6 +22,10 @@
 
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dest, const char *src, size_t len);
+#endif
+
+#ifdef CONFIG_ESP_MODEM_ADD_CUSTOM_MODULE
+#include CONFIG_ESP_MODEM_CUSTOM_MODULE_HEADER
 #endif
 
 //
@@ -40,8 +44,15 @@ extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, con
         return nullptr;
     }
     dce_wrap->dte = dte;
-    dce_factory::Factory f(convert_modem_enum(module));
-    dce_wrap->dce = f.build(dce_config, std::move(dte), netif);
+#ifdef CONFIG_ESP_MODEM_ADD_CUSTOM_MODULE
+    if (module == ESP_MODEM_DCE_CUSTOM) {
+        dce_wrap->dce = esp_modem_create_custom_dce(dce_config, dte, netif);
+    } else
+#endif
+    {
+        dce_factory::Factory f(convert_modem_enum(module));
+        dce_wrap->dce = f.build(dce_config, std::move(dte), netif);
+    }
     if (dce_wrap->dce == nullptr) {
         delete dce_wrap;
         return nullptr;

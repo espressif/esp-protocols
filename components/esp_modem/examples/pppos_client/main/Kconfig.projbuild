@@ -48,6 +48,13 @@ menu "Example Configuration"
             bool "A7670"
             help
                 A7670X is Multi-Band LTE-FDD/LTE-TDD/GSM/GPRS/EDGE module.
+
+        config EXAMPLE_MODEM_DEVICE_CUSTOM
+            select ESP_MODEM_ADD_CUSTOM_MODULE
+            bool "Custom device"
+            help
+                This demonstrates use of a custom device in C-API.
+
     endchoice
 
     config EXAMPLE_MODEM_PPP_APN
