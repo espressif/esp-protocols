@@ -21,18 +21,6 @@
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
 
-#if defined(CONFIG_MDNS_IPV4) && !LWIP_IPV4
-#error "Please enable IPv4 in LwIP to use IPv4 in mDNS component"
-#endif
-
-#if defined(CONFIG_MDNS_IPV6) && !LWIP_IPV6
-#error "Please enable IPv6 in LwIP to use IPv6 in mDNS component"
-#endif
-
-#if !defined(CONFIG_MDNS_IPV4) && !defined(CONFIG_MDNS_IPV6)
-#error "Neither IPv4 nor IPv6 is used in mDNS component"
-#endif
-
 /*
  * MDNS Server Networking
  *
@@ -186,16 +174,13 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
             packet->multicast = ip4_addr_ismulticast(&(packet->dest.u_addr.ip4));
         }
 #endif // LWIP_IPV4
-#if LWIP_IPV4 && LWIP_IPV6
-        else
-#endif
 #if LWIP_IPV6
-            if (packet->src.type == IPADDR_TYPE_V6) {
-                packet->ip_protocol = MDNS_IP_PROTOCOL_V6;
-                struct ip6_hdr *ip6hdr = (struct ip6_hdr *)(((uint8_t *)(packet->pb->payload)) - UDP_HLEN - IP6_HLEN);
-                memcpy(&packet->dest.u_addr.ip6.addr, (uint8_t *)ip6hdr->dest.addr, 16);
-                packet->multicast = ip6_addr_ismulticast(&(packet->dest.u_addr.ip6));
-            }
+        if (packet->src.type == IPADDR_TYPE_V6) {
+            packet->ip_protocol = MDNS_IP_PROTOCOL_V6;
+            struct ip6_hdr *ip6hdr = (struct ip6_hdr *)(((uint8_t *)(packet->pb->payload)) - UDP_HLEN - IP6_HLEN);
+            memcpy(&packet->dest.u_addr.ip6.addr, (uint8_t *)ip6hdr->dest.addr, 16);
+            packet->multicast = ip6_addr_ismulticast(&(packet->dest.u_addr.ip6));
+        }
 #endif // LWIP_IPV6
 
         //lwip does not return the proper pcb if you have more than one for the same multicast address (but different interfaces)
