@@ -77,20 +77,6 @@ menu "mDNS"
             Configures period of mDNS timer, which periodically transmits packets
             and schedules mDNS searches.
 
-    config MDNS_IPV4
-        bool "Enable IPv4 for mDNS"
-        default y
-        select LWIP_IPV4
-        help
-            Enable IPv4 for mDNS
-
-    config MDNS_IPV6
-        bool "Enable IPv6 for mDNS"
-        default y
-        select LWIP_IPV6
-        help
-            Enable IPv6 for mDNS
-
     config MDNS_NETWORKING_SOCKET
         bool "Use BSD sockets for mDNS networking"
         default n
