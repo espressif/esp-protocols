@@ -144,7 +144,7 @@ static inline char *get_string_address(struct sockaddr_storage *source_addr)
     }
 #endif
 #ifdef CONFIG_LWIP_IPV6
-    if (source_addr->ss_family == PF_INET6) {
+    else if (source_addr->ss_family == PF_INET6) {
         res = inet6_ntoa_r(((struct sockaddr_in6 *)source_addr)->sin6_addr, address_str, sizeof(address_str));
     }
 #endif
@@ -172,7 +172,7 @@ static inline size_t espaddr_to_inet(const esp_ip_addr_t *addr, const uint16_t p
     }
 #endif // CONFIG_LWIP_IPV4
 #ifdef CONFIG_LWIP_IPV6
-    if (ip_protocol == MDNS_IP_PROTOCOL_V6 && addr->type == ESP_IPADDR_TYPE_V6) {
+    else if (ip_protocol == MDNS_IP_PROTOCOL_V6 && addr->type == ESP_IPADDR_TYPE_V6) {
         memset(in_addr, 0, sizeof(struct sockaddr_storage));
         in_addr->ss_family = PF_INET6;
 #if !defined(CONFIG_IDF_TARGET_LINUX)
@@ -226,7 +226,7 @@ static inline void inet_to_espaddr(const struct sockaddr_storage *in_addr, esp_i
     }
 #endif /* CONFIG_LWIP_IPV4 */
 #ifdef CONFIG_LWIP_IPV6
-    if (in_addr->ss_family == PF_INET6) {
+    else if (in_addr->ss_family == PF_INET6) {
         struct sockaddr_in6 *in_addr_ip6 = (struct sockaddr_in6 *)in_addr;
         memset(addr, 0, sizeof(esp_ip_addr_t));
         *port = in_addr_ip6->sin6_port;
