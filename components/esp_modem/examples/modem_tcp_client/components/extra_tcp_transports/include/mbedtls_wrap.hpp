@@ -29,6 +29,7 @@ public:
     int read(unsigned char *buf, size_t len);
     [[nodiscard]] bool set_own_cert(const_buf crt, const_buf key);
     [[nodiscard]] bool set_ca_cert(const_buf crt);
+    bool set_hostname(const char *name);
     virtual int send(const unsigned char *buf, size_t len) = 0;
     virtual int recv(unsigned char *buf, size_t len) = 0;
     size_t get_available_bytes();

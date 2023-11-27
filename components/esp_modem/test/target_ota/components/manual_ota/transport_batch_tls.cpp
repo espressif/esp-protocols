@@ -12,7 +12,8 @@
 
 class TlsTransport: public Tls {
 public:
-    explicit TlsTransport(esp_transport_handle_t parent) : Tls(), transport_(parent), read_len(0), offset(0) {}
+    explicit TlsTransport(esp_transport_handle_t parent):
+        Tls(), transport_(parent),  last_timeout(0), read_len(0), offset(0) {}
     int send(const unsigned char *buf, size_t len) override;
     int recv(unsigned char *buf, size_t len) override;
     static bool set_func(esp_transport_handle_t tls_transport);
@@ -40,11 +41,11 @@ private:
 
 esp_transport_handle_t esp_transport_tls_init(esp_transport_handle_t parent)
 {
-    esp_transport_handle_t ssl = esp_transport_init();
-    auto *tls = new TlsTransport(parent);
-    esp_transport_set_context_data(ssl, tls);
-    TlsTransport::set_func(ssl);
-    return ssl;
+    esp_transport_handle_t transport_handle = esp_transport_init();
+    auto *tls_context = new TlsTransport(parent);
+    esp_transport_set_context_data(transport_handle, tls_context);
+    TlsTransport::set_func(transport_handle);
+    return transport_handle;
 }
 
 int TlsTransport::send(const unsigned char *buf, size_t len)
@@ -105,7 +106,7 @@ void TlsTransport::delay()
 int TlsTransport::transport::connect(esp_transport_handle_t t, const char *host, int port, int timeout_ms)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
-    tls->init(is_server{false}, do_verify{false});
+    tls->init(is_server{false}, do_verify{true});
 
     ESP_LOGD(TAG, "TLS-connect");
     auto ret = tls->connect(host, port, timeout_ms);
@@ -122,7 +123,10 @@ int TlsTransport::transport::connect(esp_transport_handle_t t, const char *host,
         ESP_LOGI(TAG, "Failed to handshake");
         return ret;
     }
-    tls->get_session();
+    if (!tls->get_session()) {
+        // we're not able to save session, report an error and continue (next connection will be slower)
+        ESP_LOGW(TAG, "Failed to save session");
+    }
     ESP_LOGI(TAG, "After handshake");
     return 0;
 }
@@ -202,6 +206,19 @@ esp_transport_handle_t esp_transport_batch_tls_init(esp_transport_handle_t paren
     return ssl;
 }
 
+bool esp_transport_batch_set_ca_cert(esp_transport_handle_t t, const char *ca_cert, size_t cert_len = 0)
+{
+    auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
+    const_buf cert((const unsigned char *)ca_cert, cert_len ? cert_len : strlen(ca_cert) + 1);
+    return tls->set_ca_cert(cert);
+}
+
+bool esp_transport_batch_set_cn(esp_transport_handle_t t, const char *name)
+{
+    auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
+    return tls->set_hostname(name);
+}
+
 int TlsTransport::preread(size_t len, int timeout_ms)
 {
     while (len != read_len) {
@@ -225,7 +242,7 @@ bool TlsTransport::prepare_buffer(size_t max_size)
     return true;
 }
 
-int esp_transport_batch_tls_pre_read(esp_transport_handle_t t, int len, int timeout_ms)
+int esp_transport_batch_tls_pre_read(esp_transport_handle_t t, size_t len, int timeout_ms)
 {
     auto tls = static_cast<TlsTransport *>(esp_transport_get_context_data(t));
     return tls->preread(len, timeout_ms);

@@ -38,6 +38,19 @@ menu "Test Configuration"
         help
             HTTPS address of the update binary.
 
+    config TEST_OTA_CA_CERT
+        string "Server certificate"
+        default "---paste the server side certificate here---"
+        help
+            Insert the CA cert of the server side here. copy the base64 text between  -----BEGIN CERTIFICATE-----
+            and -----END CERTIFICATE-----.
+
+    config TEST_OTA_CN
+        string "Server common name"
+        default "192.168.11.1"
+        help
+            Insert the server's common name to be checked within verification of the Server side certificat
+
     config BROKER_URI
         string "Broker URL"
         default "mqtt://test.mosquitto.org"

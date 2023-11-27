@@ -19,3 +19,9 @@ sudo pppd /dev/ttyUSB1 115200 192.168.11.1:192.168.11.2 ms-dns 8.8.8.8 modem loc
 ```
 * MQTT broker: Running mosquitto in the default config is enough, configuring the broker's URL to the local PPP address: `config.broker.address.uri = "mqtt://192.168.11.1";`
 * HTTP server: Need to support HTTP/1.1 (to support ranges). You can use the script `http_server.py` and configure the OTA endpoint as `"https://192.168.11.1:1234/esp32.bin"`
+
+## Potential issues
+
+When running this test it is expected to experience some buffer overflows or connection interruption.
+The modem library should recover from these failure modes and continue and complete OTA update.
+These issues are expected, since UART ISR is deliberately not placed into IRAM in the test configuration to exhibit some minor communication glitches.

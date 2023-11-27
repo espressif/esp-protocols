@@ -22,4 +22,22 @@ esp_transport_handle_t esp_transport_batch_tls_init(esp_transport_handle_t paren
  * @param timeout_ms Timeout in ms
  * @return true If read from the parent transport completed successfully
  */
-bool esp_transport_batch_tls_pre_read(esp_transport_handle_t t, int len, int timeout_ms);
+bool esp_transport_batch_tls_pre_read(esp_transport_handle_t t, size_t len, int timeout_ms);
+
+/**
+ * @brief Set the CA Certificate to verify the server
+ *
+ * @param ca_cert Pointer to the CA Cert data
+ * @param cert_len CA Cert data len (set to 0 if null terminated string, i.e. PEM format)
+ * @return true on success
+ */
+bool esp_transport_batch_set_ca_cert(esp_transport_handle_t t, const char *ca_cert, size_t cert_len);
+
+/**
+ * @brief Set comman name
+ * @param t
+ * @param ca_cert
+ * @param cert_len
+ * @return
+ */
+bool esp_transport_batch_set_cn(esp_transport_handle_t t, const char *name);

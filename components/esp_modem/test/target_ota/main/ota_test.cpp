@@ -50,7 +50,9 @@ public:
 
     void remove_mqtt()
     {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
         esp_mqtt_client_unregister_event(mqtt, MQTT_EVENT_ANY, on_event);
+#endif
         mqtt = nullptr;
     }
 
@@ -145,9 +147,17 @@ static constexpr auto OTA_FAILED  = SignalGroup::bit1;
 
 void ota_task(void *ctx)
 {
+    static const char *ca_cert_pem = "-----BEGIN CERTIFICATE-----\n" CONFIG_TEST_OTA_CA_CERT "\n-----END CERTIFICATE-----";
     auto ota_done = static_cast<esp_modem::SignalGroup *>(ctx);
-    manual_ota ota(CONFIG_TEST_OTA_URI);
-    ota.size_ = 64;
+    manual_ota ota;
+    ota.http_.config_.url = CONFIG_TEST_OTA_URI;
+    ota.http_.config_.cert_pem = ca_cert_pem;
+    ota.size_ = 32;
+    ota.common_name_ = CONFIG_TEST_OTA_CN;
+#ifndef CONFIG_ESP_HTTP_CLIENT_ENABLE_CUSTOM_TRANSPORT
+    // will have to use NORMAL mode, before custom transport is supported in IDF
+    ota.mode_ = manual_ota::mode::NORMAL;
+#endif
 
     ota.begin();
     while (true) {
@@ -253,11 +263,13 @@ extern "C" void app_main(void)
 
 
     esp_modem::SignalGroup ota_done{};
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
     // now stop the LCP keepalive before performing OTA
     esp_netif_ppp_config_t cfg;
     ESP_ERROR_CHECK(esp_netif_ppp_get_params(esp_netif, &cfg));
     cfg.ppp_lcp_echo_disabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(esp_netif, &cfg));
+#endif
 
     // Run the OTA in a separate task to keep sending commands to the modem at the same time
     xTaskCreate(ota_task, "ota_task", 8192, &ota_done, 5, nullptr);
