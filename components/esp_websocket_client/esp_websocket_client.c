@@ -1228,7 +1228,7 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
         goto unlock_and_return;
     }
     ret = esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout);
-    if (ret <= 0) {
+    if (ret < 0) {
         ESP_LOGE(TAG, "Failed to send the buffer");
         goto unlock_and_return;
     }

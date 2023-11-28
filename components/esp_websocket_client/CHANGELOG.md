@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.1)
+
+### Bug Fixes
+
+- consider failure if return value of `esp_websocket_client_send_with_exact_opcode` less than 0 ([f523b4d](https://github.com/espressif/esp-protocols/commit/f523b4d))
+- fix of return value for `esp_websocket_client_send_with_opcode` API ([ba33588](https://github.com/espressif/esp-protocols/commit/ba33588))
+
 ## [1.2.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.0)
 
 ### Features
