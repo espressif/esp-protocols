@@ -545,7 +545,7 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
     return ESP_OK;
 }
 
-static bool esp_websocket_client_send_with_exact_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
+static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
     int ret = -1;
     int need_write = len;
@@ -571,14 +571,14 @@ static bool esp_websocket_client_send_with_exact_opcode(esp_websocket_client_han
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
             }
             esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
-            return false;
+            return ret;
         }
         opcode = 0;
         widx += wlen;
         need_write = len - widx;
     }
     esp_websocket_free_buf(client, true);
-    return true;
+    return widx;
 }
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
@@ -1227,9 +1227,9 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
         ret = ESP_FAIL;
         goto unlock_and_return;
     }
-    if (esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout) != true) {
+    ret = esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout);
+    if (ret <= 0) {
         ESP_LOGE(TAG, "Failed to send the buffer");
-        ret = ESP_FAIL;
         goto unlock_and_return;
     }
 unlock_and_return:
