@@ -8,9 +8,9 @@ on:
     types: [opened, synchronize, reopened, labeled]
 
 jobs:
-  build_esp_modem:
+  build_esp_modem_examples:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
-    name: Build
+    name: Build examples
     strategy:
       matrix:
         idf_ver: ["latest", "release-v4.2", "release-v4.3", "release-v4.4", "release-v5.0"]
@@ -50,7 +50,33 @@ jobs:
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
           cd $GITHUB_WORKSPACE/protocols
-          python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }} -m components/esp_modem/examples/.build-test-rules.yml
+          python ./ci/build_apps.py components/esp_modem/examples/${{ matrix.example }} -m components/esp_modem/.build-test-rules.yml
+
+  build_esp_modem_tests:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    name: Build tests
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.0", "release-v5.1", "latest"]
+        test: ["target", "target_ota"]
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          path: protocols
+      - name: Build ${{ matrix.test }} with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: ${{ matrix.warning }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          python -m pip install idf-build-apps
+          cd $GITHUB_WORKSPACE/protocols
+          python ./ci/build_apps.py components/esp_modem/test/${{ matrix.test }} -m components/esp_modem/.build-test-rules.yml
+
 
   host_test_esp_modem:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
