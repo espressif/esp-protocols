@@ -35,6 +35,16 @@ bool Tls::init(is_server server, do_verify verify)
     return true;
 }
 
+bool Tls::deinit()
+{
+    ::mbedtls_ssl_config_free(&conf_);
+    ::mbedtls_ssl_free(&ssl_);
+    ::mbedtls_pk_free(&pk_key_);
+    ::mbedtls_x509_crt_free(&public_cert_);
+    ::mbedtls_x509_crt_free(&ca_cert_);
+    return true;
+}
+
 void Tls::print_error(const char *function, int error_code)
 {
     static char error_buf[100];
@@ -131,4 +141,40 @@ Tls::~Tls()
     ::mbedtls_pk_free(&pk_key_);
     ::mbedtls_x509_crt_free(&public_cert_);
     ::mbedtls_x509_crt_free(&ca_cert_);
+}
+
+bool Tls::get_session()
+{
+    if (session_ == nullptr) {
+        session_ = std::make_unique<unique_session>();
+    }
+    int ret = ::mbedtls_ssl_get_session(&ssl_, session_->ptr());
+    if (ret != 0) {
+        print_error("mbedtls_ssl_get_session() failed", ret);
+        return false;
+    }
+    return true;
+}
+
+bool Tls::set_session()
+{
+    if (session_ == nullptr) {
+        printf("session hasn't been initialized");
+        return false;
+    }
+    int ret = mbedtls_ssl_set_session(&ssl_, session_->ptr());
+    if (ret != 0) {
+        print_error("mbedtls_ssl_set_session() failed", ret);
+        return false;
+    }
+    return true;
+}
+
+void Tls::reset_session()
+{
+    session_.reset(nullptr);
+}
+bool Tls::is_session_loaded()
+{
+    return session_ != nullptr;
 }
