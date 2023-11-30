@@ -41,3 +41,7 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### console_cmd_ping
 
 * Brief introduction [README](components/console_cmd_ping/README.md)
+
+### console_cmd_ifconfig
+
+* Brief introduction [README](components/console_cmd_ifconfig/README.md)

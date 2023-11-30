@@ -29,9 +29,8 @@ e.g.
 
 
 ## Creating a new component
-
-Steps:
-1. Add a file named .cz.yaml to the root of the component.
+Once the commit containing a new component is ready follow the steps below:
+1. Add a file named .cz.yaml to the root of the component and add it to your commit.
 
 The template for .cz.yaml should look like this:
 ```
@@ -49,6 +48,8 @@ commitizen:
 `ci/bump [component] [version] --bump-message "bump([scope]): First version [version]"`
 
 Replace [component], [version] and [scope] with the specific component name, version and scope you are working with. This command will help you bump the version of the component with the provided details.
+
+Note: It is crucial to adhere to the above steps when introducing a new component. Never merge the code for a new component without first implementing a bump commit.
 
 ## Release process
 
