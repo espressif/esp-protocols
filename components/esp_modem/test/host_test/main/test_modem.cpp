@@ -33,6 +33,20 @@ TEST_CASE("DTE command races", "[esp_modem]")
         // this command should either timeout or finish successfully
         CHECK((ret == command_result::TIMEOUT || ret == command_result::OK));
     }
+
+    // Now we test the same, but with some garbage after the expected data and inject the reply in chunks by 3 bytes
+    uint8_t resp2[] = {'O', 'K', '\n', '1', '2', '\n'};
+    for (int i = 0; i < 1000; ++i) {
+        loopback->inject(&resp2[0], sizeof(resp2), 3, /* 1ms before injecting reply */0, 0);
+        auto ret = dce->command("check\n", [&](uint8_t *data, size_t len) {
+            if (len > 0 && data[0] == 'O') { // expected reply only when it starts with '0'
+                return command_result::OK;
+            }
+            return esp_modem::command_result::TIMEOUT;
+        }, 1);
+        // this command should either timeout or finish successfully
+        CHECK((ret == command_result::TIMEOUT || ret == command_result::OK));
+    }
 }
 
 TEST_CASE("Test polymorphic delete for custom device/dte", "[esp_modem]")
