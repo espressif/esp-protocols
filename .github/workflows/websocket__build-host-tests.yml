@@ -17,4 +17,6 @@ jobs:
         app_name: "websocket"
         app_path: "esp-protocols/components/esp_websocket_client/examples/linux"
         component_path: "esp-protocols/components/esp_websocket_client"
+        run_executable: true
         upload_artifacts: true
+        run_coverage: true

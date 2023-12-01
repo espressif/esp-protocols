@@ -76,10 +76,25 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
     with:
-        idf_version: "release-v4.3"
+        idf_version: "latest"
         app_name: "host_modem_test"
         app_path: "esp-protocols/components/esp_modem/test/host_test"
         component_path: "esp-protocols/components/esp_modem"
         upload_artifacts: true
+        run_executable: true
+        run_coverage: true
         pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"
         publish_unit_test_result: true
+
+  build_linux_example:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    uses: "./.github/workflows/run-host-tests.yml"
+    with:
+        idf_version: "latest"
+        app_name: "linux_modem"
+        app_path: "esp-protocols/components/esp_modem/examples/linux_modem"
+        component_path: "esp-protocols/components/esp_modem"
+        upload_artifacts: true
+        run_executable: false
+        run_coverage: false
+        pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"

@@ -22,8 +22,7 @@ using namespace esp_modem;
 
 [[maybe_unused]] constexpr auto TAG = "linux_modem_main";
 
-
-int main()
+extern "C" void app_main(void)
 {
     // init the DTE
     esp_modem_dte_config_t dte_config = {

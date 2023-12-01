@@ -6,7 +6,7 @@ set(EXTRA_COMPONENT_DIRS    # Add esp_modem component and linux port components
         ../..
         ../../port/linux)
 
-set(COMPONENTS main)
+set(COMPONENTS esp_modem main)
 project(host_modem_test)
 
 idf_component_get_property(esp_modem esp_modem COMPONENT_LIB)
