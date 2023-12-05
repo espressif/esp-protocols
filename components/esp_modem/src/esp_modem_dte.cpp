@@ -64,6 +64,7 @@ void DTE::set_command_callbacks()
                 data = inflatable.begin();
             }
             if (command_cb.process_line(data, inflatable.consumed, len)) {
+                command_cb.got_line = nullptr;
                 return true;
             }
             // at this point we're sure that the data processing hasn't finished,
@@ -76,6 +77,7 @@ void DTE::set_command_callbacks()
             return false;
 #else
             if (command_cb.process_line(data, 0, len)) {
+                command_cb.got_line = nullptr;
                 return true;
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
@@ -89,6 +91,7 @@ void DTE::set_command_callbacks()
             data = buffer.get();
             len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
             if (command_cb.process_line(data, buffer.consumed, len)) {
+                command_cb.got_line = nullptr;
                 return true;
             }
             buffer.consumed += len;
@@ -105,6 +108,7 @@ void DTE::set_command_callbacks()
         }
         len = primary_term->read(inflatable.current(), len);
         if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len)) {
+            command_cb.got_line = nullptr;
             return true;
         }
         inflatable.consumed += len;
