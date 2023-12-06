@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.0.5](https://github.com/espressif/esp-protocols/commits/modem-v1.0.5)
+
+### Major changes
+
+- Added support for implementing user defined modules in standard C-API ([Support for custom modules with C-API](https://github.com/espressif/esp-protocols/commit/0254d50))
+
+### Bug Fixes
+
+- Added test injecting unexpected replies ([b220d1e](https://github.com/espressif/esp-protocols/commit/b220d1e), [#426](https://github.com/espressif/esp-protocols/issues/426))
+- Fixed inconsistent state on data after OK ([bf99f28](https://github.com/espressif/esp-protocols/commit/bf99f28), [#426](https://github.com/espressif/esp-protocols/issues/426))
+- TLS example: Added restore session support in mbedtls-wrap ([79d38e5](https://github.com/espressif/esp-protocols/commit/79d38e5))
+- Fixed examples to show netif on ppp-changed event ([a70b197](https://github.com/espressif/esp-protocols/commit/a70b197))
+- remove unused GNU Make based buildsystem files ([d6b6f63](https://github.com/espressif/esp-protocols/commit/d6b6f63))
+- specify override_path in example manifest files ([5b78da4](https://github.com/espressif/esp-protocols/commit/5b78da4))
+- Added test-cases that exercise mode transitions ([aff571d](https://github.com/espressif/esp-protocols/commit/aff571d))
+- Fixed mode transitions between any state and UNDEF ([93cb2ca](https://github.com/espressif/esp-protocols/commit/93cb2ca), [#320](https://github.com/espressif/esp-protocols/issues/320))
+- Fixed API docs within doxygen comments ([020b407](https://github.com/espressif/esp-protocols/commit/020b407))
+- Support for custom modules with C-API ([0254d50](https://github.com/espressif/esp-protocols/commit/0254d50))
+- Fix CRLF issue with esp_modem_c_api.cpp ([2661b4d](https://github.com/espressif/esp-protocols/commit/2661b4d))
+
+### Updated
+
+- ci(common): Created reusable action for host and coverage tests ([9ad04de](https://github.com/espressif/esp-protocols/commit/9ad04de))
+
 ## [1.0.4](https://github.com/espressif/esp-protocols/commits/modem-v1.0.4)
 
 ### Bug Fixes
