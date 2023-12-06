@@ -347,6 +347,9 @@ void DTE::on_read(got_line_cb on_read_cb)
 
 bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
 {
+    if (result != command_result::TIMEOUT) {
+        return false;   // this line has been processed already (got OK or FAIL previously)
+    }
     if (memchr(data + consumed, separator, len)) {
         result = got_line(data, consumed + len);
         if (result == command_result::OK || result == command_result::FAIL) {
