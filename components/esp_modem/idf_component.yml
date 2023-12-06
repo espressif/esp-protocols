@@ -1,4 +1,4 @@
-version: "1.0.4"
+version: "1.0.5"
 description: Library for communicating with cellular modems in command and data modes
 url: https://github.com/espressif/esp-protocols/tree/master/components/esp_modem
 issues: https://github.com/espressif/esp-protocols/issues
