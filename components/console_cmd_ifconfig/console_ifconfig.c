@@ -99,7 +99,11 @@ static esp_netif_t *get_esp_netif_from_ifname(char *if_name)
     char interface[10];
 
     /* Get interface details and obtain the global IPv6 address */
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
     while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
+#else
+    while ((esp_netif = esp_netif_next_unsafe(esp_netif)) != NULL) {
+#endif
         ret = esp_netif_get_netif_impl_name(esp_netif, interface);
 
         if ((ESP_FAIL == ret) || (NULL == esp_netif)) {
@@ -212,8 +216,11 @@ static esp_err_t set_napt(char *if_name, bool state)
 
     /* Get interface details and own global ipv6 address */
     for (int i = 0; i < esp_netif_get_nr_of_ifs(); ++i) {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
         esp_netif = esp_netif_next(esp_netif);
-
+#else
+        esp_netif = esp_netif_next_unsafe(esp_netif);
+#endif
         ret = esp_netif_get_netif_impl_name(esp_netif, interface);
         if ((ESP_FAIL == ret) || (NULL == esp_netif)) {
             ESP_LOGE(TAG, "No interface available");
@@ -369,7 +376,11 @@ static esp_err_t ifcfg_print_op(netif_op_t *self, int argc, char *argv[], esp_ne
 
     /* Get interface details and own global ipv6 address of all interfaces */
     for (int i = 0; i < esp_netif_get_nr_of_ifs(); ++i) {
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
         esp_netif = esp_netif_next(esp_netif);
+#else
+        esp_netif = esp_netif_next_unsafe(esp_netif);
+#endif
         print_iface_details(esp_netif);
     }
 
