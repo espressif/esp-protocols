@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -261,12 +261,17 @@ command_result set_echo(CommandableIf *t, bool on)
     return generic_command_common(t, "ATE0\r");
 }
 
-command_result set_pdp_context(CommandableIf *t, PdpContext &pdp)
+command_result set_pdp_context(CommandableIf *t, PdpContext &pdp, uint32_t timeout_ms)
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string pdp_command = "AT+CGDCONT=" + std::to_string(pdp.context_id) +
                               ",\"" + pdp.protocol_type + "\",\"" + pdp.apn + "\"\r";
-    return generic_command_common(t, pdp_command, 150000);
+    return generic_command_common(t, pdp_command, timeout_ms);
+}
+
+command_result set_pdp_context(CommandableIf *t, PdpContext &pdp)
+{
+    return set_pdp_context(t, pdp, 1000);
 }
 
 command_result set_data_mode(CommandableIf *t)
