@@ -16,7 +16,9 @@
 #include "argtable3/argtable3.h"
 #include "esp_log.h"
 #include "esp_netif_net_stack.h"
+#if CONFIG_LWIP_IPV6
 #include "lwip/ip6.h"
+#endif
 #include "lwip/opt.h"
 #include "ethernet_init.h"
 #include "console_ifconfig.h"
@@ -65,7 +67,9 @@ netif_op_t cmd_list[] = {
     {.name = "ifconfig",  .operation = ifcfg_print_op,  .arg_cnt = 1, .start_index = 0, .netif_flag = false,  .help = "ifconfig: Display a list of all esp_netif interfaces along with their information"},
     {.name = "ifconfig",  .operation = ifcfg_print_op,  .arg_cnt = 2, .start_index = 0, .netif_flag = true,   .help = "ifconfig <iface>: Provide the details of the named interface"},
     {.name = "default",   .operation = ifcfg_basic_op,  .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> default: Set the specified interface as the default interface"},
+#if CONFIG_LWIP_IPV6
     {.name = "ip6",       .operation = ifcfg_basic_op,  .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> ip6: Enable IPv6 on the specified interface"},
+#endif
     {.name = "up",        .operation = ifcfg_lwip_op,   .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> up: Enable the specified interface"},
     {.name = "down",      .operation = ifcfg_lwip_op,   .arg_cnt = 3, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> down: Disable the specified interface"},
     {.name = "link",      .operation = ifcfg_lwip_op,   .arg_cnt = 4, .start_index = 2, .netif_flag = true,   .help = "ifconfig <iface> link <up/down>: Enable or disable the link of the specified interface"},
@@ -99,10 +103,10 @@ static esp_netif_t *get_esp_netif_from_ifname(char *if_name)
     char interface[10];
 
     /* Get interface details and obtain the global IPv6 address */
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
-    while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
-#else
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
     while ((esp_netif = esp_netif_next_unsafe(esp_netif)) != NULL) {
+#else
+    while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
 #endif
         ret = esp_netif_get_netif_impl_name(esp_netif, interface);
 
@@ -128,12 +132,13 @@ static esp_err_t ifcfg_basic_op(netif_op_t *self, int argc, char *argv[], esp_ne
         return ESP_OK;
     }
 
+#if CONFIG_LWIP_IPV6
     /* Enable IPv6 on this interface */
     if (!strcmp("ip6", argv[self->start_index])) {
         ESP_ERROR_CHECK(esp_netif_create_ip6_linklocal(esp_netif));
         return ESP_OK;
     }
-
+#endif
     return ESP_FAIL;
 }
 
@@ -216,10 +221,10 @@ static esp_err_t set_napt(char *if_name, bool state)
 
     /* Get interface details and own global ipv6 address */
     for (int i = 0; i < esp_netif_get_nr_of_ifs(); ++i) {
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
-        esp_netif = esp_netif_next(esp_netif);
-#else
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
         esp_netif = esp_netif_next_unsafe(esp_netif);
+#else
+        esp_netif = esp_netif_next(esp_netif);
 #endif
         ret = esp_netif_get_netif_impl_name(esp_netif, interface);
         if ((ESP_FAIL == ret) || (NULL == esp_netif)) {
@@ -228,9 +233,7 @@ static esp_err_t set_napt(char *if_name, bool state)
         }
 
         if (!strcmp(interface, if_name)) {
-            struct netif *lwip_netif = esp_netif_get_netif_impl(esp_netif);
-            ip_napt_enable_netif(lwip_netif, state);
-            return ESP_OK;
+            return esp_netif_napt_enable(esp_netif);
         }
     }
 
@@ -303,8 +306,10 @@ static void print_iface_details(esp_netif_t *esp_netif)
     esp_netif_ip_info_t ip_info;
     uint8_t mac[NETIF_MAX_HWADDR_LEN];
     char interface[10];
+#if CONFIG_LWIP_IPV6
     int ip6_addrs_count = 0;
     esp_ip6_addr_t ip6[LWIP_IPV6_NUM_ADDRESSES];
+#endif
     esp_err_t ret = ESP_FAIL;
     esp_netif_dhcp_status_t status;
 
@@ -326,7 +331,9 @@ static void print_iface_details(esp_netif_t *esp_netif)
 #else
     ESP_LOGI(TAG, "Interface Name: %s", interface);
 #endif
-    ESP_LOGI(TAG, "Interface Number: %d", lwip_netif->num);
+    if (lwip_netif != NULL) {
+        ESP_LOGI(TAG, "Interface Number: %d", lwip_netif->num);
+    }
 
     /* Print MAC address */
     esp_netif_get_mac(esp_netif, mac);
@@ -350,19 +357,25 @@ static void print_iface_details(esp_netif_t *esp_netif)
 
 #if IP_NAPT
     /* Print NAPT status*/
-    ESP_LOGI(TAG, "NAPT: %s", lwip_netif->napt ? "enabled" : "disabled");
+    if (lwip_netif != NULL) {
+        ESP_LOGI(TAG, "NAPT: %s", lwip_netif->napt ? "enabled" : "disabled");
+    }
 #endif
 
+#if CONFIG_LWIP_IPV6
     /* Print IPv6 Address */
     ip6_addrs_count = esp_netif_get_all_ip6(esp_netif, ip6);
     for (int j = 0; j < ip6_addrs_count; ++j) {
         ESP_LOGI(TAG, "IPv6 address: " IPV6STR, IPV62STR(ip6[j]));
     }
+#endif
 
     /* Print Interface and Link Status*/
     ESP_LOGI(TAG, "Interface Status: %s", esp_netif_is_netif_up(esp_netif) ? "UP" : "DOWN");
-    ESP_LOGI(TAG, "Link Status: %s\n", netif_is_link_up(lwip_netif) ? "UP" : "DOWN");
-
+    if (lwip_netif != NULL) {
+        ESP_LOGI(TAG, "Link Status: %s", netif_is_link_up(lwip_netif) ? "UP" : "DOWN");
+    }
+    ESP_LOGI(TAG, "");
 }
 
 
@@ -376,10 +389,10 @@ static esp_err_t ifcfg_print_op(netif_op_t *self, int argc, char *argv[], esp_ne
 
     /* Get interface details and own global ipv6 address of all interfaces */
     for (int i = 0; i < esp_netif_get_nr_of_ifs(); ++i) {
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 2, 0)
-        esp_netif = esp_netif_next(esp_netif);
-#else
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
         esp_netif = esp_netif_next_unsafe(esp_netif);
+#else
+        esp_netif = esp_netif_next(esp_netif);
 #endif
         print_iface_details(esp_netif);
     }
@@ -424,6 +437,7 @@ static esp_err_t get_netif_config(uint16_t id, esp_netif_config_t *eth_cfg_o)
         return ESP_FAIL;
     }
     *esp_eth_base_config = (esp_netif_inherent_config_t)ESP_NETIF_INHERENT_DEFAULT_ETH();
+
     esp_eth_base_config->if_key = if_key;
 
     eth_cfg_o->base = esp_eth_base_config;
