@@ -551,9 +551,14 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
     int need_write = len;
     int wlen = 0, widx = 0;
 
+    bool contained_fin = opcode & WS_TRANSPORT_OPCODES_FIN;
+
     while (widx < len || opcode) {  // allow for sending "current_opcode" only message with len==0
         if (need_write > client->buffer_size) {
             need_write = client->buffer_size;
+            opcode = opcode & ~WS_TRANSPORT_OPCODES_FIN;
+        } else if (contained_fin) {
+            opcode = opcode | WS_TRANSPORT_OPCODES_FIN;
         }
         memcpy(client->tx_buffer, data + widx, need_write);
         // send with ws specific way and specific opcode
