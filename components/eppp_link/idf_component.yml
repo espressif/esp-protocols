@@ -1,0 +1,6 @@
+version: 0.0.9
+url: https://github.com/espressif/esp-protocols/tree/master/components/eppp_link
+description: The component provides a general purpose PPP connectivity, typically used as WiFi-PPP router
+dependencies:
+  idf:
+    version: '>=5.2'
