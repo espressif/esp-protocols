@@ -8,6 +8,7 @@
 #include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_check.h"
 #include "esp_event.h"
 #include "esp_netif_ppp.h"
 #include "eppp_link_types.h"
@@ -17,6 +18,8 @@
 #include "driver/spi_slave.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+#include "driver/uart.h"
 #endif
 
 static const int GOT_IPV4 = BIT0;
@@ -44,7 +47,11 @@ enum eppp_type {
 
 struct eppp_handle {
     QueueHandle_t out_queue;
+#if CONFIG_EPPP_LINK_DEVICE_SPI
     QueueHandle_t ready_semaphore;
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+    QueueHandle_t uart_event_queue;
+#endif
     esp_netif_t *netif;
     enum eppp_type role;
 };
@@ -57,7 +64,7 @@ struct packet {
 
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
-#if CONFIG_EXAMPLE_CONNECT_PPP_DEVICE_SPI
+#if CONFIG_EPPP_LINK_DEVICE_SPI
 #define MAX_PAYLOAD 1600
     struct eppp_handle *handle = h;
     struct packet buf = { };
@@ -76,6 +83,8 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
             ESP_LOGE(TAG, "Failed to queue packet to slave!");
         }
     } while (remaining > 0);
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+    uart_write_bytes(UART_NUM_1, buffer, len);
 #endif
     return ESP_OK;
 }
@@ -101,6 +110,7 @@ static esp_netif_t *netif_init(enum eppp_type role)
         return NULL;
     }
     h->role = role;
+#if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
         h->ready_semaphore = xSemaphoreCreateBinary();
         if (!h->ready_semaphore) {
@@ -110,6 +120,7 @@ static esp_netif_t *netif_init(enum eppp_type role)
             return NULL;
         }
     }
+#endif
 
     esp_netif_driver_ifconfig_t driver_cfg = {
         .handle = h,
@@ -119,7 +130,7 @@ static esp_netif_t *netif_init(enum eppp_type role)
 
     esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_PPP();
     char if_key[] = "EPPP0"; // netif key needs to be unique
-    if_key[sizeof(if_key) - 1] += s_eppp_netif_count++;
+    if_key[sizeof(if_key) - 2 /* 2 = two chars before the terminator */ ] += s_eppp_netif_count++;
     base_netif_cfg.if_key = if_key;
     if (role == EPPP_CLIENT) {
         base_netif_cfg.if_desc = "pppos_client";
@@ -470,7 +481,56 @@ _Noreturn static void ppp_task(void *args)
         }
     }
 }
-#endif // CONFIG_EPPP_LINK_DEVICE_SPI
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+#define BUF_SIZE (1024)
+#define UART_TX_CLIENT_TO_SERVER 10
+#define UART_TX_SERVER_TO_CLIENT 11
+#define UART_BAUDRATE 4000000
+#define UART_QUEUE_SIZE 16
+
+static esp_err_t init_uart(struct eppp_handle *h)
+{
+    uart_config_t uart_config = {};
+    uart_config.baud_rate = UART_BAUDRATE;
+    uart_config.data_bits = UART_DATA_8_BITS;
+    uart_config.parity    = UART_PARITY_DISABLE;
+    uart_config.stop_bits = UART_STOP_BITS_1;
+    uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    uart_config.source_clk = UART_SCLK_DEFAULT;
+
+    ESP_RETURN_ON_ERROR(uart_driver_install(UART_NUM_1, BUF_SIZE, 0, UART_QUEUE_SIZE, &h->uart_event_queue, 0), TAG, "Failed to install UART");
+    ESP_RETURN_ON_ERROR(uart_param_config(UART_NUM_1, &uart_config), TAG, "Failed to set params");
+    int tx_io_num = h->role == EPPP_CLIENT ? UART_TX_CLIENT_TO_SERVER : UART_TX_SERVER_TO_CLIENT;
+    int rx_io_num = h->role == EPPP_CLIENT ? UART_TX_SERVER_TO_CLIENT : UART_TX_CLIENT_TO_SERVER;
+    ESP_RETURN_ON_ERROR(uart_set_pin(UART_NUM_1, tx_io_num, rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE), TAG, "Failed to set UART pins");
+    ESP_RETURN_ON_ERROR(uart_set_rx_timeout(UART_NUM_1, 1), TAG, "Failed to set UART Rx timeout");
+    return ESP_OK;
+}
+
+_Noreturn static void ppp_task(void *args)
+{
+    static uint8_t buffer[BUF_SIZE] = {};
+
+    esp_netif_t *netif = args;
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    uart_event_t event;
+    while (1) {
+        xQueueReceive(h->uart_event_queue, &event, pdMS_TO_TICKS(pdMS_TO_TICKS(100)));
+        if (event.type == UART_DATA) {
+            size_t len;
+            uart_get_buffered_data_len(UART_NUM_1, &len);
+            if (len) {
+                len = uart_read_bytes(UART_NUM_1, buffer, BUF_SIZE, 0);
+                ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_VERBOSE);
+                esp_netif_receive(netif, buffer, len, NULL);
+            }
+        } else {
+            ESP_LOGW(TAG, "Received UART event: %d", event.type);
+        }
+    }
+
+}
+#endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
 
 static esp_netif_t *default_setup(enum eppp_type role)
@@ -498,6 +558,8 @@ static esp_netif_t *default_setup(enum eppp_type role)
     } else {
         init_slave(&s_spi_device, netif);
     }
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+    init_uart(esp_netif_get_io_driver(netif));
 #endif
 
     netif_start(netif);
