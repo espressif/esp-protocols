@@ -57,7 +57,7 @@ struct packet {
 
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
-#if CONFIG_EXAMPLE_CONNECT_PPP_DEVICE_SPI
+#if CONFIG_EPPP_LINK_DEVICE_SPI
 #define MAX_PAYLOAD 1600
     struct eppp_handle *handle = h;
     struct packet buf = { };
