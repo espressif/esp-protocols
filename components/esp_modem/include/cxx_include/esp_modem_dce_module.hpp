@@ -170,6 +170,8 @@ public:
  */
 class BG96: public GenericModule {
     using GenericModule::GenericModule;
+public:
+    command_result set_pdp_context(PdpContext &pdp) override;
 };
 
 /**
