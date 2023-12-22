@@ -1,0 +1,10 @@
+version: 1.0.0
+url: https://github.com/espressif/esp-protocols/tree/master/components/console_cmd_wifi
+description: The component offers a console that enables runtime wifi configuration and monitoring.
+dependencies:
+  idf:
+    version: '>=5.0'
+  espressif/console_simple_init:
+    version: '>=1.1.0'
+    override_path: '../console_simple_init'
+    public: true
