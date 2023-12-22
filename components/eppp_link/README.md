@@ -1,6 +1,14 @@
 # ESP PPP Link component (eppp_link)
 
-The component provides a general purpose connectivity engine between two micro-controllers, one acting as PPP server (slave), the other one as PPP client (host). Typical application is a WiFi connectivity provider for chips that do not have WiFi:
+The component provides a general purpose connectivity engine between two microcontrollers, one acting as PPP server (slave), the other one as PPP client (host).
+This component could be used for extending network using physical serial connection. Applications could vary from providing PRC engine for multiprocessor solutions to serial connection to POSIX machine. This uses a standard PPP protocol to negotiate IP addresses and networking, so standard PPP toolset could be used, e.g. a `pppd` service on linux. Typical application is a WiFi connectivity provider for chips that do not have WiFi
+
+## Typical application
+
+Using this component we can construct a WiFi connectivity gateway on PPP channel. The below diagram depicts an application where
+PPP server is running on a WiFi capable chip with NAPT module translating packets between WiFi and PPPoS interface.
+We usually call this node a SLAVE microcontroller. The "HOST" microcontroller runs PPP client and connects only to the serial line,
+brings in the WiFi connectivity from the "SLAVE" microcontroller.
 
 ```
              SLAVE micro                                  HOST micro
@@ -17,16 +25,17 @@ The component provides a general purpose connectivity engine between two micro-c
 
 * `eppp_connect()` -- Simplified API. Provides the initialization, starts the task and blocks until we're connected
 
-* `eppp_client_init()` -- Initialization of the client. Need to run only once.
-* `eppp_client_start()` -- Starts the connection, could be called after startup or whenever a connection is lost
-* `eppp_client_perform()` -- Perform one iteration of the PPP task (need to be called regularly in task-less configuration)
-
 ### Server
 
 * `eppp_listen()` -- Simplified API. Provides the initialization, starts the task and blocks until the client connects
-* `eppp_server_init()` -- Initialization of the server. Need to run only once.
-* `eppp_server_start()` -- (Re)starts the connection, should be called after startup or whenever a connection is lost
-* `eppp_server_perform()` -- Perform one iteration of the PPP task (need to be called regularly in task-less configuration)
+
+### Manual actions
+
+* `eppp_init()` -- Initializes one endpoint (client/server).
+* `eppp_deinit()` -- Destroys the endpoint
+* `eppp_netif_start()` -- Starts the network, could be called after startup or whenever a connection is lost
+* `eppp_netif_stop()` --  Stops the network
+* `eppp_perform()` -- Perform one iteration of the PPP task (need to be called regularly in task-less configuration)
 
 ## Throughput
 
@@ -34,10 +43,10 @@ Tested with WiFi-NAPT example, no IRAM optimizations
 
 ### UART @ 3Mbauds
 
-* TCP - 2Mbits
-* UDP - 2Mbits
+* TCP - 2Mbits/s
+* UDP - 2Mbits/s
 
-### SPI @ 40MHz
+### SPI @ 20MHz
 
-* TCP - 6Mbits
-* UDP - 10Mbits
+* TCP - 6Mbits/s
+* UDP - 10Mbits/s

@@ -1,12 +1,11 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 
 #include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -14,9 +13,6 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "eppp_link.h"
-
-#include "lwip/err.h"
-#include "lwip/sys.h"
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -123,7 +119,16 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 
-    esp_netif_t *eppp_netif = eppp_listen();
+    eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    config.transport = EPPP_TRANSPORT_SPI;
+#else
+    config.transport = EPPP_TRANSPORT_UART;
+    config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
+    config.uart.rx_io = CONFIG_EXAMPLE_UART_RX_PIN;
+    config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
+#endif
+    esp_netif_t *eppp_netif = eppp_listen(&config);
     if (eppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to setup connection");
         return ;

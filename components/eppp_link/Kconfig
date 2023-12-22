@@ -32,19 +32,4 @@ menu "eppp_link"
             Size of the Tx packet queue.
             You can decrease the number for slower bit rates.
 
-    config EPPP_LINK_SERVER_IP
-        hex "Server IP address"
-        range 0 0xFFFFFFFF
-        default 0xc0a80b01
-        help
-            Preferred IP address of the server side.
-
-    config EPPP_LINK_CLIENT_IP
-        hex "Client IP address"
-        range 0 0xFFFFFFFF
-        default 0xc0a80b02
-        help
-            Preferred IP address of the client side.
-
-
 endmenu

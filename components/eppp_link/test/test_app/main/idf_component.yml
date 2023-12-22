@@ -2,5 +2,3 @@ dependencies:
   espressif/eppp_link:
     version: "*"
     override_path: "../../.."
-  console_cmd_ping:
-    version: "*"

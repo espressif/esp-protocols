@@ -20,24 +20,34 @@ menu "Example Configuration"
         help
             URL of the broker to connect to.
 
-    config EXAMPLE_ICMP_PING
-        bool "Run ping example"
-        default y
-        help
-            Ping configured address after startup.
-
-    config EXAMPLE_PING_ADDR
-        hex "Ping IPv4 address"
-        depends on EXAMPLE_ICMP_PING
-        range 0 0xFFFFFFFF
-        default 0x08080808
-        help
-            Address to send ping requests.
-
     config EXAMPLE_IPERF
         bool "Run iperf"
         default y
         help
             Init and run iperf console.
+
+    config EXAMPLE_UART_TX_PIN
+        int "TXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 10
+        range 0 31
+        help
+            Pin number of UART TX.
+
+    config EXAMPLE_UART_RX_PIN
+        int "RXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 11
+        range 0 31
+        help
+            Pin number of UART RX.
+
+    config EXAMPLE_UART_BAUDRATE
+        int "Baudrate"
+        depends on EPPP_LINK_DEVICE_UART
+        default 2000000
+        range 0 4000000
+        help
+            Baudrate used by the PPP over UART
 
 endmenu

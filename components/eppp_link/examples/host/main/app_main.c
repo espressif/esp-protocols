@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -13,11 +13,9 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "eppp_link.h"
-#include "lwip/sockets.h"
 #include "esp_log.h"
 #include "mqtt_client.h"
-#include "ping/ping_sock.h"
-#include "esp_console.h"
+#include "console_ping.h"
 
 void register_iperf(void);
 
@@ -80,7 +78,7 @@ static void mqtt_event_handler(void *args, esp_event_base_t base, int32_t event_
 static void mqtt_app_start(void)
 {
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = CONFIG_EXAMPLE_BROKER_URL,
+        .broker.address.uri = "mqtt://mqtt.eclipseprojects.io",
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -90,43 +88,6 @@ static void mqtt_app_start(void)
 }
 #endif // MQTT
 
-#if CONFIG_EXAMPLE_ICMP_PING
-static void test_on_ping_success(esp_ping_handle_t hdl, void *args)
-{
-    uint8_t ttl;
-    uint16_t seqno;
-    uint32_t elapsed_time, recv_len;
-    ip_addr_t target_addr;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_TTL, &ttl, sizeof(ttl));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
-    printf("%" PRId32 "bytes from %s icmp_seq=%d ttl=%d time=%" PRId32 " ms\n",
-           recv_len, inet_ntoa(target_addr.u_addr.ip4), seqno, ttl, elapsed_time);
-}
-
-static void test_on_ping_timeout(esp_ping_handle_t hdl, void *args)
-{
-    uint16_t seqno;
-    ip_addr_t target_addr;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-    printf("From %s icmp_seq=%d timeout\n", inet_ntoa(target_addr.u_addr.ip4), seqno);
-}
-
-static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
-{
-    uint32_t transmitted;
-    uint32_t received;
-    uint32_t total_time_ms;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-    printf("%" PRId32 " packets transmitted, %" PRId32 " received, time %" PRId32 "ms\n", transmitted, received, total_time_ms);
-
-}
-#endif // PING
 
 void app_main(void)
 {
@@ -140,7 +101,16 @@ void app_main(void)
 
     /* Sets up the default EPPP-connection
      */
-    esp_netif_t *eppp_netif = eppp_connect();
+    eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    config.transport = EPPP_TRANSPORT_SPI;
+#else
+    config.transport = EPPP_TRANSPORT_UART;
+    config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
+    config.uart.rx_io = CONFIG_EXAMPLE_UART_RX_PIN;
+    config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
+#endif
+    esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to connect");
         return ;
@@ -152,13 +122,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_set_dns_info(eppp_netif, ESP_NETIF_DNS_MAIN, &dns));
 
 #if CONFIG_EXAMPLE_IPERF
-    esp_console_repl_t *repl = NULL;
-    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    repl_config.prompt = "iperf>";
-    // init console REPL environment
-    ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
-
     register_iperf();
 
     printf("\n =======================================================\n");
@@ -174,28 +137,15 @@ void app_main(void)
     printf(" |                                                     |\n");
     printf(" =======================================================\n\n");
 
+#endif // CONFIG_EXAMPLE_IPERF
+
+    // Initialize console REPL
+    ESP_ERROR_CHECK(console_cmd_init());
+
+    // Register the ping command
+    ESP_ERROR_CHECK(console_cmd_ping_register());
     // start console REPL
-    ESP_ERROR_CHECK(esp_console_start_repl(repl));
-#endif
-
-#if CONFIG_EXAMPLE_ICMP_PING
-    ip_addr_t target_addr = { .type = IPADDR_TYPE_V4, .u_addr.ip4.addr = esp_netif_htonl(CONFIG_EXAMPLE_PING_ADDR) };
-
-    esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-    ping_config.timeout_ms = 2000;
-    ping_config.interval_ms = 20,
-    ping_config.target_addr = target_addr;
-    ping_config.count = 100; // ping in infinite mode
-    /* set callback functions */
-    esp_ping_callbacks_t cbs;
-    cbs.on_ping_success = test_on_ping_success;
-    cbs.on_ping_timeout = test_on_ping_timeout;
-    cbs.on_ping_end = test_on_ping_end;
-    esp_ping_handle_t ping;
-    esp_ping_new_session(&ping_config, &cbs, &ping);
-    /* start ping */
-    esp_ping_start(ping);
-#endif // PING
+    ESP_ERROR_CHECK(console_cmd_start());
 
 #if CONFIG_EXAMPLE_MQTT
     mqtt_app_start();
