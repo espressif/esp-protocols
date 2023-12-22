@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.2)
+
+### Bug Fixes
+
+- continuation after FIN in websocket client (#460) ([774d1c75e6](https://github.com/espressif/esp-protocols/commit/774d1c75e6))
+- Re-applie refs to common comps idf_component.yml ([9fe44a4504](https://github.com/espressif/esp-protocols/commit/9fe44a4504))
+
 ## [1.2.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.1)
 
 ### Bug Fixes
