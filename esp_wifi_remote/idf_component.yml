@@ -1,6 +1,0 @@
-version: "0.0.5"
-dependencies:
-  esp_hosted_preview:
-    version: "*"
-#    override_path: ${PREVIEW_PATH}/components/esp_hosted_preview
-    service_url: "https://components-staging.espressif.com/api"

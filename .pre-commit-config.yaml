@@ -61,8 +61,8 @@ repos:
   - repo: local
     hooks:
       - id: commit message scopes
-        name: "commit message must be scoped with: mdns, modem, websocket, asio, mqtt_cxx, console, common, eppp"
-        entry: '\A(?!(feat|fix|ci|bump|test|docs)\((mdns|modem|common|console|websocket|asio|mqtt_cxx|examples|eppp)\)\:)'
+        name: "commit message must be scoped with: mdns, modem, websocket, asio, mqtt_cxx, console, common, eppp, wifi_remote"
+        entry: '\A(?!(feat|fix|ci|bump|test|docs)\((mdns|modem|common|console|websocket|asio|mqtt_cxx|examples|eppp|wifi_remote)\)\:)'
         language: pygrep
         args: [--multiline]
         stages: [commit-msg]
