@@ -116,6 +116,16 @@ bool Tls::set_ca_cert(const_buf crt)
     return true;
 }
 
+bool Tls::set_hostname(const char *name)
+{
+    int ret = mbedtls_ssl_set_hostname(&ssl_, name);
+    if (ret < 0) {
+        print_error("mbedtls_ssl_set_hostname", ret);
+        return false;
+    }
+    return true;
+}
+
 Tls::Tls()
 {
     mbedtls_x509_crt_init(&public_cert_);
