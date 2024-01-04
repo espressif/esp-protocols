@@ -5882,6 +5882,7 @@ static mdns_ip_addr_t *_copy_delegated_host_address_list(char *hostname)
         if (strcasecmp(host->hostname, hostname) == 0) {
             return copy_address_list(host->address_list);
         }
+        host = host->next;
     }
     return NULL;
 }
