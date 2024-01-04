@@ -61,3 +61,5 @@ typedef struct eppp_config_t {
 esp_netif_t *eppp_connect(eppp_config_t *config);
 
 esp_netif_t *eppp_listen(eppp_config_t *config);
+
+void eppp_close(esp_netif_t *netif);

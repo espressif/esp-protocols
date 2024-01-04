@@ -23,7 +23,11 @@
 #include "unity_fixture.h"
 #include "memory_checks.h"
 
-static const char *TAG = "eppp_test_app";
+#define CLIENT_INFO_CONNECTED   BIT0
+#define CLIENT_INFO_DISCONNECT  BIT1
+#define CLIENT_INFO_CLOSED      BIT2
+#define PING_SUCCEEDED          BIT3
+#define PING_FAILED             BIT4
 
 TEST_GROUP(eppp_test);
 TEST_SETUP(eppp_test)
@@ -36,6 +40,24 @@ TEST_TEAR_DOWN(eppp_test)
 {
     test_utils_finish_and_evaluate_leaks(32, 64);
 }
+
+static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
+{
+    EventGroupHandle_t event = args;
+    uint32_t transmitted;
+    uint32_t received;
+    uint32_t total_time_ms;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
+    printf("%" PRId32 " packets transmitted, %" PRId32 " received, time %" PRId32 "ms\n", transmitted, received, total_time_ms);
+    if (transmitted == received) {
+        xEventGroupSetBits(event, PING_SUCCEEDED);
+    } else {
+        xEventGroupSetBits(event, PING_FAILED);
+    }
+}
+
 static void test_on_ping_success(esp_ping_handle_t hdl, void *args)
 {
     uint8_t ttl;
@@ -51,137 +73,93 @@ static void test_on_ping_success(esp_ping_handle_t hdl, void *args)
            recv_len, inet_ntoa(target_addr.u_addr.ip4), seqno, ttl, elapsed_time);
 }
 
-static void test_on_ping_timeout(esp_ping_handle_t hdl, void *args)
-{
-    uint16_t seqno;
-    ip_addr_t target_addr;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
-    printf("From %s icmp_seq=%d timeout\n", inet_ntoa(target_addr.u_addr.ip4), seqno);
-}
-
-static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
-{
-    uint32_t transmitted;
-    uint32_t received;
-    uint32_t total_time_ms;
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
-    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
-    printf("%" PRId32 " packets transmitted, %" PRId32 " received, time %" PRId32 "ms\n", transmitted, received, total_time_ms);
-
-}
-
-static void client_task(void *ctx)
-{
-    eppp_config_t *client_config = ctx;
-    esp_netif_t *eppp_client = eppp_connect(client_config);
-
-    if (eppp_client == NULL) {
-        ESP_LOGE(TAG, "Failed to connect");
-    }
-
-    vTaskDelete(NULL);
-}
-
-void app_main2(void)
-{
-    ESP_LOGI(TAG, "[APP] Startup..");
-    ESP_LOGI(TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
-    ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
-
-
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    /* Sets up the default EPPP-connection
-     */
-    uint32_t server_ip = ESP_IP4TOADDR(192, 168, 11, 1);
-    uint32_t client_ip = ESP_IP4TOADDR(192, 168, 11, 2);
-    eppp_config_t server_config = {
-        .uart = {
-            .port = UART_NUM_1,
-            .baud = 921600,
-            .tx_io = 25,
-            .rx_io = 26,
-            .queue_size = 16,
-            .rx_buffer_size = 1024,
-        },
-        . task = {
-            .run_task = true,
-            .stack_size = 4096,
-            .priority = 18,
-        },
-        . ppp = {
-            .our_ip4_addr = server_ip,
-            .their_ip4_addr = client_ip,
-        }
-    };
-    eppp_config_t client_config = EPPP_DEFAULT_CLIENT_CONFIG();
-
-    memcpy(&client_config, &server_config, sizeof(server_config));
-    client_config.uart.port = UART_NUM_2;
-    client_config.uart.tx_io = 4;
-    client_config.uart.rx_io = 5;
-    client_config.ppp.our_ip4_addr = client_ip;
-    client_config.ppp.their_ip4_addr = server_ip;
-    xTaskCreate(client_task, "client_task", 4096, &client_config, 5, NULL);
-
-    esp_netif_t *eppp_server = eppp_listen(&server_config);
-    if (eppp_server == NULL) {
-        ESP_LOGE(TAG, "Failed to setup connection");
-        return ;
-    }
-
-    // Try to ping client's IP on server interface, so the packets go over the wires
-    // (if we didn't set the interface, ping would run locally on the client's netif)
-    ip_addr_t target_addr = { .type = IPADDR_TYPE_V4, .u_addr.ip4.addr = client_ip };
-
-    esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
-    ping_config.timeout_ms = 2000;
-    ping_config.interval_ms = 1000,
-    ping_config.target_addr = target_addr;
-    ping_config.count = 100;
-    ping_config.interface = esp_netif_get_netif_impl_index(eppp_server);
-    /* set callback functions */
-    esp_ping_callbacks_t cbs;
-    cbs.on_ping_success = test_on_ping_success;
-    cbs.on_ping_timeout = test_on_ping_timeout;
-    cbs.on_ping_end = test_on_ping_end;
-    esp_ping_handle_t ping;
-    esp_ping_new_session(&ping_config, &cbs, &ping);
-    /* start ping */
-    esp_ping_start(ping);
-
-}
+struct client_info {
+    esp_netif_t *netif;
+    EventGroupHandle_t event;
+};
 
 static void open_client_task(void *ctx)
 {
+    struct client_info *info = ctx;
     eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
     config.uart.port = UART_NUM_2;
     config.uart.tx_io = 4;
     config.uart.rx_io = 5;
 
-    esp_netif_t **eppp_client = ctx;
-    *eppp_client = eppp_connect(&config);
+    info->netif = eppp_connect(&config);
+    xEventGroupSetBits(info->event, CLIENT_INFO_CONNECTED);
+
+    // wait for disconnection trigger
+    EventBits_t bits = xEventGroupWaitBits(info->event, CLIENT_INFO_DISCONNECT, pdFALSE, pdFALSE, pdMS_TO_TICKS(50000));
+    TEST_ASSERT_EQUAL(bits & CLIENT_INFO_DISCONNECT, CLIENT_INFO_DISCONNECT);
+    eppp_close(info->netif);
+    xEventGroupSetBits(info->event, CLIENT_INFO_CLOSED);
     vTaskDelete(NULL);
 }
 
 TEST(eppp_test, open_close)
 {
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // install and delete both drivers before setting leak baselines in test_case_uses_tcpip()
+    // to disregard potential leak in allocated interrupt slot
+    TEST_ESP_OK(uart_driver_install(UART_NUM_1, 256, 0, 0, NULL, 0));
+    TEST_ESP_OK(uart_driver_delete(UART_NUM_1));
+    TEST_ESP_OK(uart_driver_install(UART_NUM_2, 256, 0, 0, NULL, 0));
+    TEST_ESP_OK(uart_driver_delete(UART_NUM_2));
+    // initiate some lazy init
+    struct timeval time;
+    gettimeofday(&time, NULL);
+
+    test_case_uses_tcpip();
+    eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
+    struct client_info client = { .netif = NULL, .event =  xEventGroupCreate()};
+
+    TEST_ESP_OK(esp_event_loop_create_default());
+
+    TEST_ASSERT_NOT_NULL(client.event);
 
     // Need to connect the client in a separate thread, as the simplified API blocks until connection
-    esp_netif_t *eppp_client = NULL;
-    xTaskCreate(open_client_task, "client_task", 4096, &eppp_client, 5, NULL);
-    eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
+    xTaskCreate(open_client_task, "client_task", 4096, &client, 5, NULL);
+
+    // Now start the server
     esp_netif_t *eppp_server = eppp_listen(&config);
+
+    // Wait for the client to connect
+    EventBits_t bits = xEventGroupWaitBits(client.event, CLIENT_INFO_CONNECTED, pdFALSE, pdFALSE, pdMS_TO_TICKS(50000));
+    TEST_ASSERT_EQUAL(bits & CLIENT_INFO_CONNECTED, CLIENT_INFO_CONNECTED);
+
+    // Check that both server and client are valid netif pointers
     TEST_ASSERT_NOT_NULL(eppp_server);
-    TEST_ASSERT_NOT_NULL(eppp_client);
+    TEST_ASSERT_NOT_NULL(client.netif);
 
+    // Now that we're connected, let's try to ping clients address
+    ip_addr_t target_addr = { .type = IPADDR_TYPE_V4, .u_addr.ip4.addr = config.ppp.their_ip4_addr };
+    esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+    ping_config.interval_ms = 100;
+    ping_config.target_addr = target_addr;
+    ping_config.interface = esp_netif_get_netif_impl_index(eppp_server);
+    esp_ping_callbacks_t cbs = { .cb_args = client.event, .on_ping_end = test_on_ping_end, .on_ping_success = test_on_ping_success };
+    esp_ping_handle_t ping;
+    esp_ping_new_session(&ping_config, &cbs, &ping);
+    esp_ping_start(ping);
+    // Wait for the client thread closure and delete locally created objects
+    bits = xEventGroupWaitBits(client.event, PING_SUCCEEDED | PING_FAILED, pdFALSE, pdFALSE, pdMS_TO_TICKS(50000));
+    TEST_ASSERT_EQUAL(bits & (PING_SUCCEEDED | PING_FAILED), PING_SUCCEEDED);
+    esp_ping_stop(ping);
+    esp_ping_delete_session(ping);
 
+    // Trigger client disconnection and close the server
+    xEventGroupSetBits(client.event, CLIENT_INFO_DISCONNECT);
+    eppp_close(eppp_server);
+
+    // Wait for the client thread closure and delete locally created objects
+    bits = xEventGroupWaitBits(client.event, CLIENT_INFO_CLOSED, pdFALSE, pdFALSE, pdMS_TO_TICKS(50000));
+    TEST_ASSERT_EQUAL(bits & CLIENT_INFO_CLOSED, CLIENT_INFO_CLOSED);
+
+    TEST_ESP_OK(esp_event_loop_delete_default());
+    vEventGroupDelete(client.event);
+
+    // wait for lwip sockets to close cleanly
+    vTaskDelay(pdMS_TO_TICKS(1000));
 }
 
 TEST_GROUP_RUNNER(eppp_test)

@@ -29,6 +29,7 @@ static const int CONNECTION_FAILED = BIT1;
 static EventGroupHandle_t s_event_group = NULL;
 static const char *TAG = "eppp_link";
 static int s_retry_num = 0;
+static int s_eppp_netif_count = 0; // used as a suffix for the netif key
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
 static spi_device_handle_t s_spi_device;
@@ -41,8 +42,8 @@ static spi_device_handle_t s_spi_device;
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI
 
 struct eppp_handle {
-    QueueHandle_t out_queue;
 #if CONFIG_EPPP_LINK_DEVICE_SPI
+    QueueHandle_t out_queue;
     QueueHandle_t ready_semaphore;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     QueueHandle_t uart_event_queue;
@@ -50,6 +51,9 @@ struct eppp_handle {
 #endif
     esp_netif_t *netif;
     enum eppp_type role;
+    bool stop;
+    bool exited;
+    bool netif_stop;
 };
 
 struct packet {
@@ -86,9 +90,30 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
     return ESP_OK;
 }
 
+static void netif_deinit(esp_netif_t *netif)
+{
+    if (netif == NULL) {
+        return;
+    }
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    if (h == NULL) {
+        return;
+    }
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    vQueueDelete(h->out_queue);
+    if (role == EPPP_CLIENT) {
+        vSemaphoreDelete(h->ready_semaphore);
+    }
+#endif
+    free(h);
+    esp_netif_destroy(netif);
+    if (s_eppp_netif_count > 0) {
+        s_eppp_netif_count--;
+    }
+}
+
 static esp_netif_t *netif_init(enum eppp_type role)
 {
-    static int s_eppp_netif_count = 0; // used as a suffix for the netif key
     if (s_eppp_netif_count > 9) {
         ESP_LOGE(TAG, "Cannot create more than 10 instances");
         return NULL;
@@ -100,14 +125,14 @@ static esp_netif_t *netif_init(enum eppp_type role)
         ESP_LOGE(TAG, "Failed to allocate eppp_handle");
         return NULL;
     }
+    h->role = role;
+#if CONFIG_EPPP_LINK_DEVICE_SPI
     h->out_queue = xQueueCreate(CONFIG_EPPP_LINK_PACKET_QUEUE_SIZE, sizeof(struct packet));
     if (!h->out_queue) {
         ESP_LOGE(TAG, "Failed to create the packet queue");
         free(h);
         return NULL;
     }
-    h->role = role;
-#if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
         h->ready_semaphore = xSemaphoreCreateBinary();
         if (!h->ready_semaphore) {
@@ -142,12 +167,21 @@ static esp_netif_t *netif_init(enum eppp_type role)
     esp_netif_t *netif = esp_netif_new(&netif_ppp_config);
     if (!netif) {
         ESP_LOGE(TAG, "Failed to create esp_netif");
+#if CONFIG_EPPP_LINK_DEVICE_SPI
         vQueueDelete(h->out_queue);
+#endif
         free(h);
         return NULL;
     }
     return netif;
 
+}
+
+static esp_err_t netif_stop(esp_netif_t *netif)
+{
+    esp_netif_action_disconnected(netif, 0, 0, 0);
+    esp_netif_action_stop(netif, 0, 0, 0);
+    return ESP_OK;
 }
 
 static esp_err_t netif_start(esp_netif_t *netif)
@@ -157,19 +191,51 @@ static esp_err_t netif_start(esp_netif_t *netif)
     return ESP_OK;
 }
 
+static int get_netif_num(esp_netif_t *netif)
+{
+    if (netif == NULL) {
+        return -1;
+    }
+    const char *ifkey = esp_netif_get_ifkey(netif);
+    if (strstr(ifkey, "EPPP") == NULL) {
+        return -1; // not our netif
+    }
+    int netif_cnt = ifkey[4] - '0';
+    if (netif_cnt < 0 || netif_cnt > 9) {
+        ESP_LOGE(TAG, "Unexpected netif key %s", ifkey);
+        return -1;
+    }
+    return  netif_cnt;
+}
+
+static void on_ppp_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
+{
+    esp_netif_t **netif = data;
+    if (base == NETIF_PPP_STATUS && event_id == NETIF_PPP_ERRORUSER) {
+        ESP_LOGI(TAG, "Disconnected %d", get_netif_num(*netif));
+        struct eppp_handle *h = esp_netif_get_io_driver(*netif);
+        h->netif_stop = true;
+    }
+}
+
 static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)data;
     esp_netif_t *netif = event->esp_netif;
+    int netif_cnt = get_netif_num(netif);
+    if (netif_cnt < 0) {
+        return;
+    }
     if (event_id == IP_EVENT_PPP_GOT_IP) {
-        ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
-        xEventGroupSetBits(s_event_group, GOT_IPV4);
+        ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s(%s)\" address: " IPSTR, esp_netif_get_desc(netif),
+                 esp_netif_get_ifkey(netif), IP2STR(&event->ip_info.ip));
+        xEventGroupSetBits(s_event_group, GOT_IPV4 << (netif_cnt * 2));
     } else if (event_id == IP_EVENT_PPP_LOST_IP) {
-        ESP_LOGI(TAG, "Disconnect from PPP Server");
+        ESP_LOGI(TAG, "Disconnected");
         s_retry_num++;
         if (s_retry_num > CONFIG_EPPP_LINK_CONN_MAX_RETRY) {
             ESP_LOGE(TAG, "PPP Connection failed %d times, stop reconnecting.", s_retry_num);
-            xEventGroupSetBits(s_event_group, CONNECTION_FAILED);
+            xEventGroupSetBits(s_event_group, CONNECTION_FAILED << (netif_cnt * 2));
         } else {
             ESP_LOGI(TAG, "PPP Connection failed %d times, try to reconnect.", s_retry_num);
             netif_start(netif);
@@ -503,14 +569,19 @@ static esp_err_t init_uart(struct eppp_handle *h, eppp_config_t *config)
     return ESP_OK;
 }
 
-_Noreturn static void ppp_task(void *args)
+static void deinit_uart(struct eppp_handle *h)
+{
+    uart_driver_delete(h->uart_port);
+}
+
+static void ppp_task(void *args)
 {
     static uint8_t buffer[BUF_SIZE] = {};
 
     esp_netif_t *netif = args;
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     uart_event_t event = {};
-    while (1) {
+    while (!h->stop) {
         if (xQueueReceive(h->uart_event_queue, &event, pdMS_TO_TICKS(100) != pdTRUE)) {
             continue;
         }
@@ -526,17 +597,44 @@ _Noreturn static void ppp_task(void *args)
             ESP_LOGW(TAG, "Received UART event: %d", event.type);
         }
     }
-
+    h->exited = true;
+    vTaskDelete(NULL);
 }
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
+static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
+{
+    return get_netif_num(netif) > 0;
+}
+
+static void remove_handlers()
+{
+    esp_netif_t *netif = esp_netif_find_if(have_some_eppp_netif, NULL);
+    if (netif == NULL) {
+        // if EPPP netif in the system, we cleanup the statics
+        vEventGroupDelete(s_event_group);
+        s_event_group = NULL;
+        esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event);
+        esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, on_ppp_event);
+    }
+}
 
 esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config)
 {
-    s_event_group = xEventGroupCreate();
-    if (esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to register IP event handler");
-        return NULL;
+    if (s_event_group == NULL) {
+        s_event_group = xEventGroupCreate();
+        if (esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register IP event handler");
+            return NULL;
+        }
+        if (esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register IP event handler");
+            return NULL;
+        }
+        if (esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, on_ppp_event, NULL) !=  ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register PPP status handler");
+            return NULL;
+        }
     }
     esp_netif_t *netif = netif_init(role);
     if (!netif) {
@@ -544,11 +642,12 @@ esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config)
         vEventGroupDelete(s_event_group);
         return NULL;
     }
-    esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, netif);
+//    esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, netif);
     esp_netif_ppp_config_t netif_params;
     ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
     netif_params.ppp_our_ip4_addr = esp_netif_htonl(role == EPPP_SERVER ? CONFIG_EPPP_LINK_SERVER_IP : CONFIG_EPPP_LINK_CLIENT_IP);
     netif_params.ppp_their_ip4_addr = esp_netif_htonl(role == EPPP_SERVER ? CONFIG_EPPP_LINK_CLIENT_IP : CONFIG_EPPP_LINK_SERVER_IP);
+    netif_params.ppp_error_event_enabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
@@ -566,13 +665,17 @@ esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config)
         ESP_LOGE(TAG, "Failed to create a ppp connection task");
         return NULL;
     }
-    ESP_LOGI(TAG, "Waiting for IP address");
-    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS, pdFALSE, pdFALSE, portMAX_DELAY);
-    if (bits & CONNECTION_FAILED) {
+    int netif_cnt = get_netif_num(netif);
+    if (netif_cnt < 0) {
+        return NULL;
+    }
+    ESP_LOGI(TAG, "Waiting for IP address %d", netif_cnt);
+    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, portMAX_DELAY);
+    if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
         ESP_LOGE(TAG, "Connection failed!");
         return NULL;
     }
-    ESP_LOGI(TAG, "Connected!");
+    ESP_LOGI(TAG, "Connected! %d", netif_cnt);
     return netif;
 }
 
@@ -588,5 +691,37 @@ esp_netif_t *eppp_listen(eppp_config_t *config)
 
 void eppp_close(esp_netif_t *netif)
 {
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    netif_stop(netif);
+    for (int wait = 0; wait < 1000; wait++) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        if (h->netif_stop) {
+            break;
+        }
+    }
+    if (!h->netif_stop) {
+        ESP_LOGE(TAG, "Network didn't exit cleanly");
+    }
+    h->stop = true;
+    for (int wait = 0; wait < 100; wait++) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        if (h->exited) {
+            break;
+        }
+    }
+    if (!h->exited) {
+        ESP_LOGE(TAG, "Cannot stop ppp_task");
+    }
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    if (role == EPPP_CLIENT) {
+        deinit_master(&s_spi_device, netif);
+    } else {
+        deinit_slave(&s_spi_device, netif);
+    }
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+    deinit_uart(h);
+#endif
+    netif_deinit(netif);
+    remove_handlers();
 
 }
