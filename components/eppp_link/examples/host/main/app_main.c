@@ -18,9 +18,6 @@
 #include "mqtt_client.h"
 #include "ping/ping_sock.h"
 #include "esp_console.h"
-#include "driver/uart.h"
-#include "driver/spi_master.h"
-#include "driver/spi_slave.h"
 
 void register_iperf(void);
 
@@ -150,6 +147,7 @@ void app_main(void)
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = 10;
     config.uart.rx_io = 11;
+    config.uart.baud = 2000000;
 #endif
     esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {

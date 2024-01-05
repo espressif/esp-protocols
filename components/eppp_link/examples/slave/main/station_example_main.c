@@ -6,7 +6,6 @@
 
 #include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -14,12 +13,6 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "eppp_link.h"
-#include "driver/uart.h"
-#include "driver/spi_master.h"
-#include "driver/spi_slave.h"
-
-#include "lwip/err.h"
-#include "lwip/sys.h"
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -133,6 +126,7 @@ void app_main(void)
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = 11;
     config.uart.rx_io = 10;
+    config.uart.baud = 2000000;
 #endif
     esp_netif_t *eppp_netif = eppp_listen(&config);
     if (eppp_netif == NULL) {

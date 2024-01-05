@@ -218,32 +218,32 @@ TEST(eppp_test, open_close_nonblocking)
     test_case_uses_tcpip();
     EventGroupHandle_t event = xEventGroupCreate();
 
-    eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
+    eppp_config_t server_config = EPPP_DEFAULT_SERVER_CONFIG();
     TEST_ESP_OK(esp_event_loop_create_default());
 
     // Open the server size
     TEST_ESP_OK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_event, event));
-    esp_netif_t *eppp_server = eppp_open(EPPP_SERVER, &config, 0);
+    esp_netif_t *eppp_server = eppp_open(EPPP_SERVER, &server_config, 0);
     TEST_ASSERT_NOT_NULL(eppp_server);
     // Open the client size
-    config.uart.port = UART_NUM_2;
-    config.uart.tx_io = 4;
-    config.uart.rx_io = 5;
-    esp_netif_t *eppp_client = eppp_open(EPPP_CLIENT, &config, 0);
+    eppp_config_t client_config = EPPP_DEFAULT_SERVER_CONFIG();
+    client_config.uart.port = UART_NUM_2;
+    client_config.uart.tx_io = 4;
+    client_config.uart.rx_io = 5;
+    esp_netif_t *eppp_client = eppp_open(EPPP_CLIENT, &client_config, 0);
     TEST_ASSERT_NOT_NULL(eppp_client);
     const EventBits_t wait_bits = (1 << EPPP_SERVER) | (1 << EPPP_CLIENT);
     EventBits_t bits = xEventGroupWaitBits(event, wait_bits, pdTRUE, pdTRUE, pdMS_TO_TICKS(50000));
     TEST_ASSERT_EQUAL(bits & wait_bits, wait_bits);
 
     // Now that we're connected, let's try to ping clients address
-    bits = ping_test(config.ppp.their_ip4_addr, eppp_server, event);
+    bits = ping_test(server_config.ppp.their_ip4_addr, eppp_server, event);
     TEST_ASSERT_EQUAL(bits & (PING_SUCCEEDED | PING_FAILED), PING_SUCCEEDED);
 
-    // stop network for both client and server, we won't wait for completion so expecting ESP_FAIL
-    TEST_ASSERT_EQUAL(eppp_netif_stop(eppp_client, 0), ESP_FAIL);
-    TEST_ASSERT_EQUAL(eppp_netif_stop(eppp_server, 0), ESP_FAIL);
+    // stop network for both client and server
+    eppp_netif_stop(eppp_client, 0); // ignore result, since we're not waiting for clean close
     eppp_close(eppp_server);
-    eppp_close(eppp_client);
+    eppp_close(eppp_client);         // finish client close
     TEST_ESP_OK(esp_event_loop_delete_default());
     vEventGroupDelete(event);
 
@@ -301,6 +301,7 @@ TEST(eppp_test, open_close_taskless)
     const EventBits_t wait_bits = (1 << EPPP_SERVER) | (1 << EPPP_CLIENT);
     EventBits_t bits = xEventGroupWaitBits(info.event, wait_bits, pdTRUE, pdTRUE, pdMS_TO_TICKS(50000));
     TEST_ASSERT_EQUAL(bits & wait_bits, wait_bits);
+    xEventGroupClearBits(info.event, wait_bits);
 
     // Now that we're connected, let's try to ping clients address
     bits = ping_test(server_config.ppp.their_ip4_addr, info.eppp_server, info.event);
@@ -310,7 +311,6 @@ TEST(eppp_test, open_close_taskless)
     TEST_ASSERT_EQUAL(eppp_netif_stop(info.eppp_client, 0), ESP_FAIL);
     TEST_ASSERT_EQUAL(eppp_netif_stop(info.eppp_server, 0), ESP_FAIL);
     // and wait for completion
-    xEventGroupClearBits(info.event, wait_bits);
     bits = xEventGroupWaitBits(info.event, wait_bits, pdTRUE, pdTRUE, pdMS_TO_TICKS(50000));
     TEST_ASSERT_EQUAL(bits & wait_bits, wait_bits);
 

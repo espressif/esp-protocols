@@ -35,3 +35,39 @@ I (6553) main_task: Returned from app_main()
 From 192.168.11.2 icmp_seq=8 timeout        // <-- Disconnected Tx-Rx wires
 From 192.168.11.2 icmp_seq=9 timeout
 ```
+## Test cases
+
+This test app exercises these methods of setting up server-client connection:
+* simple blocking API (eppp_listen() <--> eppp_connect()): Uses network events internally and waits for connection
+* simplified non-blocking API (eppp_open(EPPP_SERVER, ...) <--> eppp_open(EPPP_SERVER, ...) ): Uses events internally, optionally waits for connecting
+* manual API (eppp_init(), eppp_netif_start(), eppp_perform()): User to manually drive Rx task
+    - Note that the ping test for this test case takes longer, since we call perform for both server and client from one task, for example:
+
+```
+TEST(eppp_test, open_close_taskless)I (28562) uart: ESP_INTR_FLAG_IRAM flag not set while CONFIG_UART_ISR_IN_IRAM is enabled, flag updated
+I (28572) uart: ESP_INTR_FLAG_IRAM flag not set while CONFIG_UART_ISR_IN_IRAM is enabled, flag updated
+Note: esp_netif_init() has been called. Until next reset, TCP/IP task will periodicially allocate memory and consume CPU time.
+I (28602) uart: ESP_INTR_FLAG_IRAM flag not set while CONFIG_UART_ISR_IN_IRAM is enabled, flag updated
+I (28612) uart: queue free spaces: 16
+I (28612) uart: ESP_INTR_FLAG_IRAM flag not set while CONFIG_UART_ISR_IN_IRAM is enabled, flag updated
+I (28622) uart: queue free spaces: 16
+I (28642) esp-netif_lwip-ppp: Connected
+I (28642) esp-netif_lwip-ppp: Connected
+I (28642) test: Got IPv4 event: Interface "pppos_server(EPPP0)" address: 192.168.11.1
+I (28642) esp-netif_lwip-ppp: Connected
+I (28652) test: Got IPv4 event: Interface "pppos_client(EPPP1)" address: 192.168.11.2
+I (28662) esp-netif_lwip-ppp: Connected
+64bytes from 192.168.11.2 icmp_seq=1 ttl=255 time=93 ms
+64bytes from 192.168.11.2 icmp_seq=2 ttl=255 time=98 ms
+64bytes from 192.168.11.2 icmp_seq=3 ttl=255 time=99 ms
+64bytes from 192.168.11.2 icmp_seq=4 ttl=255 time=99 ms
+64bytes from 192.168.11.2 icmp_seq=5 ttl=255 time=99 ms
+5 packets transmitted, 5 received, time 488ms
+I (29162) esp-netif_lwip-ppp: User interrupt
+I (29162) test: Disconnected interface "pppos_client(EPPP1)"
+I (29172) esp-netif_lwip-ppp: User interrupt
+I (29172) test: Disconnected interface "pppos_server(EPPP0)"
+MALLOC_CAP_8BIT usage: Free memory delta: 0 Leak threshold: -64
+MALLOC_CAP_32BIT usage: Free memory delta: 0 Leak threshold: -64
+ PASS
+```

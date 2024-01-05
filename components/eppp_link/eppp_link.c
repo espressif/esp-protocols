@@ -54,7 +54,6 @@ struct packet {
     uint8_t *data;
 };
 
-
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
     struct eppp_handle *handle = h;
@@ -67,6 +66,10 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
     do {
         size_t batch = remaining > MAX_PAYLOAD ? MAX_PAYLOAD : remaining;
         buf.data = malloc(batch);
+        if (buf.data == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate packet");
+            return ESP_FAIL;
+        }
         buf.len = batch;
         remaining -= batch;
         memcpy(buf.data, current_buffer, batch);
@@ -74,6 +77,7 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
         BaseType_t ret = xQueueSend(handle->out_queue, &buf, pdMS_TO_TICKS(10));
         if (ret != pdTRUE) {
             ESP_LOGE(TAG, "Failed to queue packet to slave!");
+            return ESP_FAIL;
         }
     } while (remaining > 0);
 #elif CONFIG_EPPP_LINK_DEVICE_UART
@@ -294,6 +298,9 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
 
 static esp_err_t deinit_master(esp_netif_t *netif)
 {
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    ESP_RETURN_ON_ERROR(spi_bus_remove_device(h->spi_device), TAG, "Failed to remove SPI bus");
+    ESP_RETURN_ON_ERROR(spi_bus_free(h->spi_host), TAG, "Failed to free SPI bus");
     return ESP_OK;
 }
 
@@ -312,6 +319,7 @@ static esp_err_t init_master(struct eppp_config_spi_s *config, esp_netif_t *neti
     bus_cfg.flags = 0;
     bus_cfg.intr_flags = 0;
 
+    // TODO: Init and deinit SPI bus separately (per Kconfig?)
     if (spi_bus_initialize(config->host, &bus_cfg, SPI_DMA_CH_AUTO) != ESP_OK) {
         return ESP_FAIL;
     }
@@ -358,8 +366,12 @@ static void post_trans(spi_slave_transaction_t *trans)
     gpio_set_level((int)trans->user, 0);
 }
 
-static esp_err_t deinit_slave(spi_device_handle_t *spi, esp_netif_t *netif)
+static esp_err_t deinit_slave(esp_netif_t *netif)
 {
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    ESP_RETURN_ON_ERROR(spi_slave_free(h->spi_host), TAG, "Failed to free SPI slave host");
+    ESP_RETURN_ON_ERROR(spi_bus_remove_device(h->spi_device), TAG, "Failed to remove SPI device");
+    ESP_RETURN_ON_ERROR(spi_bus_free(h->spi_host), TAG, "Failed to free SPI bus");
     return ESP_OK;
 }
 
@@ -440,131 +452,138 @@ static esp_err_t perform_transaction_slave(union transaction *t, struct eppp_han
     return spi_slave_transmit(h->spi_host, &t->slave, portMAX_DELAY);
 }
 
-_Noreturn static void ppp_task(void *args)
+esp_err_t eppp_perform(esp_netif_t *netif)
 {
     static WORD_ALIGNED_ATTR uint8_t out_buf[TRANSFER_SIZE] = {};
     static WORD_ALIGNED_ATTR uint8_t in_buf[TRANSFER_SIZE] = {};
 
-    esp_netif_t *netif = args;
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     union transaction t;
 
+    // Three types of frames (control, control+data, data), two roles (master, slave)
     const uint8_t FRAME_OUT_CTRL = h->role == EPPP_CLIENT ? CONTROL_MASTER : CONTROL_SLAVE;
     const uint8_t FRAME_OUT_CTRL_EX = h->role == EPPP_CLIENT ? CONTROL_MASTER_WITH_DATA : CONTROL_SLAVE_WITH_DATA;
     const uint8_t FRAME_OUT_DATA = h->role == EPPP_CLIENT ? DATA_MASTER : DATA_SLAVE;
     const uint8_t FRAME_IN_CTRL = h->role == EPPP_SERVER ? CONTROL_MASTER : CONTROL_SLAVE;
     const uint8_t FRAME_IN_CTRL_EX = h->role == EPPP_SERVER ? CONTROL_MASTER_WITH_DATA : CONTROL_SLAVE_WITH_DATA;
     const uint8_t FRAME_IN_DATA = h->role == EPPP_SERVER ? DATA_MASTER : DATA_SLAVE;
+    // Two actions (prepare and perform transaction) for these two roles (master, slave)
     const set_transaction_t set_transaction = h->role == EPPP_CLIENT ? set_transaction_master : set_transaction_slave;
     const perform_transaction_t perform_transaction = h->role == EPPP_CLIENT ? perform_transaction_master : perform_transaction_slave;
 
-    if (h->role == EPPP_CLIENT) {
-        // as a client, try to actively connect (not waiting for server's interrupt)
-        xSemaphoreGive(h->ready_semaphore);
+    if (h->stop) {
+        return ESP_ERR_TIMEOUT;
     }
-    while (1) {
-        struct packet buf = { .len = 0 };
-        struct header *head = (void *)out_buf;
-        bool need_data_frame = false;
-        size_t out_long_payload = 0;
-        head->magic = FRAME_OUT_CTRL_EX;
-        head->size = 0;
-        head->checksum = 0;
-        BaseType_t tx_queue_stat = xQueueReceive(h->out_queue, &buf, 0);
-        if (tx_queue_stat == pdTRUE && buf.data) {
-            if (buf.len > SHORT_PAYLOAD) {
-                head->magic = FRAME_OUT_CTRL;
-                head->size = buf.len;
-                out_long_payload = buf.len;
-                need_data_frame = true;
-//                printf("need_data_frame %d\n", buf.len);
-            } else {
-                head->magic = FRAME_OUT_CTRL_EX;
-                head->long_size = 0;
-                head->short_size = buf.len;
-                memcpy(out_buf + sizeof(struct header), buf.data, buf.len);
-                free(buf.data);
-            }
-        }
-        memset(&t, 0, sizeof(t));
-        set_transaction(&t, CONTROL_SIZE, out_buf, in_buf, h->gpio_intr);
-        for (int i = 0; i < sizeof(struct header) - 1; ++i) {
-            head->checksum += out_buf[i];
-        }
-        esp_err_t ret = perform_transaction(&t, h);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "spi_device_transmit failed");
-            continue;
-        }
-        head = (void *)in_buf;
-        uint8_t checksum = 0;
-        for (int i = 0; i < sizeof(struct header) - 1; ++i) {
-            checksum += in_buf[i];
-        }
-        if (checksum != head->checksum) {
-            ESP_LOGE(TAG, "Wrong checksum");
-            continue;
-        }
-//        printf("MAGIC: %x\n", head->magic);
-        if (head->magic != FRAME_IN_CTRL && head->magic != FRAME_IN_CTRL_EX) {
-            ESP_LOGE(TAG, "Wrong magic");
-            continue;
-        }
-        if (head->magic == FRAME_IN_CTRL_EX && head->short_size > 0) {
-            esp_netif_receive(netif, in_buf + sizeof(struct header), head->short_size, NULL);
-        }
-        size_t in_long_payload = 0;
-        if (head->magic == FRAME_IN_CTRL) {
+
+    struct packet buf = { .len = 0 };
+    struct header *head = (void *)out_buf;
+    bool need_data_frame = false;
+    size_t out_long_payload = 0;
+    head->magic = FRAME_OUT_CTRL_EX;
+    head->size = 0;
+    head->checksum = 0;
+    BaseType_t tx_queue_stat = xQueueReceive(h->out_queue, &buf, 0);
+    if (tx_queue_stat == pdTRUE && buf.data) {
+        if (buf.len > SHORT_PAYLOAD) {
+            head->magic = FRAME_OUT_CTRL;
+            head->size = buf.len;
+            out_long_payload = buf.len;
             need_data_frame = true;
-            in_long_payload = head->size;
-        }
-        if (!need_data_frame) {
-            continue;
-        }
-        // now, we need data frame
-//        printf("performing data frame %d %d\n", out_long_payload, buf.len);
-        head = (void *)out_buf;
-        head->magic = FRAME_OUT_DATA;
-        head->size = out_long_payload;
-        head->checksum = 0;
-        for (int i = 0; i < sizeof(struct header) - 1; ++i) {
-            head->checksum += out_buf[i];
-        }
-        if (head->size > 0) {
+        } else {
+            head->magic = FRAME_OUT_CTRL_EX;
+            head->long_size = 0;
+            head->short_size = buf.len;
             memcpy(out_buf + sizeof(struct header), buf.data, buf.len);
-//            ESP_LOG_BUFFER_HEXDUMP(TAG, out_buf + sizeof(struct header), head->size, ESP_LOG_INFO);
             free(buf.data);
         }
-
-        memset(&t, 0, sizeof(t));
-        set_transaction(&t, MAX(in_long_payload, out_long_payload) + sizeof(struct header), out_buf, in_buf, h->gpio_intr);
-
-        ret = perform_transaction(&t, h);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "spi_device_transmit failed");
-            continue;
-        }
-        head = (void *)in_buf;
-        checksum = 0;
-        for (int i = 0; i < sizeof(struct header) - 1; ++i) {
-            checksum += in_buf[i];
-        }
-        if (checksum != head->checksum) {
-            ESP_LOGE(TAG, "Wrong checksum");
-            continue;
-        }
-        if (head->magic != FRAME_IN_DATA) {
-            ESP_LOGE(TAG, "Wrong magic");
-            continue;
-        }
-//        printf("got size %d\n", head->size);
-
-        if (head->size > 0) {
-//            ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_INFO);
-            esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
-        }
     }
+    memset(&t, 0, sizeof(t));
+    set_transaction(&t, CONTROL_SIZE, out_buf, in_buf, h->gpio_intr);
+    for (int i = 0; i < sizeof(struct header) - 1; ++i) {
+        head->checksum += out_buf[i];
+    }
+    esp_err_t ret = perform_transaction(&t, h);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_device_transmit failed");
+        return ESP_FAIL;
+    }
+    head = (void *)in_buf;
+    uint8_t checksum = 0;
+    for (int i = 0; i < sizeof(struct header) - 1; ++i) {
+        checksum += in_buf[i];
+    }
+    if (checksum != head->checksum) {
+        ESP_LOGE(TAG, "Wrong checksum");
+        return ESP_FAIL;
+    }
+    if (head->magic != FRAME_IN_CTRL && head->magic != FRAME_IN_CTRL_EX) {
+        ESP_LOGE(TAG, "Wrong magic");
+        return ESP_FAIL;
+    }
+    if (head->magic == FRAME_IN_CTRL_EX && head->short_size > 0) {
+        esp_netif_receive(netif, in_buf + sizeof(struct header), head->short_size, NULL);
+    }
+    size_t in_long_payload = 0;
+    if (head->magic == FRAME_IN_CTRL) {
+        need_data_frame = true;
+        in_long_payload = head->size;
+    }
+    if (!need_data_frame) {
+        return ESP_OK;
+    }
+
+    // now, we need data frame
+    head = (void *)out_buf;
+    head->magic = FRAME_OUT_DATA;
+    head->size = out_long_payload;
+    head->checksum = 0;
+    for (int i = 0; i < sizeof(struct header) - 1; ++i) {
+        head->checksum += out_buf[i];
+    }
+    if (head->size > 0) {
+        memcpy(out_buf + sizeof(struct header), buf.data, buf.len);
+//            ESP_LOG_BUFFER_HEXDUMP(TAG, out_buf + sizeof(struct header), head->size, ESP_LOG_INFO);
+        free(buf.data);
+    }
+
+    memset(&t, 0, sizeof(t));
+    set_transaction(&t, MAX(in_long_payload, out_long_payload) + sizeof(struct header), out_buf, in_buf, h->gpio_intr);
+
+    ret = perform_transaction(&t, h);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_device_transmit failed");
+        return ESP_FAIL;
+    }
+    head = (void *)in_buf;
+    checksum = 0;
+    for (int i = 0; i < sizeof(struct header) - 1; ++i) {
+        checksum += in_buf[i];
+    }
+    if (checksum != head->checksum) {
+        ESP_LOGE(TAG, "Wrong checksum");
+        return ESP_FAIL;
+    }
+    if (head->magic != FRAME_IN_DATA) {
+        ESP_LOGE(TAG, "Wrong magic");
+        return ESP_FAIL;
+    }
+
+    if (head->size > 0) {
+        ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
+        esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
+    }
+    return ESP_OK;
 }
+
+static void ppp_task(void *args)
+{
+    esp_netif_t *netif = args;
+    while (eppp_perform(netif) != ESP_ERR_TIMEOUT) {}
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    h->exited = true;
+    vTaskDelete(NULL);
+}
+
 #elif CONFIG_EPPP_LINK_DEVICE_UART
 #define BUF_SIZE (1024)
 
@@ -600,7 +619,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
         return ESP_ERR_TIMEOUT;
     }
 
-    if (xQueueReceive(h->uart_event_queue, &event, pdMS_TO_TICKS(100) != pdTRUE)) {
+    if (xQueueReceive(h->uart_event_queue, &event, pdMS_TO_TICKS(100)) != pdTRUE) {
         return ESP_OK;
     }
     if (event.type == UART_DATA) {
@@ -608,7 +627,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
         uart_get_buffered_data_len(h->uart_port, &len);
         if (len) {
             len = uart_read_bytes(h->uart_port, buffer, BUF_SIZE, 0);
-            ESP_LOG_BUFFER_HEXDUMP(esp_netif_get_desc(netif), buffer, len, ESP_LOG_VERBOSE);
+            ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_VERBOSE);
             esp_netif_receive(netif, buffer, len, NULL);
         }
     } else {
@@ -625,6 +644,7 @@ static void ppp_task(void *args)
     h->exited = true;
     vTaskDelete(NULL);
 }
+
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
 static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
@@ -649,9 +669,9 @@ void eppp_deinit(esp_netif_t *netif)
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     if (h->role == EPPP_CLIENT) {
-//        deinit_master(&h->spi_device, netif);
+        deinit_master(netif);
     } else {
-//        deinit_slave(&s_spi_device, netif);
+        deinit_slave(netif);
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     deinit_uart(esp_netif_get_io_driver(netif));
@@ -676,8 +696,13 @@ esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config)
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
         init_master(&config->spi, netif);
+
+        // as a client, try to actively connect (not waiting for server's interrupt)
+        struct eppp_handle *h = esp_netif_get_io_driver(netif);
+        xSemaphoreGive(h->ready_semaphore);
     } else {
         init_slave(&config->spi, netif);
+
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     init_uart(esp_netif_get_io_driver(netif), config);
@@ -725,18 +750,21 @@ esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config, TickType_t co
 
     eppp_netif_start(netif);
 
-    if (xTaskCreate(ppp_task, "ppp connect", 4096, netif, 18, NULL) != pdTRUE) {
+    if (xTaskCreate(ppp_task, "ppp connect", config->task.stack_size, netif, config->task.priority, NULL) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to create a ppp connection task");
+        eppp_deinit(netif);
         return NULL;
     }
     int netif_cnt = get_netif_num(netif);
     if (netif_cnt < 0) {
+        eppp_close(netif);
         return NULL;
     }
     ESP_LOGI(TAG, "Waiting for IP address %d", netif_cnt);
     EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, connect_timeout);
     if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
         ESP_LOGE(TAG, "Connection failed!");
+        eppp_close(netif);
         return NULL;
     }
     ESP_LOGI(TAG, "Connected! %d", netif_cnt);

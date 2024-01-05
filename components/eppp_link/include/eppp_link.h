@@ -10,7 +10,7 @@
 #define EPPP_DEFAULT_CONFIG(our_ip, their_ip) { \
     .transport = EPPP_TRANSPORT_UART,           \
     .spi = {                                    \
-            .host = SPI2_HOST,                  \
+            .host = 1,                          \
             .mosi = 11,                         \
             .miso = 13,                         \
             .sclk = 12,                         \
@@ -19,7 +19,7 @@
             .freq = 20*1000*1000,               \
     },                                          \
     .uart = {   \
-            .port = UART_NUM_1, \
+            .port = 1,          \
             .baud = 921600,     \
             .tx_io = 25,        \
             .rx_io = 26,        \
