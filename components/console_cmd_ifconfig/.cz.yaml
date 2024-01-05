@@ -3,6 +3,6 @@ commitizen:
   bump_message: 'bump(console): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py console_cmd_ifconfig
   tag_format: console_cmd_ifconfig-v$version
-  version: 1.0.0
+  version: 1.0.1
   version_files:
   - idf_component.yml
