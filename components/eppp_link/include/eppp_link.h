@@ -8,6 +8,16 @@
 #define EPPP_DEFAULT_CLIENT_IP() ESP_IP4TOADDR(192, 168, 11, 2)
 
 #define EPPP_DEFAULT_CONFIG(our_ip, their_ip) { \
+    .transport = EPPP_TRANSPORT_UART,           \
+    .spi = {                                    \
+            .host = SPI2_HOST,                  \
+            .mosi = 11,                         \
+            .miso = 13,                         \
+            .sclk = 12,                         \
+            .cs = 10,                           \
+            .intr = 2,                          \
+            .freq = 20*1000*1000,               \
+    },                                          \
     .uart = {   \
             .port = UART_NUM_1, \
             .baud = 921600,     \
@@ -35,7 +45,25 @@ typedef enum eppp_type {
     EPPP_CLIENT,
 } eppp_type_t;
 
+typedef enum eppp_transport {
+    EPPP_TRANSPORT_UART,
+    EPPP_TRANSPORT_SPI,
+} eppp_transport_t;
+
+
 typedef struct eppp_config_t {
+    eppp_transport_t transport;
+
+    struct eppp_config_spi_s {
+        int host;
+        int mosi;
+        int miso;
+        int sclk;
+        int cs;
+        int intr;
+        int freq;
+    } spi;
+
     struct eppp_config_uart_s {
         int port;
         int baud;

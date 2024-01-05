@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -18,6 +18,9 @@
 #include "mqtt_client.h"
 #include "ping/ping_sock.h"
 #include "esp_console.h"
+#include "driver/uart.h"
+#include "driver/spi_master.h"
+#include "driver/spi_slave.h"
 
 void register_iperf(void);
 
@@ -140,7 +143,15 @@ void app_main(void)
 
     /* Sets up the default EPPP-connection
      */
-    esp_netif_t *eppp_netif = eppp_connect();
+    eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    config.transport = EPPP_TRANSPORT_SPI;
+#else
+    config.transport = EPPP_TRANSPORT_UART;
+    config.uart.tx_io = 10;
+    config.uart.rx_io = 11;
+#endif
+    esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to connect");
         return ;

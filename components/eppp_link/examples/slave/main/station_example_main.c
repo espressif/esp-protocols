@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -14,6 +14,9 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "eppp_link.h"
+#include "driver/uart.h"
+#include "driver/spi_master.h"
+#include "driver/spi_slave.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -123,7 +126,15 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 
-    esp_netif_t *eppp_netif = eppp_listen();
+    eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    config.transport = EPPP_TRANSPORT_SPI;
+#else
+    config.transport = EPPP_TRANSPORT_UART;
+    config.uart.tx_io = 11;
+    config.uart.rx_io = 10;
+#endif
+    esp_netif_t *eppp_netif = eppp_listen(&config);
     if (eppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to setup connection");
         return ;

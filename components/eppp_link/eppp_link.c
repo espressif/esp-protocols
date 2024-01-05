@@ -31,20 +31,13 @@ static const char *TAG = "eppp_link";
 static int s_retry_num = 0;
 static int s_eppp_netif_count = 0; // used as a suffix for the netif key
 
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-static spi_device_handle_t s_spi_device;
-#define EPPP_SPI_HOST     SPI2_HOST
-#define GPIO_MOSI    11
-#define GPIO_MISO    13
-#define GPIO_SCLK    12
-#define GPIO_CS      10
-#define GPIO_INTR    2
-#endif // CONFIG_EPPP_LINK_DEVICE_SPI
-
 struct eppp_handle {
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     QueueHandle_t out_queue;
     QueueHandle_t ready_semaphore;
+    spi_device_handle_t spi_device;
+    spi_host_device_t spi_host;
+    int gpio_intr;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     QueueHandle_t uart_event_queue;
     uart_port_t uart_port;
@@ -101,7 +94,7 @@ static void netif_deinit(esp_netif_t *netif)
     }
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     vQueueDelete(h->out_queue);
-    if (role == EPPP_CLIENT) {
+    if (h->role == EPPP_CLIENT) {
         vSemaphoreDelete(h->ready_semaphore);
     }
 #endif
@@ -299,26 +292,34 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
     }
 }
 
-static esp_err_t init_master(spi_device_handle_t *spi, esp_netif_t *netif)
+static esp_err_t deinit_master(esp_netif_t *netif)
 {
+    return ESP_OK;
+}
+
+static esp_err_t init_master(struct eppp_config_spi_s *config, esp_netif_t *netif)
+{
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    h->spi_host = config->host;
+    h->gpio_intr = config->intr;
     spi_bus_config_t bus_cfg = {};
-    bus_cfg.mosi_io_num = GPIO_MOSI;
-    bus_cfg.miso_io_num = GPIO_MISO;
-    bus_cfg.sclk_io_num = GPIO_SCLK;
+    bus_cfg.mosi_io_num = config->mosi;
+    bus_cfg.miso_io_num = config->miso;
+    bus_cfg.sclk_io_num = config->sclk;
     bus_cfg.quadwp_io_num = -1;
     bus_cfg.quadhd_io_num = -1;
-    bus_cfg.max_transfer_sz = 14000;
+    bus_cfg.max_transfer_sz = 2000;
     bus_cfg.flags = 0;
     bus_cfg.intr_flags = 0;
 
-    if (spi_bus_initialize(EPPP_SPI_HOST, &bus_cfg, SPI_DMA_CH_AUTO) != ESP_OK) {
+    if (spi_bus_initialize(config->host, &bus_cfg, SPI_DMA_CH_AUTO) != ESP_OK) {
         return ESP_FAIL;
     }
 
     spi_device_interface_config_t dev_cfg = {};
-    dev_cfg.clock_speed_hz = 40 * 1000 * 1000;
+    dev_cfg.clock_speed_hz = config->freq;
     dev_cfg.mode = 0;
-    dev_cfg.spics_io_num = GPIO_CS;
+    dev_cfg.spics_io_num = config->cs;
     dev_cfg.cs_ena_pretrans = 0;
     dev_cfg.cs_ena_posttrans = 0;
     dev_cfg.duty_cycle_pos = 128;
@@ -328,7 +329,7 @@ static esp_err_t init_master(spi_device_handle_t *spi, esp_netif_t *netif)
     dev_cfg.cs_ena_posttrans = 3;
     dev_cfg.queue_size = 3;
 
-    if (spi_bus_add_device(EPPP_SPI_HOST, &dev_cfg, spi) != ESP_OK) {
+    if (spi_bus_add_device(config->host, &dev_cfg, &h->spi_device) != ESP_OK) {
         return ESP_FAIL;
     }
 
@@ -337,32 +338,40 @@ static esp_err_t init_master(spi_device_handle_t *spi, esp_netif_t *netif)
         .intr_type = GPIO_INTR_POSEDGE,
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = 1,
-        .pin_bit_mask = BIT64(GPIO_INTR),
+        .pin_bit_mask = BIT64(config->intr),
     };
 
     gpio_config(&io_conf);
     gpio_install_isr_service(0);
-    gpio_set_intr_type(GPIO_INTR, GPIO_INTR_POSEDGE);
-    gpio_isr_handler_add(GPIO_INTR, gpio_isr_handler, esp_netif_get_io_driver(netif));
+    gpio_set_intr_type(config->intr, GPIO_INTR_POSEDGE);
+    gpio_isr_handler_add(config->intr, gpio_isr_handler, esp_netif_get_io_driver(netif));
     return ESP_OK;
 }
 
 static void post_setup(spi_slave_transaction_t *trans)
 {
-    gpio_set_level(GPIO_INTR, 1);
+    gpio_set_level((int)trans->user, 1);
 }
 
 static void post_trans(spi_slave_transaction_t *trans)
 {
-    gpio_set_level(GPIO_INTR, 0);
+    gpio_set_level((int)trans->user, 0);
 }
 
-static esp_err_t init_slave(spi_device_handle_t *spi, esp_netif_t *netif)
+static esp_err_t deinit_slave(spi_device_handle_t *spi, esp_netif_t *netif)
 {
+    return ESP_OK;
+}
+
+static esp_err_t init_slave(struct eppp_config_spi_s *config, esp_netif_t *netif)
+{
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    h->spi_host = config->host;
+    h->gpio_intr = config->intr;
     spi_bus_config_t bus_cfg = {};
-    bus_cfg.mosi_io_num = GPIO_MOSI;
-    bus_cfg.miso_io_num = GPIO_MISO;
-    bus_cfg.sclk_io_num = GPIO_SCLK;
+    bus_cfg.mosi_io_num = config->mosi;
+    bus_cfg.miso_io_num = config->miso;
+    bus_cfg.sclk_io_num = config->sclk;
     bus_cfg.quadwp_io_num = -1;
     bus_cfg.quadhd_io_num = -1;
     bus_cfg.flags = 0;
@@ -371,27 +380,27 @@ static esp_err_t init_slave(spi_device_handle_t *spi, esp_netif_t *netif)
     //Configuration for the SPI slave interface
     spi_slave_interface_config_t slvcfg = {
         .mode = 0,
-        .spics_io_num = GPIO_CS,
+        .spics_io_num = config->cs,
         .queue_size = 3,
         .flags = 0,
         .post_setup_cb = post_setup,
-        .post_trans_cb = post_trans
+        .post_trans_cb = post_trans,
     };
 
     //Configuration for the handshake line
     gpio_config_t io_conf = {
         .intr_type = GPIO_INTR_DISABLE,
         .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(GPIO_INTR),
+        .pin_bit_mask = BIT64(config->intr),
     };
 
     gpio_config(&io_conf);
-    gpio_set_pull_mode(GPIO_MOSI, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(GPIO_SCLK, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(GPIO_CS, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(config->mosi, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(config->sclk, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(config->cs, GPIO_PULLUP_ONLY);
 
     //Initialize SPI slave interface
-    if (spi_slave_initialize(EPPP_SPI_HOST, &bus_cfg, &slvcfg, SPI_DMA_CH_AUTO) != ESP_OK) {
+    if (spi_slave_initialize(config->host, &bus_cfg, &slvcfg, SPI_DMA_CH_AUTO) != ESP_OK) {
         return ESP_FAIL;
     }
     return ESP_OK;
@@ -402,18 +411,19 @@ union transaction {
     spi_slave_transaction_t slave;
 };
 
-typedef void (*set_transaction_t)(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer);
+typedef void (*set_transaction_t)(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer, int gpio_intr);
 typedef esp_err_t (*perform_transaction_t)(union transaction *t, struct eppp_handle *h);
 
-static void set_transaction_master(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer)
+static void set_transaction_master(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer, int gpio_intr)
 {
     t->master.length = len * 8;
     t->master.tx_buffer = tx_buffer;
     t->master.rx_buffer = rx_buffer;
 }
 
-static void set_transaction_slave(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer)
+static void set_transaction_slave(union transaction *t, size_t len, const void *tx_buffer, void *rx_buffer, int gpio_intr)
 {
+    t->slave.user = (void *)gpio_intr;
     t->slave.length = len * 8;
     t->slave.tx_buffer = tx_buffer;
     t->slave.rx_buffer = rx_buffer;
@@ -422,12 +432,12 @@ static void set_transaction_slave(union transaction *t, size_t len, const void *
 static esp_err_t perform_transaction_master(union transaction *t, struct eppp_handle *h)
 {
     xSemaphoreTake(h->ready_semaphore, portMAX_DELAY); // Wait until slave is ready
-    return spi_device_transmit(s_spi_device, &t->master);
+    return spi_device_transmit(h->spi_device, &t->master);
 }
 
 static esp_err_t perform_transaction_slave(union transaction *t, struct eppp_handle *h)
 {
-    return spi_slave_transmit(EPPP_SPI_HOST, &t->slave, portMAX_DELAY);
+    return spi_slave_transmit(h->spi_host, &t->slave, portMAX_DELAY);
 }
 
 _Noreturn static void ppp_task(void *args)
@@ -477,7 +487,7 @@ _Noreturn static void ppp_task(void *args)
             }
         }
         memset(&t, 0, sizeof(t));
-        set_transaction(&t, CONTROL_SIZE, out_buf, in_buf);
+        set_transaction(&t, CONTROL_SIZE, out_buf, in_buf, h->gpio_intr);
         for (int i = 0; i < sizeof(struct header) - 1; ++i) {
             head->checksum += out_buf[i];
         }
@@ -527,7 +537,7 @@ _Noreturn static void ppp_task(void *args)
         }
 
         memset(&t, 0, sizeof(t));
-        set_transaction(&t, MAX(in_long_payload, out_long_payload) + sizeof(struct header), out_buf, in_buf);
+        set_transaction(&t, MAX(in_long_payload, out_long_payload) + sizeof(struct header), out_buf, in_buf, h->gpio_intr);
 
         ret = perform_transaction(&t, h);
         if (ret != ESP_OK) {
@@ -637,10 +647,11 @@ static void remove_handlers(void)
 void eppp_deinit(esp_netif_t *netif)
 {
 #if CONFIG_EPPP_LINK_DEVICE_SPI
-    if (role == EPPP_CLIENT) {
-        deinit_master(&s_spi_device, netif);
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    if (h->role == EPPP_CLIENT) {
+//        deinit_master(&h->spi_device, netif);
     } else {
-        deinit_slave(&s_spi_device, netif);
+//        deinit_slave(&s_spi_device, netif);
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     deinit_uart(esp_netif_get_io_driver(netif));
@@ -658,15 +669,15 @@ esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config)
     }
     esp_netif_ppp_config_t netif_params;
     ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
-    netif_params.ppp_our_ip4_addr = esp_netif_htonl(role == EPPP_SERVER ? CONFIG_EPPP_LINK_SERVER_IP : CONFIG_EPPP_LINK_CLIENT_IP);
-    netif_params.ppp_their_ip4_addr = esp_netif_htonl(role == EPPP_SERVER ? CONFIG_EPPP_LINK_CLIENT_IP : CONFIG_EPPP_LINK_SERVER_IP);
+    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
+    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
     netif_params.ppp_error_event_enabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
-        init_master(&s_spi_device, netif);
+        init_master(&config->spi, netif);
     } else {
-        init_slave(&s_spi_device, netif);
+        init_slave(&config->spi, netif);
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     init_uart(esp_netif_get_io_driver(netif), config);
@@ -676,6 +687,19 @@ esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config)
 
 esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config, TickType_t connect_timeout)
 {
+#if CONFIG_EPPP_LINK_DEVICE_UART
+    if (config->transport != EPPP_TRANSPORT_UART) {
+        ESP_LOGE(TAG, "Invalid transport: UART device must be enabled in Kconfig");
+        return NULL;
+    }
+#endif
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+    if (config->transport != EPPP_TRANSPORT_SPI) {
+        ESP_LOGE(TAG, "Invalid transport: SPI device must be enabled in Kconfig");
+        return NULL;
+    }
+#endif
+
     if (config->task.run_task == false) {
         ESP_LOGE(TAG, "task.run_task == false is invalid in this API. Please use eppp_init()");
         return NULL;
