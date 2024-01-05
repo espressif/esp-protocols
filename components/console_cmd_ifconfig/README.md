@@ -62,3 +62,52 @@ For more details refer [IDF Component Manager](https://docs.espressif.com/projec
  ifconfig <iface> dhcp client <enable/disable>: Enable or disable the DHCP client.
 Note: Disabling the DHCP server and client enables the use of static IP configuration.
 ```
+
+## Usage:
+
+### Creating an ethernet interface
+```
+esp> ifconfig eth init
+Internal(IP101): pins: 23,18, Id: 0
+esp> ifconfig netif create 0
+```
+
+### Removing an interface and deinitializing ethernet
+```
+esp> ifconfig netif destroy en1
+I (8351266) ethernet_init: Ethernet(IP101[23,18]) Link Down
+I (8351266) ethernet_init: Ethernet(IP101[23,18]) Stopped
+esp> ifconfig eth deinit
+```
+
+### Set default interface
+```
+esp> ifconfig en1 default
+```
+
+### Enable NAPT on an interface
+```
+esp> ifconfig en1 napt enable
+I (8467116) console_ifconfig: Setting napt enable on en1
+```
+
+### Enable DHCP client on an interface
+```
+esp> ifconfig en1 dhcp client enable
+```
+
+### Enable static IP on an interface
+```
+esp> ifconfig en1 dhcp client disable
+```
+
+### Set static IP address
+```
+esp> ifconfig en1 ip 192.168.5.2
+I (111466) console_ifconfig: Setting ip: 192.168.5.2
+esp> ifconfig en1 mask 255.255.255.0
+I (130946) console_ifconfig: Setting mask: 255.255.255.0
+esp> ifconfig en1 gw 192.168.5.1
+I (143576) console_ifconfig: Setting gw: 192.168.5.1
+I (143576) esp_netif_handlers: eth ip: 192.168.5.2, mask: 255.255.255.0, gw: 192.168.5.1
+```
