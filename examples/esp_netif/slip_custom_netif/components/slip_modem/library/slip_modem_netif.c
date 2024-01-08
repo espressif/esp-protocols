@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2019-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -109,7 +109,11 @@ static esp_netif_t *get_netif_with_esp_index(int index)
 {
     esp_netif_t *netif = NULL;
     int counter = 0;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+    while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
+#else
     while ((netif = esp_netif_next(netif)) != NULL) {
+#endif
         if (counter == index) {
             return netif;
         }
@@ -124,7 +128,11 @@ static int get_esp_netif_index(esp_netif_t *esp_netif)
 {
     esp_netif_t *netif = NULL;
     int counter = 0;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+    while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
+#else
     while ((netif = esp_netif_next(netif)) != NULL) {
+#endif
         if (esp_netif == netif) {
             return counter;
         }
