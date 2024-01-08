@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -392,6 +392,22 @@ command_result at(CommandableIf *t, const std::string &cmd, std::string &out, in
     ESP_LOGV(TAG, "%s", __func__ );
     std::string at_command = cmd + "\r";
     return generic_get_string(t, at_command, out, timeout);
+}
+
+command_result at_raw(CommandableIf *t, const std::string &cmd, std::string &out, const std::string &pass, const std::string &fail, int timeout = 500)
+{
+    ESP_LOGV(TAG, "%s", __func__ );
+    return t->command(cmd, [&](uint8_t *data, size_t len) {
+        out.assign(reinterpret_cast<char *>(data), len);
+
+        if (out.find(pass) != std::string::npos) {
+            return command_result::OK;
+        } else if (out.find(fail) != std::string::npos) {
+            return command_result::FAIL;
+        }
+
+        return command_result::TIMEOUT;
+    }, timeout);
 }
 
 command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
