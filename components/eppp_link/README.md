@@ -35,10 +35,10 @@ Tested with WiFi-NAPT example, no IRAM optimizations
 
 ### UART @ 3Mbauds
 
-* TCP - 2Mbits
-* UDP - 2Mbits
+* TCP - 2Mbits/s
+* UDP - 2Mbits/s
 
 ### SPI @ 20MHz
 
-* TCP - 6Mbits
-* UDP - 10Mbits
+* TCP - 6Mbits/s
+* UDP - 10Mbits/s

@@ -92,11 +92,11 @@ esp_netif_t *eppp_listen(eppp_config_t *config);
 
 void eppp_close(esp_netif_t *netif);
 
-esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config);
+esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config);
 
 void eppp_deinit(esp_netif_t *netif);
 
-esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config, TickType_t connect_timeout);
+esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, TickType_t connect_timeout);
 
 esp_err_t eppp_netif_stop(esp_netif_t *netif, TickType_t stop_timeout);
 
