@@ -54,7 +54,7 @@ command_result power_down_sim76xx(CommandableIf *t);
 command_result power_down_sim70xx(CommandableIf *t);
 command_result set_network_bands_sim76xx(CommandableIf *t, const std::string &mode, const int *bands, int size);
 command_result power_down_sim8xx(CommandableIf *t);
-command_result set_data_mode_sim8xx(CommandableIf *t);
+command_result set_data_mode_alt(CommandableIf *t);
 command_result set_pdp_context(CommandableIf *t, PdpContext &pdp, uint32_t timeout_ms);
 
 /**
