@@ -1,4 +1,4 @@
-name: "console_cmd_ifconfig: build-tests"
+name: "console_cmd_iperf: build-tests"
 
 on:
   push:
@@ -8,14 +8,14 @@ on:
     types: [opened, synchronize, reopened, labeled]
 
 jobs:
-  build_console_cmd_ifconfig:
+  build_console_cmd_iperf:
     if: contains(github.event.pull_request.labels.*.name, 'console') || github.event_name == 'push'
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.0"]
         idf_target: ["esp32"]
-        test: [ { app: ifconfig-basic, path: "components/console_cmd_ifconfig/examples" }]
+        test: [ { app: iperf-basic, path: "components/console_cmd_iperf/examples" }]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
