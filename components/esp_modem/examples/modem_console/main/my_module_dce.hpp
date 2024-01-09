@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -17,26 +17,20 @@
 #include "cxx_include/esp_modem_dce_module.hpp"
 
 /**
- * @brief Definition of a custom modem which inherits from the GenericModule, uses all its methods
- * and could override any of them. Here, for demonstration purposes only, we redefine just `get_module_name()`
+ * @brief Definition of a custom DCE uses GenericModule and all its methods
+ * but could override command processing. Here, for demonstration purposes only,
+ * we "inject" URC handler to the actual command processing.
+ * This is possible since we inherit from `CommandableIf` and redefine `command()` method.
+ * Then we're able to use declare all common methods from the command library
+ * to be processed using "our" `command()` method (with custom URC handler).
  */
-class MyShinyModem: public esp_modem::GenericModule {
-    using GenericModule::GenericModule;
-public:
-    esp_modem::command_result get_module_name(std::string &name) override
-    {
-        name = "Custom Shiny Module";
-        return esp_modem::command_result::OK;
-    }
-};
-
 namespace Shiny {
 
 using namespace esp_modem;
 
-class DCE : public esp_modem::DCE_T<MyShinyModem>, public CommandableIf {
+class DCE : public esp_modem::DCE_T<GenericModule>, public CommandableIf {
 public:
-    using DCE_T<MyShinyModem>::DCE_T;
+    using DCE_T<GenericModule>::DCE_T;
 
     command_result
     command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms) override
@@ -97,7 +91,7 @@ public:
                                        std::shared_ptr<esp_modem::DTE> dte,
                                        esp_netif_t *netif)
     {
-        return build_generic_DCE<MyShinyModem, DCE, std::unique_ptr<DCE>>(config, std::move(dte), netif);
+        return build_generic_DCE<GenericModule, DCE, std::unique_ptr<DCE>>(config, std::move(dte), netif);
     }
 
 };

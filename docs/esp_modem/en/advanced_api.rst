@@ -26,15 +26,17 @@ Create custom module
 
 Creating a custom module is necessary if the application needs to use a specific device that is not supported
 and their commands differ from any of the supported devices. In this case it is recommended to define a new class
-representing this specific device and derive from the :cpp:class:`esp_modem::GenericModule`. In order to instantiate
-the appropriate DCE of this module, application could use :ref:`the DCE factory<dce_factory>`, and build the DCE with
-the specific module, using :cpp:func:`esp_modem::dce_factory::Factory::build`.
+representing this specific device and derive from the :cpp:class:`esp_modem::GenericModule` (or any other available
+module, that's close to your custom device). Then you can create the DCE using :ref:`the DCE factory<dce_factory>`
+public method :cpp:func:`esp_modem::dce_factory::Factory::create_unique_dce_from`.
 
-Please refer to the implementation of the existing modules.
-
-Please note that the ``modem_console`` example defines a trivial custom modem DCE which overrides one command,
+Please note that the ``pppos_client`` example defines a trivial custom DCE which overrides one command, and adds a new command
 for demonstration purposes only.
 
+It is also possible to create a specific DCE class that would conform to the generic ``DCE`` API and use all generic commands,
+work with commands differently. This might be useful to add some custom preprocessing of commands or replies.
+Please check the ``modem_console`` example with ``CONFIG_EXAMPLE_MODEM_DEVICE_SHINY=y`` configuration which demonstrates
+overriding default ``command()`` method to implement URC processing in user space.
 
 Create new communication interface
 ----------------------------------
