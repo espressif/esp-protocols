@@ -132,7 +132,7 @@ static inline esp_netif_t *esp_netif_from_preset_if(mdns_predef_if_t predef_if)
         return esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
     case MDNS_IF_AP:
         return esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
-#if CONFIG_ETH_ENABLED
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_NETIF_ETH
     case MDNS_IF_ETH:
         return esp_netif_get_handle_from_ifkey("ETH_DEF");
 #endif
@@ -4189,7 +4189,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         }
     } else
 #endif
-#if CONFIG_ETH_ENABLED
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_NETIF_ETH
         if (event_base == ETH_EVENT) {
             switch (event_id) {
             case ETHERNET_EVENT_CONNECTED:
@@ -4214,7 +4214,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                     post_mdns_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
                     post_mdns_announce_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
                     break;
-#if CONFIG_ETH_ENABLED
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_NETIF_ETH
                 case IP_EVENT_ETH_GOT_IP:
                     post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
                     break;
