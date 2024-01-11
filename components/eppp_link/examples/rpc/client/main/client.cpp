@@ -174,3 +174,19 @@ extern "C" esp_err_t esp_wifi_remote_connect(void)
     auto header = rpc.get_header();
     return rpc.get_payload<esp_err_t>(CONNECT, header);
 }
+
+extern "C" esp_err_t esp_wifi_remote_get_mac(wifi_interface_t ifx, uint8_t mac[6])
+{
+    RpcEngine rpc(tls);
+
+    if (rpc.send(GET_MAC, &ifx) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    auto header = rpc.get_header();
+    auto ret = rpc.get_payload<esp_wifi_remote_mac_t>(GET_MAC, header);
+    ESP_LOG_BUFFER_HEXDUMP("MAC", ret.mac, 6, ESP_LOG_INFO);
+
+    memcpy(mac, ret.mac, 6);
+    return ret.err;
+
+}

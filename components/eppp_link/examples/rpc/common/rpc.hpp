@@ -11,6 +11,7 @@ typedef enum api_id {
     SET_CONFIG,
     START,
     CONNECT,
+    GET_MAC
 } api_id_t;
 
 struct RpcHeader {
@@ -50,7 +51,7 @@ public:
         size_t size;
         auto buf = req.marshall(t, size);
         ESP_LOGI("rpc", "Sending API id:%d", (int)id);
-        ESP_LOG_BUFFER_HEXDUMP("rpc", buf, size, ESP_LOG_INFO);
+        ESP_LOG_BUFFER_HEXDUMP("rpc", buf, size, ESP_LOG_VERBOSE);
         int len = esp_tls_conn_write(tls_, buf, size);
         if (len <= 0) {
             ESP_LOGE("rpc", "Failed to write data to the connection");

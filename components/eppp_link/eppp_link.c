@@ -30,6 +30,7 @@ static EventGroupHandle_t s_event_group = NULL;
 static const char *TAG = "eppp_link";
 static int s_retry_num = 0;
 static int s_eppp_netif_count = 0; // used as a suffix for the netif key
+static eppp_channel_fn_t s_rx = NULL;
 
 struct eppp_handle {
 #if CONFIG_EPPP_LINK_DEVICE_SPI
@@ -52,7 +53,27 @@ struct eppp_handle {
 struct packet {
     size_t len;
     uint8_t *data;
+    int channel;
 };
+
+static esp_err_t transmit_channel(void *netif, void *buffer, size_t len)
+{
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    struct packet buf = { .len = len };
+    buf.channel = 1;
+    buf.data = malloc(len);
+    if (buf.data == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate packet");
+        return ESP_FAIL;
+    }
+    memcpy(buf.data, buffer, len);
+    BaseType_t ret = xQueueSend(h->out_queue, &buf, pdMS_TO_TICKS(10));
+    if (ret != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to queue packet to slave!");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
 
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
@@ -230,6 +251,10 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)data;
     esp_netif_t *netif = event->esp_netif;
+    if (event_id == IP_EVENT_STA_GOT_IP) {
+        ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s(%s)\" address: " IPSTR, esp_netif_get_desc(netif),
+                 esp_netif_get_ifkey(netif), IP2STR(&event->ip_info.ip));
+    }
     int netif_cnt = get_netif_num(netif);
     if (netif_cnt < 0) {
         return;
@@ -275,6 +300,7 @@ struct header {
         } __attribute__((packed));
     };
     uint8_t magic;
+    uint8_t channel;
     uint8_t checksum;
 } __attribute__((packed));
 
@@ -452,6 +478,13 @@ static esp_err_t perform_transaction_slave(union transaction *t, struct eppp_han
     return spi_slave_transmit(h->spi_host, &t->slave, portMAX_DELAY);
 }
 
+esp_err_t eppp_add_channel(int nr, eppp_channel_fn_t *tx, const eppp_channel_fn_t rx)
+{
+    *tx = transmit_channel;
+    s_rx = rx;
+    return ESP_OK;
+}
+
 esp_err_t eppp_perform(esp_netif_t *netif)
 {
     static WORD_ALIGNED_ATTR uint8_t out_buf[TRANSFER_SIZE] = {};
@@ -482,8 +515,10 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     head->magic = FRAME_OUT_CTRL_EX;
     head->size = 0;
     head->checksum = 0;
+    head->channel = 0;
     BaseType_t tx_queue_stat = xQueueReceive(h->out_queue, &buf, 0);
     if (tx_queue_stat == pdTRUE && buf.data) {
+        head->channel = buf.channel;
         if (buf.len > SHORT_PAYLOAD) {
             head->magic = FRAME_OUT_CTRL;
             head->size = buf.len;
@@ -521,7 +556,14 @@ esp_err_t eppp_perform(esp_netif_t *netif)
         return ESP_FAIL;
     }
     if (head->magic == FRAME_IN_CTRL_EX && head->short_size > 0) {
-        esp_netif_receive(netif, in_buf + sizeof(struct header), head->short_size, NULL);
+        if (head->channel == 0) {
+            esp_netif_receive(netif, in_buf + sizeof(struct header), head->short_size, NULL);
+        } else {
+//            ESP_LOGE(TAG, "Got channel %d size %d", head->channel, head->short_size);
+            if (s_rx != NULL) {
+                s_rx(netif, in_buf + sizeof(struct header), head->short_size);
+            }
+        }
     }
     size_t in_long_payload = 0;
     if (head->magic == FRAME_IN_CTRL) {
@@ -537,6 +579,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     head->magic = FRAME_OUT_DATA;
     head->size = out_long_payload;
     head->checksum = 0;
+    head->channel = buf.channel;
     for (int i = 0; i < sizeof(struct header) - 1; ++i) {
         head->checksum += out_buf[i];
     }
@@ -570,7 +613,14 @@ esp_err_t eppp_perform(esp_netif_t *netif)
 
     if (head->size > 0) {
         ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
-        esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
+        if (head->channel == 0) {
+            esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
+        } else {
+//            ESP_LOGE(TAG, "Got channel %d size %d", head->channel, head->size);
+            if (s_rx != NULL) {
+                s_rx(netif, in_buf + sizeof(struct header), head->size);
+            }
+        }
     }
     return ESP_OK;
 }

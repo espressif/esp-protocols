@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <esp_private/wifi.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_system.h"
@@ -113,6 +114,29 @@ void wifi_init_sta(void)
 
 esp_err_t server_init(void);
 
+static eppp_channel_fn_t s_tx;
+static esp_netif_t *s_ppp_netif;
+
+static esp_err_t netif_recv(void *h, void *buffer, size_t len)
+{
+//    printf("recv %d\n", len);
+//    ESP_LOG_BUFFER_HEXDUMP("cfg", buffer, len, ESP_LOG_WARN);
+    return esp_wifi_internal_tx(WIFI_IF_STA, buffer, len);
+}
+
+static esp_err_t wifi_recv(void *buffer, uint16_t len, void *eb)
+{
+//    printf("send %d\n", len);
+    if (s_tx) {
+//        printf("send %d\n", len);
+        esp_err_t ret = s_tx(s_ppp_netif, buffer, len);
+        esp_wifi_internal_free_rx_buffer(eb);
+        return ret;
+    }
+    return ESP_OK;
+}
+
+
 void app_main(void)
 {
 
@@ -129,11 +153,19 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
     config.transport = EPPP_TRANSPORT_SPI;
-    esp_netif_t *eppp_netif = eppp_listen(&config);
-    if (eppp_netif == NULL) {
+    s_ppp_netif = eppp_listen(&config);
+    if (s_ppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to setup connection");
         return ;
     }
 
+//    esp_wifi_internal_reg_rxcb(WIFI_IF_STA, wifi_recv);
+//    esp_wifi_internal_reg_netstack_buf_cb(esp_netif_netstack_buf_ref, esp_netif_netstack_buf_free);
+    eppp_add_channel(1, &s_tx, netif_recv);
+
     server_init();
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    esp_wifi_internal_reg_rxcb(WIFI_IF_STA, wifi_recv);
+    esp_wifi_internal_reg_netstack_buf_cb(esp_netif_netstack_buf_ref, esp_netif_netstack_buf_free);
+
 }

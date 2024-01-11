@@ -103,3 +103,7 @@ esp_err_t eppp_netif_stop(esp_netif_t *netif, TickType_t stop_timeout);
 esp_err_t eppp_netif_start(esp_netif_t *netif);
 
 esp_err_t eppp_perform(esp_netif_t *netif);
+
+typedef esp_err_t (*eppp_channel_fn_t)(void *h, void *buffer, size_t len);
+
+esp_err_t eppp_add_channel(int nr, eppp_channel_fn_t *tx, const eppp_channel_fn_t rx);

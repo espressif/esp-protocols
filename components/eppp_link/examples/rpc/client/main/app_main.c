@@ -130,6 +130,91 @@ static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
 }
 #endif // PING
 
+static esp_netif_t *s_wifi_netif;
+static esp_netif_t *s_ppp_netif;
+static eppp_channel_fn_t s_tx;
+
+static esp_err_t remote_wifi_receive(void *h, void *buffer, size_t len)
+{
+    if (s_wifi_netif) {
+//        printf("recv %d\n", len);
+        return esp_netif_receive(s_wifi_netif, buffer, len, NULL);
+    }
+    return ESP_OK;
+}
+
+esp_err_t remote_wifi_transmit_wrap(void *h, void *buffer, size_t len, void *netstack_buffer)
+{
+    if (s_tx) {
+//        printf("send %d\n", len);
+        return s_tx(s_ppp_netif, buffer, len);
+    }
+    return ESP_OK;
+}
+
+static esp_err_t remote_wifi_transmit(void *h, void *buffer, size_t len)
+{
+    if (s_tx) {
+        return s_tx(s_ppp_netif, buffer, len);
+    }
+    return ESP_OK;
+}
+
+static void wifi_free(void *h, void *buffer)
+{
+//    printf("wifi_free %p\n", buffer);
+}
+
+static void remote_wifi_netif(void)
+{
+    esp_netif_driver_ifconfig_t driver_cfg = {
+        .handle = (void *)1,
+        .transmit = remote_wifi_transmit,
+        .transmit_wrap = remote_wifi_transmit_wrap,
+        .driver_free_rx_buffer = wifi_free
+
+    };
+    const esp_netif_driver_ifconfig_t *wifi_driver_cfg = &driver_cfg;
+    esp_netif_config_t netif_config = {
+        .base = ESP_NETIF_BASE_DEFAULT_WIFI_STA,
+        .driver = wifi_driver_cfg,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_AP
+    };
+    s_wifi_netif = esp_netif_new(&netif_config);
+}
+
+static void wifi_init(void *ctx)
+{
+    client_init();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_remote_init(&cfg));
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = CONFIG_ESP_WIFI_SSID,
+            .password = CONFIG_ESP_WIFI_PASSWORD,
+        },
+    };
+
+    esp_err_t err = esp_wifi_remote_set_mode(WIFI_MODE_STA);
+    ESP_LOGI(TAG, "esp_wifi_remote_set_mode() returned = %x", err);
+    ESP_ERROR_CHECK(esp_wifi_remote_set_config(WIFI_IF_STA, &wifi_config) );
+    ESP_ERROR_CHECK(esp_wifi_remote_start() );
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    uint8_t mac[6];
+    ESP_ERROR_CHECK(esp_wifi_remote_get_mac(WIFI_IF_STA, mac) );
+
+    esp_netif_set_mac(s_wifi_netif, mac);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    esp_netif_action_start(s_wifi_netif, 0, 0, 0);
+    ESP_ERROR_CHECK(esp_wifi_remote_connect() );
+
+    esp_netif_action_connected(s_wifi_netif, 0, 0, 0);
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -145,39 +230,28 @@ void app_main(void)
     eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
-    config.task.priority = 5;
+    config.task.priority = 14;
+    config.spi.freq = 28000000;
 #else
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = 10;
     config.uart.rx_io = 11;
     config.uart.baud = 2000000;
 #endif
-    esp_netif_t *eppp_netif = eppp_connect(&config);
-    if (eppp_netif == NULL) {
+    s_ppp_netif = eppp_connect(&config);
+    if (s_ppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to connect");
         return ;
     }
+    eppp_add_channel(1, &s_tx, remote_wifi_receive);
+    remote_wifi_netif();
+    if (s_wifi_netif == NULL) {
+        ESP_LOGE(TAG, "Failed to create wifi netif");
+        return ;
+    }
 
-    client_init();
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_LOG_BUFFER_HEXDUMP("cfg", &cfg, sizeof(cfg), ESP_LOG_WARN);
-    ESP_ERROR_CHECK(esp_wifi_remote_init(&cfg));
-
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = CONFIG_ESP_WIFI_SSID,
-            .password = CONFIG_ESP_WIFI_PASSWORD,
-        },
-    };
-
-    esp_err_t err = esp_wifi_remote_set_mode(WIFI_MODE_STA);
-    ESP_LOGI(TAG, "esp_wifi_remote_set_mode() returned = %x", err);
-    ESP_ERROR_CHECK(esp_wifi_remote_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_remote_start() );
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    ESP_ERROR_CHECK(esp_wifi_remote_connect() );
-
+    xTaskCreate(&wifi_init, "initwifi", 8192, NULL, 18, NULL);
 //    // Setup global DNS
 //    esp_netif_dns_info_t dns;
 //    dns.ip.u_addr.ip4.addr = esp_netif_htonl(CONFIG_EXAMPLE_GLOBAL_DNS);

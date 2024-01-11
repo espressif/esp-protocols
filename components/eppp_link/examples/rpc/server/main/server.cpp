@@ -119,9 +119,11 @@ static esp_err_t perform()
     }
     case INIT: {
         auto req = rpc.get_payload<wifi_init_config_t>(INIT, header);
-        ESP_LOG_BUFFER_HEXDUMP("cfg", &req, sizeof(req), ESP_LOG_WARN);
-        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_LOG_BUFFER_HEXDUMP("cfg", &cfg, sizeof(cfg), ESP_LOG_WARN);
+        req.osi_funcs = &g_wifi_osi_funcs;
+        req.wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs;
+//        ESP_LOG_BUFFER_HEXDUMP("cfg", &req, sizeof(req), ESP_LOG_WARN);
+//        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+//        ESP_LOG_BUFFER_HEXDUMP("cfg", &cfg, sizeof(cfg), ESP_LOG_WARN);
 
         auto ret = esp_wifi_init(&req);
         if (rpc.send(INIT, &ret) != ESP_OK) {
@@ -141,6 +143,7 @@ static esp_err_t perform()
         if (header.size != 0) {
             return ESP_FAIL;
         }
+
         auto ret = esp_wifi_start();
         if (rpc.send(START, &ret) != ESP_OK) {
             return ESP_FAIL;
@@ -151,8 +154,18 @@ static esp_err_t perform()
         if (header.size != 0) {
             return ESP_FAIL;
         }
+
         auto ret = esp_wifi_connect();
         if (rpc.send(CONNECT, &ret) != ESP_OK) {
+            return ESP_FAIL;
+        }
+        break;
+    }
+    case GET_MAC: {
+        auto req = rpc.get_payload<wifi_interface_t>(GET_MAC, header);
+        esp_wifi_remote_mac_t resp = {};
+        resp.err = esp_wifi_get_mac(req, resp.mac);
+        if (rpc.send(GET_MAC, &resp) != ESP_OK) {
             return ESP_FAIL;
         }
         break;
