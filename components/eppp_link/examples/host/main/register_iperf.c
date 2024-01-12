@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -46,13 +46,17 @@ static struct {
 static int ppp_cmd_iperf(int argc, char **argv)
 {
     int nerrors = arg_parse(argc, argv, (void **)&iperf_args);
-    // ethernet iperf only support IPV4 address
-    iperf_cfg_t cfg = {.type = IPERF_IP_TYPE_IPV4};
+    iperf_cfg_t cfg;
 
     if (nerrors != 0) {
         arg_print_errors(stderr, iperf_args.end, argv[0]);
         return 0;
     }
+
+    memset(&cfg, 0, sizeof(cfg));
+
+    // ethernet iperf only support IPV4 address
+    cfg.type = IPERF_IP_TYPE_IPV4;
 
     /* iperf -a */
     if (iperf_args.abort->count != 0) {

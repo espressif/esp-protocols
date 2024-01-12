@@ -44,7 +44,7 @@ struct eppp_handle {
     uart_port_t uart_port;
 #endif
     esp_netif_t *netif;
-    eppp_type_t role;
+    enum eppp_type role;
     bool stop;
     bool exited;
     bool netif_stop;
@@ -130,7 +130,7 @@ static void netif_deinit(esp_netif_t *netif)
     }
 }
 
-static esp_netif_t *netif_init(eppp_type_t role)
+static esp_netif_t *netif_init(enum eppp_type role)
 {
     if (s_eppp_netif_count > 9) {
         ESP_LOGE(TAG, "Cannot create more than 10 instances");
@@ -625,6 +625,15 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     return ESP_OK;
 }
 
+static void ppp_task(void *args)
+{
+    esp_netif_t *netif = args;
+    while (eppp_perform(netif) != ESP_ERR_TIMEOUT) {}
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    h->exited = true;
+    vTaskDelete(NULL);
+}
+
 #elif CONFIG_EPPP_LINK_DEVICE_UART
 #define BUF_SIZE (1024)
 
@@ -677,16 +686,16 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     return ESP_OK;
 }
 
-#endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
-
 static void ppp_task(void *args)
 {
     esp_netif_t *netif = args;
-    while (eppp_perform(netif) != ESP_ERR_TIMEOUT) {}
+    while (eppp_perform(netif) == ESP_OK) {}
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     h->exited = true;
     vTaskDelete(NULL);
 }
+
+#endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
 static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
 {
@@ -720,7 +729,7 @@ void eppp_deinit(esp_netif_t *netif)
     netif_deinit(netif);
 }
 
-esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
+esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config)
 {
     esp_netif_t *netif = netif_init(role);
     if (!netif) {
@@ -751,7 +760,7 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     return netif;
 }
 
-esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, TickType_t connect_timeout)
+esp_netif_t *eppp_open(enum eppp_type role, eppp_config_t *config, TickType_t connect_timeout)
 {
 #if CONFIG_EPPP_LINK_DEVICE_UART
     if (config->transport != EPPP_TRANSPORT_UART) {
