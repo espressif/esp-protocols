@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <memory>
+#include <esp_private/wifi.h>
 #include "esp_wifi.h"
 #include "rpc.hpp"
 #include "esp_wifi_remote.h"
@@ -69,62 +70,27 @@ const unsigned char prvtkey[] = "-----BEGIN PRIVATE KEY-----\n"
                                 "-----END PRIVATE KEY-----";
 
 
+extern "C" esp_err_t rpc_example_wifi_recv(void *buffer, uint16_t len, void *eb);
+
 static esp_err_t perform()
 {
-//    RpcHeader header{};
-//    int len = esp_tls_conn_read(tls, (char *)&header, sizeof(header));
-//    if (len <= 0) {
-//        ESP_LOGE(TAG, "Failed to read data from the connection");
-//        return ESP_FAIL;
-//    }
     RpcEngine rpc(tls);
 
     auto header = rpc.get_header();
 
-//    auto data = std::make_unique<RpcData<wifi_mode_t>>(SET_MODE);
-
     switch (header.id) {
     case SET_MODE: {
         auto req = rpc.get_payload<wifi_mode_t>(SET_MODE, header);
-//            auto data = std::make_unique<RpcData<wifi_mode_t>>(SET_MODE);
-//            if (data->head.size != header.size) {
-//                ESP_LOGE(TAG, "Data size mismatch problem! %d expected, %d given", (int)data->head.size, (int)header.size);
-//                return ESP_FAIL;
-//            }
-//            len = esp_tls_conn_read(tls, (char *)data->value(), data->head.size);
-//            if (len <= 0) {
-//                ESP_LOGE(TAG, "Failed to read data from the connection");
-//                return ESP_FAIL;
-//            }
-//            auto resp = std::make_unique<RpcData<esp_err_t>>(SET_MODE);
         auto ret = esp_wifi_set_mode(req);
         if (rpc.send(SET_MODE, &ret) != ESP_OK) {
             return ESP_FAIL;
         }
         break;
-//
-//            ESP_LOGI(TAG, "esp_wifi_set_mode() returned %x", ret);
-//            size_t size;
-//            auto buf = resp->marshall(&ret, size);
-////
-////            resp->value_ = esp_wifi_set_mode(data->value_);
-////            ESP_LOGE(TAG, "size=%d", (int)data->size_);
-//            ESP_LOG_BUFFER_HEXDUMP(TAG, buf, size, ESP_LOG_INFO);
-//            len = esp_tls_conn_write(tls, buf, size);
-//            if (len <= 0) {
-//                ESP_LOGE(TAG, "Failed to write data to the connection");
-//                return ESP_FAIL;
-//            }
-
     }
     case INIT: {
         auto req = rpc.get_payload<wifi_init_config_t>(INIT, header);
         req.osi_funcs = &g_wifi_osi_funcs;
         req.wpa_crypto_funcs = g_wifi_default_wpa_crypto_funcs;
-//        ESP_LOG_BUFFER_HEXDUMP("cfg", &req, sizeof(req), ESP_LOG_WARN);
-//        wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-//        ESP_LOG_BUFFER_HEXDUMP("cfg", &cfg, sizeof(cfg), ESP_LOG_WARN);
-
         auto ret = esp_wifi_init(&req);
         if (rpc.send(INIT, &ret) != ESP_OK) {
             return ESP_FAIL;
@@ -144,6 +110,10 @@ static esp_err_t perform()
             return ESP_FAIL;
         }
 
+        // setup wifi callbacks now
+        esp_wifi_internal_reg_rxcb(WIFI_IF_STA, rpc_example_wifi_recv);
+        esp_wifi_internal_reg_netstack_buf_cb(esp_netif_netstack_buf_ref, esp_netif_netstack_buf_free);
+        //
         auto ret = esp_wifi_start();
         if (rpc.send(START, &ret) != ESP_OK) {
             return ESP_FAIL;
@@ -170,25 +140,12 @@ static esp_err_t perform()
         }
         break;
     }
-
-
     }
     return ESP_OK;
-
-//    ESP_LOGW(TAG, "Data from the connection (size=%d)", len);
-//    ESP_LOG_BUFFER_HEXDUMP(TAG, buf, len, ESP_LOG_WARN);
-//    len = esp_tls_conn_write(tls,"ZDAR",4);
-//    if (len <= 0) {
-//        ESP_LOGE(TAG, "Failed to write data to the connection");
-//        goto cleanup;
-//    }
-
 }
 
 static void server(void *ctx)
 {
-    char buf[512];
-
     struct sockaddr_in dest_addr = {};
     int ret;
     int opt = 1;
@@ -241,13 +198,11 @@ static void server(void *ctx)
         goto exit;
     }
     ESP_LOGI(TAG, "Secure socket open");
-    memset(buf, 0x00, sizeof(buf));
     while (perform() == ESP_OK) {}
-
 
     esp_tls_server_session_delete(tls);
 exit:
-    vTaskDelete(NULL);
+    vTaskDelete(nullptr);
 
 }
 

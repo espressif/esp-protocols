@@ -357,7 +357,7 @@ static esp_err_t init_master(struct eppp_config_spi_s *config, esp_netif_t *neti
     dev_cfg.cs_ena_pretrans = 0;
     dev_cfg.cs_ena_posttrans = 0;
     dev_cfg.duty_cycle_pos = 128;
-    dev_cfg.input_delay_ns = 0;
+    dev_cfg.input_delay_ns = 6;
     dev_cfg.pre_cb = NULL;
     dev_cfg.post_cb = NULL;
     dev_cfg.cs_ena_posttrans = 3;
@@ -480,6 +480,7 @@ static esp_err_t perform_transaction_slave(union transaction *t, struct eppp_han
 
 esp_err_t eppp_add_channel(int nr, eppp_channel_fn_t *tx, const eppp_channel_fn_t rx)
 {
+
     *tx = transmit_channel;
     s_rx = rx;
     return ESP_OK;
@@ -739,8 +740,8 @@ esp_netif_t *eppp_init(enum eppp_type role, eppp_config_t *config)
     }
     esp_netif_ppp_config_t netif_params;
     ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
-    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
-    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
+    netif_params.ppp_our_ip4_addr.addr = config->ppp.our_ip4_addr;
+    netif_params.ppp_their_ip4_addr.addr = config->ppp.their_ip4_addr;
     netif_params.ppp_error_event_enabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #if CONFIG_EPPP_LINK_DEVICE_SPI

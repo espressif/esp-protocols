@@ -46,11 +46,10 @@ public:
 
     template <typename T> esp_err_t send(api_id_t id, T *t)
     {
-//        auto data = std::make_unique<RpcData<T>>(id);
         RpcData<T> req(id);
         size_t size;
         auto buf = req.marshall(t, size);
-        ESP_LOGI("rpc", "Sending API id:%d", (int)id);
+        ESP_LOGD("rpc", "Sending API id:%d", (int)id);
         ESP_LOG_BUFFER_HEXDUMP("rpc", buf, size, ESP_LOG_VERBOSE);
         int len = esp_tls_conn_write(tls_, buf, size);
         if (len <= 0) {

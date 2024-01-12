@@ -130,6 +130,9 @@ static void test_on_ping_end(esp_ping_handle_t hdl, void *args)
 }
 #endif // PING
 
+/*
+ * local netifs (wifi and ppp)
+ */
 static esp_netif_t *s_wifi_netif;
 static esp_netif_t *s_ppp_netif;
 static eppp_channel_fn_t s_tx;
@@ -137,7 +140,6 @@ static eppp_channel_fn_t s_tx;
 static esp_err_t remote_wifi_receive(void *h, void *buffer, size_t len)
 {
     if (s_wifi_netif) {
-//        printf("recv %d\n", len);
         return esp_netif_receive(s_wifi_netif, buffer, len, NULL);
     }
     return ESP_OK;
@@ -146,7 +148,6 @@ static esp_err_t remote_wifi_receive(void *h, void *buffer, size_t len)
 esp_err_t remote_wifi_transmit_wrap(void *h, void *buffer, size_t len, void *netstack_buffer)
 {
     if (s_tx) {
-//        printf("send %d\n", len);
         return s_tx(s_ppp_netif, buffer, len);
     }
     return ESP_OK;
@@ -160,9 +161,9 @@ static esp_err_t remote_wifi_transmit(void *h, void *buffer, size_t len)
     return ESP_OK;
 }
 
+// this is needed as the ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA config frees the eb on pbuf-free
 static void wifi_free(void *h, void *buffer)
 {
-//    printf("wifi_free %p\n", buffer);
 }
 
 static void remote_wifi_netif(void)
@@ -178,7 +179,7 @@ static void remote_wifi_netif(void)
     esp_netif_config_t netif_config = {
         .base = ESP_NETIF_BASE_DEFAULT_WIFI_STA,
         .driver = wifi_driver_cfg,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_AP
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA
     };
     s_wifi_netif = esp_netif_new(&netif_config);
 }
@@ -206,7 +207,7 @@ static void wifi_init(void *ctx)
     ESP_ERROR_CHECK(esp_wifi_remote_get_mac(WIFI_IF_STA, mac) );
 
     esp_netif_set_mac(s_wifi_netif, mac);
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(1000));    // we're not supporting WIFI_EVENT yet, just play with delays for now
 
     esp_netif_action_start(s_wifi_netif, 0, 0, 0);
     ESP_ERROR_CHECK(esp_wifi_remote_connect() );
@@ -231,7 +232,7 @@ void app_main(void)
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
     config.task.priority = 14;
-    config.spi.freq = 28000000;
+    config.spi.freq = 40000000;
 #else
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = 10;
@@ -250,13 +251,7 @@ void app_main(void)
         return ;
     }
 
-
     xTaskCreate(&wifi_init, "initwifi", 8192, NULL, 18, NULL);
-//    // Setup global DNS
-//    esp_netif_dns_info_t dns;
-//    dns.ip.u_addr.ip4.addr = esp_netif_htonl(CONFIG_EXAMPLE_GLOBAL_DNS);
-//    dns.ip.type = ESP_IPADDR_TYPE_V4;
-//    ESP_ERROR_CHECK(esp_netif_set_dns_info(eppp_netif, ESP_NETIF_DNS_MAIN, &dns));
 
 #if CONFIG_EXAMPLE_IPERF
     esp_console_repl_t *repl = NULL;
