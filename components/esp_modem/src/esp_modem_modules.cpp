@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -67,6 +67,11 @@ command_result SIM7070::power_down()
     return dce_commands::power_down_sim70xx(dte.get());
 }
 
+command_result SIM7070::set_data_mode()
+{
+    return dce_commands::set_data_mode_alt(dte.get());
+}
+
 command_result SIM7000::power_down()
 {
     return dce_commands::power_down_sim70xx(dte.get());
@@ -75,11 +80,6 @@ command_result SIM7000::power_down()
 command_result SIM800::power_down()
 {
     return dce_commands::power_down_sim8xx(dte.get());
-}
-
-command_result SIM800::set_data_mode()
-{
-    return dce_commands::set_data_mode_sim8xx(dte.get());
 }
 
 command_result BG96::set_pdp_context(esp_modem::PdpContext &pdp)

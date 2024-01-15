@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -36,7 +36,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         } else if (command == "ATO\r") {
             response = "ERROR\r\n";
         } else if (command.find("ATD") != std::string::npos) {
-            response = "CONNECT\r\n";
+            response = "CONNECT\n";
         } else if (command.find("AT+CSQ\r") != std::string::npos) {
             response = "+CSQ: 123,456\n\r\nOK\r\n";
         } else if (command.find("AT+CGMM\r") != std::string::npos) {
@@ -74,6 +74,9 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     }
     if (len > 2 && data[0] == 0xf9) { // Simple CMUX responder
         // turn the request into a reply -> implements CMUX loopback
+        // Note: This simple CMUX responder only updates CMUX headers and replaces payload.
+        // It means that all responses (that we test) must be shorter or equal to the requests
+        // For example ATD (dial command): sizeof("ATD*99#") >= sizeof("CONNECT");
         if (data[2] == 0x3f || data[2] == 0x53) {  // SABM command
             data[2] = 0x73;
         } else if (data[2] == 0xef) { // Generic request

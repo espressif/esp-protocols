@@ -144,6 +144,8 @@ class SIM7070: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result power_down() override;
+    command_result set_data_mode() override;
+
 };
 
 /**
@@ -162,7 +164,6 @@ class SIM800: public GenericModule {
     using GenericModule::GenericModule;
 public:
     command_result power_down() override;
-    command_result set_data_mode() override;
 };
 
 /**

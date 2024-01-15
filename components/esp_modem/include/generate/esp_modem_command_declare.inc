@@ -45,6 +45,18 @@ ESP_MODEM_DECLARE_DCE_COMMAND(store_profile, command_result, 0) \
 ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
     \
 /**
+ * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
+ * @param[in] cmd String command that's send to DTE
+ * @param[out] out Raw output from DTE
+ * @param[in] pass Pattern in response for the API to return OK
+ * @param[in] fail Pattern in response for the API to return FAIL
+ * @param[in] cmd String command that's send to DTE
+ * @param[in] timeout AT command timeout in milliseconds
+ * @return OK, FAIL or TIMEOUT
+ */\
+ESP_MODEM_DECLARE_DCE_COMMAND(at_raw, command_result, 5, STRING_IN(p1, cmd), STRING_OUT(p2, out), STRING_IN(p3, pass), STRING_IN(p4, fail), INT_IN(p5, timeout)) \
+    \
+/**
  * @brief Execute the supplied AT command
  * @param[in] cmd AT command
  * @param[out] out Command output string
