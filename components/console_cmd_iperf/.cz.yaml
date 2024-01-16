@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(console): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py console_cmd_iperf
+  tag_format: console_cmd_iperf-v$version
+  version: 1.0.0
+  version_files:
+  - idf_component.yml
