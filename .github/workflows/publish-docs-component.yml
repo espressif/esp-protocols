@@ -48,7 +48,7 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get -y install doxygen clang python3-pip
-            python -m pip install breathe recommonmark esp-docs==1.4.1
+            python -m pip install -r docs/requirements.txt
             for comp in  `ls components`; do
               if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
                 cd $GITHUB_WORKSPACE/docs/${comp}
