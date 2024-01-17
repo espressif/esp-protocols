@@ -1,6 +1,0 @@
-dependencies:
-  idf:
-    version: ">=5.0"
-  console_cmd_iperf:
-    version: "*"
-    override_path: '../../../'
