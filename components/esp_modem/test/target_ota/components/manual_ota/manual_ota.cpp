@@ -35,6 +35,10 @@ bool manual_ota::begin()
         esp_transport_handle_t tcp = esp_transport_tcp_init();
         ssl_ = esp_transport_batch_tls_init(tcp, max_buffer_size_);
         http_.config_.transport = ssl_;
+        if (http_.config_.cert_pem == nullptr || common_name_ == nullptr) {
+            ESP_LOGE(TAG, "TLS with no verification is not supported");
+            return fail();
+        }
         if (!esp_transport_batch_set_ca_cert(ssl_, http_.config_.cert_pem, 0)) {
             return fail();
         }
