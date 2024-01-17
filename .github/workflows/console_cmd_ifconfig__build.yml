@@ -15,7 +15,7 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v5.0"]
         idf_target: ["esp32"]
-        test: [ { app: ifconfig-basic, path: "components/console_cmd_ifconfig/examples" }]
+        test: [ { app: ifconfig-basic, path: "components/console_cmd_ifconfig/examples"}]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
