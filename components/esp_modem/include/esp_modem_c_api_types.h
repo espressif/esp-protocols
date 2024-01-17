@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -119,7 +119,26 @@ esp_err_t esp_modem_set_error_cb(esp_modem_dce_t *dce, esp_modem_terminal_error_
  */
 esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce, esp_modem_dce_mode_t mode);
 
+/**
+ * @brief Convenient function to run arbitrary commands from C-API
+ *
+ * @param dce Modem DCE handle
+ * @param command Command to send
+ * @param got_line_cb Callback function which is called whenever we receive a line
+ * @param timeout_ms Command timeout
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+
 esp_err_t esp_modem_command(esp_modem_dce_t *dce, const char *command, esp_err_t(*got_line_cb)(uint8_t *data, size_t len), uint32_t timeout_ms);
+
+/**
+ * @brief Sets the APN and configures it into the modem's PDP context
+ *
+ * @param dce Modem DCE handle
+ * @param apn Access Point Name
+ * @return ESP_OK on success
+ */
+esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 
 /**
  * @}

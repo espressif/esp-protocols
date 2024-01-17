@@ -448,3 +448,10 @@ extern "C" esp_err_t esp_modem_set_baud(esp_modem_dce_t *dce_wrap, int baud)
 {
     return command_response_to_esp_err(dce_wrap->dce->set_baud(baud));
 }
+
+extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *apn)
+{
+    auto new_pdp = std::unique_ptr<PdpContext>(new PdpContext(apn));
+    dce_wrap->dce->get_module()->configure_pdp_context(std::move(new_pdp));
+    return ESP_OK;
+}
