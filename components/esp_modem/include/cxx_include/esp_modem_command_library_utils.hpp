@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,18 +25,16 @@ command_result generic_command(CommandableIf *t, const std::string &command,
  * @brief Utility command to send command and return reply (after DCE says OK)
  * @param t Anything that is "command-able"
  * @param command Command to issue
- * @param output String to return
- * @param timeout_ms
+ * @param output String to return (could be either std::string& or std::string_view&)
  * @param timeout_ms Command timeout in ms
  * @return Generic command return type (OK, FAIL, TIMEOUT)
  */
-command_result generic_get_string(CommandableIf *t, const std::string &command, std::string &output, uint32_t timeout_ms = 500);
+template <typename T> command_result generic_get_string(CommandableIf *t, const std::string &command, T &output, uint32_t timeout_ms = 500);
 
 /**
  * @brief Generic command that passes on "OK" and fails on "ERROR"
  * @param t Anything that is "command-able"
  * @param command Command to issue
- * @param timeout
  * @param timeout_ms Command timeout in ms
  * @return Generic command return type (OK, FAIL, TIMEOUT)
  */
