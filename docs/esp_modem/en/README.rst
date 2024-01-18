@@ -120,6 +120,7 @@ Switching between manual modes
 The diagram below depicts allowed transitions between manual CMUX modes
 
 ::
+
                              +------------------------------------
                              |                                   |
       +----------+    +-------------+    +------------+    +----------+
@@ -187,8 +188,18 @@ Is defined using standard configuration structures for ``DTE`` and
 Known issues
 ------------
 
-There are certain issues, especially in using CMUX mode which you can
-experience with some devices:
+There are certain typical issues you might experience when working with esp_modem. This section elaborates on these problems and offers workarounds.
+
+When using UART terminal, you might find running OTA over https quite unstable, exhibiting frequent UART buffer overflows.
+The reason for that is that ESP32's UART is interrupt driven, so while performing computational extensive tasks with TLS session,
+we need to timely interrupt to process incoming data. Here'are few suggestions to mitigate the impact:
+* Move UART ISR to IRAM
+* Increase internal UART rx buffer size
+* Increase UART terminal task priority
+* Use UART flow control
+If none of the above helps, you can check the test ``target_ota``, which performs OTA in two steps -- first read the data, then pass the data to mbedTLS. See the test ``README.md`` for more details.
+
+Potential issues when using CMUX mode and these devices:
 
 1) Some modems (e.g. A76xx serries) use 2 bytes CMUX payload, which
 might cause buffer overflow when trying to defragment the payload.
