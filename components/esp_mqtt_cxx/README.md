@@ -10,4 +10,4 @@ Get started with [examples](https://github.com/espressif/esp-protocols/tree/mast
 
 ## Documentation
 
-* View the full [html documentation](https://docs.espressif.com/projects/esp-protocols/docs/latest/esp_mqtt_cxx/index.html)
+* View the full [html documentation](https://docs.espressif.com/projects/esp-protocols/esp_mqtt_cxx/docs/latest/index.html)
