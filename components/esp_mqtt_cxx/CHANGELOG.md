@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.3.0)
+
+### Bug Fixes
+
+- Incorrect documentation link ([aa4e9d57](https://github.com/espressif/esp-protocols/commit/aa4e9d57))
+- reference protocol_examples_common from IDF ([e6c0538d](https://github.com/espressif/esp-protocols/commit/e6c0538d))
+- specify override_path in example manifest files ([fa005c63](https://github.com/espressif/esp-protocols/commit/fa005c63))
+
 ## [0.2.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.2.0)
 
 ### Features
