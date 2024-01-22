@@ -40,7 +40,7 @@ public:
     /**
      * @brief Set common name of the server to verify
      */
-    const char *common_name_;
+    const char *common_name_{};
     /**
      * @brief Wrapper around the http client -- Please set the http config
      */
