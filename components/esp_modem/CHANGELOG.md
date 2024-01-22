@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.1.0](https://github.com/espressif/esp-protocols/commits/modem-v1.1.0)
+
+### Features
+
+- Added support for at_raw() command ([ae38110](https://github.com/espressif/esp-protocols/commit/ae38110), [#471](https://github.com/espressif/esp-protocols/issues/471))
+- Added iperf test for PPP netifs ([976e98d](https://github.com/espressif/esp-protocols/commit/976e98d))
+- Added test that performs OTA to exercise modem layers ([f2223dd](https://github.com/espressif/esp-protocols/commit/f2223dd))
+
+### Bug Fixes
+
+- Fixed OTA test to gracefully fail with no verification ([1dc4299](https://github.com/espressif/esp-protocols/commit/1dc4299))
+- Added C-API to configure APN ([ce7dadd](https://github.com/espressif/esp-protocols/commit/ce7dadd), [#485](https://github.com/espressif/esp-protocols/issues/485))
+- Fixed AT commands to copy strings to prevent overrides ([741d166](https://github.com/espressif/esp-protocols/commit/741d166), [#463](https://github.com/espressif/esp-protocols/issues/463))
+- Fixed incorrect dial command format ([0998f3d](https://github.com/espressif/esp-protocols/commit/0998f3d), [#433](https://github.com/espressif/esp-protocols/issues/433))
+- Fixed documentation and example on creating custom device ([577de67](https://github.com/espressif/esp-protocols/commit/577de67), [#452](https://github.com/espressif/esp-protocols/issues/452))
+- Removed CI jobs for IDF v4.2 ([d88cd61](https://github.com/espressif/esp-protocols/commit/d88cd61))
+- Fixed OAT test to verify server cert and CN ([edc3e72](https://github.com/espressif/esp-protocols/commit/edc3e72))
+- Fixed set_pdp_context() command timeout ([1d80cbc](https://github.com/espressif/esp-protocols/commit/1d80cbc), [#455](https://github.com/espressif/esp-protocols/issues/455))
+
+### Updated
+
+- docs(modem): Added description of manual test procedure ([68ce794](https://github.com/espressif/esp-protocols/commit/68ce794))
+
 ## [1.0.5](https://github.com/espressif/esp-protocols/commits/modem-v1.0.5)
 
 ### Major changes
