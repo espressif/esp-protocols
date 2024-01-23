@@ -1040,7 +1040,7 @@ static void esp_websocket_client_task(void *pv)
             int ret = esp_transport_ws_poll_connection_closed(client->transport, 1000);
             if (ret == 0) {
                 // still waiting
-                break;
+                continue;
             }
             if (ret < 0) {
                 ESP_LOGW(TAG, "Connection terminated while waiting for clean TCP close");
