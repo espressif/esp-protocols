@@ -16,13 +16,13 @@ jobs:
         idf_ver: ["latest", "release-v5.0", "release-v5.1"]
         idf_target: ["esp32", "esp32s2"]
         example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
       TEST_DIR: components/asio/examples
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
@@ -43,7 +43,7 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
           path: |
@@ -76,8 +76,8 @@ jobs:
     steps:
       - name: Clear repository
         run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
           path: ${{ env.TEST_DIR }}/${{ matrix.example }}/build
@@ -93,7 +93,7 @@ jobs:
         working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}
         run: |
             python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}

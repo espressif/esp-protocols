@@ -11,12 +11,12 @@ jobs:
   host_test_mdns:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Host test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:release-v5.1
 
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
           path: esp-protocols
 
@@ -40,11 +40,11 @@ jobs:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
         with:
           path: esp-protocols
       - name: Install Necessary Libs

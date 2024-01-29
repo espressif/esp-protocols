@@ -15,11 +15,11 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v5.0"]
         test: [ { app: example, path: "examples/query_advertise" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
@@ -34,7 +34,7 @@ jobs:
           $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh `pwd`/$dir
           zip -qur artifacts.zip $dir
           done
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: mdns_bin_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: components/mdns/${{ matrix.test.path }}/artifacts.zip
@@ -58,8 +58,8 @@ jobs:
     steps:
       - name: Clear repository
         run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
           name: mdns_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: components/mdns/${{ matrix.test.path }}/ci/
@@ -77,7 +77,7 @@ jobs:
             mv $dir build
             python -m pytest --log-cli-level DEBUG --junit-xml=./results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=${{ matrix.idf_target }}
             done
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml

@@ -14,11 +14,11 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.1"]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
@@ -33,11 +33,11 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest"]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |

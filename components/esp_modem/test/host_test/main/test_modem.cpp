@@ -361,7 +361,7 @@ extern "C" int app_main(void)
 
     // Use more descriptive error handling
     if (result != 0) {
-        printf("Test failed with result %d. Refer to the Catch2 documentation for error details.\n", result);
+        printf("Test failed with result %d.\n", result);
     } else {
         printf("All tests passed successfully.\n");
     }

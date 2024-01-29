@@ -27,11 +27,17 @@ jobs:
             example: "simple_cmux_client"
             warning: "Warning: The smallest app partition is nearly full"
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
-      - name: Checkout esp-protocols
+      - name: Check out code (v3) # @v4 failed due to Node 20's requirement, incompatible with older IDF versions
+        if: matrix.idf_ver != 'latest' && matrix.idf_ver < 'release-v5.0'
         uses: actions/checkout@v3
+        with:
+          path: protocols
+      - name: Check out code (v4)
+        if: matrix.idf_ver == 'latest' || matrix.idf_ver >= 'release-v5.0'
+        uses: actions/checkout@v4
         with:
           path: protocols
       - if: ${{ matrix.skip_config }}
@@ -54,11 +60,11 @@ jobs:
         idf_ver: ["release-v5.0", "release-v5.1", "latest"]
         test: ["target", "target_ota", "target_iperf"]
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: protocols
       - name: Build ${{ matrix.test }} with IDF-${{ matrix.idf_ver }}
