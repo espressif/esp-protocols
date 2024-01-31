@@ -1,0 +1,15 @@
+menu "MQTT Configuration"
+
+    config MQTT_CMD_AUTO_REGISTRATION
+        bool "Enable Console command mqtt Auto-registration"
+        default y
+        help
+            Enabling this allows for the autoregistration of the wifi command.
+
+    config MQTT_BROKER_URL
+        string "Broker URL or IP address"
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL or IP address of the broker to connect to
+
+endmenu
