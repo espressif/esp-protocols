@@ -16,9 +16,29 @@ menu "Example Configuration"
     config WEBSOCKET_URI
         string "Websocket endpoint URI"
         depends on WEBSOCKET_URI_FROM_STRING
-        default "ws://echo.websocket.events"
+        default "wss://echo.websocket.events"
         help
             URL of websocket endpoint this example connects to and sends echo
+
+    config WS_OVER_TLS_SERVER_AUTH
+        bool "Enable WebSocket over TLS with Server Certificate Verification Only"
+        default y
+        help
+            Enables WebSocket connections over TLS (WSS) with server certificate verification.
+            This setting mandates the client to verify the servers certificate, while the server
+            does not require client certificate verification.
+
+    config WS_OVER_TLS_MUTUAL_AUTH
+        bool "Enable WebSocket over TLS with Server Client Mutual Authentification"
+        default n
+        help
+            Enables WebSocket connections over TLS (WSS) with server and client mutual certificate verification.
+
+    config WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
+        bool "Skip common name(CN) check during TLS authentification"
+        default n
+        help
+            Skipping Common Name(CN) check during TLS(WSS) authentificatio
 
     if CONFIG_IDF_TARGET = "linux"
       config GCOV_ENABLED
