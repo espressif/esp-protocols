@@ -93,12 +93,12 @@ int Tls::read(unsigned char *buf, size_t len)
 
 bool Tls::set_own_cert(const_buf crt, const_buf key)
 {
-    int ret = mbedtls_x509_crt_parse(&public_cert_, crt.data(), crt.size());
+    int ret = mbedtls_x509_crt_parse(&public_cert_, crt.first, crt.second);
     if (ret < 0) {
         print_error("mbedtls_x509_crt_parse", ret);
         return false;
     }
-    ret = mbedtls_pk_parse_key(&pk_key_, key.data(), key.size(), nullptr, 0);
+    ret = mbedtls_pk_parse_key(&pk_key_, key.first, key.second, nullptr, 0);
     if (ret < 0) {
         print_error("mbedtls_pk_parse_keyfile", ret);
         return false;
@@ -108,7 +108,7 @@ bool Tls::set_own_cert(const_buf crt, const_buf key)
 
 bool Tls::set_ca_cert(const_buf crt)
 {
-    int ret = mbedtls_x509_crt_parse(&ca_cert_, crt.data(), crt.size());
+    int ret = mbedtls_x509_crt_parse(&ca_cert_, crt.first, crt.second);
     if (ret < 0) {
         print_error("mbedtls_x509_crt_parse", ret);
         return false;

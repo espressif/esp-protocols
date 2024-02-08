@@ -7,13 +7,13 @@
 
 #include <utility>
 #include <memory>
-#include <span>
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 
-using  const_buf = std::span<const unsigned char>;
+using  const_buf = std::pair<const unsigned char *, std::size_t>;
+using  buf = std::pair<unsigned char *, std::size_t>;
 
 class Tls {
 public:
