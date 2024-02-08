@@ -1,0 +1,19 @@
+menu "Test Configuration"
+
+    choice TEST_CONNECTION_METHOD
+        prompt "Choose connection method"
+        default TEST_TLS
+        help
+            Select type of connection. Either TLS or DTLS
+
+        config TEST_TLS
+            bool "TLS"
+            help
+                Use TLS method.
+        config TEST_DTLS
+            bool "DTLS"
+            help
+                Use DTLS method.
+    endchoice # TEST_CONNECTION_METHOD
+
+endmenu
