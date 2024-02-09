@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,8 @@
 
 #include <utility>
 #include <memory>
+#include <mbedtls/timing.h>
+#include <mbedtls/ssl_cookie.h>
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
@@ -19,10 +21,12 @@ class Tls {
 public:
     enum class is_server : bool {};
     enum class do_verify : bool {};
+    enum class is_dtls : bool {};
 
     Tls();
     virtual ~Tls();
-    bool init(is_server server, do_verify verify);
+    bool init(is_server server, do_verify verify, is_dtls dtls = is_dtls{false});
+    bool init_dtls();
     bool deinit();
     int handshake();
     int write(const unsigned char *buf, size_t len);
@@ -32,6 +36,7 @@ public:
     bool set_hostname(const char *name);
     virtual int send(const unsigned char *buf, size_t len) = 0;
     virtual int recv(unsigned char *buf, size_t len) = 0;
+    virtual int recv_tout(unsigned char *buf, size_t len, int timeout) = 0;
     size_t get_available_bytes();
 
 protected:
@@ -42,7 +47,10 @@ protected:
     mbedtls_ssl_config conf_{};
     mbedtls_ctr_drbg_context ctr_drbg_{};
     mbedtls_entropy_context entropy_{};
+    mbedtls_timing_delay_context timer_{};
+    mbedtls_ssl_cookie_ctx cookie_{};
     virtual void delay() {}
+    bool is_server_{false};
 
     bool set_session();
     bool get_session();
@@ -53,6 +61,7 @@ private:
     static void print_error(const char *function, int error_code);
     static int bio_write(void *ctx, const unsigned char *buf, size_t len);
     static int bio_read(void *ctx, unsigned char *buf, size_t len);
+    static int bio_read_tout(void *ctx, unsigned char *buf, size_t len, uint32_t timeout);
     int mbedtls_pk_parse_key( mbedtls_pk_context *ctx,
                               const unsigned char *key, size_t keylen,
                               const unsigned char *pwd, size_t pwdlen);

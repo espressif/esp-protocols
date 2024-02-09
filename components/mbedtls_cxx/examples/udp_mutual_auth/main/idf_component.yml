@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.0"
+  espressif/mbedtls_cxx:
+    version: "*"
+    override_path: "../../.."
