@@ -17,6 +17,12 @@
 using  const_buf = std::pair<const unsigned char *, std::size_t>;
 using  buf = std::pair<unsigned char *, std::size_t>;
 
+struct TlsConfig {
+    bool is_dtls;
+    uint32_t timeout;
+    const_buf client_id;
+};
+
 class Tls {
 public:
     enum class is_server : bool {};
@@ -25,8 +31,9 @@ public:
 
     Tls();
     virtual ~Tls();
-    bool init(is_server server, do_verify verify, is_dtls dtls = is_dtls{false});
-    bool init_dtls();
+    bool init(is_server server, do_verify verify, TlsConfig *config = nullptr);
+    bool init_dtls_cookies();
+    bool set_client_id();
     bool deinit();
     int handshake();
     int write(const unsigned char *buf, size_t len);
@@ -49,8 +56,10 @@ protected:
     mbedtls_entropy_context entropy_{};
     mbedtls_timing_delay_context timer_{};
     mbedtls_ssl_cookie_ctx cookie_{};
+    const_buf client_id_{};
     virtual void delay() {}
     bool is_server_{false};
+    bool is_dtls_{false};
 
     bool set_session();
     bool get_session();
