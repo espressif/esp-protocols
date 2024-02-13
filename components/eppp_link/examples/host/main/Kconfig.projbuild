@@ -1,0 +1,43 @@
+menu "Example Configuration"
+
+    config EXAMPLE_GLOBAL_DNS
+        hex "Set global DNS server"
+        range 0 0xFFFFFFFF
+        default 0x08080808
+        help
+            Global DNS server address.
+
+    config EXAMPLE_MQTT
+        bool "Run mqtt example"
+        default y
+        help
+            Run MQTT client after startup.
+
+    config EXAMPLE_BROKER_URL
+        string "Broker URL"
+        depends on EXAMPLE_MQTT
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the broker to connect to.
+
+    config EXAMPLE_ICMP_PING
+        bool "Run ping example"
+        default y
+        help
+            Ping configured address after startup.
+
+    config EXAMPLE_PING_ADDR
+        hex "Ping IPv4 address"
+        depends on EXAMPLE_ICMP_PING
+        range 0 0xFFFFFFFF
+        default 0x08080808
+        help
+            Address to send ping requests.
+
+    config EXAMPLE_IPERF
+        bool "Run iperf"
+        default y
+        help
+            Init and run iperf console.
+
+endmenu

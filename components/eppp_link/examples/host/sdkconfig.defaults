@@ -1,0 +1,8 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.3.0 Project Minimal Configuration
+#
+CONFIG_UART_ISR_IN_IRAM=y
+CONFIG_LWIP_PPP_SUPPORT=y
+CONFIG_LWIP_PPP_VJ_HEADER_COMPRESSION=n
+CONFIG_LWIP_PPP_DEBUG_ON=y
+CONFIG_EPPP_LINK_DEVICE_SPI=y
