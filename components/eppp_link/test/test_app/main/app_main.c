@@ -171,7 +171,7 @@ TEST(eppp_test, open_close)
     TEST_ASSERT_NOT_NULL(client.netif);
 
     // Now that we're connected, let's try to ping clients address
-    bits = ping_test(config.ppp.their_ip4_addr, eppp_server, client.event);
+    bits = ping_test(config.ppp.their_ip4_addr.addr, eppp_server, client.event);
     TEST_ASSERT_EQUAL(bits & (PING_SUCCEEDED | PING_FAILED), PING_SUCCEEDED);
 
     // Trigger client disconnection and close the server
@@ -237,7 +237,7 @@ TEST(eppp_test, open_close_nonblocking)
     TEST_ASSERT_EQUAL(bits & wait_bits, wait_bits);
 
     // Now that we're connected, let's try to ping clients address
-    bits = ping_test(server_config.ppp.their_ip4_addr, eppp_server, event);
+    bits = ping_test(server_config.ppp.their_ip4_addr.addr, eppp_server, event);
     TEST_ASSERT_EQUAL(bits & (PING_SUCCEEDED | PING_FAILED), PING_SUCCEEDED);
 
     // stop network for both client and server
@@ -304,7 +304,7 @@ TEST(eppp_test, open_close_taskless)
     xEventGroupClearBits(info.event, wait_bits);
 
     // Now that we're connected, let's try to ping clients address
-    bits = ping_test(server_config.ppp.their_ip4_addr, info.eppp_server, info.event);
+    bits = ping_test(server_config.ppp.their_ip4_addr.addr, info.eppp_server, info.event);
     TEST_ASSERT_EQUAL(bits & (PING_SUCCEEDED | PING_FAILED), PING_SUCCEEDED);
 
     // stop network for both client and server, we won't wait for completion so expecting ESP_FAIL

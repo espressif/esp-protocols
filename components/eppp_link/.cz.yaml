@@ -1,8 +1,8 @@
 ---
 commitizen:
-  bump_message: 'bump(eppp_link): $current_version -> $new_version'
+  bump_message: 'bump(eppp): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py eppp_link
-  tag_format: epp_link-v$version
-  version: 0.0.1
+  tag_format: eppp-v$version
+  version: 0.0.0
   version_files:
   - idf_component.yml

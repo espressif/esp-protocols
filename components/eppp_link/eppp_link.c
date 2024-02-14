@@ -43,6 +43,8 @@ struct packet {
 #define MIN_TRIGGER_US 20
 #define SPI_HEADER_MAGIC 0x1234
 
+static void timer_callback(void *arg);
+
 struct header {
     uint16_t magic;
     uint16_t size;
@@ -85,7 +87,6 @@ struct eppp_handle {
 };
 
 
-
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
     struct eppp_handle *handle = h;
@@ -126,14 +127,6 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
     uart_write_bytes(handle->uart_port, buffer, len);
 #endif
     return ESP_OK;
-}
-
-static void IRAM_ATTR timer_callback(void *arg)
-{
-    struct eppp_handle *h = arg;
-    if (h->blocked == SLAVE_WANTS_WRITE) {
-        gpio_set_level(h->gpio_intr, 0);
-    }
 }
 
 static void netif_deinit(esp_netif_t *netif)
@@ -332,7 +325,15 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 
 #define SPI_ALIGN(size) (((size) + 3U) & ~(3U))
 #define TRANSFER_SIZE SPI_ALIGN((MAX_PAYLOAD + 6))
-#define MAX(a,b) (((a)>(b))?(a):(b))
+#define NEXT_TRANSACTION_SIZE(a,b) (((a)>(b))?(a):(b)) /* next transaction: whichever is bigger */
+
+static void IRAM_ATTR timer_callback(void *arg)
+{
+    struct eppp_handle *h = arg;
+    if (h->blocked == SLAVE_WANTS_WRITE) {
+        gpio_set_level(h->gpio_intr, 0);
+    }
+}
 
 static void IRAM_ATTR gpio_isr_handler(void *arg)
 {
@@ -598,7 +599,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
         ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
         esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
     }
-    h->transaction_size = MAX(next_tx_size, head->next_size);
+    h->transaction_size = NEXT_TRANSACTION_SIZE(next_tx_size, head->next_size);
     return ESP_OK;
 }
 

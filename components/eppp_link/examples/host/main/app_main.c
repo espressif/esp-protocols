@@ -121,26 +121,22 @@ void app_main(void)
     dns.ip.type = ESP_IPADDR_TYPE_V4;
     ESP_ERROR_CHECK(esp_netif_set_dns_info(eppp_netif, ESP_NETIF_DNS_MAIN, &dns));
 
+    // Initialize console REPL
+    ESP_ERROR_CHECK(console_cmd_init());
+
 #if CONFIG_EXAMPLE_IPERF
     register_iperf();
 
     printf("\n =======================================================\n");
-    printf(" |       Steps to Test PPP Client Bandwidth            |\n");
+    printf(" |       Steps to Test EPPP-host bandwidth             |\n");
     printf(" |                                                     |\n");
-    printf(" |  1. Enter 'help', check all supported commands      |\n");
-    printf(" |  2. Start PPP server on host system                 |\n");
-    printf(" |     - pppd /dev/ttyUSB1 115200 192.168.11.1:192.168.11.2 modem local noauth debug nocrtscts nodetach +ipv6\n");
-    printf(" |  3. Wait ESP32 to get IP from PPP server            |\n");
-    printf(" |  4. Enter 'pppd info' (optional)                    |\n");
-    printf(" |  5. Server: 'iperf -u -s -i 3'                      |\n");
-    printf(" |  6. Client: 'iperf -u -c SERVER_IP -t 60 -i 3'      |\n");
+    printf(" |  1. Wait for the ESP32 to get an IP                 |\n");
+    printf(" |  2. Server: 'iperf -u -s -i 3' (on host)            |\n");
+    printf(" |  3. Client: 'iperf -u -c SERVER_IP -t 60 -i 3'      |\n");
     printf(" |                                                     |\n");
     printf(" =======================================================\n\n");
 
 #endif // CONFIG_EXAMPLE_IPERF
-
-    // Initialize console REPL
-    ESP_ERROR_CHECK(console_cmd_init());
 
     // Register the ping command
     ESP_ERROR_CHECK(console_cmd_ping_register());

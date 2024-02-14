@@ -14,6 +14,10 @@
 #include "nvs_flash.h"
 #include "eppp_link.h"
 
+static const char *TAG = "eppp_slave";
+
+#if CONFIG_SOC_WIFI_SUPPORTED
+
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
 
@@ -23,7 +27,6 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "sta2pppos";
 
 static int s_retry_num = 0;
 
@@ -48,7 +51,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
-void wifi_init_sta(void)
+void init_network_interface(void)
 {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -105,6 +108,14 @@ void wifi_init_sta(void)
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 }
+#else
+
+void init_network_interface(void)
+{
+    // placeholder to initialize any other network interface if WiFi is not available
+}
+
+#endif // SoC WiFi capable chip
 
 void app_main(void)
 {
@@ -116,8 +127,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-    wifi_init_sta();
+    init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
 
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
