@@ -15,53 +15,117 @@
 
 static auto const *TAG = "uart_mutual_tls";
 
-const unsigned char servercert[] = "-----BEGIN CERTIFICATE-----\n"
-                                   "MIIDKzCCAhOgAwIBAgIUBxM3WJf2bP12kAfqhmhhjZWv0ukwDQYJKoZIhvcNAQEL\n"
-                                   "BQAwJTEjMCEGA1UEAwwaRVNQMzIgSFRUUFMgc2VydmVyIGV4YW1wbGUwHhcNMTgx\n"
-                                   "MDE3MTEzMjU3WhcNMjgxMDE0MTEzMjU3WjAlMSMwIQYDVQQDDBpFU1AzMiBIVFRQ\n"
-                                   "UyBzZXJ2ZXIgZXhhbXBsZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB\n"
-                                   "ALBint6nP77RCQcmKgwPtTsGK0uClxg+LwKJ3WXuye3oqnnjqJCwMEneXzGdG09T\n"
-                                   "sA0SyNPwrEgebLCH80an3gWU4pHDdqGHfJQa2jBL290e/5L5MB+6PTs2NKcojK/k\n"
-                                   "qcZkn58MWXhDW1NpAnJtjVniK2Ksvr/YIYSbyD+JiEs0MGxEx+kOl9d7hRHJaIzd\n"
-                                   "GF/vO2pl295v1qXekAlkgNMtYIVAjUy9CMpqaQBCQRL+BmPSJRkXBsYk8GPnieS4\n"
-                                   "sUsp53DsNvCCtWDT6fd9D1v+BB6nDk/FCPKhtjYOwOAZlX4wWNSZpRNr5dfrxKsb\n"
-                                   "jAn4PCuR2akdF4G8WLUeDWECAwEAAaNTMFEwHQYDVR0OBBYEFMnmdJKOEepXrHI/\n"
-                                   "ivM6mVqJgAX8MB8GA1UdIwQYMBaAFMnmdJKOEepXrHI/ivM6mVqJgAX8MA8GA1Ud\n"
-                                   "EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBADiXIGEkSsN0SLSfCF1VNWO3\n"
-                                   "emBurfOcDq4EGEaxRKAU0814VEmU87btIDx80+z5Dbf+GGHCPrY7odIkxGNn0DJY\n"
-                                   "W1WcF+DOcbiWoUN6DTkAML0SMnp8aGj9ffx3x+qoggT+vGdWVVA4pgwqZT7Ybntx\n"
-                                   "bkzcNFW0sqmCv4IN1t4w6L0A87ZwsNwVpre/j6uyBw7s8YoJHDLRFT6g7qgn0tcN\n"
-                                   "ZufhNISvgWCVJQy/SZjNBHSpnIdCUSJAeTY2mkM4sGxY0Widk8LnjydxZUSxC3Nl\n"
-                                   "hb6pnMh3jRq4h0+5CZielA4/a+TdrNPv/qok67ot/XJdY3qHCCd8O2b14OVq9jo=\n"
+const unsigned char cacert[] = "-----BEGIN CERTIFICATE-----\n"
+                               "MIIDIzCCAgugAwIBAgIURgnkf/YFHeJCEyGZNm1I1hd34xcwDQYJKoZIhvcNAQEL\n"
+                               "BQAwITELMAkGA1UEBhMCQ1oxEjAQBgNVBAMMCUVzcHJlc3NpZjAeFw0yNDAyMTUx\n"
+                               "MTMyMjVaFw0yNTAyMTQxMTMyMjVaMCExCzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlF\n"
+                               "c3ByZXNzaWYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDI3UdvPpmi\n"
+                               "56OIK0AOt/RorRXLM7hfyWfkuQjT4fdqb6eUVBQ3PMt3h2cipTlAWYY11gigdikV\n"
+                               "59eO5SEJ3ehGZlExgIlGklHme4G7fmL6uLjuzEmLavz8aanKbTqGFxfjbCkTf6tD\n"
+                               "OJkT+lpBGrYuC8/OMjoxgHhxQYxPBKJENH6VxjMwrrH3rO2BMQOJolEZpYpyv5nE\n"
+                               "avn8iFJk3Gew9P8mkGTvdJ9UCyq5P9aPowbNvNlT+46OTeB/PyrLbIEcSw5rmjrh\n"
+                               "5cOCunu0pZmKEw3gJU7Kb5T+DyegJCQPGy+MVkTQ/qoAgJMfY3CZCLPbWUGx/uxt\n"
+                               "MLMq6ysSVHwZAgMBAAGjUzBRMB0GA1UdDgQWBBT54IyCKBrnW+0MNgH/z3wFJWeO\n"
+                               "mjAfBgNVHSMEGDAWgBT54IyCKBrnW+0MNgH/z3wFJWeOmjAPBgNVHRMBAf8EBTAD\n"
+                               "AQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBg3WlfNiKoolSmJe01zhos66HduqX4kR3s\n"
+                               "W8/aD/hd4QLOLrierSXuVn8yllIUjs6mMK4iZNH2PYKCfwEvWm+gIsrzrHWfyhtY\n"
+                               "wAbQUJ3EweqHyHqh7SYly5fvgsbbKlwGIwFu/IEOjnsTyG8uwPLi3vxPYQGrCOJR\n"
+                               "QNeKmwIGhZZyZSnFOtyndvhnMa6ykLjv6wIcaaS2muVS9yr/UEd52GLSU1h4iT3q\n"
+                               "Sn5Fcmd0uxZ6yuRN5s0WcUTPhmuAMAQkP66mkJkI6RaoxauruDpo0HsSAXC12UKG\n"
+                               "X7+F8ekWeRO1Sd1nS0fZG795chnuH4LBiXBzFvKkhZPoDo7fr0lo\n"
+                               "-----END CERTIFICATE-----";
+const unsigned char clientcert[] = "-----BEGIN CERTIFICATE-----\n"
+                                   "MIICuzCCAaMCFBdHd97jdvI7d4rSVaRZQUPiTTn7MA0GCSqGSIb3DQEBCwUAMCEx\n"
+                                   "CzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlFc3ByZXNzaWYwHhcNMjQwMjE1MTEzNDAw\n"
+                                   "WhcNMjUwMjE0MTEzNDAwWjATMREwDwYDVQQDDAhNeUNsaWVudDCCASIwDQYJKoZI\n"
+                                   "hvcNAQEBBQADggEPADCCAQoCggEBAPZHkjuldGnwtz7jBWhcYU0lvBZHQVZVDG5t\n"
+                                   "dcSV56WL3IXfwanQtSOVVQiNGRSUHqlSnZjdDS4qlbeESveeXsvMRRl9QYn+v3G9\n"
+                                   "hoe8/HZQDm3F4F2eFYVtXaIjyFsxr+POhy/WVVAOmClRuMcCknMGf7WzozlnoUxW\n"
+                                   "PCNtxpgBpHUiEUnSMUlqvtf89DUitwK9GfEbKRebM8c04U56uuXQpQzHX4ksP9hv\n"
+                                   "PcRyerc7FiUyX1VFSZ1POmdqrwRqDNB66ZVz7YhFkhj7Am3bZ4F1cZ1oddXHz+3l\n"
+                                   "KNUSjYf1sHVINq4lbfIGsyh5m3dv8Rv79pvTBMoR2qCScgkCxIsCAwEAATANBgkq\n"
+                                   "hkiG9w0BAQsFAAOCAQEAFalmADbLZdVah/x6ff+8OhUm1QSFk9nU+1vvTC59T7ua\n"
+                                   "mUIRDB2gAWzCt/pfABLXZtTD33DDDSz3T1rRJV/NhI3RrHZaBK1HWHPTqdIx5zzS\n"
+                                   "WZHL9xgZf5RAHkLFI+2lhyXzWDwHe6H38+ZUPTi2S5v5pMQqR4f1HKwDJX3yrOdF\n"
+                                   "dQhMgP4wHWT6sug8w+x3nSm3UV3STVQWwWMcXPtyrSSMBnJFH1sNOi2+0M99NEc3\n"
+                                   "IaFwScvaMFktJnOeXoBS+bKL2UiUq8OILyv16v0LA1KDouvJ1mVjM3wky7VaTtbA\n"
+                                   "UUsjdD8UaoEnBAGjTe/zJsUN2u1qdH5pU5ycYB/mpA==\n"
                                    "-----END CERTIFICATE-----";
-const unsigned char prvtkey[] = "-----BEGIN PRIVATE KEY-----\n"
-                                "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCwYp7epz++0QkH\n"
-                                "JioMD7U7BitLgpcYPi8Cid1l7snt6Kp546iQsDBJ3l8xnRtPU7ANEsjT8KxIHmyw\n"
-                                "h/NGp94FlOKRw3ahh3yUGtowS9vdHv+S+TAfuj07NjSnKIyv5KnGZJ+fDFl4Q1tT\n"
-                                "aQJybY1Z4itirL6/2CGEm8g/iYhLNDBsRMfpDpfXe4URyWiM3Rhf7ztqZdveb9al\n"
-                                "3pAJZIDTLWCFQI1MvQjKamkAQkES/gZj0iUZFwbGJPBj54nkuLFLKedw7DbwgrVg\n"
-                                "0+n3fQ9b/gQepw5PxQjyobY2DsDgGZV+MFjUmaUTa+XX68SrG4wJ+DwrkdmpHReB\n"
-                                "vFi1Hg1hAgMBAAECggEAaTCnZkl/7qBjLexIryC/CBBJyaJ70W1kQ7NMYfniWwui\n"
-                                "f0aRxJgOdD81rjTvkINsPp+xPRQO6oOadjzdjImYEuQTqrJTEUnntbu924eh+2D9\n"
-                                "Mf2CAanj0mglRnscS9mmljZ0KzoGMX6Z/EhnuS40WiJTlWlH6MlQU/FDnwC6U34y\n"
-                                "JKy6/jGryfsx+kGU/NRvKSru6JYJWt5v7sOrymHWD62IT59h3blOiP8GMtYKeQlX\n"
-                                "49om9Mo1VTIFASY3lrxmexbY+6FG8YO+tfIe0tTAiGrkb9Pz6tYbaj9FjEWOv4Vc\n"
-                                "+3VMBUVdGJjgqvE8fx+/+mHo4Rg69BUPfPSrpEg7sQKBgQDlL85G04VZgrNZgOx6\n"
-                                "pTlCCl/NkfNb1OYa0BELqWINoWaWQHnm6lX8YjrUjwRpBF5s7mFhguFjUjp/NW6D\n"
-                                "0EEg5BmO0ePJ3dLKSeOA7gMo7y7kAcD/YGToqAaGljkBI+IAWK5Su5yldrECTQKG\n"
-                                "YnMKyQ1MWUfCYEwHtPvFvE5aPwKBgQDFBWXekpxHIvt/B41Cl/TftAzE7/f58JjV\n"
-                                "MFo/JCh9TDcH6N5TMTRS1/iQrv5M6kJSSrHnq8pqDXOwfHLwxetpk9tr937VRzoL\n"
-                                "CuG1Ar7c1AO6ujNnAEmUVC2DppL/ck5mRPWK/kgLwZSaNcZf8sydRgphsW1ogJin\n"
-                                "7g0nGbFwXwKBgQCPoZY07Pr1TeP4g8OwWTu5F6dSvdU2CAbtZthH5q98u1n/cAj1\n"
-                                "noak1Srpa3foGMTUn9CHu+5kwHPIpUPNeAZZBpq91uxa5pnkDMp3UrLIRJ2uZyr8\n"
-                                "4PxcknEEh8DR5hsM/IbDcrCJQglM19ZtQeW3LKkY4BsIxjDf45ymH407IQKBgE/g\n"
-                                "Ul6cPfOxQRlNLH4VMVgInSyyxWx1mODFy7DRrgCuh5kTVh+QUVBM8x9lcwAn8V9/\n"
-                                "nQT55wR8E603pznqY/jX0xvAqZE6YVPcw4kpZcwNwL1RhEl8GliikBlRzUL3SsW3\n"
-                                "q30AfqEViHPE3XpE66PPo6Hb1ymJCVr77iUuC3wtAoGBAIBrOGunv1qZMfqmwAY2\n"
-                                "lxlzRgxgSiaev0lTNxDzZkmU/u3dgdTwJ5DDANqPwJc6b8SGYTp9rQ0mbgVHnhIB\n"
-                                "jcJQBQkTfq6Z0H6OoTVi7dPs3ibQJFrtkoyvYAbyk36quBmNRjVh6rc8468bhXYr\n"
-                                "v/t+MeGJP/0Zw8v/X2CFll96\n"
-                                "-----END PRIVATE KEY-----";
+const unsigned char clientkey[] = "-----BEGIN RSA PRIVATE KEY-----\n"
+                                  "MIIEpQIBAAKCAQEA9keSO6V0afC3PuMFaFxhTSW8FkdBVlUMbm11xJXnpYvchd/B\n"
+                                  "qdC1I5VVCI0ZFJQeqVKdmN0NLiqVt4RK955ey8xFGX1Bif6/cb2Gh7z8dlAObcXg\n"
+                                  "XZ4VhW1doiPIWzGv486HL9ZVUA6YKVG4xwKScwZ/tbOjOWehTFY8I23GmAGkdSIR\n"
+                                  "SdIxSWq+1/z0NSK3Ar0Z8RspF5szxzThTnq65dClDMdfiSw/2G89xHJ6tzsWJTJf\n"
+                                  "VUVJnU86Z2qvBGoM0HrplXPtiEWSGPsCbdtngXVxnWh11cfP7eUo1RKNh/WwdUg2\n"
+                                  "riVt8gazKHmbd2/xG/v2m9MEyhHaoJJyCQLEiwIDAQABAoIBAEXhoRjTpei5qQVr\n"
+                                  "HYmzTNi7MFeR+HQqxdA/tv8FGinbOcOy7hzlX8CtCufWQZuZO+oHyzgo4SiMZNch\n"
+                                  "7rO8eGGToLfO1t31LxVzFc1GTsyzgqSbVUK7LJgjpEHxrVRTEPmvDKUCSErjGUIA\n"
+                                  "MlIl5LBG084XHuWXBinG/mF/MK7ImgYi9sSa2I9N6JPHoype/tg16vP2a3v3CNUu\n"
+                                  "YPH8fezsFSBs8FFd8rW7k2Q7qg6Wa5rYvafpMbBtD9cJXAFYqqJ2IAQNpixDwHj5\n"
+                                  "D3J5HTurhgC9NvNtQ49KgfKFRohXZF4PZ9XE1Lh4Jat3qo6P4OA3W7iTu1mruJGh\n"
+                                  "p1wXemECgYEA/GZqTqXdutrobwtHxmXl5eGQx9/BF9OrgXaOrJCRSIMyxh2F10bA\n"
+                                  "VG+k83ppF43dWBGX1yKksFV0uZrPK+lh4eFkPPOC6o3EQmWfQzkCCAZEXVpItL6C\n"
+                                  "Mp4v3weeEyfRPmAbgauiDPSJ5ZXbh7jP/eStJa4qLuM430cESlW76l8CgYEA+crO\n"
+                                  "7jQKFl4e3We25oboG/mD8QQsGGQdcfC8XkGb6milcRJcAjKyWPBwvPA815gmz9hn\n"
+                                  "Qk9/X0Y4ADg+hP7iVoC6BRfQYdSJ1hsUtNxLv49V1waQCYxkvZJ5ajjX95KOU7i4\n"
+                                  "/Pbim6wWrpN66trzN40YzDGQHLJiAmEtxtDc7VUCgYEA7CDkU6/ZQHaL/VcQTwwF\n"
+                                  "iIr+Z/9tJl1glj3UPJ0DTlNvrOjxzfTi+ht4tlBPATo3Wa0b4KkIae+IxBuQtgQh\n"
+                                  "DrFOlbc7QzRd58AqvzkWLWuviaZtXqrcI37aSk1WFZWqrDA9i5KGiJg+agtI1jCQ\n"
+                                  "ZXcKhbXqwPLSwhAuc1zB8QECgYEA5h8I9DnM8T5UgPSDc2zleKAuBWQqm23gEpAN\n"
+                                  "eWhIE3PEtp6LVRsPYxBfTDCmXJg3aVOcDWLfnQ47mTg3oJ6QNdDxjq+Zsgbz1OOt\n"
+                                  "99Dbl+ac1jOdjq5gQKUoZctoaxQBOu/6vFFWAsRPQRVtL9/2IT9DkRo4Abf0wux0\n"
+                                  "F61jWuECgYEAlEFSF00+uGbcFuW7WwH4SdC+cjwGnFxf6Qr52mGiZYiiHkrMJb8o\n"
+                                  "j//OXqzZqo2uErlhRC+B2t+q5ZOWJwUrAXv90uAtPBuJGC4RcE568EvKGuFd2g8e\n"
+                                  "Udr/NBw+ghrSuI/sSqB7MAzqcwkhX+BGtTy2kSS6V5kfAhjXBidbJoc=\n"
+                                  "-----END RSA PRIVATE KEY-----";
+
+
+
+const unsigned char servercert[] = "-----BEGIN CERTIFICATE-----\n"
+                                   "MIICvDCCAaQCFBdHd97jdvI7d4rSVaRZQUPiTTn6MA0GCSqGSIb3DQEBCwUAMCEx\n"
+                                   "CzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlFc3ByZXNzaWYwHhcNMjQwMjE1MTEzMzM0\n"
+                                   "WhcNMjUwMjE0MTEzMzM0WjAUMRIwEAYDVQQDDAlteV9zZXJ2ZXIwggEiMA0GCSqG\n"
+                                   "SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCqGKRqOsPIwpFC6dZa/UeC8SNbBxs48YVP\n"
+                                   "n+elMypx9GHtemTWlrcjdy/K/iaheSPFEJI368g2tS/yrx/OSIWp+6uC2WdC4iaa\n"
+                                   "JvSI0ZDf8lPgriPZsE/89aulcfKCSQAdbVx0aTlwYdlCYQXkFGTKy00l2/AEhmPM\n"
+                                   "9L639qy1APHxVtiRCGtg9zruBLdDgJ51O6N0yFMo1lmSoT4F6CWYKsG4/8iP75Bj\n"
+                                   "LjK0wDBVYSdDcYADkKpPlhenY+ZEEiMthUQjA3vnNSdCWrGIR2Zb+QTwA20gMdDU\n"
+                                   "8+eun5LPNCMFfhzD5j478WL7Gfp9wjFFCtBGAcrl8W//RSPznTAtAgMBAAEwDQYJ\n"
+                                   "KoZIhvcNAQELBQADggEBAIxVz9aNbjlYzaX91mQ6CLwoAeBmAzl8Ck4L5pSz9X+1\n"
+                                   "A2d4BM+diQjlADNldH+w6w7j7JolxUBkJSFGMAMXSvqNcu6ORhWb9MjC+x/aRYTZ\n"
+                                   "hf6qEHl80nP5lTMl8Hy0fYMzG75SfhXYhzhz7Z/GcFC4SQWj7Zv7k/bFYR5JbhIg\n"
+                                   "WqF1dv4xffbGa4CMAkaWgBvgI/Wq+XW+mFJPrKzYBsKcu9HbeeZozuo9goVkoRba\n"
+                                   "uEESPeNWZv/1iSly2kwcvK6TuuI4I4z3yFqZFj5fhUtjGhaPlJC9LcI7jzJa+K5Y\n"
+                                   "EDFTvDQzmqJUUAg8aWVI/Wut1ji9QEEzY+SADz6fP5Y=\n"
+                                   "-----END CERTIFICATE-----";
+
+const unsigned char serverkey[] = "-----BEGIN RSA PRIVATE KEY-----\n"
+                                  "MIIEogIBAAKCAQEAqhikajrDyMKRQunWWv1HgvEjWwcbOPGFT5/npTMqcfRh7Xpk\n"
+                                  "1pa3I3cvyv4moXkjxRCSN+vINrUv8q8fzkiFqfurgtlnQuImmib0iNGQ3/JT4K4j\n"
+                                  "2bBP/PWrpXHygkkAHW1cdGk5cGHZQmEF5BRkystNJdvwBIZjzPS+t/astQDx8VbY\n"
+                                  "kQhrYPc67gS3Q4CedTujdMhTKNZZkqE+BeglmCrBuP/Ij++QYy4ytMAwVWEnQ3GA\n"
+                                  "A5CqT5YXp2PmRBIjLYVEIwN75zUnQlqxiEdmW/kE8ANtIDHQ1PPnrp+SzzQjBX4c\n"
+                                  "w+Y+O/Fi+xn6fcIxRQrQRgHK5fFv/0Uj850wLQIDAQABAoIBAHXcW1isXWsnvoWy\n"
+                                  "B/DGXZ3Svt/dPbSoTepNb7JdkMSjRJPL4kF6721osbojftsWWH29LMQI4ZNe2tl7\n"
+                                  "FTvXrp6JH1+sisuiboMUCQ8gvxUeEZa2s2qsq9Ao3oXmPdafBLBfTdfv7Xf8pRFE\n"
+                                  "r1NJ+kk2s79O9bH8+PxUfi50g1lrK8LG06jkJpuAbzKg8c9bJJ5LzBzYzw8wO7Tp\n"
+                                  "POvUwCT51/NjR5LxqzTgD4ckPuYVyp/avkg2biaOO2xXCCOx6jNotUaKj6OpmB4n\n"
+                                  "M95/kVvR1+TwlfS1rSQVUUJXsawUz5iWNroM8YEoxBQ/WA2CGj/w59Oxn446eRbE\n"
+                                  "EPrq8zUCgYEA2g8NC+ZOQMskmdPAX+/wu88CqN1JXOOTTannIjT+XRmvFnI2IcR2\n"
+                                  "Qsz2hSKsNbhJH4yKqmAgncTXFdAadKt5ZjQcLFd9JeG/GoLcTzt6IGgRzl1LKl5Y\n"
+                                  "YMSV5SBI16m9HBXgWnzNgvct67zmtUucFMqSMdMxknzJbG9FYAghL/cCgYEAx7E0\n"
+                                  "rHZHJMZpSmBg5dDO9l3QPrRxxtIQy5o5+5YvQ6fpk4N5F+KtDye3oLjKld2k02sV\n"
+                                  "DJYfr5B9DLqsrRskQM8F/q9D8Az/PLfUpbmZ6WVN0jTAu//HPbZHa0LpH3to+B/S\n"
+                                  "nnkdDWHlZs9TvuQr5YZXuGqnTAvyhkOoEkNN3/sCgYA8DcMZEN9iRtAYsVGc2lbh\n"
+                                  "Uly4JuFqfJ532B/4ssGO4GDw/Jld6V5sfUgzWF43GT7COpGB5KF28dwOfNacZRE1\n"
+                                  "DYrox1uHEEnyQjHsfEPhIugsflMSIxOR6vIhPSfyhSO41WmJYi+zLuHtt4OOUHl2\n"
+                                  "3Gcw46oWXtmWTHq9vN9u9wKBgGiLzt7nwZFwSxmEYdaPvnrfXLIneFW2DtL5eJfN\n"
+                                  "5grOswvmzhQCOcZwbcO4W1+gvbVuH4QKaKZayA1NAjBSwGUpvaK8EZ5wv4QDXlIx\n"
+                                  "XHID9n0x3yHN5HrbnoJ6cmBoFOmqh3MuR1aFRTvRGbAb9xtgfTZwqAu5SYyfiTOe\n"
+                                  "hvvXAoGAfYGO51AR1qfzYQh5nhm4/gFRESUbZevpNDF610GCXNhrcFWH0WgL5rUo\n"
+                                  "bUPvhje/iRpmarv4vB75ax9wTpBp+Wl08YDx4sHlBUAi5JYvieyotfxjI359jAE5\n"
+                                  "X+RPrWjoMOX3QUxCQt5D1gnMi9msFzpsZaEOkeMKf/DTjNNREFA=\n"
+                                  "-----END RSA PRIVATE KEY-----";
 
 /**
  * Using DTLS the below is set to true.
@@ -117,7 +181,7 @@ public:
             const unsigned char client_id[] = "Client1";
             config.client_id = std::make_pair(client_id, sizeof(client_id));
         }
-        if (!init(is_server{server_not_client}, do_verify{false}, &config)) {
+        if (!init(is_server{server_not_client}, do_verify{true}, &config)) {
             return false;
         }
 
@@ -233,6 +297,17 @@ static void tls_client()
     const unsigned char message[] = "Hello\n";
     unsigned char reply[128];
     SecureLink client(UART_NUM_2, 4, 5);
+    const_buf cert{clientcert, sizeof(clientcert)};
+    const_buf key{clientkey, sizeof(clientkey)};
+    if (!client.set_own_cert(cert, key)) {
+        ESP_LOGE(TAG, "Failed to set own cert");
+        return;
+    }
+    const_buf ca{cacert, sizeof(cacert)};
+    if (!client.set_ca_cert(ca)) {
+        ESP_LOGE(TAG, "Failed to set peer's cert");
+        return;
+    }
     if (!client.open(false)) {
         ESP_LOGE(TAG, "Failed to CONNECT! %d", errno);
         return;
@@ -259,9 +334,14 @@ static void tls_server()
     unsigned char message[128];
     SecureLink server(UART_NUM_1, 25, 26);
     const_buf cert{servercert, sizeof(servercert)};
-    const_buf key{prvtkey, sizeof(prvtkey)};
+    const_buf key{serverkey, sizeof(serverkey)};
     if (!server.set_own_cert(cert, key)) {
         ESP_LOGE(TAG, "Failed to set own cert");
+        return;
+    }
+    const_buf ca{cacert, sizeof(cacert)};
+    if (!server.set_ca_cert(ca)) {
+        ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
     ESP_LOGI(TAG, "openning...");
