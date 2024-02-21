@@ -51,6 +51,7 @@ typedef enum eppp_type {
 typedef enum eppp_transport {
     EPPP_TRANSPORT_UART,
     EPPP_TRANSPORT_SPI,
+    EPPP_TRANSPORT_SDIO,
 } eppp_transport_t;
 
 

@@ -15,6 +15,12 @@ menu "eppp_link"
             bool "SPI"
             help
                 Use SPI.
+
+        config EPPP_LINK_DEVICE_SDIO
+            bool "SDIO"
+            help
+                Use SDIO.
+
     endchoice
 
     config EPPP_LINK_CONN_MAX_RETRY
