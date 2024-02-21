@@ -28,7 +28,16 @@
             .rx_io = 26,        \
             .queue_size = 16,   \
             .rx_buffer_size = 1024, \
-    },  \
+    },                          \
+    .sdio = {                                   \
+            .width = 4,                         \
+            .clk = 18,                          \
+            .cmd = 19,                          \
+            .d0 = 49,                           \
+            .d1 = 50,                           \
+            .d2 = 16,                           \
+            .d3 = 17,           \
+    },                          \
     . task = {                  \
             .run_task = true,   \
             .stack_size = 4096, \
@@ -53,6 +62,7 @@ typedef enum eppp_type {
 typedef enum eppp_transport {
     EPPP_TRANSPORT_UART,
     EPPP_TRANSPORT_SPI,
+    EPPP_TRANSPORT_SDIO,
 } eppp_transport_t;
 
 
@@ -80,6 +90,16 @@ typedef struct eppp_config_t {
         int queue_size;
         int rx_buffer_size;
     } uart;
+
+    struct eppp_config_sdio_s {
+        int width;
+        int clk;
+        int cmd;
+        int d0;
+        int d1;
+        int d2;
+        int d3;
+    } sdio;
 
     struct eppp_config_task_s {
         bool run_task;
