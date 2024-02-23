@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -91,7 +91,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         if (data->op_code == 0x08 && data->data_len == 2) {
             ESP_LOGW(TAG, "Received closed message with code=%d", 256 * data->data_ptr[0] + data->data_ptr[1]);
         } else {
-            ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
+            ESP_LOGW(TAG, "Received=%.*s\n\n", data->data_len, (char *)data->data_ptr);
         }
 
         // If received data contains json structure it succeed to parse
@@ -142,6 +142,28 @@ static void websocket_app_start(void)
 #else
     websocket_cfg.uri = CONFIG_WEBSOCKET_URI;
 #endif /* CONFIG_WEBSOCKET_URI_FROM_STDIN */
+
+#if CONFIG_WS_OVER_TLS_MUTUAL_AUTH
+    /* Configuring client certificates for mutual authentification */
+    extern const char cacert_start[] asm("_binary_ca_cert_pem_start"); // CA certificate
+    extern const char cert_start[] asm("_binary_client_cert_pem_start"); // Client certificate
+    extern const char cert_end[]   asm("_binary_client_cert_pem_end");
+    extern const char key_start[] asm("_binary_client_key_pem_start"); // Client private key
+    extern const char key_end[]   asm("_binary_client_key_pem_end");
+
+    websocket_cfg.cert_pem = cacert_start;
+    websocket_cfg.client_cert = cert_start;
+    websocket_cfg.client_cert_len = cert_end - cert_start;
+    websocket_cfg.client_key = key_start;
+    websocket_cfg.client_key_len = key_end - key_start;
+#elif CONFIG_WS_OVER_TLS_SERVER_AUTH
+    extern const char cacert_start[] asm("_binary_ca_certificate_public_domain_pem_start"); // CA cert of wss://echo.websocket.event, modify it if using another server
+    websocket_cfg.cert_pem = cacert_start;
+#endif
+
+#if CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
+    websocket_cfg.skip_cert_common_name_check = true;
+#endif
 
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
 

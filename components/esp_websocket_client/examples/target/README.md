@@ -13,6 +13,55 @@ This example can be executed on any ESP32 board, the only required interface is 
 * Open the project configuration menu (`idf.py menuconfig`)
 * Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu.
 * Configure the websocket endpoint URI under "Example Configuration", if "WEBSOCKET_URI_FROM_STDIN" is selected then the example application will connect to the URI it reads from stdin (used for testing)
+* To test a WebSocket client example over TLS, please enable one of the following configurations: `CONFIG_WS_OVER_TLS_MUTUAL_AUTH` or `CONFIG_WS_OVER_TLS_SERVER_AUTH`. See the sections below for more details.
+
+### Server Certificate Verification
+
+* Mutual Authentication: When `CONFIG_WS_OVER_TLS_MUTUAL_AUTH=y` is enabled, it's essential to provide valid certificates for both the server and client.
+  This ensures a secure two-way verification process.
+* Server-Only Authentication: To perform verification of the server's certificate only (without requiring a client certificate), set `CONFIG_WS_OVER_TLS_SERVER_AUTH=y`.
+  This method skips client certificate verification.
+* Example below demonstrates how to generate a new self signed certificates for the server and client using the OpenSSL command line tool
+
+Please note: This example represents an extremely simplified approach to generating self-signed certificates/keys with a single common CA, devoid of CN checks, lacking password protection, and featuring hardcoded key sizes and types. It is intended solely for testing purposes.
+In the outlined steps, we are omitting the configuration of the CN (Common Name) field due to the context of a testing environment. However, it's important to recognize that the CN field is a critical element of SSL/TLS certificates, significantly influencing the security and efficacy of HTTPS communications. This field facilitates the verification of a website's identity, enhancing trust and security in web interactions. In practical deployments beyond testing scenarios, ensuring the CN field is accurately set is paramount for maintaining the integrity and reliability of secure communications
+
+### Generating a self signed Certificates with OpenSSL
+* The example below outlines the process for creating new certificates for both the server and client using OpenSSL, a widely-used command line tool for implementing TLS protocol:
+
+```
+Generate the CA's Private Key;
+openssl genrsa -out ca_key.pem 2048
+
+Create the CA's Certificate
+openssl req -new -x509 -days 3650 -key ca_key.pem -out ca_cert.pem
+
+Generate the Server's Private Key
+openssl genrsa -out server_key.pem 2048
+
+Generate a Certificate Signing Request (CSR) for the Server
+openssl req -new -key server_key.pem -out server_csr.pem
+
+Sign the Server's CSR with the CA's Certificate
+openssl x509 -req -days 3650 -in server_csr.pem -CA ca_cert.pem -CAkey ca_key.pem -CAcreateserial -out server_cert.pem
+
+Generate the Client's Private Key
+openssl genrsa -out client_key.pem 2048
+
+Generate a Certificate Signing Request (CSR) for the Client
+openssl req -new -key client_key.pem -out client_csr.pem
+
+Sign the Client's CSR with the CA's Certificate
+openssl x509 -req -days 3650 -in client_csr.pem -CA ca_cert.pem -CAkey ca_key.pem -CAcreateserial -out client_cert.pem
+
+```
+
+Expiry time and metadata fields can be adjusted in the invocation.
+
+Please see the openssl man pages (man openssl) for more details.
+
+It is **strongly recommended** to not reuse the example certificate in your application;
+it is included only for demonstration.
 
 ### Build and Flash
 
