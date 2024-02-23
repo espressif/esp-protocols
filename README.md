@@ -49,3 +49,7 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### console_cmd_wifi
 
 * Brief introduction [README](components/console_cmd_wifi/README.md)
+
+### ESP PPP Link (eppp)
+
+* Brief introduction [README](components/eppp_link/README.md)

@@ -1,0 +1,35 @@
+menu "eppp_link"
+
+    choice EPPP_LINK_DEVICE
+        prompt "Choose PPP device"
+        default EPPP_LINK_DEVICE_UART
+        help
+            Select which peripheral to use for PPP link
+
+        config EPPP_LINK_DEVICE_UART
+            bool "UART"
+            help
+                Use UART.
+
+        config EPPP_LINK_DEVICE_SPI
+            bool "SPI"
+            help
+                Use SPI.
+    endchoice
+
+    config EPPP_LINK_CONN_MAX_RETRY
+        int "Maximum retry"
+        default 6
+        help
+            Set the Maximum retry to infinitely avoid reconnecting
+            This is used only with the simplified API (eppp_connect()
+            and eppp_listen())
+
+    config EPPP_LINK_PACKET_QUEUE_SIZE
+        int "Packet queue size"
+        default 64
+        help
+            Size of the Tx packet queue.
+            You can decrease the number for slower bit rates.
+
+endmenu

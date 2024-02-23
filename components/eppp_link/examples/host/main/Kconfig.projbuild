@@ -1,0 +1,53 @@
+menu "Example Configuration"
+
+    config EXAMPLE_GLOBAL_DNS
+        hex "Set global DNS server"
+        range 0 0xFFFFFFFF
+        default 0x08080808
+        help
+            Global DNS server address.
+
+    config EXAMPLE_MQTT
+        bool "Run mqtt example"
+        default y
+        help
+            Run MQTT client after startup.
+
+    config EXAMPLE_BROKER_URL
+        string "Broker URL"
+        depends on EXAMPLE_MQTT
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the broker to connect to.
+
+    config EXAMPLE_IPERF
+        bool "Run iperf"
+        default y
+        help
+            Init and run iperf console.
+
+    config EXAMPLE_UART_TX_PIN
+        int "TXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 10
+        range 0 31
+        help
+            Pin number of UART TX.
+
+    config EXAMPLE_UART_RX_PIN
+        int "RXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 11
+        range 0 31
+        help
+            Pin number of UART RX.
+
+    config EXAMPLE_UART_BAUDRATE
+        int "Baudrate"
+        depends on EPPP_LINK_DEVICE_UART
+        default 2000000
+        range 0 4000000
+        help
+            Baudrate used by the PPP over UART
+
+endmenu
