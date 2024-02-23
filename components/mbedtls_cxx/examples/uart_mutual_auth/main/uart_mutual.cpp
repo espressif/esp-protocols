@@ -13,119 +13,22 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 
-static auto const *TAG = "uart_mutual_tls";
+namespace {
 
-const unsigned char cacert[] = "-----BEGIN CERTIFICATE-----\n"
-                               "MIIDIzCCAgugAwIBAgIURgnkf/YFHeJCEyGZNm1I1hd34xcwDQYJKoZIhvcNAQEL\n"
-                               "BQAwITELMAkGA1UEBhMCQ1oxEjAQBgNVBAMMCUVzcHJlc3NpZjAeFw0yNDAyMTUx\n"
-                               "MTMyMjVaFw0yNTAyMTQxMTMyMjVaMCExCzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlF\n"
-                               "c3ByZXNzaWYwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDI3UdvPpmi\n"
-                               "56OIK0AOt/RorRXLM7hfyWfkuQjT4fdqb6eUVBQ3PMt3h2cipTlAWYY11gigdikV\n"
-                               "59eO5SEJ3ehGZlExgIlGklHme4G7fmL6uLjuzEmLavz8aanKbTqGFxfjbCkTf6tD\n"
-                               "OJkT+lpBGrYuC8/OMjoxgHhxQYxPBKJENH6VxjMwrrH3rO2BMQOJolEZpYpyv5nE\n"
-                               "avn8iFJk3Gew9P8mkGTvdJ9UCyq5P9aPowbNvNlT+46OTeB/PyrLbIEcSw5rmjrh\n"
-                               "5cOCunu0pZmKEw3gJU7Kb5T+DyegJCQPGy+MVkTQ/qoAgJMfY3CZCLPbWUGx/uxt\n"
-                               "MLMq6ysSVHwZAgMBAAGjUzBRMB0GA1UdDgQWBBT54IyCKBrnW+0MNgH/z3wFJWeO\n"
-                               "mjAfBgNVHSMEGDAWgBT54IyCKBrnW+0MNgH/z3wFJWeOmjAPBgNVHRMBAf8EBTAD\n"
-                               "AQH/MA0GCSqGSIb3DQEBCwUAA4IBAQBg3WlfNiKoolSmJe01zhos66HduqX4kR3s\n"
-                               "W8/aD/hd4QLOLrierSXuVn8yllIUjs6mMK4iZNH2PYKCfwEvWm+gIsrzrHWfyhtY\n"
-                               "wAbQUJ3EweqHyHqh7SYly5fvgsbbKlwGIwFu/IEOjnsTyG8uwPLi3vxPYQGrCOJR\n"
-                               "QNeKmwIGhZZyZSnFOtyndvhnMa6ykLjv6wIcaaS2muVS9yr/UEd52GLSU1h4iT3q\n"
-                               "Sn5Fcmd0uxZ6yuRN5s0WcUTPhmuAMAQkP66mkJkI6RaoxauruDpo0HsSAXC12UKG\n"
-                               "X7+F8ekWeRO1Sd1nS0fZG795chnuH4LBiXBzFvKkhZPoDo7fr0lo\n"
-                               "-----END CERTIFICATE-----";
-const unsigned char clientcert[] = "-----BEGIN CERTIFICATE-----\n"
-                                   "MIICuzCCAaMCFBdHd97jdvI7d4rSVaRZQUPiTTn7MA0GCSqGSIb3DQEBCwUAMCEx\n"
-                                   "CzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlFc3ByZXNzaWYwHhcNMjQwMjE1MTEzNDAw\n"
-                                   "WhcNMjUwMjE0MTEzNDAwWjATMREwDwYDVQQDDAhNeUNsaWVudDCCASIwDQYJKoZI\n"
-                                   "hvcNAQEBBQADggEPADCCAQoCggEBAPZHkjuldGnwtz7jBWhcYU0lvBZHQVZVDG5t\n"
-                                   "dcSV56WL3IXfwanQtSOVVQiNGRSUHqlSnZjdDS4qlbeESveeXsvMRRl9QYn+v3G9\n"
-                                   "hoe8/HZQDm3F4F2eFYVtXaIjyFsxr+POhy/WVVAOmClRuMcCknMGf7WzozlnoUxW\n"
-                                   "PCNtxpgBpHUiEUnSMUlqvtf89DUitwK9GfEbKRebM8c04U56uuXQpQzHX4ksP9hv\n"
-                                   "PcRyerc7FiUyX1VFSZ1POmdqrwRqDNB66ZVz7YhFkhj7Am3bZ4F1cZ1oddXHz+3l\n"
-                                   "KNUSjYf1sHVINq4lbfIGsyh5m3dv8Rv79pvTBMoR2qCScgkCxIsCAwEAATANBgkq\n"
-                                   "hkiG9w0BAQsFAAOCAQEAFalmADbLZdVah/x6ff+8OhUm1QSFk9nU+1vvTC59T7ua\n"
-                                   "mUIRDB2gAWzCt/pfABLXZtTD33DDDSz3T1rRJV/NhI3RrHZaBK1HWHPTqdIx5zzS\n"
-                                   "WZHL9xgZf5RAHkLFI+2lhyXzWDwHe6H38+ZUPTi2S5v5pMQqR4f1HKwDJX3yrOdF\n"
-                                   "dQhMgP4wHWT6sug8w+x3nSm3UV3STVQWwWMcXPtyrSSMBnJFH1sNOi2+0M99NEc3\n"
-                                   "IaFwScvaMFktJnOeXoBS+bKL2UiUq8OILyv16v0LA1KDouvJ1mVjM3wky7VaTtbA\n"
-                                   "UUsjdD8UaoEnBAGjTe/zJsUN2u1qdH5pU5ycYB/mpA==\n"
-                                   "-----END CERTIFICATE-----";
-const unsigned char clientkey[] = "-----BEGIN RSA PRIVATE KEY-----\n"
-                                  "MIIEpQIBAAKCAQEA9keSO6V0afC3PuMFaFxhTSW8FkdBVlUMbm11xJXnpYvchd/B\n"
-                                  "qdC1I5VVCI0ZFJQeqVKdmN0NLiqVt4RK955ey8xFGX1Bif6/cb2Gh7z8dlAObcXg\n"
-                                  "XZ4VhW1doiPIWzGv486HL9ZVUA6YKVG4xwKScwZ/tbOjOWehTFY8I23GmAGkdSIR\n"
-                                  "SdIxSWq+1/z0NSK3Ar0Z8RspF5szxzThTnq65dClDMdfiSw/2G89xHJ6tzsWJTJf\n"
-                                  "VUVJnU86Z2qvBGoM0HrplXPtiEWSGPsCbdtngXVxnWh11cfP7eUo1RKNh/WwdUg2\n"
-                                  "riVt8gazKHmbd2/xG/v2m9MEyhHaoJJyCQLEiwIDAQABAoIBAEXhoRjTpei5qQVr\n"
-                                  "HYmzTNi7MFeR+HQqxdA/tv8FGinbOcOy7hzlX8CtCufWQZuZO+oHyzgo4SiMZNch\n"
-                                  "7rO8eGGToLfO1t31LxVzFc1GTsyzgqSbVUK7LJgjpEHxrVRTEPmvDKUCSErjGUIA\n"
-                                  "MlIl5LBG084XHuWXBinG/mF/MK7ImgYi9sSa2I9N6JPHoype/tg16vP2a3v3CNUu\n"
-                                  "YPH8fezsFSBs8FFd8rW7k2Q7qg6Wa5rYvafpMbBtD9cJXAFYqqJ2IAQNpixDwHj5\n"
-                                  "D3J5HTurhgC9NvNtQ49KgfKFRohXZF4PZ9XE1Lh4Jat3qo6P4OA3W7iTu1mruJGh\n"
-                                  "p1wXemECgYEA/GZqTqXdutrobwtHxmXl5eGQx9/BF9OrgXaOrJCRSIMyxh2F10bA\n"
-                                  "VG+k83ppF43dWBGX1yKksFV0uZrPK+lh4eFkPPOC6o3EQmWfQzkCCAZEXVpItL6C\n"
-                                  "Mp4v3weeEyfRPmAbgauiDPSJ5ZXbh7jP/eStJa4qLuM430cESlW76l8CgYEA+crO\n"
-                                  "7jQKFl4e3We25oboG/mD8QQsGGQdcfC8XkGb6milcRJcAjKyWPBwvPA815gmz9hn\n"
-                                  "Qk9/X0Y4ADg+hP7iVoC6BRfQYdSJ1hsUtNxLv49V1waQCYxkvZJ5ajjX95KOU7i4\n"
-                                  "/Pbim6wWrpN66trzN40YzDGQHLJiAmEtxtDc7VUCgYEA7CDkU6/ZQHaL/VcQTwwF\n"
-                                  "iIr+Z/9tJl1glj3UPJ0DTlNvrOjxzfTi+ht4tlBPATo3Wa0b4KkIae+IxBuQtgQh\n"
-                                  "DrFOlbc7QzRd58AqvzkWLWuviaZtXqrcI37aSk1WFZWqrDA9i5KGiJg+agtI1jCQ\n"
-                                  "ZXcKhbXqwPLSwhAuc1zB8QECgYEA5h8I9DnM8T5UgPSDc2zleKAuBWQqm23gEpAN\n"
-                                  "eWhIE3PEtp6LVRsPYxBfTDCmXJg3aVOcDWLfnQ47mTg3oJ6QNdDxjq+Zsgbz1OOt\n"
-                                  "99Dbl+ac1jOdjq5gQKUoZctoaxQBOu/6vFFWAsRPQRVtL9/2IT9DkRo4Abf0wux0\n"
-                                  "F61jWuECgYEAlEFSF00+uGbcFuW7WwH4SdC+cjwGnFxf6Qr52mGiZYiiHkrMJb8o\n"
-                                  "j//OXqzZqo2uErlhRC+B2t+q5ZOWJwUrAXv90uAtPBuJGC4RcE568EvKGuFd2g8e\n"
-                                  "Udr/NBw+ghrSuI/sSqB7MAzqcwkhX+BGtTy2kSS6V5kfAhjXBidbJoc=\n"
-                                  "-----END RSA PRIVATE KEY-----";
+constexpr auto *TAG = "uart_mutual_tls";
 
+using pem_format = const unsigned char;
 
-
-const unsigned char servercert[] = "-----BEGIN CERTIFICATE-----\n"
-                                   "MIICvDCCAaQCFBdHd97jdvI7d4rSVaRZQUPiTTn6MA0GCSqGSIb3DQEBCwUAMCEx\n"
-                                   "CzAJBgNVBAYTAkNaMRIwEAYDVQQDDAlFc3ByZXNzaWYwHhcNMjQwMjE1MTEzMzM0\n"
-                                   "WhcNMjUwMjE0MTEzMzM0WjAUMRIwEAYDVQQDDAlteV9zZXJ2ZXIwggEiMA0GCSqG\n"
-                                   "SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCqGKRqOsPIwpFC6dZa/UeC8SNbBxs48YVP\n"
-                                   "n+elMypx9GHtemTWlrcjdy/K/iaheSPFEJI368g2tS/yrx/OSIWp+6uC2WdC4iaa\n"
-                                   "JvSI0ZDf8lPgriPZsE/89aulcfKCSQAdbVx0aTlwYdlCYQXkFGTKy00l2/AEhmPM\n"
-                                   "9L639qy1APHxVtiRCGtg9zruBLdDgJ51O6N0yFMo1lmSoT4F6CWYKsG4/8iP75Bj\n"
-                                   "LjK0wDBVYSdDcYADkKpPlhenY+ZEEiMthUQjA3vnNSdCWrGIR2Zb+QTwA20gMdDU\n"
-                                   "8+eun5LPNCMFfhzD5j478WL7Gfp9wjFFCtBGAcrl8W//RSPznTAtAgMBAAEwDQYJ\n"
-                                   "KoZIhvcNAQELBQADggEBAIxVz9aNbjlYzaX91mQ6CLwoAeBmAzl8Ck4L5pSz9X+1\n"
-                                   "A2d4BM+diQjlADNldH+w6w7j7JolxUBkJSFGMAMXSvqNcu6ORhWb9MjC+x/aRYTZ\n"
-                                   "hf6qEHl80nP5lTMl8Hy0fYMzG75SfhXYhzhz7Z/GcFC4SQWj7Zv7k/bFYR5JbhIg\n"
-                                   "WqF1dv4xffbGa4CMAkaWgBvgI/Wq+XW+mFJPrKzYBsKcu9HbeeZozuo9goVkoRba\n"
-                                   "uEESPeNWZv/1iSly2kwcvK6TuuI4I4z3yFqZFj5fhUtjGhaPlJC9LcI7jzJa+K5Y\n"
-                                   "EDFTvDQzmqJUUAg8aWVI/Wut1ji9QEEzY+SADz6fP5Y=\n"
-                                   "-----END CERTIFICATE-----";
-
-const unsigned char serverkey[] = "-----BEGIN RSA PRIVATE KEY-----\n"
-                                  "MIIEogIBAAKCAQEAqhikajrDyMKRQunWWv1HgvEjWwcbOPGFT5/npTMqcfRh7Xpk\n"
-                                  "1pa3I3cvyv4moXkjxRCSN+vINrUv8q8fzkiFqfurgtlnQuImmib0iNGQ3/JT4K4j\n"
-                                  "2bBP/PWrpXHygkkAHW1cdGk5cGHZQmEF5BRkystNJdvwBIZjzPS+t/astQDx8VbY\n"
-                                  "kQhrYPc67gS3Q4CedTujdMhTKNZZkqE+BeglmCrBuP/Ij++QYy4ytMAwVWEnQ3GA\n"
-                                  "A5CqT5YXp2PmRBIjLYVEIwN75zUnQlqxiEdmW/kE8ANtIDHQ1PPnrp+SzzQjBX4c\n"
-                                  "w+Y+O/Fi+xn6fcIxRQrQRgHK5fFv/0Uj850wLQIDAQABAoIBAHXcW1isXWsnvoWy\n"
-                                  "B/DGXZ3Svt/dPbSoTepNb7JdkMSjRJPL4kF6721osbojftsWWH29LMQI4ZNe2tl7\n"
-                                  "FTvXrp6JH1+sisuiboMUCQ8gvxUeEZa2s2qsq9Ao3oXmPdafBLBfTdfv7Xf8pRFE\n"
-                                  "r1NJ+kk2s79O9bH8+PxUfi50g1lrK8LG06jkJpuAbzKg8c9bJJ5LzBzYzw8wO7Tp\n"
-                                  "POvUwCT51/NjR5LxqzTgD4ckPuYVyp/avkg2biaOO2xXCCOx6jNotUaKj6OpmB4n\n"
-                                  "M95/kVvR1+TwlfS1rSQVUUJXsawUz5iWNroM8YEoxBQ/WA2CGj/w59Oxn446eRbE\n"
-                                  "EPrq8zUCgYEA2g8NC+ZOQMskmdPAX+/wu88CqN1JXOOTTannIjT+XRmvFnI2IcR2\n"
-                                  "Qsz2hSKsNbhJH4yKqmAgncTXFdAadKt5ZjQcLFd9JeG/GoLcTzt6IGgRzl1LKl5Y\n"
-                                  "YMSV5SBI16m9HBXgWnzNgvct67zmtUucFMqSMdMxknzJbG9FYAghL/cCgYEAx7E0\n"
-                                  "rHZHJMZpSmBg5dDO9l3QPrRxxtIQy5o5+5YvQ6fpk4N5F+KtDye3oLjKld2k02sV\n"
-                                  "DJYfr5B9DLqsrRskQM8F/q9D8Az/PLfUpbmZ6WVN0jTAu//HPbZHa0LpH3to+B/S\n"
-                                  "nnkdDWHlZs9TvuQr5YZXuGqnTAvyhkOoEkNN3/sCgYA8DcMZEN9iRtAYsVGc2lbh\n"
-                                  "Uly4JuFqfJ532B/4ssGO4GDw/Jld6V5sfUgzWF43GT7COpGB5KF28dwOfNacZRE1\n"
-                                  "DYrox1uHEEnyQjHsfEPhIugsflMSIxOR6vIhPSfyhSO41WmJYi+zLuHtt4OOUHl2\n"
-                                  "3Gcw46oWXtmWTHq9vN9u9wKBgGiLzt7nwZFwSxmEYdaPvnrfXLIneFW2DtL5eJfN\n"
-                                  "5grOswvmzhQCOcZwbcO4W1+gvbVuH4QKaKZayA1NAjBSwGUpvaK8EZ5wv4QDXlIx\n"
-                                  "XHID9n0x3yHN5HrbnoJ6cmBoFOmqh3MuR1aFRTvRGbAb9xtgfTZwqAu5SYyfiTOe\n"
-                                  "hvvXAoGAfYGO51AR1qfzYQh5nhm4/gFRESUbZevpNDF610GCXNhrcFWH0WgL5rUo\n"
-                                  "bUPvhje/iRpmarv4vB75ax9wTpBp+Wl08YDx4sHlBUAi5JYvieyotfxjI359jAE5\n"
-                                  "X+RPrWjoMOX3QUxCQt5D1gnMi9msFzpsZaEOkeMKf/DTjNNREFA=\n"
-                                  "-----END RSA PRIVATE KEY-----";
+extern pem_format cacert_start[] asm("_binary_ca_crt_start");
+extern pem_format cacert_end[] asm("_binary_ca_crt_end");
+extern pem_format clientcert_start[] asm("_binary_client_crt_start");
+extern pem_format clientcert_end[] asm("_binary_client_crt_end");
+extern pem_format clientkey_start[] asm("_binary_client_key_start");
+extern pem_format clientkey_end[] asm("_binary_client_key_end");
+extern pem_format servercert_start[] asm("_binary_srv_crt_start");
+extern pem_format servercert_end[] asm("_binary_srv_crt_end");
+extern pem_format serverkey_start[] asm("_binary_srv_key_start");
+extern pem_format serverkey_end[] asm("_binary_srv_key_end");
 
 /**
  * Using DTLS the below is set to true.
@@ -137,7 +40,10 @@ const unsigned char serverkey[] = "-----BEGIN RSA PRIVATE KEY-----\n"
  * If `use_dgrams` is set to false, we perform TLS on UART stream.
  * The UART driver is already a stream-like API (using ringbufer), so we simple read and write to UART
  */
-static const bool use_dgrams = false;
+const bool use_dgrams = false;
+}
+
+using namespace idf::mbedtls_cxx;
 
 class SecureLink: public Tls {
 public:
@@ -159,12 +65,23 @@ public:
         return uart.recv(buf, len, 0);
     }
 
-    int recv_tout(unsigned char *buf, size_t len, int timeout) override
+    int recv_timeout(unsigned char *buf, size_t len, int timeout) override
     {
         // dgram read
         return uart.recv_dgram(buf, len, timeout);
     }
 
+    bool listen() // open as server
+    {
+        return open(true);
+    }
+
+    bool connect() // open as client
+    {
+        return open(false);
+    }
+
+private:
     bool open(bool server_not_client)
     {
         if (uart.init() != ESP_OK) {
@@ -188,7 +105,6 @@ public:
         return handshake() == 0;
     }
 
-private:
     /**
      * RAII wrapper of UART
      */
@@ -292,23 +208,24 @@ private:
     } uart;
 };
 
-static void tls_client()
+namespace {
+void tls_client()
 {
     const unsigned char message[] = "Hello\n";
     unsigned char reply[128];
     SecureLink client(UART_NUM_2, 4, 5);
-    const_buf cert{clientcert, sizeof(clientcert)};
-    const_buf key{clientkey, sizeof(clientkey)};
+    const_buf cert{clientcert_start, clientcert_end - clientcert_start};
+    const_buf key{clientkey_start, clientkey_end - clientkey_start};
     if (!client.set_own_cert(cert, key)) {
         ESP_LOGE(TAG, "Failed to set own cert");
         return;
     }
-    const_buf ca{cacert, sizeof(cacert)};
+    const_buf ca{cacert_start, cacert_end - cacert_start};
     if (!client.set_ca_cert(ca)) {
         ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
-    if (!client.open(false)) {
+    if (!client.connect()) {
         ESP_LOGE(TAG, "Failed to CONNECT! %d", errno);
         return;
     }
@@ -329,23 +246,23 @@ static void tls_client()
     ESP_LOGI(TAG, "Successfully received: %.*s", len, reply);
 }
 
-static void tls_server()
+void tls_server()
 {
     unsigned char message[128];
     SecureLink server(UART_NUM_1, 25, 26);
-    const_buf cert{servercert, sizeof(servercert)};
-    const_buf key{serverkey, sizeof(serverkey)};
+    const_buf cert{servercert_start, servercert_end - servercert_start};
+    const_buf key{serverkey_start, serverkey_end - serverkey_start};
     if (!server.set_own_cert(cert, key)) {
         ESP_LOGE(TAG, "Failed to set own cert");
         return;
     }
-    const_buf ca{cacert, sizeof(cacert)};
+    const_buf ca{cacert_start, cacert_end - cacert_start};
     if (!server.set_ca_cert(ca)) {
         ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
     ESP_LOGI(TAG, "openning...");
-    if (!server.open(true)) {
+    if (!server.listen()) {
         ESP_LOGE(TAG, "Failed to OPEN! %d", errno);
         return;
     }
@@ -365,7 +282,7 @@ static void tls_server()
     ESP_LOGI(TAG, "Written back");
     vTaskDelay(pdMS_TO_TICKS(500));
 }
-
+} // namespace
 
 extern "C" void app_main()
 {

@@ -8,16 +8,14 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls_wrap.hpp"
 
+using namespace idf::mbedtls_cxx;
+
 bool Tls::init(is_server server, do_verify verify, TlsConfig *config)
 {
     const char pers[] = "mbedtls_wrapper";
-    if (config == nullptr) {
-
-    }
     is_server_ = server == is_server{true};
     is_dtls_ = config ? config->is_dtls : false;
     uint32_t timeout = config ? config->timeout : 0;
-    const_buf client_id = config ? config->client_id : const_buf{};
     mbedtls_entropy_init(&entropy_);
     mbedtls_ctr_drbg_seed(&ctr_drbg_, mbedtls_entropy_func, &entropy_, (const unsigned char *)pers, sizeof(pers));
     int endpoint = server == is_server{true} ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT;
@@ -29,7 +27,7 @@ bool Tls::init(is_server server, do_verify verify, TlsConfig *config)
     }
     mbedtls_ssl_conf_rng(&conf_, mbedtls_ctr_drbg_random, &ctr_drbg_);
     if (timeout) {
-        mbedtls_ssl_conf_read_timeout(&conf_, 10000);
+        mbedtls_ssl_conf_read_timeout(&conf_, timeout);
     }
     mbedtls_ssl_conf_authmode(&conf_, verify == do_verify{true} ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_NONE);
     ret = mbedtls_ssl_conf_own_cert(&conf_, &public_cert_, &pk_key_);
@@ -41,11 +39,13 @@ bool Tls::init(is_server server, do_verify verify, TlsConfig *config)
         mbedtls_ssl_conf_ca_chain(&conf_, &ca_cert_, nullptr);
     }
 
+#if CONFIG_MBEDTLS_SSL_PROTO_DTLS
     if (is_server_ && is_dtls_) {
         if (!init_dtls_cookies()) {
             return false;
         }
     }
+#endif // MBEDTLS_SSL_PROTO_DTLS
 
     ret = mbedtls_ssl_setup(&ssl_, &conf_);
     if (ret) {
@@ -57,12 +57,14 @@ bool Tls::init(is_server server, do_verify verify, TlsConfig *config)
         mbedtls_ssl_set_timer_cb(&ssl_, &timer_, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
     }
 
-    if (is_server_ && is_dtls_ && client_id != const_buf{}) {
-        client_id_ = client_id;
+#if CONFIG_MBEDTLS_SSL_PROTO_DTLS
+    if (is_server_ && is_dtls_ && config && config->client_id != const_buf {}) {
+        client_id_ = config->client_id;
         if (!set_client_id()) {
             return false;
         }
     }
+#endif // MBEDTLS_SSL_PROTO_DTLS
 
     return true;
 }
@@ -93,6 +95,7 @@ int Tls::handshake()
 
     while ( ( ret = mbedtls_ssl_handshake( &ssl_ ) ) != 0 ) {
         if ( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
+#if CONFIG_MBEDTLS_SSL_PROTO_DTLS
             if (is_server_ && is_dtls_ && ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
                 // hello verification requested -> restart the session with this client_id
                 if (!set_client_id()) {
@@ -100,6 +103,7 @@ int Tls::handshake()
                 }
                 continue;
             }
+#endif // MBEDTLS_SSL_PROTO_DTLS
             print_error( "mbedtls_ssl_handshake returned", ret );
             return -1;
         }
@@ -123,7 +127,7 @@ int Tls::bio_read(void *ctx, unsigned char *buf, size_t len)
 int Tls::bio_read_tout(void *ctx, unsigned char *buf, size_t len, uint32_t timeout)
 {
     auto s = static_cast<Tls *>(ctx);
-    return s->recv_tout(buf, len, timeout);
+    return s->recv_timeout(buf, len, timeout);
 }
 
 int Tls::write(const unsigned char *buf, size_t len)
@@ -234,6 +238,7 @@ bool Tls::is_session_loaded()
     return session_ != nullptr;
 }
 
+#if CONFIG_MBEDTLS_SSL_PROTO_DTLS
 bool Tls::init_dtls_cookies()
 {
     int ret = mbedtls_ssl_cookie_setup(&cookie_, mbedtls_ctr_drbg_random, &ctr_drbg_);
@@ -250,6 +255,7 @@ bool Tls::set_client_id()
 {
     int ret;
     if (client_id_ == const_buf{}) {
+        printf("client_id is not set");
         return false;
     }
     mbedtls_ssl_session_reset(&ssl_);
@@ -259,3 +265,4 @@ bool Tls::set_client_id()
     }
     return true;
 }
+#endif

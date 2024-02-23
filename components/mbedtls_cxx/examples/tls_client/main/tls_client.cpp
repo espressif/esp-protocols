@@ -9,11 +9,15 @@
 #include "esp_log.h"
 #include "mbedtls_wrap.hpp"
 
-static auto const *TAG = "simple_tls_client";
+using namespace idf::mbedtls_cxx;
+
+namespace {
+constexpr auto *TAG = "simple_tls_client";
+}
 
 class TlsSocketClient: public Tls {
 public:
-    explicit TlsSocketClient() : Tls() {}
+    TlsSocketClient() = default;
     ~TlsSocketClient() override
     {
         if (sock >= 0) {
@@ -91,7 +95,9 @@ private:
     };
 };
 
-static void tls_client()
+namespace {
+
+void tls_client()
 {
     const unsigned char message[] = "Hello\n";
     unsigned char reply[128];
@@ -111,6 +117,8 @@ static void tls_client()
     }
     ESP_LOGI(TAG, "Successfully received: %.*s", len, reply);
 }
+
+} // namespace
 
 #if CONFIG_IDF_TARGET_LINUX
 /**
