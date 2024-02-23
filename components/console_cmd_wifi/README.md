@@ -33,12 +33,16 @@ The component offers a console with a command that enables runtime wifi configur
     ESP_ERROR_CHECK(console_cmd_start());    // Start console
     ```
 
+Note: Auto-registration of a specific plugin command can be disabled from menuconfig.
+
 ## Suported command:
 
 ### wifi:
-* ```wifi help```: Prints the help text for all wifi commands
-* ```wifi show network```: Scans and displays upto 10 available wifi networks.
-* ```wifi show sta```: Shows the details of wifi station.
-* ```wifi sta join <network ssid> <password>```: Station joins the given wifi network.
-* ```wifi sta join <network ssid>```: Station joins the given unsecured wifi network.
-* ```wifi sta leave```: Station leaves the wifi network.
+```
+ wifi help: Prints the help text for all wifi commands
+ wifi show network/sta: Scans and displays all available wifi APs./ Shows the details of wifi station.
+ wifi sta join <network ssid> <password>: Station joins the given wifi network.
+ wifi sta join <network ssid>: Station joins the given unsecured wifi network.
+ wifi sta join: Station joins the pre-configured wifi network.
+ wifi sta leave: Station leaves the wifi network.
+ ```
