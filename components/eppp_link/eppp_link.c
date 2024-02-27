@@ -12,7 +12,6 @@
 #include "esp_event.h"
 #include "esp_netif_ppp.h"
 #include "eppp_link.h"
-#include "eppp_common.h"
 #include "esp_serial_slave_link/essl_sdio.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
@@ -746,7 +745,6 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     esp_netif_t *netif = netif_init(role);
     if (!netif) {
         ESP_LOGE(TAG, "Failed to initialize PPP netif");
-        remove_handlers();
         return NULL;
     }
     esp_netif_ppp_config_t netif_params;
@@ -775,7 +773,6 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
-        remove_handlers();
         return NULL;
     }
 #endif

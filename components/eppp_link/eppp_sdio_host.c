@@ -10,16 +10,17 @@
 #include "esp_netif.h"
 #include "driver/sdio_slave.h"
 #include "esp_serial_slave_link/essl_sdio.h"
-#include "eppp_common.h"
+#include "eppp_sdio.h"
 #include "driver/sdmmc_host.h"
 #include "sdmmc_cmd.h"
 
 #if CONFIG_SOC_SDMMC_HOST_SUPPORTED
-#define SDIO_ALIGN(size) (((size) + 3U) & ~(3U))
+
 #define TIMEOUT_MAX   UINT32_MAX
 
 static const char *TAG = "eppp_sdio_host";
-
+static SemaphoreHandle_t s_essl_mutex = NULL;
+//static sdmmc_card_t *card;
 
 static CACHE_ALIGNED_ATTR uint8_t send_buffer[SDIO_ALIGN(MAX_PAYLOAD)];
 static CACHE_ALIGNED_ATTR uint8_t rcv_buffer[SDIO_ALIGN(MAX_PAYLOAD)];
@@ -32,16 +33,46 @@ esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len)
     size_t send_len = SDIO_ALIGN(len);
     if (send_len > len) {
         // pad with SOF's
-        memset(&send_buffer[send_len], 0x7E, send_len - len);
+        memset(&send_buffer[len], 0x7E, send_len - len);
     }
+    xSemaphoreTake(s_essl_mutex, portMAX_DELAY);
     esp_err_t ret = essl_send_packet(eppp_get_essl(h), send_buffer, send_len, 50);
     if (ret == ESP_ERR_TIMEOUT || ret == ESP_ERR_NOT_FOUND) {
-        ESP_LOGW(TAG, "slave not ready to receive packet");
-        vTaskDelay(pdMS_TO_TICKS(100));
+        ESP_LOGW(TAG, "slave not ready to receive packet %x", ret);
+        xSemaphoreGive(s_essl_mutex);
         return ESP_ERR_NO_MEM;
+
+//        ESP_LOGI(TAG, "send reset to slave...");
+//        ret = essl_reset_cnt(eppp_get_essl(h));
+//        if (ret != ESP_OK) {
+//            ESP_LOGE(TAG, "Failed to reset cnt %x", ret);
+//            goto fail;
+//        }
+//        ret = essl_write_reg(eppp_get_essl(h), 0, REQ_RESET, NULL, TIMEOUT_MAX);
+//        if (ret != ESP_OK) {
+//            ESP_LOGE(TAG, "Failed to write reg %x", ret);
+//            goto fail;
+//        }
+//        ret = essl_send_slave_intr(eppp_get_essl(h), BIT(0), TIMEOUT_MAX);
+//        if (ret != ESP_OK) {
+//            ESP_LOGE(TAG, "Failed to send interrupt %x", ret);
+//            goto fail;
+//        }
+//
+//        vTaskDelay(500 / portTICK_PERIOD_MS);
+//        ret = essl_wait_for_ready(eppp_get_essl(h), TIMEOUT_MAX);
+//        if (ret != ESP_OK) {
+//            ESP_LOGE(TAG, "Failed to wait till ready %x", ret);
+//            goto fail;
+//        }
     }
-    ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
+//    ESP_LOGW(TAG, "sending data, size: %d %d", len, send_len);
+//    ESP_LOG_BUFFER_HEXDUMP(TAG, send_buffer, send_len, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, send_buffer, send_len, ESP_LOG_VERBOSE);
+    xSemaphoreGive(s_essl_mutex);
     return ESP_OK;
+//fail:
+//    return ESP_ERR_NO_MEM;
 }
 
 static esp_err_t print_cis_information(sdmmc_card_t *card)
@@ -75,6 +106,53 @@ static esp_err_t print_cis_information(sdmmc_card_t *card)
     }
     return ESP_OK;
 }
+
+//static esp_err_t request_slave_reset(essl_handle_t *h)
+//{
+//    ESP_LOGI(TAG, "send reset to slave...");
+//    esp_err_t ret = essl_reset_cnt(*h);
+//    if (ret != ESP_OK) {
+//        ESP_LOGE(TAG, "Failed to reset cnt %x", ret);
+//        ESP_LOGI(TAG, "try to deinit() and init() again...");
+//        essl_sdio_deinit_dev(*h);
+//        essl_sdio_config_t ser_config = {
+//                .card = card,
+//                .recv_buffer_size = SDIO_PAYLOAD,
+//        };
+//        ret = essl_sdio_init_dev(h, &ser_config);
+//        if (ret != ESP_OK || h == NULL) {
+//            ESP_LOGE(TAG, "essl_sdio_init_dev failed %d", ret);
+//            goto fail;
+//        }
+//        ret = essl_init(*h, TIMEOUT_MAX);
+//        if (ret != ESP_OK) {
+//            ESP_LOGE(TAG, "essl_init failed %d", ret);
+//            goto fail;
+//        }
+//
+//
+//        goto fail;
+//    }
+//
+//    ret = essl_write_reg(*h, SLAVE_REG_REQ, REQ_RESET, NULL, TIMEOUT_MAX);
+//    if (ret != ESP_OK) {
+//        goto fail;
+//    }
+//    ret = essl_send_slave_intr(*h, BIT(SLAVE_INTR), TIMEOUT_MAX);
+//    if (ret != ESP_OK) {
+//        goto fail;
+//    }
+//
+//    vTaskDelay(500 / portTICK_PERIOD_MS);
+//    ret = essl_wait_for_ready(*h, TIMEOUT_MAX);
+//    if (ret != ESP_OK) {
+//        goto fail;
+//    }
+//    ESP_LOGI(TAG, "slave io ready");
+//    return ESP_OK;
+//fail:
+//    return ESP_FAIL;
+//}
 
 esp_err_t eppp_sdio_host_init(essl_handle_t *h)
 {
@@ -122,7 +200,7 @@ esp_err_t eppp_sdio_host_init(essl_handle_t *h)
 
     essl_sdio_config_t ser_config = {
         .card = card,
-        .recv_buffer_size = MAX_PAYLOAD,
+        .recv_buffer_size = SDIO_PAYLOAD,
     };
     res = essl_sdio_init_dev(h, &ser_config);
     if (res != ESP_OK || h == NULL) {
@@ -141,11 +219,11 @@ esp_err_t eppp_sdio_host_init(essl_handle_t *h)
     }
     esp_err_t ret;
     ESP_LOGI(TAG, "send reset to slave...");
-    ret = essl_write_reg(*h, 0, 1, NULL, TIMEOUT_MAX);
+    ret = essl_write_reg(*h, SLAVE_REG_REQ, REQ_RESET, NULL, TIMEOUT_MAX);
     if (ret != ESP_OK) {
         goto fail;
     }
-    ret = essl_send_slave_intr(*h, BIT(0), TIMEOUT_MAX);
+    ret = essl_send_slave_intr(*h, BIT(SLAVE_INTR), TIMEOUT_MAX);
     if (ret != ESP_OK) {
         goto fail;
     }
@@ -156,6 +234,10 @@ esp_err_t eppp_sdio_host_init(essl_handle_t *h)
         goto fail;
     }
     ESP_LOGI(TAG, "slave io ready");
+    s_essl_mutex = xSemaphoreCreateMutex();
+    if (s_essl_mutex == NULL) {
+        goto fail;
+    }
     return ESP_OK;
 
 fail:
@@ -188,7 +270,7 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif, essl_handle_t h)
     uint32_t intr;
     esp_err_t err = get_intr(h, &intr);
     if (err == ESP_ERR_TIMEOUT) {
-        vTaskDelay(2);
+//        vTaskDelay(2);
         return ESP_OK;
     }
     if (err != ESP_OK) {
@@ -197,25 +279,36 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif, essl_handle_t h)
     }
     const int wait_ms = 50;
     if (intr & ESSL_SDIO_DEF_ESP32.new_packet_intr_mask) {
-        ESP_LOGD(TAG, "new packet coming");
-        while (1) {
+        xSemaphoreTake(s_essl_mutex, portMAX_DELAY);
+        esp_err_t ret;
+        do {
             size_t size_read = MAX_PAYLOAD;
-            esp_err_t ret = essl_get_packet(h, rcv_buffer, MAX_PAYLOAD, &size_read, wait_ms);
+            ret = essl_get_packet(h, rcv_buffer, MAX_PAYLOAD, &size_read, wait_ms);
             if (ret == ESP_ERR_NOT_FOUND) {
                 ESP_LOGE(TAG, "interrupt but no data can be read");
                 break;
-            } else if (ret != ESP_OK && ret != ESP_ERR_NOT_FINISHED) {
-                ESP_LOGE(TAG, "rx packet error: %08X", ret);
-                return ret;
-            }
-
-            ESP_LOGD(TAG, "receive data, size: %d", size_read);
-            ESP_LOG_BUFFER_HEXDUMP(TAG, rcv_buffer, size_read, ESP_LOG_VERBOSE);
-            esp_netif_receive(netif, rcv_buffer, size_read, NULL);
-            if (ret == ESP_OK) {
+            } else if (ret == ESP_OK) {
+                ESP_LOGD(TAG, "receive data, size: %d", size_read);
+                ESP_LOG_BUFFER_HEXDUMP(TAG, rcv_buffer, size_read, ESP_LOG_VERBOSE);
+//                ESP_LOG_BUFFER_HEXDUMP(TAG, rcv_buffer, size_read, ESP_LOG_ERROR);
+                esp_netif_receive(netif, rcv_buffer, size_read, NULL);
                 break;
+            } else {
+                ESP_LOGE(TAG, "rx packet error: %08X", ret);
+//                if (request_slave_reset(&h) != ESP_OK) {
+//                    ESP_LOGE(TAG, "Failed to request slave reset %x", ret);
+//                    goto fail;
+//                }
             }
-        }
+//            ESP_LOGD(TAG, "receive data, size: %d", size_read);
+//            ESP_LOG_BUFFER_HEXDUMP(TAG, rcv_buffer, size_read, ESP_LOG_VERBOSE);
+//            esp_netif_receive(netif, rcv_buffer, size_read, NULL);
+//            if (ret == ESP_OK) {
+//                break;
+//            }
+        } while (ret == ESP_ERR_NOT_FINISHED);
+//    fail:
+        xSemaphoreGive(s_essl_mutex);
     }
     return ESP_OK;
 }
