@@ -22,8 +22,6 @@
 #include "esp_rom_crc.h"
 #elif CONFIG_EPPP_LINK_DEVICE_UART
 #include "driver/uart.h"
-#elif CONFIG_EPPP_LINK_DEVICE_SDIO
-
 #endif
 
 static const int GOT_IPV4 = BIT0;
@@ -81,8 +79,6 @@ struct eppp_handle {
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     QueueHandle_t uart_event_queue;
     uart_port_t uart_port;
-#elif CONFIG_EPPP_LINK_DEVICE_SDIO
-    essl_handle_t essl;
 #endif
     esp_netif_t *netif;
     eppp_type_t role;
@@ -91,21 +87,17 @@ struct eppp_handle {
     bool netif_stop;
 };
 
-essl_handle_t eppp_get_essl(void *h)
-{
-    struct eppp_handle *handle = h;
-    return handle->essl;
-}
-
 typedef esp_err_t (*transmit_t)(void *h, void *buffer, size_t len);
 
 #if CONFIG_EPPP_LINK_DEVICE_SDIO
 esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len);
-esp_err_t eppp_sdio_host_rx(esp_netif_t *netif, essl_handle_t h);
+esp_err_t eppp_sdio_host_rx(esp_netif_t *netif);
 esp_err_t eppp_sdio_slave_rx(esp_netif_t *netif);
 esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len);
-esp_err_t eppp_sdio_host_init(essl_handle_t *h);
+esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *config);
 esp_err_t eppp_sdio_slave_init(void);
+void eppp_sdio_slave_deinit(void);
+void eppp_sdio_host_deinit(void);
 #else
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
@@ -690,7 +682,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     if (h->role == EPPP_SERVER) {
         return eppp_sdio_slave_rx(netif);
     } else {
-        return eppp_sdio_host_rx(netif, h->essl);
+        return eppp_sdio_host_rx(netif);
     }
 }
 
@@ -736,6 +728,13 @@ void eppp_deinit(esp_netif_t *netif)
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     deinit_uart(esp_netif_get_io_driver(netif));
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    if (h->role == EPPP_CLIENT) {
+        eppp_sdio_host_deinit();
+    } else {
+        eppp_sdio_slave_deinit();
+    }
 #endif
     netif_deinit(netif);
 }
@@ -764,11 +763,10 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     init_uart(esp_netif_get_io_driver(netif), config);
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
     esp_err_t ret;
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
     if (role == EPPP_SERVER) {
         ret = eppp_sdio_slave_init();
     } else {
-        ret = eppp_sdio_host_init(&h->essl);
+        ret = eppp_sdio_host_init(&config->sdio);
     }
 
     if (ret != ESP_OK) {

@@ -14,7 +14,7 @@ brings in the WiFi connectivity from the "SLAVE" microcontroller.
              SLAVE micro                                  HOST micro
     \|/  +----------------+                           +----------------+
      |   |                |          serial line      |                |
-     +---+ WiFi NAT PPPoS |======== UART / SPI =======| PPPoS client   |
+     +---+ WiFi NAT PPPoS |=== UART / SPI / SDIO =====| PPPoS client   |
          |        (server)|                           |                |
          +----------------+                           +----------------+
 ```
@@ -39,14 +39,19 @@ brings in the WiFi connectivity from the "SLAVE" microcontroller.
 
 ## Throughput
 
-Tested with WiFi-NAPT example, no IRAM optimizations
+Tested with WiFi-NAPT example
 
 ### UART @ 3Mbauds
 
 * TCP - 2Mbits/s
 * UDP - 2Mbits/s
 
-### SPI @ 20MHz
+### SPI @ 16MHz
 
-* TCP - 6Mbits/s
-* UDP - 10Mbits/s
+* TCP - 5Mbits/s
+* UDP - 8Mbits/s
+
+### SDIO
+
+* TCP - 9Mbits/s
+* UDP - 11Mbits/s
