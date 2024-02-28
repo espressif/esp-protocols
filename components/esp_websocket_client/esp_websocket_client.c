@@ -1208,26 +1208,24 @@ int esp_websocket_client_send_fin(esp_websocket_client_handle_t client, TickType
 
 int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
-    int ret = ESP_OK;
+    int ret = -1;
     if (client == NULL || len < 0 || (data == NULL && len > 0)) {
         ESP_LOGE(TAG, "Invalid arguments");
-        return ESP_FAIL;
+        return -1;
     }
 
     if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
         ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
-        return ESP_FAIL;
+        return -1;
     }
 
     if (!esp_websocket_client_is_connected(client)) {
         ESP_LOGE(TAG, "Websocket client is not connected");
-        ret = ESP_FAIL;
         goto unlock_and_return;
     }
 
     if (client->transport == NULL) {
         ESP_LOGE(TAG, "Invalid transport");
-        ret = ESP_FAIL;
         goto unlock_and_return;
     }
 
