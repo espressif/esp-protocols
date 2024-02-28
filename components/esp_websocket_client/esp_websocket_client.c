@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -550,8 +550,12 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
     int ret = -1;
     int need_write = len;
     int wlen = 0, widx = 0;
-
     bool contained_fin = opcode & WS_TRANSPORT_OPCODES_FIN;
+
+    if (esp_websocket_new_buf(client, true) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to setup tx buffer");
+        return -1;
+    }
 
     while (widx < len || opcode) {  // allow for sending "current_opcode" only message with len==0
         if (need_write > client->buffer_size) {
@@ -1226,11 +1230,7 @@ int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, 
         ret = ESP_FAIL;
         goto unlock_and_return;
     }
-    if (esp_websocket_new_buf(client, true) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to setup tx buffer");
-        ret = ESP_FAIL;
-        goto unlock_and_return;
-    }
+
     ret = esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout);
     if (ret < 0) {
         ESP_LOGE(TAG, "Failed to send the buffer");
