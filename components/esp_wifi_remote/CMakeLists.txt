@@ -1,5 +1,5 @@
 if(NOT CONFIG_ESP_WIFI_ENABLED)
-    set(src_wifi_is_remote esp_wifi_remote.c)
+    set(src_wifi_is_remote esp_wifi_remote.c esp_wifi_with_remote.c)
 endif()
 
 idf_component_register(INCLUDE_DIRS include

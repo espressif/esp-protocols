@@ -1,0 +1,1 @@
+components/esp_wifi_remote/include/esp_wifi_types_native.h
