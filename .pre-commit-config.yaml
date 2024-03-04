@@ -51,7 +51,7 @@ repos:
     rev: c0013808882a15a0c0c2c1a9b5c903866c53a653
     hooks:
     -   id: astyle_py
-        args: ['--style=otbs', '--attach-namespaces', '--attach-classes', '--indent=spaces=4', '--convert-tabs', '--align-pointer=name', '--align-reference=name', '--keep-one-line-statements', '--pad-header', '--pad-oper']
+        args: ['--style=otbs', '--attach-namespaces', '--attach-classes', '--indent=spaces=4', '--convert-tabs', '--align-pointer=name', '--align-reference=name', '--keep-one-line-statements', '--pad-header', '--pad-oper', '--exclude-list=ci/ignore_astyle.txt']
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v2.42.1
     hooks:

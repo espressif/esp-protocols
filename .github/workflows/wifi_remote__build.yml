@@ -1,0 +1,51 @@
+name: "esp_wifi_remote: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  wifi_remote_api_compat:
+    if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
+    name: Check API compatibility of WiFi Remote
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: Check that headers are the same as generated
+        shell: bash
+        run: |
+          ${IDF_PATH}/install.sh --enable-pytest
+          . ${IDF_PATH}/export.sh
+          cd ./components/esp_wifi_remote/scripts
+          python generate_and_check.py
+
+  build_wifi_remote:
+    if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
+    name: Build WiFi Remote
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        test: [ { app: smoke_test, path: "test/smoke_test" }]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+            key: ${{ matrix.idf_ver }}
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          ${IDF_PATH}/install.sh --enable-pytest
+          . ${IDF_PATH}/export.sh
+          python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
