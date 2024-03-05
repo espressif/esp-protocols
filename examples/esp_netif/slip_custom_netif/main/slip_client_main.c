@@ -121,7 +121,7 @@ static void slip_set_prefix(slip_modem_handle slip)
 {
     uint8_t buff[10] = {0};
     const esp_ip6_addr_t addr = slip_modem_get_ipv6_address(slip);
-    ESP_LOGI(TAG, "%s: prefix set (%08x:%08x)", __func__,
+    ESP_LOGI(TAG, "%s: prefix set (%08" PRIx32 ":%08" PRIx32 ")", __func__,
              lwip_ntohl(addr.addr[0]), lwip_ntohl(addr.addr[1]));
 
     // Build slip set message

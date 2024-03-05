@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,12 @@
 #include "sdkconfig.h"
 
 using namespace esp_modem;
+
+#ifdef CONFIG_IDF_TARGET_LINUX
+#define PRIsize_t "lu"
+#else
+#define PRIsize_t "u"
+#endif
 
 #ifdef CONFIG_ESP_MODEM_CMUX_DEFRAGMENT_PAYLOAD
 /**
@@ -245,7 +251,7 @@ bool CMux::on_header(CMuxFrame &frame)
 
 bool CMux::on_payload(CMuxFrame &frame)
 {
-    ESP_LOGD("CMUX", "Payload frame: dlci:%02x type:%02x payload:%d available:%d", dlci, type, payload_len, frame.len);
+    ESP_LOGD("CMUX", "Payload frame: dlci:%02x type:%02x payload:%" PRIsize_t " available:%" PRIsize_t, dlci, type, payload_len, frame.len);
     if (frame.len < payload_len) { // payload
         state = cmux_state::PAYLOAD;
         if (!data_available(frame.ptr, frame.len)) { // partial read
@@ -312,7 +318,7 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
             auto data_end = buffer.get() + buffer.size;
             data_to_read = payload_len + 2; // 2 -- CMUX protocol footer
             if (data + data_to_read >= data_end) {
-                ESP_LOGW("CUMX", "Failed to defragment longer payload (payload=%d)", payload_len);
+                ESP_LOGW("CUMX", "Failed to defragment longer payload (payload=%" PRIsize_t ")", payload_len);
                 // If you experience this error, your device uses longer payloads while
                 // the configured buffer is too small to defragment the payload properly.
                 // To resolve this issue you can:

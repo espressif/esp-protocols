@@ -1,10 +1,11 @@
 /*
- * SPDX-FileCopyrightText: 2020-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2020-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <string.h>
+#include <inttypes.h>
 #include "slip_modem.h"
 
 #include "esp_netif.h"
@@ -176,7 +177,7 @@ static esp_err_t slip_modem_transmit(void *slip_driver, void *buffer, size_t len
     int32_t res = uart_write_bytes(slip_modem->uart.uart_dev, (char *)buffer, len);
     if (res < 0) {
         // Handle errors
-        ESP_LOGE(TAG, "%s: uart_write_bytes error %i", __func__, res);
+        ESP_LOGE(TAG, "%s: uart_write_bytes error %" PRId32, __func__, res);
         return ESP_FAIL;
     }
     return ESP_OK;
@@ -212,7 +213,7 @@ static void slip_modem_uart_rx_task(void *arg)
     slip_modem_handle slip_modem = (slip_modem_handle) arg;
 
     ESP_LOGD(TAG, "Start SLIP modem RX task (slip_modem %p  filter: %p)", slip_modem, slip_modem->rx_filter);
-    ESP_LOGD(TAG, "Uart: %d, buffer: %p (%d bytes)", slip_modem->uart.uart_dev, slip_modem->buffer, slip_modem->buffer_len);
+    ESP_LOGD(TAG, "Uart: %d, buffer: %p (%" PRIu32 " bytes)", slip_modem->uart.uart_dev, slip_modem->buffer, slip_modem->buffer_len);
 
     while (slip_modem->running == true) {
         // Read data from the UART

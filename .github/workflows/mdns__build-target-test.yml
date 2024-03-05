@@ -26,7 +26,7 @@ jobs:
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
           # Build default configs for all targets
-          python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -m components/mdns/.build-test-rules.yml -d
+          python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -d
           # Build specific configs for test targets
           python ./ci/build_apps.py components/mdns/${{ matrix.test.path }}
           cd components/mdns/${{ matrix.test.path }}
