@@ -93,6 +93,9 @@ typedef struct {
     size_t                      client_cert_len;
     const char                  *client_key;
     size_t                      client_key_len;
+#if CONFIG_ESP_TLS_USE_DS_PERIPHERAL
+    void                        *client_ds_data;
+#endif
     bool                        use_global_ca_store;
     bool                        skip_cert_common_name_check;
     const char                  *cert_common_name;
@@ -528,6 +531,10 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
             } else {
                 esp_transport_ssl_set_client_key_data_der(ssl, client->config->client_key, client->config->client_key_len);
             }
+#if CONFIG_ESP_TLS_USE_DS_PERIPHERAL
+        } else if (client->config->client_ds_data) {
+            esp_transport_ssl_set_ds_data(ssl, client->config->client_ds_data);
+#endif
         }
         if (client->config->crt_bundle_attach) {
 #ifdef CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
@@ -693,6 +700,9 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->client_cert_len = config->client_cert_len;
     client->config->client_key = config->client_key;
     client->config->client_key_len = config->client_key_len;
+#if CONFIG_ESP_TLS_USE_DS_PERIPHERAL
+    client->config->client_ds_data = config->client_ds_data;
+#endif
     client->config->skip_cert_common_name_check = config->skip_cert_common_name_check;
     client->config->cert_common_name = config->cert_common_name;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
