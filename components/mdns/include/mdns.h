@@ -26,6 +26,11 @@ extern "C" {
  */
 typedef struct mdns_search_once_s mdns_search_once_t;
 
+/**
+ * @brief   Daemon query handle
+ */
+typedef struct mdns_browse_s mdns_browse_t;
+
 typedef enum {
     MDNS_EVENT_ENABLE_IP4                   = 1 << 1,
     MDNS_EVENT_ENABLE_IP6                   = 1 << 2,
@@ -97,6 +102,7 @@ typedef struct mdns_result_s {
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
+typedef void (*mdns_browse_notify_t)(mdns_result_t *result);
 
 /**
  * @brief  Initialize mDNS on given interface
@@ -829,6 +835,10 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif);
  *     - ESP_ERR_NO_MEM         memory error
  */
 esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_action);
+
+
+mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
+esp_err_t mdns_browse_delete(const char *service, const char *proto);
 
 #ifdef __cplusplus
 }
