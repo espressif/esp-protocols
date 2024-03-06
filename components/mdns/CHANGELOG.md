@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.5](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.5)
+
+### Bug Fixes
+
+- Fixed build issues for targets without WiFi caps ([302b46f](https://github.com/espressif/esp-protocols/commit/302b46f))
+
 ## [1.2.4](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.4)
 
 ### Bug Fixes
