@@ -199,6 +199,9 @@ typedef enum {
     ACTION_SEARCH_ADD,
     ACTION_SEARCH_SEND,
     ACTION_SEARCH_END,
+    ACTION_BROWSE_ADD,
+    ACTION_BROWSE_SYNC,
+    ACTION_BROWSE_END,
     ACTION_TX_HANDLE,
     ACTION_RX_HANDLE,
     ACTION_TASK_STOP,
@@ -370,6 +373,13 @@ typedef enum {
     SEARCH_MAX
 } mdns_search_once_state_t;
 
+typedef enum {
+    BROWSE_OFF,
+    BROWSE_INIT,
+    BROWSE_RUNNING,
+    BROWSE_MAX
+} mdns_browse_state_t;
+
 typedef struct mdns_search_once_s {
     struct mdns_search_once_s *next;
 
@@ -389,6 +399,27 @@ typedef struct mdns_search_once_s {
     mdns_result_t *result;
 } mdns_search_once_t;
 
+typedef struct mdns_browse_s {
+    struct mdns_browse_s *next;
+
+    mdns_browse_state_t state;
+    mdns_browse_notify_t notifier;
+
+    char *service;
+    char *proto;
+    mdns_result_t *result;
+} mdns_browse_t;
+
+typedef struct mdns_browse_result_sync_t {
+    mdns_result_t *result;
+    struct mdns_browse_result_sync_t *next;
+} mdns_browse_result_sync_t;
+
+typedef struct mdns_browse_sync {
+    mdns_browse_t *browse;
+    mdns_browse_result_sync_t *sync_result;
+} mdns_browse_sync_t;
+
 typedef struct mdns_server_s {
     struct {
         mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
@@ -401,6 +432,7 @@ typedef struct mdns_server_s {
     mdns_tx_packet_t *tx_queue_head;
     mdns_search_once_t *search_once;
     esp_timer_handle_t timer_handle;
+    mdns_browse_t *browse;
 } mdns_server_t;
 
 typedef struct {
@@ -459,6 +491,12 @@ typedef struct {
             const char *hostname;
             mdns_ip_addr_t *address_list;
         } delegate_hostname;
+        struct {
+            mdns_browse_t *browse;
+        } browse_add;
+        struct {
+            mdns_browse_sync_t *browse_sync;
+        } browse_sync;
     } data;
 } mdns_action_t;
 
