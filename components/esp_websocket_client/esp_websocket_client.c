@@ -633,7 +633,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->scheme, goto _websocket_init_fail);
     }
 
-    if (config->reconnect_timeout_ms <= 0) {
+    if (!config->disable_auto_reconnect && config->reconnect_timeout_ms <= 0) {
         client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
         ESP_LOGW(TAG, "`reconnect_timeout_ms` is not set, or it is less than or equal to zero, using default time out %d (milliseconds)", WEBSOCKET_RECONNECT_TIMEOUT_MS);
     } else {
