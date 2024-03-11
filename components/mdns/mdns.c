@@ -1350,6 +1350,20 @@ static uint8_t _mdns_append_service_ptr_answers(uint8_t *packet, uint16_t *index
  */
 static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_answer_t *answer, mdns_if_t tcpip_if)
 {
+    if (answer->host) {
+        bool is_host_valid = (&_mdns_self_host == answer->host);
+        mdns_host_item_t *target_host = _mdns_host_list;
+        while (target_host && !is_host_valid) {
+            if (target_host == answer->host) {
+                is_host_valid = true;
+            }
+            target_host = target_host->next;
+        }
+        if (!is_host_valid) {
+            return 0;
+        }
+    }
+
     if (answer->type == MDNS_TYPE_PTR) {
         if (answer->service) {
             return _mdns_append_service_ptr_answers(packet, index, answer->service, answer->flush, answer->bye);
