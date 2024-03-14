@@ -16,11 +16,11 @@ jobs:
         idf_ver: ["latest", "release-v5.0"]
         idf_target: ["esp32"]
         test: [ { app: mqtt-basic, path: "components/esp_mqtt_cxx/examples" }]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}

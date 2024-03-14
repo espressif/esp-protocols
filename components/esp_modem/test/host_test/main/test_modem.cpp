@@ -1,14 +1,16 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 #define CATCH_CONFIG_MAIN // This tells the catch header to generate a main
 #include <memory>
 #include <future>
-#include "catch.hpp"
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_session.hpp>
 #include "cxx_include/esp_modem_api.hpp"
 #include "LoopbackTerm.h"
+#include <iostream>
 
 using namespace esp_modem;
 
@@ -345,4 +347,26 @@ TEST_CASE("CMUX manual mode transitions", "[esp_modem][transitions]")
     CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MANUAL_EXIT) == true);  // Exit CMUX
     CHECK(dce->set_mode(esp_modem::modem_mode::UNDEF) == true);             // Succeeds from any state
 
+}
+
+#define CATCH_CONFIG_RUNNER
+extern "C" int app_main(void)
+{
+    // Define the argument count and arguments for Catch2, including JUnit reporting
+    int argc = 5;
+    const char *argv[] = {"esp_modem", "-r", "junit", "-o", "junit.xml", nullptr};
+
+    // Run the Catch2 session and store the result
+    int result = Catch::Session().run(argc, argv);
+
+    // Use more descriptive error handling
+    if (result != 0) {
+        printf("Test failed with result %d.\n", result);
+    } else {
+        printf("All tests passed successfully.\n");
+    }
+
+    // Check for the junit.xml file in the current working directory
+    // Exit the application with the test result as the status code
+    std::exit(result);
 }

@@ -20,13 +20,13 @@ jobs:
           - idf_ver: "latest"
             idf_target: "esp32s2"
             test: { app: usb_a7670_s2, path: examples/pppos_client }
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
       TEST_DIR: components/esp_modem/${{ matrix.test.path }}
     steps:
       - name: Checkout esp-protocols
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build esp-modem target tests with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}

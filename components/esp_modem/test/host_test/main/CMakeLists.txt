@@ -1,10 +1,11 @@
 idf_component_register(SRCS "test_modem.cpp" "LoopbackTerm.cpp"
-                       INCLUDE_DIRS "$ENV{IDF_PATH}/tools/catch"
-                       REQUIRES esp_modem)
+                       REQUIRES esp_modem WHOLE_ARCHIVE)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(${COMPONENT_LIB}  PRIVATE Threads::Threads)
+
+target_link_libraries(${COMPONENT_LIB} PRIVATE Catch2WithMain)
 
 set_target_properties(${COMPONENT_LIB} PROPERTIES
     CXX_STANDARD 17

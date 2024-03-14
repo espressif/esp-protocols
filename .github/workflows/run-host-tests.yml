@@ -18,6 +18,12 @@ on:
             upload_artifacts:
                 type: boolean
                 required: true
+            run_executable:
+                type: boolean
+                required: true
+            run_coverage:
+                type: boolean
+                required: true
             pre_run_script:
                 type: string
                 required: false
@@ -28,14 +34,14 @@ on:
 jobs:
   build:
       name: Build App
-      runs-on: ubuntu-20.04
+      runs-on: ubuntu-22.04
       permissions:
         checks: write
         contents: write
       container: espressif/idf:${{inputs.idf_version}}
       steps:
         - name: Checkout esp-protocols
-          uses: actions/checkout@v3
+          uses: actions/checkout@v4
           with:
             path: esp-protocols
         - name: Build ${{ inputs.app_name }} with IDF-${{ inputs.idf_version }}
@@ -51,7 +57,11 @@ jobs:
             # The sdkconfig.ci.linux specifies Linux as the build target with apropriate settings.
             cp sdkconfig.ci.linux sdkconfig.defaults
             idf.py build
-            ./build/${{inputs.app_name}}.elf -r junit -o junit.xml
+            if [ "${{ inputs.run_executable}}" == "false" ]; then
+                echo "Executeable wasn't run"
+                exit 0
+            fi
+            ./build/${{inputs.app_name}}.elf
         - name: Publish Unit Test Result
           uses: EnricoMi/publish-unit-test-result-action@v2
           if: ${{ inputs.publish_unit_test_result }}
@@ -59,6 +69,7 @@ jobs:
             files: ${{inputs.component_path}}/**/*junit.xml
         - name: Build with Coverage Enabled
           shell: bash
+          if: ${{ inputs.run_coverage }}
           run: |
             component=$(basename ${{ inputs.component_path }})
             if [ -f "${{ inputs.pre_run_script }}" ]; then
@@ -74,6 +85,7 @@ jobs:
             ./build/${{inputs.app_name}}.elf
         - name: Run Coverage
           shell: bash
+          if: ${{ inputs.run_coverage }}
           run: |
             apt-get update && apt-get install -y python3-pip rsync
             python -m pip install gcovr
@@ -86,6 +98,7 @@ jobs:
             cp index.html ${{inputs.app_name}}_coverage_report
             cp -rf ${{inputs.app_name}}_coverage_report ${{inputs.app_name}}_coverage.xml $GITHUB_WORKSPACE
         - name: Code Coverage Summary Report
+          if: ${{ inputs.run_coverage }}
           uses: irongut/CodeCoverageSummary@v1.3.0
           with:
             filename: esp-protocols/**/${{inputs.app_name}}_coverage.xml
@@ -99,9 +112,10 @@ jobs:
             thresholds: '60 80'
         - name: Write to Job Summary
           run: cat code-coverage-results.md >> $GITHUB_STEP_SUMMARY
+          if: ${{ inputs.run_coverage }}
         - name: Upload files to artifacts for run-target job
-          uses: actions/upload-artifact@v3
-          if: ${{inputs.upload_artifacts}}
+          uses: actions/upload-artifact@v4
+          if: ${{ inputs.run_coverage }}
           with:
             name: ${{inputs.app_name}}_coverage_report
             path: |
