@@ -12,23 +12,10 @@
 #include "driver/uart.h"
 #include "esp_event.h"
 #include "esp_netif.h"
+#include "test_certs.hpp"
 
 namespace {
-
 constexpr auto *TAG = "uart_mutual_tls";
-
-using pem_format = const unsigned char;
-
-extern pem_format cacert_start[] asm("_binary_ca_crt_start");
-extern pem_format cacert_end[] asm("_binary_ca_crt_end");
-extern pem_format clientcert_start[] asm("_binary_client_crt_start");
-extern pem_format clientcert_end[] asm("_binary_client_crt_end");
-extern pem_format clientkey_start[] asm("_binary_client_key_start");
-extern pem_format clientkey_end[] asm("_binary_client_key_end");
-extern pem_format servercert_start[] asm("_binary_srv_crt_start");
-extern pem_format servercert_end[] asm("_binary_srv_crt_end");
-extern pem_format serverkey_start[] asm("_binary_srv_key_start");
-extern pem_format serverkey_end[] asm("_binary_srv_key_end");
 
 /**
  * Using DTLS the below is set to true.
@@ -40,10 +27,15 @@ extern pem_format serverkey_end[] asm("_binary_srv_key_end");
  * If `use_dgrams` is set to false, we perform TLS on UART stream.
  * The UART driver is already a stream-like API (using ringbufer), so we simple read and write to UART
  */
+#if CONFIG_TEST_TLS
 const bool use_dgrams = false;
+#elif CONFIG_TEST_DTLS
+const bool use_dgrams = true;
+#endif
 }
 
 using namespace idf::mbedtls_cxx;
+using namespace test_certs;
 
 class SecureLink: public Tls {
 public:
@@ -214,14 +206,12 @@ void tls_client()
     const unsigned char message[] = "Hello\n";
     unsigned char reply[128];
     SecureLink client(UART_NUM_2, 4, 5);
-    const_buf cert{clientcert_start, clientcert_end - clientcert_start};
-    const_buf key{clientkey_start, clientkey_end - clientkey_start};
-    if (!client.set_own_cert(cert, key)) {
+    client.set_hostname(get_server_cn());
+    if (!client.set_own_cert(get_buf(type::clientcert), get_buf(type::clientkey))) {
         ESP_LOGE(TAG, "Failed to set own cert");
         return;
     }
-    const_buf ca{cacert_start, cacert_end - cacert_start};
-    if (!client.set_ca_cert(ca)) {
+    if (!client.set_ca_cert(get_buf(type::cacert))) {
         ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
@@ -250,14 +240,11 @@ void tls_server()
 {
     unsigned char message[128];
     SecureLink server(UART_NUM_1, 25, 26);
-    const_buf cert{servercert_start, servercert_end - servercert_start};
-    const_buf key{serverkey_start, serverkey_end - serverkey_start};
-    if (!server.set_own_cert(cert, key)) {
+    if (!server.set_own_cert(get_buf(type::servercert), get_buf(type::serverkey))) {
         ESP_LOGE(TAG, "Failed to set own cert");
         return;
     }
-    const_buf ca{cacert_start, cacert_end - cacert_start};
-    if (!server.set_ca_cert(ca)) {
+    if (!server.set_ca_cert(get_buf(type::cacert))) {
         ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
