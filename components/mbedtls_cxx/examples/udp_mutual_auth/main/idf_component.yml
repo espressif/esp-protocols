@@ -3,3 +3,6 @@ dependencies:
   espressif/mbedtls_cxx:
     version: "*"
     override_path: "../../.."
+  test_certs:
+    version: "*"
+    path: "../../test_certs"

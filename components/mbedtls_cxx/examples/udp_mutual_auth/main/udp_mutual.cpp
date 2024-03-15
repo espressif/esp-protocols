@@ -7,22 +7,16 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <cstring>
 #include "esp_log.h"
 #include "mbedtls_wrap.hpp"
+#include "test_certs.hpp"
 
 namespace {
 constexpr auto *TAG = "udp_example";
-
-using pem_format = const unsigned char;
-extern pem_format servercert_start[] asm("_binary_srv_crt_start");
-extern pem_format servercert_end[] asm("_binary_srv_crt_end");
-extern pem_format serverkey_start[] asm("_binary_srv_key_start");
-extern pem_format serverkey_end[] asm("_binary_srv_key_end");
-
 }
 
 using namespace idf::mbedtls_cxx;
+using namespace test_certs;
 
 class SecureLink: public Tls {
 public:
@@ -86,7 +80,7 @@ public:
             const unsigned char client_id[] = "localhost";
             config.client_id = std::make_pair(client_id, sizeof(client_id));
         }
-        if (!init(is_server{server_not_client}, do_verify{false}, &config)) {
+        if (!init(is_server{server_not_client}, do_verify{true}, &config)) {
             return false;
         }
 
@@ -141,6 +135,15 @@ void tls_client()
     const unsigned char message[] = "Hello\n";
     unsigned char reply[128];
     SecureLink client;
+    client.set_hostname(get_server_cn());
+    if (!client.set_own_cert(get_buf(type::clientcert), get_buf(type::clientkey))) {
+        ESP_LOGE(TAG, "Failed to set own cert");
+        return;
+    }
+    if (!client.set_ca_cert(get_buf(type::cacert))) {
+        ESP_LOGE(TAG, "Failed to set peer's cert");
+        return;
+    }
     if (!client.open(false)) {
         ESP_LOGE(TAG, "Failed to CONNECT! %d", errno);
         return;
@@ -162,10 +165,12 @@ void tls_server()
 {
     unsigned char message[128];
     SecureLink server;
-    const_buf cert{servercert_start, servercert_end - servercert_start};
-    const_buf key{serverkey_start, serverkey_end - serverkey_start};
-    if (!server.set_own_cert(cert, key)) {
+    if (!server.set_own_cert(get_buf(type::servercert), get_buf(type::serverkey))) {
         ESP_LOGE(TAG, "Failed to set own cert");
+        return;
+    }
+    if (!server.set_ca_cert(get_buf(type::cacert))) {
+        ESP_LOGE(TAG, "Failed to set peer's cert");
         return;
     }
     ESP_LOGI(TAG, "opening...");
