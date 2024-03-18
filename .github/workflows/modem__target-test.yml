@@ -80,4 +80,5 @@ jobs:
       - name: Run Example Test on target
         working-directory: ${{ env.TEST_DIR }}
         run: |
+            python -m pip install -r $GITHUB_WORKSPACE/ci/requirements.txt
             python -m pytest --log-cli-level DEBUG --target=${{ matrix.idf_target }}
