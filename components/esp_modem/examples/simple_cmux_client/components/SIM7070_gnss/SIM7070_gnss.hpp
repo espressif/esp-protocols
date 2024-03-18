@@ -13,7 +13,7 @@
 
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
-#include "nmea_parser.h"
+#include "sim70xx_gps.h"
 
 /**
  * @brief Definition of a custom SIM7070 class with GNSS capabilities.
@@ -23,7 +23,7 @@
 class SIM7070_gnss: public esp_modem::SIM7070 {
     using SIM7070::SIM7070;
 public:
-    esp_modem::command_result get_gnss_information_sim70xx(esp_modem_gps_t &gps);
+    esp_modem::command_result get_gnss_information_sim70xx(sim70xx_gps_t &gps);
 };
 
 /**
@@ -47,7 +47,7 @@ public:
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
-    esp_modem::command_result get_gnss_information_sim70xx(esp_modem_gps_t &gps);
+    esp_modem::command_result get_gnss_information_sim70xx(sim70xx_gps_t &gps);
 
 };
 
