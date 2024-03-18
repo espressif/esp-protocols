@@ -17,7 +17,6 @@ extern "C" {
 #define GPS_MAX_SATELLITES_IN_VIEW (16)
 
 
-
 /**
  * @brief GPS fix type
  *
@@ -53,9 +52,6 @@ typedef enum {
  */
 typedef struct {
     uint8_t num;       /*!< Satellite number */
-    uint8_t elevation; /*!< Satellite elevation */
-    uint16_t azimuth;  /*!< Satellite azimuth */
-    uint8_t snr;       /*!< Satellite signal noise ratio */
 } gps_satellite_t;
 
 /**
@@ -80,53 +76,30 @@ typedef struct {
 } gps_date_t;
 
 /**
- * @brief NMEA Statement
- *
- */
-typedef enum {
-    STATEMENT_UNKNOWN = 0, /*!< Unknown statement */
-    STATEMENT_GGA,         /*!< GGA */
-    STATEMENT_GSA,         /*!< GSA */
-    STATEMENT_RMC,         /*!< RMC */
-    STATEMENT_GSV,         /*!< GSV */
-    STATEMENT_GLL,         /*!< GLL */
-    STATEMENT_VTG          /*!< VTG */
-} nmea_statement_t;
-
-/**
  * @brief GPS object
  *
  */
-struct esp_modem_gps {
+struct sim70xx_gps {
+    gps_run_t run;                                                 /*!< run status */
+    gps_fix_t fix;                                                 /*!< Fix status */
+    gps_date_t date;                                               /*!< Fix date */
+    gps_time_t tim;                                                /*!< time in UTC */
     float latitude;                                                /*!< Latitude (degrees) */
     float longitude;                                               /*!< Longitude (degrees) */
     float altitude;                                                /*!< Altitude (meters) */
-    gps_run_t run;                                                 /*!< run status */
-    gps_fix_t fix;                                                 /*!< Fix status */
-    uint8_t sats_in_use;                                           /*!< Number of satellites in use */
-    gps_time_t tim;                                                /*!< time in UTC */
+    float speed;                                                   /*!< Ground speed, unit: Km/hour */
+    float cog;                                                     /*!< Course over ground */
     gps_fix_mode_t fix_mode;                                       /*!< Fix mode */
     float dop_h;                                                   /*!< Horizontal dilution of precision */
     float dop_p;                                                   /*!< Position dilution of precision  */
     float dop_v;                                                   /*!< Vertical dilution of precision  */
-    uint8_t sats_in_view;                                          /*!< Number of satellites in view */
-    gps_date_t date;                                               /*!< Fix date */
-    float speed;                                                   /*!< Ground speed, unit: m/s */
-    float cog;                                                     /*!< Course over ground */
+    gps_satellite_t sat;                                           /*!< Number of satellites in view */
     float hpa;                                                     /*!< Horizontal Position Accuracy  */
     float vpa;                                                     /*!< Vertical Position Accuracy  */
 };
 
-typedef struct esp_modem_gps esp_modem_gps_t;
+typedef struct sim70xx_gps sim70xx_gps_t;
 
-/**
- * @brief NMEA Parser Event ID
- *
- */
-typedef enum {
-    GPS_UPDATE, /*!< GPS information has been updated */
-    GPS_UNKNOWN /*!< Unknown statements detected */
-} nmea_event_id_t;
 
 #ifdef __cplusplus
 }
