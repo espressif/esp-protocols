@@ -100,6 +100,12 @@ menu "mDNS"
         help
             Enable for the library to log received and sent mDNS packets to stdout.
 
+    config MDNS_ENABLE_CONSOLE_CLI
+        bool "Enable Command Line Interface on device console"
+        default y
+        help
+            Enable for the console cli to be available on the device.
+
     config MDNS_RESPOND_REVERSE_QUERIES
         bool "Enable responding to IPv4 reverse queries"
         default n
