@@ -5191,7 +5191,7 @@ static void _mdns_scheduler_run(void)
         MDNS_SERVICE_UNLOCK();
         return;
     }
-    if ((int32_t)(p->send_at - (xTaskGetTickCount() * portTICK_PERIOD_MS)) < 0) {
+    while (p && (int32_t)(p->send_at - (xTaskGetTickCount() * portTICK_PERIOD_MS)) < 0) {
         action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
         if (action) {
             action->type = ACTION_TX_HANDLE;
@@ -5203,8 +5203,10 @@ static void _mdns_scheduler_run(void)
             }
         } else {
             HOOK_MALLOC_FAILED;
-            // continue
+            break;
         }
+        //Find the next unqued packet
+        p = p->next;
     }
     MDNS_SERVICE_UNLOCK();
 }
