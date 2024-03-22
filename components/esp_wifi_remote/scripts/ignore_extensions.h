@@ -11,6 +11,3 @@ typedef void *__builtin_va_list;
 #define __inline__ inline
 #define __inline inline
 #define __extension__
-// #define asm
-// #define __asm__
-// #define __volatile__

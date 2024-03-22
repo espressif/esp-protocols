@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+// This file is auto-generated
 #include "esp_wifi_remote.h"
 
 void run_all_wifi_remote_apis(void)
@@ -338,6 +339,12 @@ void run_all_wifi_remote_apis(void)
     {
         int16_t offset_cm = 0;
         esp_wifi_remote_ftm_resp_set_offset(offset_cm);
+    }
+
+    {
+        wifi_ftm_report_entry_t *report = NULL;
+        uint8_t num_entries = 0;
+        esp_wifi_remote_ftm_get_report(report, num_entries);
     }
 
     {

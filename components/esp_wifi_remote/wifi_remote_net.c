@@ -17,12 +17,10 @@ static wifi_rxcb_t s_rx_fn[CHANNELS];
 esp_err_t esp_wifi_remote_channel_rx(void *h, void *buffer, void *buff_to_free, size_t len)
 {
     assert(h);
-    if (h == s_channel[0]) {
-        assert(s_rx_fn[0]);
+    if (h == s_channel[0] && s_rx_fn[0]) {
         return s_rx_fn[0](buffer, len, buff_to_free);
     }
-    if (h == s_channel[1]) {
-        assert(s_rx_fn[1]);
+    if (h == s_channel[1] && s_rx_fn[1]) {
         return s_rx_fn[1](buffer, len, buff_to_free);
     }
     return ESP_FAIL;
@@ -46,6 +44,8 @@ esp_err_t esp_wifi_remote_channel_set(wifi_interface_t ifx, void *h, esp_remote_
 
 esp_err_t esp_wifi_internal_set_sta_ip(void)
 {
+    // TODO: Pass this information to the slave target
+    // Note that this function is called from the default event loop, so we shouldn't block here
     return ESP_OK;
 }
 
@@ -56,9 +56,7 @@ esp_err_t esp_wifi_internal_reg_netstack_buf_cb(wifi_netstack_buf_ref_cb_t ref, 
 
 void esp_wifi_internal_free_rx_buffer(void *buffer)
 {
-    if (buffer) {
-        free(buffer);
-    }
+    free(buffer);
 }
 
 int esp_wifi_internal_tx(wifi_interface_t ifx, void *buffer, uint16_t len)

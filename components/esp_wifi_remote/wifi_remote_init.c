@@ -7,7 +7,8 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_hosted_api.h"
-#include "esp_wifi_remote.h"
+#include "esp_wifi_remote_private.h"
+
 const char *TAG = "esp_remote_wifi_init";
 
 esp_err_t remote_esp_wifi_init_slave(void)

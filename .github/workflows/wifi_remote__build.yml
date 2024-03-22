@@ -25,8 +25,7 @@ jobs:
           ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
           cd ./components/esp_wifi_remote/scripts
-          python parse_header.py
-          ./check_headers.sh
+          python generate_and_check.py
 
   build_wifi_remote:
     if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
@@ -40,6 +39,10 @@ jobs:
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+            key: ${{ matrix.idf_ver }}
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |

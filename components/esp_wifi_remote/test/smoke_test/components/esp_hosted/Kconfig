@@ -1,3 +1,4 @@
+# This file is auto-generated
 menu "ESP Hosted Mock"
     choice SLAVE_IDF_TARGET
     prompt "choose slave target"

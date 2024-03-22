@@ -1,3 +1,4 @@
+# This file is auto-generated
 
 if SLAVE_IDF_TARGET_ESP32
 
@@ -199,7 +200,7 @@ if SLAVE_IDF_TARGET_ESP32C6
 
     config SLAVE_SOC_WIFI_FTM_SUPPORT
         bool
-        default n
+        default y
 
     config SLAVE_SOC_WIFI_GCMP_SUPPORT
         bool

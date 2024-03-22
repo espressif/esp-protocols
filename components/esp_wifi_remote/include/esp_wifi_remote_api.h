@@ -1,8 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+// This file is auto-generated
+#pragma once
 esp_err_t esp_wifi_remote_init(const wifi_init_config_t *config);
 esp_err_t esp_wifi_remote_deinit(void);
 esp_err_t esp_wifi_remote_set_mode(wifi_mode_t mode);
@@ -67,6 +69,7 @@ esp_err_t esp_wifi_remote_set_rssi_threshold(int32_t rssi);
 esp_err_t esp_wifi_remote_ftm_initiate_session(wifi_ftm_initiator_cfg_t *cfg);
 esp_err_t esp_wifi_remote_ftm_end_session(void);
 esp_err_t esp_wifi_remote_ftm_resp_set_offset(int16_t offset_cm);
+esp_err_t esp_wifi_remote_ftm_get_report(wifi_ftm_report_entry_t *report, uint8_t num_entries);
 esp_err_t esp_wifi_remote_config_11b_rate(wifi_interface_t ifx, _Bool disable);
 esp_err_t esp_wifi_remote_connectionless_module_set_wake_interval(uint16_t wake_interval);
 esp_err_t esp_wifi_remote_force_wakeup_acquire(void);

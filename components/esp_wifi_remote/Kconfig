@@ -1,3 +1,4 @@
+# This file is auto-generated
 menu "Wi-Fi Remote"
     orsource "./Kconfig.soc_wifi_caps.in"
 
