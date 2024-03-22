@@ -1,6 +1,7 @@
 # This file is auto-generated
 menu "Wi-Fi Remote"
     orsource "./Kconfig.soc_wifi_caps.in"
+    orsource "./Kconfig.rpc.lib"
 
         config ESP_WIFI_STATIC_RX_BUFFER_NUM
             int "Max number of WiFi static RX buffers"
