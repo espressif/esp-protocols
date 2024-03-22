@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.3](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.3)
+
+### Features
+
+- Expanded example to demonstrate the transfer over TLS ([0d0630ed76](https://github.com/espressif/esp-protocols/commit/0d0630ed76))
+
+### Bug Fixes
+
+- fix esp_event dependency management ([1fb02a9a60](https://github.com/espressif/esp-protocols/commit/1fb02a9a60))
+- Skip warn on zero timeout and auto reconnect is disabled ([5b467cbf5c](https://github.com/espressif/esp-protocols/commit/5b467cbf5c))
+- Fixed to use int return value in Tx functions ([9c54b72e1f](https://github.com/espressif/esp-protocols/commit/9c54b72e1f))
+- Fixed Tx functions with DYNAMIC_BUFFER ([16174470ee](https://github.com/espressif/esp-protocols/commit/16174470ee))
+- added dependency checks, sdkconfig.defaults and refined README.md ([312982e4aa](https://github.com/espressif/esp-protocols/commit/312982e4aa))
+- Close websocket and dispatch event if server does not close within a reasonable amount of time. ([d85311880d](https://github.com/espressif/esp-protocols/commit/d85311880d))
+- Continue waiting for TCP connection to be closed ([2b092e0db4](https://github.com/espressif/esp-protocols/commit/2b092e0db4))
+
+### Updated
+
+- docs(websocket): Added README for websocket host example ([2f7c58259d](https://github.com/espressif/esp-protocols/commit/2f7c58259d))
+
 ## [1.2.2](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.2)
 
 ### Bug Fixes
