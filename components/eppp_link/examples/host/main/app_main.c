@@ -104,11 +104,13 @@ void app_main(void)
     eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
-#else
+#elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
     config.uart.rx_io = CONFIG_EXAMPLE_UART_RX_PIN;
     config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
+#else
+    config.transport = EPPP_TRANSPORT_SDIO;
 #endif
     esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {
