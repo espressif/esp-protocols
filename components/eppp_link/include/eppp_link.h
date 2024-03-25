@@ -35,8 +35,8 @@
             .priority = 8,      \
     },  \
     . ppp = {   \
-            .our_ip4_addr.addr = our_ip,     \
-            .their_ip4_addr.addr = their_ip, \
+            .our_ip4_addr = { .addr = our_ip },     \
+            .their_ip4_addr = { .addr = their_ip }, \
     }   \
 }
 
