@@ -39,13 +39,17 @@ Example method to start mDNS for the STA interface and set ``hostname`` and ``de
 mDNS Services
 ^^^^^^^^^^^^^
 
-mDNS can advertise information about network services that your device offers. Each service is defined by a few properties. (Please note Self-querying names is not supported in Espressif's mDNS library, a deliberate design choice to simplify implementation, preventing local network pollution and addressing WiFi multicast behavior)
+mDNS can advertise information about network services that your device offers. Each service is defined by a few properties.
 
     * ``instance_name``: friendly name for your service, like ``Jhon's E{IDF_TARGET_NAME} Web Server``. If not defined, ``default_instance`` will be used.
     * ``service_type``: (required) service type, prepended with underscore. Some common types can be found `here <http://www.dns-sd.org/serviceTypes.html>`_.
     * ``proto``: (required) protocol that the service runs on, prepended with underscore. Example: ``_tcp`` or ``_udp``
     * ``port``: (required) network port that the service runs on
     * ``txt``: ``{var, val}`` array of strings, used to define properties for your service
+
+Please note:
+    1. Self-querying names is not supported in Espressif's mDNS library, a deliberate design choice to simplify implementation, preventing local network pollution and addressing WiFi multicast behavior)
+    2. Setting your own hostname is a prerequisite(mandatory) for advertising services or delegating other names.
 
 Example method to add a few services and different properties::
 
