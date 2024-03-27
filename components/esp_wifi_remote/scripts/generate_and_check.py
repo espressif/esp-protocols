@@ -216,7 +216,9 @@ def generate_remote_wifi_api(function_prototypes, component_path):
         wifi.write('#include "esp_wifi_remote.h"\n')
         remote.write(COPYRIGHT_HEADER)
         remote.write('#include "esp_wifi_remote.h"\n')
+        remote.write('#include "esp_log.h"\n\n')
         remote.write('#define WEAK __attribute__((weak))\n')
+        remote.write('#define LOG_UNSUPPORTED_AND_RETURN(ret) ESP_LOGW("esp_wifi_remote_weak", "%s unsupported", __func__); \\\n         return ret;\n')
         for func_name, args in function_prototypes.items():
             remote_func_name = NAMESPACE.sub('esp_wifi_remote', func_name)
             params, names = get_args(args[1])
@@ -230,7 +232,7 @@ def generate_remote_wifi_api(function_prototypes, component_path):
             wifi.write('}\n')
             remote.write(f'\nWEAK {args[0]} {remote_func_name}({params})\n')
             remote.write('{\n')
-            remote.write(f'    return {ret_value};\n')
+            remote.write(f'    LOG_UNSUPPORTED_AND_RETURN({ret_value});\n')
             remote.write('}\n')
     return [header, wifi_source, remote_source]
 
@@ -306,7 +308,7 @@ def generate_kconfig(idf_path, component_path):
         f.write('    orsource "./Kconfig.soc_wifi_caps.in"\n')
         for line1 in lines:
             line = line1.strip()
-            if line.startswith('if'):
+            if re.match(r'^if\s+[A-Z_0-9]+\s*$', line):
                 nested_if += 1
             elif line.startswith('endif'):
                 nested_if -= 1
