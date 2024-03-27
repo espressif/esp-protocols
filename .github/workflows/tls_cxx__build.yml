@@ -1,0 +1,30 @@
+name: "mbedtls-cxx: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_tls_cxx:
+    if: contains(github.event.pull_request.labels.*.name, 'tls_cxx') || github.event_name == 'push'
+    name: Build
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.2", "release-v5.1"]
+        test: [ { app: client, path: "examples/tls_client" }, { app: udp, path: "examples/udp_mutual_auth" }, { app: test, path: "tests/uart_mutual_auth" } ]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          ${IDF_PATH}/install.sh --enable-pytest
+          . ${IDF_PATH}/export.sh
+          python ./ci/build_apps.py ./components/mbedtls_cxx/${{ matrix.test.path }} -vv --preserve-all
