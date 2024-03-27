@@ -83,13 +83,14 @@ def main():
             changelog += '\n### {}\n\n'.format(sections[section])
             for it in item:
                 changelog += '- {}\n'.format(it)
-    changelog += '\n'
     filename = os.path.join(root_path, 'components', component, 'CHANGELOG.md')
     # Check if the changelog file exists.
     if not os.path.exists(filename):
         # File does not exist, create it
         with open(filename, 'w') as file:
             file.write('# Changelog\n\n')
+    else:
+        changelog += '\n'
     # insert the actual changelog to the beginning of the file, just after the title (2nd line)
     with open(filename, 'r') as orig_changelog:
         changelog_title = orig_changelog.readline(
