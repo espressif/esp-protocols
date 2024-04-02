@@ -1,0 +1,2 @@
+# The below file is generated from esp_wifi_types_native.h in IDF, which doesn't follow atyle
+components/esp_wifi_remote/include/esp_wifi_types_native.h
