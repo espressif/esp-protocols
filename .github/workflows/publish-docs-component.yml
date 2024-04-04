@@ -98,5 +98,6 @@ jobs:
             components/console_cmd_ping;
             components/console_cmd_ifconfig;
             components/console_cmd_wifi;
+            components/esp_wifi_remote;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
