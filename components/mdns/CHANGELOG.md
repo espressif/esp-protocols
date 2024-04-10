@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.0)
+
+### Features
+
+- add a new mdns query mode `browse` ([af330b6](https://github.com/espressif/esp-protocols/commit/af330b6))
+- Make including mdns_console KConfigurable ([27adbfe](https://github.com/espressif/esp-protocols/commit/27adbfe))
+
+### Bug Fixes
+
+- Schedule all queued Tx packets from timer task ([d4e693e](https://github.com/espressif/esp-protocols/commit/d4e693e))
+- add lock for some common apis ([21c84bf](https://github.com/espressif/esp-protocols/commit/21c84bf))
+- fix mdns answer append while host is invalid ([7be16bc](https://github.com/espressif/esp-protocols/commit/7be16bc))
+
 ## [1.2.5](https://github.com/espressif/esp-protocols/commits/mdns-v1.2.5)
 
 ### Bug Fixes
