@@ -17,5 +17,7 @@ menu "ESP Hosted Mock"
         bool "esp32c6"
     config SLAVE_IDF_TARGET_ESP32H2
         bool "esp32h2"
+    config SLAVE_IDF_TARGET_ESP32P4
+        bool "esp32p4"
     endchoice
 endmenu

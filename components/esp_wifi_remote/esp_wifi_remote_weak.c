@@ -271,26 +271,6 @@ WEAK esp_err_t esp_wifi_remote_set_csi(_Bool en)
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
 }
 
-WEAK esp_err_t esp_wifi_remote_set_ant_gpio(const wifi_ant_gpio_config_t *config)
-{
-    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
-}
-
-WEAK esp_err_t esp_wifi_remote_get_ant_gpio(wifi_ant_gpio_config_t *config)
-{
-    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
-}
-
-WEAK esp_err_t esp_wifi_remote_set_ant(const wifi_ant_config_t *config)
-{
-    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
-}
-
-WEAK esp_err_t esp_wifi_remote_get_ant(wifi_ant_config_t *config)
-{
-    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
-}
-
 WEAK int64_t esp_wifi_remote_get_tsf_time(wifi_interface_t interface)
 {
     LOG_UNSUPPORTED_AND_RETURN(-1);

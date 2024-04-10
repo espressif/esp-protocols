@@ -1,0 +1,9 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 5.3.0 Project Minimal Configuration
+#
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_LWIP_PPP_SUPPORT=y
+CONFIG_LWIP_PPP_SERVER_SUPPORT=y
+CONFIG_LWIP_PPP_VJ_HEADER_COMPRESSION=n
+CONFIG_ESP_WIFI_REMOTE_EPPP_UART_TX_PIN=17
+CONFIG_ESP_WIFI_REMOTE_EPPP_UART_RX_PIN=16

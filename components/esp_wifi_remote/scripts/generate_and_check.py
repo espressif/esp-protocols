@@ -15,6 +15,7 @@ Param = namedtuple('Param', ['ptr', 'array', 'qual', 'type', 'name'])
 AUTO_GENERATED = 'This file is auto-generated'
 COPYRIGHT_HEADER = open('copyright_header.h', 'r').read()
 NAMESPACE = re.compile(r'^esp_wifi')
+DEPRECATED_API = ['esp_wifi_set_ant_gpio', 'esp_wifi_get_ant', 'esp_wifi_get_ant_gpio', 'esp_wifi_set_ant']
 
 
 class FunctionVisitor(c_ast.NodeVisitor):
@@ -51,6 +52,8 @@ class FunctionVisitor(c_ast.NodeVisitor):
         if isinstance(node.type, c_ast.TypeDecl):
             func_name = node.type.declname
             if func_name.startswith('esp_wifi') and func_name in self.content:
+                if func_name in DEPRECATED_API:
+                    return
                 ret = node.type.type.names[0]
                 args = []
                 for param in node.args.params:
@@ -309,6 +312,7 @@ def generate_kconfig(idf_path, component_path):
         f.write('        bool\n')
         f.write('        default y\n\n')
         f.write('    orsource "./Kconfig.soc_wifi_caps.in"\n')
+        f.write('    orsource "./Kconfig.rpc.in"\n')
         for line1 in lines:
             line = line1.strip()
             if re.match(r'^if\s+[A-Z_0-9]+\s*$', line):
@@ -322,7 +326,7 @@ def generate_kconfig(idf_path, component_path):
                     line1 = re.compile(config).sub('SLAVE_' + config, line1)
                 f.write(line1)
 
-            if line.startswith('if ESP_WIFI_ENABLED'):
+            if re.match(r'^if\s+\(?ESP_WIFI_ENABLED', line):
                 copy = nested_if
         f.write('endmenu # Wi-Fi Remote\n')
     return [remote_kconfig]
