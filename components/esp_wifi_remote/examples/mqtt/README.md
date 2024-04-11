@@ -1,4 +1,6 @@
-# MQTT demo application that runs on linux
+# MQTT application running on WiFi station
+
+This is a simple mqtt demo, that connects to WiFi AP first. This application has a dependency to `esp_wifi_remote`, so that if it's build and executed on a chipset without WiFI capabilities it redirects all wifi calls the remote target.
 
 ## Overview
 
