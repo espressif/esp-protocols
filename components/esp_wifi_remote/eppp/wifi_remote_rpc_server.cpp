@@ -26,6 +26,7 @@ const char *TAG = "rpc_server";
 const unsigned char ca_crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_CA "\n-----END CERTIFICATE-----";
 const unsigned char crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_SERVER_CRT "\n-----END CERTIFICATE-----";
 const unsigned char key[] = "-----BEGIN RSA PRIVATE KEY-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_SERVER_KEY "\n-----END RSA PRIVATE KEY-----";
+// TODO: Add option to supply keys and certs via a global symbol (file)
 
 }
 
@@ -53,7 +54,7 @@ private:
     {
         auto instance = static_cast<RpcInstance *>(ctx);
         while (instance->perform() == ESP_OK) {}
-        vTaskDelete(nullptr);
+        esp_restart();
     }
     esp_err_t start_server()
     {
@@ -181,7 +182,7 @@ private:
 
 
 namespace server {
-RpcInstance instance;
+constinit RpcInstance instance;
 }
 
 RpcInstance *RpcEngine::init_server()

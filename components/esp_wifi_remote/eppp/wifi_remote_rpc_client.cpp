@@ -26,12 +26,15 @@ const char *TAG = "rpc_client";
 const unsigned char ca_crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_SERVER_CA "\n-----END CERTIFICATE-----";
 const unsigned char crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_CRT "\n-----END CERTIFICATE-----";
 const unsigned char key[] = "-----BEGIN RSA PRIVATE KEY-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_KEY "\n-----END RSA PRIVATE KEY-----";
+// TODO: Add option to supply keys and certs via a global symbol (file)
 
 }
 
 using namespace client;
 
-struct Sync {
+class Sync {
+    friend class RpcInstance;
+public:
     void lock()
     {
         xSemaphoreTake(mutex, portMAX_DELAY);
@@ -48,7 +51,7 @@ struct Sync {
     }
     esp_err_t wait_for(EventBits_t bits, uint32_t timeout = portMAX_DELAY)
     {
-        return xEventGroupWaitBits(events, bits, pdTRUE, pdTRUE, timeout) == bits ? ESP_OK : ESP_FAIL;
+        return (xEventGroupWaitBits(events, bits, pdTRUE, pdTRUE, timeout) & bits) == bits ? ESP_OK : ESP_FAIL;
     }
     esp_err_t notify(EventBits_t bits)
     {
@@ -64,30 +67,36 @@ struct Sync {
             vEventGroupDelete(events);
         }
     }
+
+
+private:
     SemaphoreHandle_t mutex{nullptr};
     EventGroupHandle_t events{nullptr};
+
     const int request = 1;
     const int resp_header = 2;
     const int resp_payload = 4;
-
+    const int restart = 8;
 };
 
 class RpcInstance {
+    friend class Sync;
 public:
+
     template<typename T>
     esp_err_t send(api_id id, T *t)
     {
-        ESP_RETURN_ON_ERROR(sync.notify(sync.request), TAG, "failed to notify req");
         pending_resp = id;
+        ESP_RETURN_ON_ERROR(sync.notify(sync.request), TAG, "failed to notify req");
         ESP_RETURN_ON_ERROR(rpc.send<T>(id, t), TAG, "Failed to send request");
         return ESP_OK;
     }
 
-    // specialization for (void)
+    // overload of the templated method (used for functions with no arguments)
     esp_err_t send(api_id id)
     {
-        ESP_RETURN_ON_ERROR(sync.notify(sync.request), TAG, "failed to notify req");
         pending_resp = id;
+        ESP_RETURN_ON_ERROR(sync.notify(sync.request), TAG, "failed to notify req");
         ESP_RETURN_ON_ERROR(rpc.send(id), TAG, "Failed to send request");
         return ESP_OK;
     }
@@ -103,6 +112,7 @@ public:
     esp_err_t init()
     {
         ESP_RETURN_ON_FALSE(netif = wifi_remote_eppp_init(EPPP_CLIENT), ESP_FAIL, TAG, "Failed to connect to EPPP server");
+        ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, got_ip, this), TAG, "Failed to register event");
         ESP_RETURN_ON_ERROR(sync.init(), TAG, "Failed to init sync primitives");
         ESP_RETURN_ON_ERROR(rpc.init(), TAG, "Failed to init RPC engine");
         return xTaskCreate(task, "client", 8192, this, 5, nullptr) == pdTRUE ? ESP_OK : ESP_FAIL;
@@ -168,15 +178,28 @@ private:
     static void task(void *ctx)
     {
         auto instance = static_cast<RpcInstance *>(ctx);
-        while (instance->perform() == ESP_OK) {}
+        do {
+            while (instance->perform() == ESP_OK) {}
+        } while (instance->restart() == ESP_OK);
         vTaskDelete(nullptr);
+    }
+    esp_err_t restart()
+    {
+        rpc.deinit();
+        ESP_RETURN_ON_ERROR(sync.wait_for(sync.restart, pdMS_TO_TICKS(10000)), TAG, "Didn't receive EPPP address in time");
+        return rpc.init();
+    }
+    static void got_ip(void *ctx, esp_event_base_t base, int32_t id, void *data)
+    {
+        auto instance = static_cast<RpcInstance *>(ctx);
+        instance->sync.notify(instance->sync.restart);
     }
     esp_netif_t *netif{nullptr};
 };
 
 
 namespace client {
-RpcInstance instance;
+constinit RpcInstance instance;
 }   // namespace client
 
 RpcInstance *RpcEngine::init_client()
@@ -196,20 +219,17 @@ RpcInstance *RpcEngine::init_client()
     cfg.clientkey_bytes = sizeof(client::key);
     cfg.common_name = "espressif.local";
 
-    tls_ = esp_tls_init();
-    if (!tls_) {
-        ESP_LOGE(TAG, "Failed to allocate esp_tls handle!");
-        goto exit;
-    }
-    if (esp_tls_conn_new_sync(host, strlen(host), rpc_port, &cfg, tls_) <= 0) {
-        ESP_LOGE(TAG, "Failed to open a new connection %s", host);
-        goto exit;
+    ESP_RETURN_ON_FALSE(tls_ = esp_tls_init(), nullptr, TAG, "Failed to create ESP-TLS instance");
+    int retries = 0;
+    while (esp_tls_conn_new_sync(host, strlen(host), rpc_port, &cfg, tls_) <= 0) {
+        esp_tls_conn_destroy(tls_);
+        tls_ = nullptr;
+        ESP_RETURN_ON_FALSE(retries++ < 3, nullptr, TAG, "Failed to open connection to %s", host);
+        ESP_LOGW(TAG, "Connection to RPC server failed! Will retry in %d second(s)", retries);
+        vTaskDelay(pdMS_TO_TICKS(1000 * retries));
+        ESP_RETURN_ON_FALSE(tls_ = esp_tls_init(), nullptr, TAG, "Failed to create ESP-TLS instance");
     }
     return &client::instance;
-exit:
-    esp_tls_conn_destroy(tls_);
-    tls_ = nullptr;
-    return nullptr;
 }
 }   // namespace eppp_rpc
 

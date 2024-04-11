@@ -9,8 +9,11 @@
 
 namespace eppp_rpc {
 
-const int rpc_port = 3333;
+static constexpr int rpc_port = 3333;
 
+/**
+ * @brief Currently supported RPC commands/events
+ */
 enum class api_id : uint32_t {
     ERROR,
     UNDEF,
@@ -35,6 +38,9 @@ struct RpcHeader {
     uint32_t size;
 } __attribute((__packed__));
 
+/**
+ * @brief Structure holding the outgoing or incoming parameter
+ */
 template<typename T>
 struct RpcData {
     RpcHeader head;
@@ -54,11 +60,17 @@ struct RpcData {
     }
 } __attribute((__packed__));
 
+/**
+ * @brief Singleton holding the static data for either the client or server side
+ */
 class RpcInstance;
 
+/**
+ * @brief Engine that implements a simple RPC mechanism
+ */
 class RpcEngine {
 public:
-    explicit RpcEngine(role r) : tls_(nullptr), role_(r) {}
+    constexpr explicit RpcEngine(role r) : tls_(nullptr), role_(r) {}
 
     esp_err_t init()
     {
@@ -72,6 +84,19 @@ public:
             instance = init_server();
         }
         return instance == nullptr ? ESP_FAIL : ESP_OK;
+    }
+
+    void deinit()
+    {
+        if (tls_ == nullptr) {
+            return;
+        }
+        if (role_ == role::CLIENT) {
+            esp_tls_conn_destroy(tls_);
+        } else if (role_ == role::SERVER) {
+            esp_tls_server_session_delete(tls_);
+        }
+        tls_ = nullptr;
     }
 
     template<typename T>
@@ -90,7 +115,7 @@ public:
         return ESP_OK;
     }
 
-    esp_err_t send(api_id id) // specialization for (void)
+    esp_err_t send(api_id id) // overload for (void)
     {
         RpcHeader head = {.id = id, .size = 0};
         int len = esp_tls_conn_write(tls_, &head, sizeof(head));

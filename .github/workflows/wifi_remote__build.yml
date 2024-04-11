@@ -48,7 +48,7 @@ jobs:
         run: |
           ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
-          echo "python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all"
+          python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
 
   build_wifi_remote_example:
     if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
