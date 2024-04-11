@@ -160,6 +160,11 @@ void UartTerminal::task()
                 ESP_LOGW(TAG, "unknown uart event type: %d", event.type);
                 break;
             }
+        } else {
+            uart_get_buffered_data_len(uart.port, &len);
+            if (len && on_read) {
+                on_read(nullptr, len);
+            }
         }
     }
 }
