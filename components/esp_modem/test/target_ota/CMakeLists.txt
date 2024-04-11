@@ -2,7 +2,7 @@
 # in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.8)
 
-set(EXTRA_COMPONENT_DIRS "../.." "../../examples/modem_tcp_client/components")
+set(EXTRA_COMPONENT_DIRS "../.." "../../../mbedtls_cxx")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ota_test)

@@ -10,6 +10,8 @@
 
 #define TAG "batch-tls"
 
+using namespace idf::mbedtls_cxx;
+
 class TlsTransport: public Tls {
 public:
     explicit TlsTransport(esp_transport_handle_t parent):
