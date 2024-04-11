@@ -219,6 +219,10 @@ void app_main(void)
         ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
         struct esp_modem_usb_term_config usb_config = ESP_MODEM_BG96_USB_CONFIG();
         esp_modem_dce_device_t usb_dev_type = ESP_MODEM_DCE_BG96;
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_EC20 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the EC20 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_EC20_USB_CONFIG();
+        esp_modem_dce_device_t usb_dev_type = ESP_MODEM_DCE_EC20;
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
         ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
         struct esp_modem_usb_term_config usb_config = ESP_MODEM_SIM7600_USB_CONFIG();

@@ -160,6 +160,9 @@ extern "C" void app_main(void)
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
         ESP_LOGI(TAG, "Initializing esp_modem for the BG96 module...");
         struct esp_modem_usb_term_config usb_config = ESP_MODEM_BG96_USB_CONFIG();
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_EC20 == 1
+        ESP_LOGI(TAG, "Initializing esp_modem for the EC20 module...");
+        struct esp_modem_usb_term_config usb_config = ESP_MODEM_EC20_USB_CONFIG();
 #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1
         ESP_LOGI(TAG, "Initializing esp_modem for the SIM7600 module...");
         struct esp_modem_usb_term_config usb_config = ESP_MODEM_SIM7600_USB_CONFIG();
@@ -180,7 +183,7 @@ extern "C" void app_main(void)
         });
 #if CONFIG_EXAMPLE_MODEM_DEVICE_BG96 == 1
         std::unique_ptr<DCE> dce = create_BG96_dce(&dce_config, dte, esp_netif);
-#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1 || CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1
+#elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600 == 1 || CONFIG_EXAMPLE_MODEM_DEVICE_A7670 == 1 || CONFIG_EXAMPLE_MODEM_DEVICE_EC20 == 1
         std::unique_ptr<DCE> dce = create_SIM7600_dce(&dce_config, dte, esp_netif);
 #else
 #error USB modem not selected
