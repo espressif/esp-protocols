@@ -3,6 +3,6 @@ commitizen:
   bump_message: 'bump(tls_cxx): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py mbedtls_cxx
   tag_format: tls_cxx-v$version
-  version: 0.0.0
+  version: 0.1.0
   version_files:
   - idf_component.yml
