@@ -1,4 +1,5 @@
 dependencies:
+  espressif/esp_secure_cert_mgr: "^2.4.1"
   ## Required IDF version
   idf: ">=5.0"
   espressif/esp_websocket_client:
