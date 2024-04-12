@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -96,12 +96,22 @@ static void websocket_app_start(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
-    ESP_LOGI(TAG, "Sending fragmented message");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // Sending text data
+    ESP_LOGI(TAG, "Sending fragmented text message");
     memset(data, 'a', sizeof(data));
     esp_websocket_client_send_text_partial(client, data, sizeof(data), portMAX_DELAY);
     memset(data, 'b', sizeof(data));
     esp_websocket_client_send_cont_msg(client, data, sizeof(data), portMAX_DELAY);
+    esp_websocket_client_send_fin(client, portMAX_DELAY);
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // Sending binary data
+    ESP_LOGI(TAG, "Sending fragmented binary message");
+    char binary_data[128];
+    memset(binary_data, 0, sizeof(binary_data));
+    esp_websocket_client_send_bin_partial(client, binary_data, sizeof(binary_data), portMAX_DELAY);
+    memset(binary_data, 1, sizeof(binary_data));
+    esp_websocket_client_send_cont_msg(client, binary_data, sizeof(binary_data), portMAX_DELAY);
     esp_websocket_client_send_fin(client, portMAX_DELAY);
 
     esp_websocket_client_destroy(client);

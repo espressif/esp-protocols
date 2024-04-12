@@ -88,7 +88,9 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
     case WEBSOCKET_EVENT_DATA:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
         ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
-        if (data->op_code == 0x08 && data->data_len == 2) {
+        if (data->op_code == 0x2) { // Opcode 0x2 indicates binary data
+            ESP_LOG_BUFFER_HEX("Received binary data", data->data_ptr, data->data_len);
+        } else if (data->op_code == 0x08 && data->data_len == 2) {
             ESP_LOGW(TAG, "Received closed message with code=%d", 256 * data->data_ptr[0] + data->data_ptr[1]);
         } else {
             ESP_LOGW(TAG, "Received=%.*s\n\n", data->data_len, (char *)data->data_ptr);
@@ -183,13 +185,32 @@ static void websocket_app_start(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 
-    ESP_LOGI(TAG, "Sending fragmented message");
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // Sending text data
+    ESP_LOGI(TAG, "Sending fragmented text message");
     memset(data, 'a', sizeof(data));
     esp_websocket_client_send_text_partial(client, data, sizeof(data), portMAX_DELAY);
     memset(data, 'b', sizeof(data));
     esp_websocket_client_send_cont_msg(client, data, sizeof(data), portMAX_DELAY);
     esp_websocket_client_send_fin(client, portMAX_DELAY);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    // Sending binary data
+    ESP_LOGI(TAG, "Sending fragmented binary message");
+    char binary_data[5];
+    memset(binary_data, 0, sizeof(binary_data));
+    esp_websocket_client_send_bin_partial(client, binary_data, sizeof(binary_data), portMAX_DELAY);
+    memset(binary_data, 1, sizeof(binary_data));
+    esp_websocket_client_send_cont_msg(client, binary_data, sizeof(binary_data), portMAX_DELAY);
+    esp_websocket_client_send_fin(client, portMAX_DELAY);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    // Sending text data longer than ws buffer (default 1024)
+    ESP_LOGI(TAG, "Sending text longer than ws buffer (default 1024)");
+    const int size = 2000;
+    char *long_data = malloc(size);
+    memset(long_data, 'a', size);
+    esp_websocket_client_send_text(client, long_data, size, portMAX_DELAY);
 
     xSemaphoreTake(shutdown_sema, portMAX_DELAY);
     esp_websocket_client_close(client, portMAX_DELAY);
