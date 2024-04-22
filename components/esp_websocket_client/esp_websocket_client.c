@@ -497,6 +497,9 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
 
         esp_transport_set_default_port(ssl, WEBSOCKET_SSL_DEFAULT_PORT);
         esp_transport_list_add(client->transport_list, ssl, "_ssl"); // need to save to transport list, for cleanup
+        if (client->keep_alive_cfg.keep_alive_enable) {
+            esp_transport_ssl_set_keep_alive(ssl, &client->keep_alive_cfg);
+        }
         if (client->config->use_global_ca_store == true) {
             esp_transport_ssl_enable_global_ca_store(ssl);
         } else if (client->config->cert) {
