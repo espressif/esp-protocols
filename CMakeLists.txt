@@ -2,6 +2,7 @@ idf_component_register(
   SRCS
     src/debug_print_utils.c
     src/lowpan6_ble.c
+    src/lowpan6_ble_netif.c
     "$ENV{IDF_PATH}/components/lwip/lwip/src/netif/lowpan6.c"
     "$ENV{IDF_PATH}/components/lwip/lwip/src/netif/lowpan6_ble.c"
     "$ENV{IDF_PATH}/components/lwip/lwip/src/netif/lowpan6_common.c"
