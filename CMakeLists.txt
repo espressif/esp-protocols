@@ -1,8 +1,12 @@
 idf_component_register(
   SRCS
     src/debug_print_utils.c
+    src/lowpan6_ble.c
+  INCLUDE_DIRS
+    include
   PRIV_INCLUDE_DIRS
     src
   REQUIRES
     bt
+    esp_netif
 )
