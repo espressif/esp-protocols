@@ -16,12 +16,25 @@
 #pragma once
 
 #include "esp_compiler.h"
-#include "esp_netif_types.h"
+#include "esp_idf_version.h"
 #include "host/ble_gap.h"
 #include "host/ble_l2cap.h"
 #include "nimble/ble.h"
 
 #include <stdbool.h>
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0)
+    // Add missing includes to esp_netif_types.h
+    // https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
+    #include "esp_err.h"
+    #include "esp_event_base.h"
+    #include "esp_netif_ip_addr.h"
+
+    #include <stdbool.h>
+    #include <stdint.h>
+#endif
+
+#include "esp_netif_types.h"
 
 /** Maximum concurrent IPSP channels */
 #define LOWPAN6_BLE_IPSP_MAX_CHANNELS 1
@@ -62,6 +75,7 @@
 #define LOWPAN6_BLE_SERVICE_UUID_IPSS 0x1820
 
 // clang-format off
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #define ESP_NETIF_INHERENT_DEFAULT_LOWPAN6_BLE() {              \
      ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(mac)     \
      ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(ip_info) \
@@ -72,6 +86,17 @@
      .route_prio    = 16,                                       \
      .bridge_info   = NULL                                      \
 }
+#else
+#define ESP_NETIF_INHERENT_DEFAULT_LOWPAN6_BLE() {              \
+     ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(mac)     \
+     ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(ip_info) \
+     .get_ip_event  = 0,                                        \
+     .lost_ip_event = 0,                                        \
+     .if_key        = "LOWPAN6_BLE_DEF",                        \
+     .if_desc       = "lowpan6_ble",                            \
+     .route_prio    = 16,                                       \
+}
+#endif
 // clang-format on
 
 enum lowpan6_ble_event_type

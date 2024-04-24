@@ -15,6 +15,18 @@
 
 #pragma once
 
+#include "esp_idf_version.h"
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0)
+    // Add missing includes to esp_netif_types.h
+    // https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
+    #include "esp_err.h"
+    #include "esp_event_base.h"
+    #include "esp_netif_ip_addr.h"
+
+    #include <stdbool.h>
+    #include <stdint.h>
+#endif
+
 #include "esp_netif_types.h"
 #include "nimble/ble.h"
 

@@ -16,11 +16,50 @@
 #include "lowpan6_ble_netif.h"
 
 #include "debug_print_utils.h"
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_netif_net_stack.h"
 #include "lwip/err.h"
-#include "lwip/esp_netif_net_stack.h"
 #include "netif/lowpan6_ble.h"
+
+static err_t lowpan6_ble_netif_init(struct netif* netif);
+static void lowpan6_ble_netif_input(void* h, void* buffer, size_t len, void* eb);
+
+// The esp_netif_netstack_config_t struct was not publically exposed until after v5
+// If we're running a lower version, we'll define the struct ourselves like in the following
+// example:
+// https://github.com/david-cermak/eth-ap-nat/blob/2279344e18a0b98b5368999aac9441c59871e6fa/eth-ap-idf4.3/main/ethernet_example_main.c#L90-L96
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
+// clang-format off
+    #include "lwip/esp_netif_net_stack.h"
+    const struct esp_netif_netstack_config s_netif_config_lowpan6_ble = {
+        .lwip = {
+            .init_fn  = lowpan6_ble_netif_init,
+            .input_fn = lowpan6_ble_netif_input,
+        }
+    };
+// clang-format on
+
+#else
+
+// clang-format off
+    struct esp_netif_lwip_vanilla_config
+    {
+        err_t (*init_fn)(struct netif*);
+        void (*input_fn)(void* netif, void* buffer, size_t len, void* eb);
+    };
+
+    const struct esp_netif_lwip_vanilla_config s_netif_config_lowpan6_ble = {
+        .init_fn  = lowpan6_ble_netif_init,
+        .input_fn = lowpan6_ble_netif_input,
+    };
+// clang-format on
+
+#endif
+
+const esp_netif_netstack_config_t* netstack_default_lowpan6_ble =
+    (const esp_netif_netstack_config_t*)&s_netif_config_lowpan6_ble;
 
 static const char* TAG = "lowpan6_ble_netif";
 
@@ -83,17 +122,6 @@ static void lowpan6_ble_netif_input(void* h, void* buffer, size_t len, void* eb)
 
     rfc7668_input(p, netif);
 }
-
-// clang-format off
-const struct esp_netif_netstack_config s_netif_config_lowpan6_ble = {
-    .lwip = {
-         .init_fn  = lowpan6_ble_netif_init,
-         .input_fn = lowpan6_ble_netif_input,
-     }
-};
-// clang-format on
-
-const esp_netif_netstack_config_t* netstack_default_lowpan6_ble = &s_netif_config_lowpan6_ble;
 
 void ipv6_create_link_local_from_mac48(uint8_t const* src, ip6_addr_t* dst, int is_public)
 {
