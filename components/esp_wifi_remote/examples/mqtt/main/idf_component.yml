@@ -1,0 +1,5 @@
+dependencies:
+  espressif/eppp_link: "^0.0.1"
+  esp_wifi_remote:
+    version: "*"
+    override_path: ../../..

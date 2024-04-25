@@ -57,10 +57,6 @@ esp_err_t esp_wifi_remote_80211_tx(wifi_interface_t ifx, const void *buffer, int
 esp_err_t esp_wifi_remote_set_csi_rx_cb(wifi_csi_cb_t cb, void *ctx);
 esp_err_t esp_wifi_remote_set_csi_config(const wifi_csi_config_t *config);
 esp_err_t esp_wifi_remote_set_csi(_Bool en);
-esp_err_t esp_wifi_remote_set_ant_gpio(const wifi_ant_gpio_config_t *config);
-esp_err_t esp_wifi_remote_get_ant_gpio(wifi_ant_gpio_config_t *config);
-esp_err_t esp_wifi_remote_set_ant(const wifi_ant_config_t *config);
-esp_err_t esp_wifi_remote_get_ant(wifi_ant_config_t *config);
 int64_t esp_wifi_remote_get_tsf_time(wifi_interface_t interface);
 esp_err_t esp_wifi_remote_set_inactive_time(wifi_interface_t ifx, uint16_t sec);
 esp_err_t esp_wifi_remote_get_inactive_time(wifi_interface_t ifx, uint16_t *sec);

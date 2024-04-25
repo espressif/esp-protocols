@@ -267,26 +267,6 @@ esp_err_t esp_wifi_set_csi(_Bool en)
     return esp_wifi_remote_set_csi(en);
 }
 
-esp_err_t esp_wifi_set_ant_gpio(const wifi_ant_gpio_config_t *config)
-{
-    return esp_wifi_remote_set_ant_gpio(config);
-}
-
-esp_err_t esp_wifi_get_ant_gpio(wifi_ant_gpio_config_t *config)
-{
-    return esp_wifi_remote_get_ant_gpio(config);
-}
-
-esp_err_t esp_wifi_set_ant(const wifi_ant_config_t *config)
-{
-    return esp_wifi_remote_set_ant(config);
-}
-
-esp_err_t esp_wifi_get_ant(wifi_ant_config_t *config)
-{
-    return esp_wifi_remote_get_ant(config);
-}
-
 int64_t esp_wifi_get_tsf_time(wifi_interface_t interface)
 {
     return esp_wifi_remote_get_tsf_time(interface);

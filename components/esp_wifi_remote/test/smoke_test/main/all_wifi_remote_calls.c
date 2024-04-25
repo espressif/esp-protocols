@@ -281,26 +281,6 @@ void run_all_wifi_remote_apis(void)
     }
 
     {
-        const wifi_ant_gpio_config_t *config = NULL;
-        esp_wifi_remote_set_ant_gpio(config);
-    }
-
-    {
-        wifi_ant_gpio_config_t *config = NULL;
-        esp_wifi_remote_get_ant_gpio(config);
-    }
-
-    {
-        const wifi_ant_config_t *config = NULL;
-        esp_wifi_remote_set_ant(config);
-    }
-
-    {
-        wifi_ant_config_t *config = NULL;
-        esp_wifi_remote_get_ant(config);
-    }
-
-    {
         wifi_interface_t interface = 0;
         esp_wifi_remote_get_tsf_time(interface);
     }

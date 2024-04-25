@@ -29,7 +29,7 @@ jobs:
 
   build_wifi_remote:
     if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
-    name: Build WiFi Remote
+    name: Build WiFi Remote Test
     strategy:
       matrix:
         idf_ver: ["latest"]
@@ -49,3 +49,29 @@ jobs:
           ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
+
+  build_wifi_remote_example:
+    if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
+    name: Build WiFi Remote Example
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        example: [ { app: host, path: "examples/mqtt" }, { app: slave, path: "examples/server" }]
+        include:
+          - idf_ver: "latest"
+            example: { app: slave, path: "examples/server" }
+            warning: "Warning: The smallest app partition is nearly full"
+
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: Build ${{ matrix.example.app }} with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: ${{ matrix.warning }}
+        shell: bash
+        run: |
+          ${IDF_PATH}/install.sh --enable-pytest
+          . ${IDF_PATH}/export.sh
+          python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.example.path}} -vv --preserve-all
