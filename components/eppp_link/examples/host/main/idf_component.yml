@@ -1,4 +1,5 @@
 dependencies:
+  espressif/iperf-cmd: "^0.1.1"
   espressif/eppp_link:
     version: "*"
     override_path: "../../.."
