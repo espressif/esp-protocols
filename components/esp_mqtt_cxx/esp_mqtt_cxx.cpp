@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,12 +7,12 @@
 #include <string>
 #include <algorithm>
 #include <stdexcept>
+#include <variant>
 
 #include "mqtt_client.h"
 #include "esp_log.h"
 
 #include "esp_mqtt.hpp"
-#include "esp_mqtt_client_config.hpp"
 
 namespace {
 
@@ -133,6 +133,22 @@ esp_mqtt_client_config_t make_config(BrokerConfiguration const &broker, ClientCr
     esp_mqtt_client_config_t mqtt_client_cfg{};
     config_broker(mqtt_client_cfg, broker);
     config_client_credentials(mqtt_client_cfg, credentials);
+    mqtt_client_cfg.session.keepalive = config.session.keepalive;
+    mqtt_client_cfg.session.last_will.msg = config.session.last_will.lwt_msg;
+    mqtt_client_cfg.session.last_will.topic = config.session.last_will.lwt_topic;
+    mqtt_client_cfg.session.last_will.msg_len = config.session.last_will.lwt_msg_len;
+    mqtt_client_cfg.session.last_will.qos = config.session.last_will.lwt_qos;
+    mqtt_client_cfg.session.last_will.retain = config.session.last_will.lwt_retain;
+    mqtt_client_cfg.session.protocol_ver = config.session.protocol_ver;
+    mqtt_client_cfg.session.disable_keepalive = config.session.disable_keepalive;
+    mqtt_client_cfg.network.reconnect_timeout_ms = config.connection.reconnect_timeout_ms;
+    mqtt_client_cfg.network.timeout_ms = config.connection.network_timeout_ms;
+    mqtt_client_cfg.network.disable_auto_reconnect = config.connection.disable_auto_reconnect;
+    mqtt_client_cfg.network.refresh_connection_after_ms = config.connection.refresh_connection_after_ms;
+    mqtt_client_cfg.task.priority = config.task.task_prio;
+    mqtt_client_cfg.task.stack_size = config.task.task_stack;
+    mqtt_client_cfg.buffer.size = config.buffer_size;
+    mqtt_client_cfg.buffer.out_size = config.out_buffer_size;
     return mqtt_client_cfg;
 }
 }
@@ -149,7 +165,6 @@ Client::Client(esp_mqtt_client_config_t const &config) :  handler(esp_mqtt_clien
     CHECK_THROW_SPECIFIC(esp_mqtt_client_register_event(handler.get(), MQTT_EVENT_ANY, mqtt_event_handler, this), mqtt::MQTTException);
     CHECK_THROW_SPECIFIC(esp_mqtt_client_start(handler.get()), mqtt::MQTTException);
 }
-
 
 void Client::mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) noexcept
 {
