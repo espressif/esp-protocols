@@ -78,6 +78,14 @@ void user_notify(struct lowpan6_ble_driver* driver, struct lowpan6_ble_event* ev
     }
 }
 
+static inline int set_recv_ready(struct ble_l2cap_chan* chan)
+{
+    struct os_mbuf* next = os_mbuf_get_pkthdr(&s_mbuf_pool, 0);
+
+    int rc = ble_l2cap_recv_ready(chan, next);
+    return rc;
+}
+
 static int on_l2cap_event(struct ble_l2cap_event* event, void* arg)
 {
     ESP_LOGD(TAG, "(%s) event->type=%d", __func__, event->type);
@@ -121,13 +129,20 @@ static int on_l2cap_event(struct ble_l2cap_event* event, void* arg)
         // On data received, we need to provide NimBLE with the next sdu_rx to receive data into.
         // We'll do this after the user callback automatically.
         os_mbuf_free_chain(event->receive.sdu_rx);
-        struct os_mbuf* next = os_mbuf_get_pkthdr(&s_mbuf_pool, 0);
-        rc                   = ble_l2cap_recv_ready(event->receive.chan, next);
+        rc = set_recv_ready(event->receive.chan);
         if (rc != 0)
         {
             ESP_LOGE(TAG, "(%s) couldn't set up next recv ready; rc=%d", __func__, rc);
         }
 
+        break;
+
+    case BLE_L2CAP_EVENT_COC_ACCEPT:
+        rc = set_recv_ready(event->accept.chan);
+        if (rc != 0)
+        {
+            ESP_LOGE(TAG, "(%s) couldn't set up next recv ready; rc=%d", __func__, rc);
+        }
         break;
 
     case BLE_L2CAP_EVENT_COC_TX_UNSTALLED:
@@ -423,6 +438,11 @@ esp_err_t lowpan6_ble_connect(
 )
 {
     struct lowpan6_ble_driver* driver = (struct lowpan6_ble_driver*)handle;
+    if (driver == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
     if (cb)
     {
         driver->cb       = cb;
@@ -453,6 +473,41 @@ esp_err_t lowpan6_ble_connect(
             debug_print_ble_addr(addr),
             rc
         );
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t lowpan6_ble_create_server(
+    lowpan6_ble_driver_handle handle,
+    lowpan6_ble_event_handler cb,
+    void* userdata
+)
+{
+    struct lowpan6_ble_driver* driver = (struct lowpan6_ble_driver*)handle;
+    if (driver == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (cb)
+    {
+        driver->cb       = cb;
+        driver->userdata = userdata;
+    }
+    else
+    {
+        driver->cb       = NULL;
+        driver->userdata = NULL;
+    }
+
+    int rc =
+        ble_l2cap_create_server(LOWPAN6_BLE_IPSP_PSM, LOWPAN6_BLE_IPSP_MTU, on_l2cap_event, driver);
+
+    if (rc != 0)
+    {
+        ESP_LOGE(TAG, "(%s) failed to create L2CAP server; rc=%d", __func__, rc);
         return ESP_FAIL;
     }
 

@@ -277,6 +277,50 @@ esp_err_t lowpan6_ble_connect(
     void* userdata
 );
 
+/** A NimBLE ble_l2cap_event_fn used to create an L2CAP server for LoWPAN6 BLE connections.
+ *
+ * This should be used to register an L2CAP server on LoWPAN6 BLE nodes (i.e., the devices
+ * _accepting_ a connection request from the central device).
+ *
+ * @example
+ * ```
+ * void app_main()
+ * {
+ *     esp_netif_config_t cfg = {
+ *         .base = ESP_NETIF_INHERENT_DEFAULT_LOWPAN6_BLE(),
+ *         .driver = NULL,
+ *         .stack = netstack_default_lowpan6_ble,
+ *     };
+ *
+ *     esp_netif_t* lowpan6_ble_netif = esp_netif_new(&cfg);
+ *
+ *     lowpan6_ble_driver_handle lowpan6_ble_driver = lowpan6_ble_create();
+ *     if (lowpan6_ble_driver != NULL)
+ *     {
+ *         ESP_ERROR_CHECK(esp_netif_attach(lowpan6_ble_netif, lowpan6_ble_driver));
+ *     }
+ *
+ *     // this will hook up our driver to our L2CAP channel once the other
+ *     // end initiates the connection
+ *     lowpan6_ble_create_server(lowpan6_ble_driver, NULL, NULL);
+ * }
+ * ```
+ *
+ * @param[in] handle The lowpan6_ble instance to associate with this BLE connection.
+ * @param[in] cb (Optional) An event handler for lowpan6_ble events.
+ * @param[in] userdata (Optional) Arbitrary data to pass to `cb` during LoWPAN6 BLE events.
+ *
+ * @returns ESP_OK if the connection was initiated successfully. Other codes
+ *    indicate error. Note that success here simply means that the GAP connection
+ *    was initiated. Further connection failures/successes are communicated via
+ *    BLE callback events.
+ */
+esp_err_t lowpan6_ble_create_server(
+    lowpan6_ble_driver_handle handle,
+    lowpan6_ble_event_handler cb,
+    void* userdata
+);
+
 /** Transform the given BLE address into a link-local IPv6 address.
  *
  * @param[in] ble_addr The BLE address to transform.
