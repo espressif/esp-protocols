@@ -8,7 +8,6 @@
 #include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_console.h"
-#include "cmd_system.h"
 
 void register_pppd(void);
 
@@ -22,7 +21,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
 
     /* Register commands */
-    register_system_common();
     register_pppd();
 
     printf("\n =======================================================\n");
