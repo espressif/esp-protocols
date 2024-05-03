@@ -19,6 +19,7 @@
 #include "esp_idf_version.h"
 #include "host/ble_gap.h"
 #include "host/ble_l2cap.h"
+#include "lwip/ip6_addr.h"
 #include "nimble/ble.h"
 
 #include <stdbool.h>
@@ -275,3 +276,12 @@ esp_err_t lowpan6_ble_connect(
     lowpan6_ble_event_handler cb,
     void* userdata
 );
+
+/** Transform the given BLE address into a link-local IPv6 address.
+ *
+ * @param[in] ble_addr The BLE address to transform.
+ * @param[out] ip_addr The output IPv6 address.
+ *
+ * @returns ESP_OK on success.
+ */
+esp_err_t ble_addr_to_link_local(ble_addr_t* ble_addr, ip6_addr_t* ip_addr);

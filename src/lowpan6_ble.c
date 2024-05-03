@@ -458,3 +458,18 @@ esp_err_t lowpan6_ble_connect(
 
     return ESP_OK;
 }
+
+esp_err_t ble_addr_to_link_local(ble_addr_t* ble_addr, ip6_addr_t* ip_addr)
+{
+    if (ble_addr == NULL || ip_addr == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint8_t eui64_addr[8];
+    nimble_addr_to_eui64(ble_addr, eui64_addr);
+
+    ipv6_create_link_local_from_eui64(eui64_addr, ip_addr);
+
+    return ESP_OK;
+}

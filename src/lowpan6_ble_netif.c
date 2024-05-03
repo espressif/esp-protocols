@@ -123,15 +123,65 @@ static void lowpan6_ble_netif_input(void* h, void* buffer, size_t len, void* eb)
     rfc7668_input(p, netif);
 }
 
-void ipv6_create_link_local_from_mac48(uint8_t const* src, ip6_addr_t* dst, int is_public)
+void nimble_addr_to_eui64(ble_addr_t const* addr, uint8_t* eui64)
 {
-    uint8_t eui64_addr[8];
-    ble_addr_to_eui64(eui64_addr, src, 1);
+    // NimBLE stores addresses in _reverse_ order. We need to reverse these
+    // before doing the EUI64 conversion, otherwise we get incorrect
+    // addresses in our IPv6 headers.
+    uint8_t addr_reversed[6];
+    for (int i = 0; i < 6; ++i)
+    {
+        addr_reversed[i] = addr->val[6 - 1 - i];
+    }
 
+    bool is_public_addr = addr->type == BLE_ADDR_PUBLIC || addr->type == BLE_ADDR_PUBLIC_ID;
+    ble_addr_to_eui64(eui64, addr_reversed, is_public_addr);
+}
+
+void ipv6_create_link_local_from_eui64(uint8_t const* eui64_addr, ip6_addr_t* dst)
+{
     IP6_ADDR_PART(dst, 0, 0xFE, 0x80, 0x00, 0x00);
     IP6_ADDR_PART(dst, 1, 0x00, 0x00, 0x00, 0x00);
     IP6_ADDR_PART(dst, 2, eui64_addr[0] ^ 0x02, eui64_addr[1], eui64_addr[2], eui64_addr[3]);
     IP6_ADDR_PART(dst, 3, eui64_addr[4], eui64_addr[5], eui64_addr[6], eui64_addr[7]);
+}
+
+static inline void configure_netif_addresses(struct netif* netif, ble_addr_t* addr, bool is_peer)
+{
+    ESP_LOGD(
+        TAG,
+        "(%s) setting %s address %s",
+        __func__,
+        is_peer ? "peer" : "local",
+        debug_print_ble_addr(addr)
+    );
+
+    uint8_t eui64_addr[8];
+    nimble_addr_to_eui64(addr, eui64_addr);
+
+    if (is_peer)
+    {
+        rfc7668_set_peer_addr_eui64(netif, eui64_addr, sizeof(eui64_addr));
+    }
+    else
+    {
+        rfc7668_set_local_addr_eui64(netif, eui64_addr, sizeof(eui64_addr));
+
+        ip6_addr_t lladdr;
+        ipv6_create_link_local_from_eui64(eui64_addr, &lladdr);
+
+        ESP_LOGD(
+            TAG,
+            "(%s) adding link-local address %s to netif %p",
+            __func__,
+            ip6addr_ntoa(&lladdr),
+            netif
+        );
+
+        ip_addr_copy_from_ip6(netif->ip6_addr[0], lladdr);
+        ip6_addr_assign_zone(ip_2_ip6(&(netif->ip6_addr[0])), IP6_UNICAST, netif);
+        netif_ip6_addr_set_state(netif, 0, IP6_ADDR_PREFERRED);
+    }
 }
 
 void lowpan6_ble_netif_up(esp_netif_t* esp_netif, ble_addr_t* peer_addr, ble_addr_t* our_addr)
@@ -143,34 +193,13 @@ void lowpan6_ble_netif_up(esp_netif_t* esp_netif, ble_addr_t* peer_addr, ble_add
         return;
     }
 
-    // NimBLE stores addresses in _reverse_ order. We need to reverse these
-    // before doing the EUI64 conversion, otherwise we get incorrect
-    // addresses in our IPv6 headers.
-    uint8_t addr_buf[6];
-    for (int i = 0; i < 6; ++i)
-    {
-        addr_buf[i] = peer_addr->val[6 - 1 - i];
-    }
-    rfc7668_set_peer_addr_mac48(netif, addr_buf, 6, 1);
-
-    for (int i = 0; i < 6; ++i)
-    {
-        addr_buf[i] = our_addr->val[6 - 1 - i];
-    }
-    rfc7668_set_local_addr_mac48(netif, addr_buf, 6, 1);
-
-    ESP_LOGD(TAG, "(%s) set peer address to %s", __func__, debug_print_ble_addr(peer_addr));
-    ESP_LOGD(TAG, "(%s) set local address to %s", __func__, debug_print_ble_addr(our_addr));
-
-    ip6_addr_t lladdr;
-    ipv6_create_link_local_from_mac48(addr_buf, &lladdr, 1);
-
-    ip_addr_copy_from_ip6(netif->ip6_addr[0], lladdr);
-    ip6_addr_assign_zone(ip_2_ip6(&(netif->ip6_addr[0])), IP6_UNICAST, netif);
-    netif_ip6_addr_set_state(netif, 0, IP6_ADDR_PREFERRED);
+    configure_netif_addresses(netif, peer_addr, true);
+    configure_netif_addresses(netif, our_addr, false);
 
     netif_set_up(netif);
     netif_set_link_up(netif);
+
+    ESP_LOGD(TAG, "(%s) netif up; esp_netif=%p netif=%p", __func__, esp_netif, netif);
 }
 
 void lowpan6_ble_netif_down(esp_netif_t* esp_netif)
