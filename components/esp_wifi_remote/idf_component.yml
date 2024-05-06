@@ -1,9 +1,9 @@
-version: 0.2.0
+version: 0.2.1
 url: https://github.com/espressif/esp-protocols/tree/master/components/esp_wifi_remote
 description: Utility wrapper for esp_wifi functionality on remote targets
 dependencies:
   espressif/eppp_link:
-    version: '0.0.1'
+    version: '>=0.1'
   idf:
     version: '>=5.3'
 #  espressif/esp_hosted:
