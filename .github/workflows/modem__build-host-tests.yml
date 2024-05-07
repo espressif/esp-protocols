@@ -13,16 +13,12 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v4.3", "release-v4.4", "release-v5.0"]
+        idf_ver: ["latest", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3"]
         example: ["pppos_client", "modem_console", "modem_tcp_client", "ap_to_pppos", "simple_cmux_client"]
         exclude:
-          - idf_ver: "release-v4.3"
-            example: modem_tcp_client
           - idf_ver: "release-v4.4"
             example: modem_tcp_client
         include:
-          - idf_ver: "release-v4.3"
-            skip_config: usb
           - idf_ver: "release-v5.0"
             example: "simple_cmux_client"
             warning: "Warning: The smallest app partition is nearly full"
@@ -57,7 +53,7 @@ jobs:
     name: Build tests
     strategy:
       matrix:
-        idf_ver: ["release-v5.0", "release-v5.1", "latest"]
+        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "latest"]
         test: ["target", "target_ota", "target_iperf"]
 
     runs-on: ubuntu-22.04

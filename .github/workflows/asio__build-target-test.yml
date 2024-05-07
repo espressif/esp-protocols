@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1"]
+        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3"]
         idf_target: ["esp32", "esp32s2"]
         example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
     runs-on: ubuntu-22.04
@@ -64,7 +64,7 @@ jobs:
     name: Target tests
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0"]
+        idf_ver: ["latest", "release-v5.0", "release-v5.2", "release-v5.3"]
         idf_target: ["esp32"]
         example: ["asio_chat", "tcp_echo_server", "udp_echo_server", "ssl_client_server"]
     needs: build_asio
