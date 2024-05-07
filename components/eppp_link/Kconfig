@@ -1,5 +1,11 @@
 menu "eppp_link"
 
+    config EPPP_LINK_USES_LWIP
+        bool
+        default "y"
+        select LWIP_PPP_SUPPORT
+        select LWIP_PPP_SERVER_SUPPORT
+
     choice EPPP_LINK_DEVICE
         prompt "Choose PPP device"
         default EPPP_LINK_DEVICE_UART
