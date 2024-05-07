@@ -164,6 +164,36 @@ private:
             }
             break;
         }
+        case api_id::DISCONNECT: {
+            if (header.size != 0) {
+                return ESP_FAIL;
+            }
+
+            auto ret = esp_wifi_disconnect();
+            if (rpc.send(api_id::DISCONNECT, &ret) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            break;
+        }
+        case api_id::DEINIT: {
+            if (header.size != 0) {
+                return ESP_FAIL;
+            }
+
+            auto ret = esp_wifi_deinit();
+            if (rpc.send(api_id::DEINIT, &ret) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            break;
+        }
+        case api_id::SET_STORAGE: {
+            auto req = rpc.get_payload<wifi_storage_t>(api_id::SET_STORAGE, header);
+            auto ret = esp_wifi_set_storage(req);
+            if (rpc.send(api_id::SET_STORAGE, &ret) != ESP_OK) {
+                return ESP_FAIL;
+            }
+            break;
+        }
         case api_id::GET_MAC: {
             auto req = rpc.get_payload<wifi_interface_t>(api_id::GET_MAC, header);
             esp_wifi_remote_mac_t resp = {};
