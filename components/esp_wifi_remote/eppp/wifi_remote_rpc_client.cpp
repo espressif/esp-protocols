@@ -295,3 +295,24 @@ extern "C" esp_err_t esp_wifi_remote_set_mode(wifi_mode_t mode)
     ESP_RETURN_ON_ERROR(instance.send(api_id::SET_MODE, &mode), TAG, "Failed to send request");
     return instance.get_resp<esp_err_t>(api_id::SET_MODE);
 }
+
+extern "C" esp_err_t esp_wifi_remote_deinit(void)
+{
+    std::lock_guard<Sync> lock(instance.sync);
+    ESP_RETURN_ON_ERROR(instance.send(api_id::DEINIT), TAG, "Failed to send request");
+    return instance.get_resp<esp_err_t>(api_id::DEINIT);
+}
+
+extern "C" esp_err_t esp_wifi_remote_disconnect(void)
+{
+    std::lock_guard<Sync> lock(instance.sync);
+    ESP_RETURN_ON_ERROR(instance.send(api_id::DISCONNECT), TAG, "Failed to send request");
+    return instance.get_resp<esp_err_t>(api_id::DISCONNECT);
+}
+
+extern "C" esp_err_t esp_wifi_remote_set_storage(wifi_storage_t storage)
+{
+    std::lock_guard<Sync> lock(instance.sync);
+    ESP_RETURN_ON_ERROR(instance.send(api_id::SET_STORAGE, &storage), TAG, "Failed to send request");
+    return instance.get_resp<esp_err_t>(api_id::SET_STORAGE);
+}
