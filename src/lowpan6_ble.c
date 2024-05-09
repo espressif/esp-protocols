@@ -314,6 +314,7 @@ static esp_err_t lowpan6_ble_transmit(void* h, void* buffer, size_t len)
         else if (rc != 0 && rc != BLE_HS_ESTALLED)
         {
             ESP_LOGW(TAG, "(%s) failed to send data via ipsp; rc=%d", __func__, rc);
+            os_mbuf_free_chain(sdu_tx);
             return ESP_FAIL;
         }
     } while (rc == BLE_HS_EBUSY);
