@@ -1,0 +1,59 @@
+name: Run clang-tidy
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Run clang-tidy
+    runs-on: ubuntu-20.04
+    container: espressif/idf:latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'true'
+      - name: Install libtinfo (esp-clang dependency)
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt update && apt-get install -y libtinfo5
+      - name: Install esp-clang
+        run: |
+          ${IDF_PATH}/tools/idf_tools.py --non-interactive install esp-clang
+      - name: Install clang-tidy-sarif
+        run: |
+          curl -sSL https://github.com/psastras/sarif-rs/releases/download/clang-tidy-sarif-v0.3.3/clang-tidy-sarif-x86_64-unknown-linux-gnu -o clang-tidy-sarif
+          chmod +x clang-tidy-sarif
+          curl -sSL https://raw.githubusercontent.com/espressif/idf-extra-components/master/.github/filter_sarif.py -o filter_sarif.py
+      - name: Install pyclang
+        run: |
+          . ${IDF_PATH}/export.sh
+          pip install pyclang~=0.2.0
+      - name: Run code analysis
+        shell: bash
+        env:
+          IDF_TOOLCHAIN: clang
+          IDF_TARGET: esp32
+        working-directory: test_app
+        run: |
+          . ${IDF_PATH}/export.sh
+          idf.py clang-check --include-paths $GITHUB_WORKSPACE --exclude-paths $PWD --run-clang-tidy-py run-clang-tidy
+          cp warnings.txt ../
+      - name: Convert clang-tidy results into SARIF output
+        run: |
+          export PATH=$PWD:$PATH
+          ./clang-tidy-sarif -o results.sarif.raw warnings.txt
+          python3 filter_sarif.py -o results.sarif --include-prefix ${GITHUB_WORKSPACE}/ results.sarif.raw
+      - uses: actions/upload-artifact@v2
+        with:
+          path: |
+            warnings.txt
+            results.sarif
+            results.sarif.raw
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: results.sarif
+          category: clang-tidy
