@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.1)
+
+### Bug Fixes
+
+- free txt value len ([afd98bb](https://github.com/espressif/esp-protocols/commit/afd98bb))
+
 ## [1.3.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.0)
 
 ### Features
