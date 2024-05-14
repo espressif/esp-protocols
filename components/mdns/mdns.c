@@ -4739,7 +4739,7 @@ free_txt:
         free((char *)(txt[i].value));
     }
     free(txt);
-    free(r->txt_value_len);
+    free(txt_value_len);
 }
 
 /**
@@ -7437,7 +7437,7 @@ free_txt:
         free((char *)(txt[i].value));
     }
     free(txt);
-    free(r->txt_value_len);
+    free(txt_value_len);
     return;
 }
 
