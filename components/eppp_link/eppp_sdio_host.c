@@ -23,13 +23,13 @@
 // Short timeout for sending/receiving ESSL packets
 #define PACKET_TIMEOUT_MS   50
 // Used for padding unaligned packets, to simplify the logic and keep PPP protocol intact when padded
-#define PPP_SOF 0x7E
+
 static const char *TAG = "eppp_sdio_host";
 static SemaphoreHandle_t s_essl_mutex = NULL;
 static essl_handle_t s_essl = NULL;
 static sdmmc_card_t *s_card = NULL;
 
-static CACHE_ALIGNED_ATTR uint8_t send_buffer[SDIO_PAYLOAD];
+static DRAM_DMA_ALIGNED_ATTR uint8_t send_buffer[SDIO_PAYLOAD];
 static DMA_ATTR uint8_t rcv_buffer[SDIO_PAYLOAD];
 
 esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len)
@@ -92,6 +92,7 @@ esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *eppp_config)
 
     sdmmc_host_t config = SDMMC_HOST_DEFAULT();
     config.flags = SDMMC_HOST_FLAG_4BIT;
+    config.flags |= SDMMC_HOST_FLAG_ALLOC_ALIGNED_BUF;
     config.max_freq_khz = SDMMC_FREQ_HIGHSPEED;
 
     s_card = (sdmmc_card_t *)malloc(sizeof(sdmmc_card_t));
@@ -117,9 +118,8 @@ err:
 static esp_err_t get_intr(uint32_t *out_raw)
 {
     esp_err_t ret = ESP_OK;
-    ESP_GOTO_ON_ERROR(essl_wait_int(s_essl, TIMEOUT_MAX), err, TAG, "essl-wait-int failed");
-    ESP_GOTO_ON_ERROR(essl_get_intr(s_essl, out_raw, NULL, TIMEOUT_MAX), err, TAG, "essl-get-int failed");
-    ESP_GOTO_ON_ERROR(essl_clear_intr(s_essl, *out_raw, TIMEOUT_MAX), err, TAG, "essl-clear-int failed");
+    ESP_GOTO_ON_ERROR(essl_get_intr(s_essl, out_raw, NULL, 0), err, TAG, "essl-get-int failed");
+    ESP_GOTO_ON_ERROR(essl_clear_intr(s_essl, *out_raw, 0), err, TAG, "essl-clear-int failed");
     ESP_LOGD(TAG, "intr: %08"PRIX32, *out_raw);
 err:
     return ret;
@@ -128,16 +128,22 @@ err:
 esp_err_t eppp_sdio_host_rx(esp_netif_t *netif)
 {
     uint32_t intr;
-    esp_err_t err = get_intr(&intr);
+    esp_err_t err = essl_wait_int(s_essl, TIMEOUT_MAX);
     if (err == ESP_ERR_TIMEOUT) {
+        return ESP_OK;
+    }
+    xSemaphoreTake(s_essl_mutex, portMAX_DELAY);
+    err = get_intr(&intr);
+    if (err == ESP_ERR_TIMEOUT) {
+        xSemaphoreGive(s_essl_mutex);
         return ESP_OK;
     }
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "failed to check for interrupts %d", err);
+        xSemaphoreGive(s_essl_mutex);
         return ESP_FAIL;
     }
     if (intr & ESSL_SDIO_DEF_ESP32.new_packet_intr_mask) {
-        xSemaphoreTake(s_essl_mutex, portMAX_DELAY);
         esp_err_t ret;
         do {
             size_t size_read = SDIO_PAYLOAD;
@@ -158,8 +164,8 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif)
                 }
             }
         } while (ret == ESP_ERR_NOT_FINISHED);
-        xSemaphoreGive(s_essl_mutex);
     }
+    xSemaphoreGive(s_essl_mutex);
     return ESP_OK;
 }
 
