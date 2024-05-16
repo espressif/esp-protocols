@@ -12,12 +12,12 @@
 #include "eppp_sdio.h"
 #include "esp_check.h"
 
-#if CONFIG_EPPP_LINK_DEVICE_SDIO_SLAV
+#if CONFIG_EPPP_LINK_DEVICE_SDIO_SLAVE
 #define BUFFER_NUM 4
-
+#define BUFFER_SIZE SDIO_PAYLOAD
 static const char *TAG = "eppp_sdio_slave";
-static WORD_ALIGNED_ATTR uint8_t sdio_slave_rx_buffer[BUFFER_NUM][SDIO_PAYLOAD];
-static WORD_ALIGNED_ATTR uint8_t sdio_slave_tx_buffer[SDIO_PAYLOAD];
+static DMA_ATTR uint8_t sdio_slave_rx_buffer[BUFFER_NUM][BUFFER_SIZE];
+static DMA_ATTR uint8_t sdio_slave_tx_buffer[SDIO_PAYLOAD];
 static int s_slave_request = 0;
 
 esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len)
@@ -30,7 +30,7 @@ esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len)
     size_t send_len = SDIO_ALIGN(len);
     if (send_len > len) {
         // pad with SOF's if the size is not 4 bytes aligned
-        memset(&sdio_slave_tx_buffer[len], 0x7E, send_len - len);
+        memset(&sdio_slave_tx_buffer[len], PPP_SOF, send_len - len);
     }
 
     ESP_LOG_BUFFER_HEXDUMP(TAG, sdio_slave_tx_buffer, send_len, ESP_LOG_VERBOSE);
@@ -92,6 +92,7 @@ again:
                 goto again;
             }
         }
+        ESP_LOG_BUFFER_HEXDUMP(TAG, ptr, length, ESP_LOG_VERBOSE);
         return ESP_OK;
     }
     ESP_LOGE(TAG, "Error when receiving packet %d", ret);
@@ -113,10 +114,8 @@ esp_err_t eppp_sdio_slave_init(void)
     sdio_slave_config_t config = {
         .sending_mode       = SDIO_SLAVE_SEND_PACKET,
         .send_queue_size    = BUFFER_NUM,
-        .recv_buffer_size   = SDIO_PAYLOAD,
+        .recv_buffer_size   = BUFFER_SIZE,
         .event_cb           = event_cb,
-        .flags              = SDIO_SLAVE_FLAG_HIGH_SPEED,
-        .timing             = SDIO_SLAVE_TIMING_NSEND_PSAMPLE,
     };
     esp_err_t ret = sdio_slave_initialize(&config);
     if (ret != ESP_OK) {

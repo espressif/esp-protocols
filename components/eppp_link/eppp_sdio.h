@@ -8,6 +8,7 @@
 #define MAX_SDIO_PAYLOAD 1500
 #define SDIO_ALIGN(size) (((size) + 3U) & ~(3U))
 #define SDIO_PAYLOAD SDIO_ALIGN(MAX_SDIO_PAYLOAD)
+#define PPP_SOF 0x7E
 
 // Interrupts and registers
 #define SLAVE_INTR      0
