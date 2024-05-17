@@ -555,9 +555,29 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
     int wlen = 0, widx = 0;
     bool contained_fin = opcode & WS_TRANSPORT_OPCODES_FIN;
 
+    if (client == NULL || len < 0 || (data == NULL && len > 0)) {
+        ESP_LOGE(TAG, "Invalid arguments");
+        return -1;
+    }
+
+    if (!esp_websocket_client_is_connected(client)) {
+        ESP_LOGE(TAG, "Websocket client is not connected");
+        return -1;
+    }
+
+    if (client->transport == NULL) {
+        ESP_LOGE(TAG, "Invalid transport");
+        return -1;
+    }
+
+    if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
+        ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
+        return -1;
+    }
+
     if (esp_websocket_new_buf(client, true) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to setup tx buffer");
-        return -1;
+        goto unlock_and_return;
     }
 
     while (widx < len || opcode) {  // allow for sending "current_opcode" only message with len==0
@@ -583,14 +603,18 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
             }
             esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
-            return ret;
+            goto unlock_and_return;
         }
         opcode = 0;
         widx += wlen;
         need_write = len - widx;
     }
     esp_websocket_free_buf(client, true);
-    return widx;
+    ret = widx;
+
+unlock_and_return:
+    xSemaphoreGiveRecursive(client->lock);
+    return ret;
 }
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
@@ -1211,35 +1235,7 @@ int esp_websocket_client_send_fin(esp_websocket_client_handle_t client, TickType
 
 int esp_websocket_client_send_with_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
-    int ret = -1;
-    if (client == NULL || len < 0 || (data == NULL && len > 0)) {
-        ESP_LOGE(TAG, "Invalid arguments");
-        return -1;
-    }
-
-    if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
-        ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
-        return -1;
-    }
-
-    if (!esp_websocket_client_is_connected(client)) {
-        ESP_LOGE(TAG, "Websocket client is not connected");
-        goto unlock_and_return;
-    }
-
-    if (client->transport == NULL) {
-        ESP_LOGE(TAG, "Invalid transport");
-        goto unlock_and_return;
-    }
-
-    ret = esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout);
-    if (ret < 0) {
-        ESP_LOGE(TAG, "Failed to send the buffer");
-        goto unlock_and_return;
-    }
-unlock_and_return:
-    xSemaphoreGiveRecursive(client->lock);
-    return ret;
+    return esp_websocket_client_send_with_exact_opcode(client, opcode | WS_TRANSPORT_OPCODES_FIN, data, len, timeout);
 }
 
 bool esp_websocket_client_is_connected(esp_websocket_client_handle_t client)
