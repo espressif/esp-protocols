@@ -25,7 +25,7 @@ const char *TAG = "rpc_client";
 
 const unsigned char ca_crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_SERVER_CA "\n-----END CERTIFICATE-----";
 const unsigned char crt[] = "-----BEGIN CERTIFICATE-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_CRT "\n-----END CERTIFICATE-----";
-const unsigned char key[] = "-----BEGIN RSA PRIVATE KEY-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_KEY "\n-----END RSA PRIVATE KEY-----";
+const unsigned char key[] = "-----BEGIN PRIVATE KEY-----\n" CONFIG_ESP_WIFI_REMOTE_EPPP_CLIENT_KEY "\n-----END PRIVATE KEY-----";
 // TODO: Add option to supply keys and certs via a global symbol (file)
 
 }
