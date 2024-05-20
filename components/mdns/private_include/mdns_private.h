@@ -450,7 +450,10 @@ typedef struct {
             mdns_srv_item_t *service;
         } srv_add;
         struct {
-            mdns_srv_item_t *service;
+            char *instance;
+            char *service;
+            char *proto;
+            char *hostname;
         } srv_del;
         struct {
             mdns_srv_item_t *service;
