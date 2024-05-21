@@ -277,6 +277,14 @@ esp_err_t lowpan6_ble_connect(
     void* userdata
 );
 
+/** Disconnect the given LoWPAN6 BLE connection.
+ *
+ * This function does nothing if the instance is not already connected.
+ *
+ * @param[in] handle The lowpan6_ble instance to disconnect.
+ */
+esp_err_t lowpan6_ble_disconnect(lowpan6_ble_driver_handle handle);
+
 /** A NimBLE ble_l2cap_event_fn used to create an L2CAP server for LoWPAN6 BLE connections.
  *
  * This should be used to register an L2CAP server on LoWPAN6 BLE nodes (i.e., the devices

@@ -21,7 +21,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/portmacro.h"
+#include "host/ble_hs.h"
 #include "lowpan6_ble_netif.h"
+#include "nimble/ble.h"
 
 /** The chunk of defines below are used to initialize mbufs later in this module.
  *
@@ -60,6 +62,9 @@ struct lowpan6_ble_driver
     // esp_netif driver base
     esp_netif_driver_base_t base;
 
+    // Connection handle for our GAP connection. BLE_HS_CONN_HANDLE_NONE if not connected.
+    uint16_t conn_handle;
+
     // Pointer to L2CAP channel used for LoWPAN6-BLE
     struct ble_l2cap_chan* chan;
 
@@ -96,7 +101,8 @@ static int on_l2cap_event(struct ble_l2cap_event* event, void* arg)
     switch (event->type)
     {
     case BLE_L2CAP_EVENT_COC_CONNECTED:
-        driver->chan = event->connect.chan;
+        driver->conn_handle = event->connect.conn_handle;
+        driver->chan        = event->connect.chan;
         struct ble_gap_conn_desc desc;
         rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
         if (rc != 0)
@@ -114,7 +120,8 @@ static int on_l2cap_event(struct ble_l2cap_event* event, void* arg)
         break;
 
     case BLE_L2CAP_EVENT_COC_DISCONNECTED:
-        driver->chan = NULL;
+        driver->conn_handle = BLE_HS_CONN_HANDLE_NONE;
+        driver->chan        = NULL;
         lowpan6_ble_netif_down(driver->base.netif);
         break;
 
@@ -386,7 +393,8 @@ lowpan6_ble_driver_handle lowpan6_ble_create()
 
     driver->base.post_attach = lowpan6_ble_post_attach;
 
-    driver->chan = NULL;
+    driver->conn_handle = BLE_HS_CONN_HANDLE_NONE;
+    driver->chan        = NULL;
 
     return driver;
 }
@@ -475,6 +483,45 @@ esp_err_t lowpan6_ble_connect(
             rc
         );
         return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t lowpan6_ble_disconnect(lowpan6_ble_driver_handle handle)
+{
+    struct lowpan6_ble_driver* driver = (struct lowpan6_ble_driver*)handle;
+    if (driver == NULL)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (driver->chan != NULL)
+    {
+        int rc = ble_l2cap_disconnect(driver->chan);
+        if (rc != 0 && rc != BLE_HS_EALREADY && rc != BLE_HS_ENOTCONN)
+        {
+            ESP_LOGW(TAG, "(%s) failed to l2cap disconnect; rc=%d", __func__, rc);
+            // continue to try GAP disconnect anyways
+        }
+        else
+        {
+            driver->chan = NULL;
+        }
+    }
+
+    if (driver->conn_handle != BLE_HS_CONN_HANDLE_NONE)
+    {
+        int rc = ble_gap_terminate(driver->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        if (rc != 0 && rc != BLE_HS_EALREADY && rc != BLE_HS_ENOTCONN)
+        {
+            ESP_LOGW(TAG, "(%s) failed to gap terminate; rc=%d", __func__, rc);
+            return ESP_FAIL;
+        }
+        else
+        {
+            driver->conn_handle = BLE_HS_CONN_HANDLE_NONE;
+        }
     }
 
     return ESP_OK;
