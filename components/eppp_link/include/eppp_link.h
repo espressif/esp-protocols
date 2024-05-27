@@ -37,6 +37,8 @@
     . ppp = {   \
             .our_ip4_addr = { .addr = our_ip },     \
             .their_ip4_addr = { .addr = their_ip }, \
+            .netif_prio = 0,                        \
+            .netif_description = NULL,              \
     }   \
 }
 
@@ -88,6 +90,8 @@ typedef struct eppp_config_t {
     struct eppp_config_pppos_s {
         esp_ip4_addr_t our_ip4_addr;
         esp_ip4_addr_t their_ip4_addr;
+        int netif_prio;
+        const char *netif_description;
     } ppp;
 
 } eppp_config_t;
