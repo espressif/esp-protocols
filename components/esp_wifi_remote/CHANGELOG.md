@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.2.2)
+
+### Bug Fixes
+
+- Added more netif options for eppp connection ([24ce867](https://github.com/espressif/esp-protocols/commit/24ce867))
+- Do not restrict EPPP config to RSA keys only ([f05c765](https://github.com/espressif/esp-protocols/commit/f05c765), [#570](https://github.com/espressif/esp-protocols/issues/570))
+
 ## [0.2.1](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.2.1)
 
 ### Bug Fixes
