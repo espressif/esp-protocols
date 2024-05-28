@@ -16,5 +16,7 @@ __attribute__((weak)) esp_netif_t *wifi_remote_eppp_init(eppp_type_t role)
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_ESP_WIFI_REMOTE_EPPP_UART_TX_PIN;
     config.uart.rx_io = CONFIG_ESP_WIFI_REMOTE_EPPP_UART_RX_PIN;
+    config.ppp.netif_description = CONFIG_ESP_WIFI_REMOTE_EPPP_NETIF_DESCRIPTION;
+    config.ppp.netif_prio = CONFIG_ESP_WIFI_REMOTE_EPPP_NETIF_PRIORITY;
     return eppp_open(role, &config, portMAX_DELAY);
 }

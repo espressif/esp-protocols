@@ -30,6 +30,23 @@ endchoice
             help
                 Pin number of UART RX.
 
+        config ESP_WIFI_REMOTE_EPPP_NETIF_PRIORITY
+            int "Routing priority of eppp netif"
+            default 100
+            range 0 256
+            help
+                Set the priority of the wifi-remote netif.
+                The bigger the number the higher the priority.
+                The interface which is up and with the highest priority will act as a default GW.
+
+        config ESP_WIFI_REMOTE_EPPP_NETIF_DESCRIPTION
+            string "eppp network interface description"
+            default "example_netif_sta"
+            help
+                Textual description of the wifi remote network interface.
+                By default it is set to "example_netif_sta" to be used in IDF protocol example
+                as default wifi station substitution.
+
         config ESP_WIFI_REMOTE_EPPP_SERVER_CA
             string "Servers CA certificate"
             default "--- Please copy content of the CA certificate ---"
