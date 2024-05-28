@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["latest", "release-v5.3"]
         test: [ { app: host, path: "examples/host" }, { app: slave, path: "examples/slave" }, { app: test_app, path: "test/test_app" }]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -23,6 +23,6 @@ jobs:
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
-          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
           python ./ci/build_apps.py ./components/eppp_link/${{matrix.test.path}} -vv --preserve-all

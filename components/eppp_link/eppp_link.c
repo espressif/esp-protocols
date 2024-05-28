@@ -157,7 +157,7 @@ static void netif_deinit(esp_netif_t *netif)
     }
 }
 
-static esp_netif_t *netif_init(eppp_type_t role)
+static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
 {
     if (s_eppp_netif_count > 9) {   // Limit to max 10 netifs, since we use "EPPPx" as the unique key (where x is 0-9)
         ESP_LOGE(TAG, "Cannot create more than 10 instances");
@@ -217,10 +217,13 @@ static esp_netif_t *netif_init(eppp_type_t role)
     char if_key[] = "EPPP0"; // netif key needs to be unique
     if_key[sizeof(if_key) - 2 /* 2 = two chars before the terminator */ ] += s_eppp_netif_count++;
     base_netif_cfg.if_key = if_key;
-    if (role == EPPP_CLIENT) {
-        base_netif_cfg.if_desc = "pppos_client";
+    if (eppp_config->ppp.netif_description) {
+        base_netif_cfg.if_desc = eppp_config->ppp.netif_description;
     } else {
-        base_netif_cfg.if_desc = "pppos_server";
+        base_netif_cfg.if_desc = role == EPPP_CLIENT ? "pppos_client" : "pppos_server";
+    }
+    if (eppp_config->ppp.netif_prio) {
+        base_netif_cfg.route_prio = eppp_config->ppp.netif_prio;
     }
     esp_netif_config_t netif_ppp_config = { .base = &base_netif_cfg,
                                             .driver = ppp_driver_cfg,
@@ -703,7 +706,12 @@ void eppp_deinit(esp_netif_t *netif)
 
 esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 {
-    esp_netif_t *netif = netif_init(role);
+    if (config == NULL || (role != EPPP_SERVER && role != EPPP_CLIENT)) {
+        ESP_LOGE(TAG, "Invalid configuration or role");
+        return NULL;
+    }
+
+    esp_netif_t *netif = netif_init(role, config);
     if (!netif) {
         ESP_LOGE(TAG, "Failed to initialize PPP netif");
         remove_handlers();
@@ -730,6 +738,10 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 
 esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_timeout_ms)
 {
+    if (config == NULL || (role != EPPP_SERVER && role != EPPP_CLIENT)) {
+        ESP_LOGE(TAG, "Invalid configuration or role");
+        return NULL;
+    }
 #if CONFIG_EPPP_LINK_DEVICE_UART
     if (config->transport != EPPP_TRANSPORT_UART) {
         ESP_LOGE(TAG, "Invalid transport: UART device must be enabled in Kconfig");
