@@ -18,7 +18,7 @@ jobs:
         test: [ { app: ifconfig-basic, path: "components/console_cmd_ifconfig/examples"}]
         include:
           - idf_ver: "latest"
-            warning: "the choice symbol ETHERNET_PHY_LAN867X"
+            warning: "the choice symbol ETHERNET_PHY_LAN867X\nis deprecated: Please use smi_gpio instead"
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
