@@ -22,8 +22,8 @@ jobs:
       - name: Check that headers are the same as generated
         shell: bash
         run: |
-          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
           cd ./components/esp_wifi_remote/scripts
           python generate_and_check.py
 
@@ -46,8 +46,8 @@ jobs:
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
-          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
 
   build_wifi_remote_example:
@@ -72,6 +72,6 @@ jobs:
           EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
         run: |
-          ${IDF_PATH}/install.sh --enable-pytest
           . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.example.path}} -vv --preserve-all
