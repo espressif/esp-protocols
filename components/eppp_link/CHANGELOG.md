@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1](https://github.com/espressif/esp-protocols/commits/eppp-v0.1.1)
+
+### Bug Fixes
+
+- Make some common netif options configurable ([7829e8f](https://github.com/espressif/esp-protocols/commit/7829e8f))
+
 ## [0.1.0](https://github.com/espressif/esp-protocols/commits/eppp-v0.1.0)
 
 ### Features
