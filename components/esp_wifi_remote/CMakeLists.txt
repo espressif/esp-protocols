@@ -14,7 +14,7 @@ idf_component_register(INCLUDE_DIRS include
                          ${src_wifi_is_remote}
                     PRIV_INCLUDE_DIRS eppp
                     REQUIRES esp_event esp_netif
-                    PRIV_REQUIRES esp_wifi esp-tls)
+                    PRIV_REQUIRES esp_wifi esp-tls vfs)
 
 idf_component_get_property(wifi esp_wifi COMPONENT_LIB)
 target_link_libraries(${wifi} PUBLIC ${COMPONENT_LIB})
