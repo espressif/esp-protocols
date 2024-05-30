@@ -32,7 +32,34 @@ const unsigned char key[] = "-----BEGIN PRIVATE KEY-----\n" CONFIG_ESP_WIFI_REMO
 
 using namespace server;
 
+class Sync {
+    friend class RpcInstance;
+public:
+    void lock()
+    {
+        xSemaphoreTake(mutex, portMAX_DELAY);
+    }
+    void unlock()
+    {
+        xSemaphoreGive(mutex);
+    }
+    esp_err_t init()
+    {
+        mutex = xSemaphoreCreateMutex();
+        return mutex == nullptr ? ESP_ERR_NO_MEM : ESP_OK;
+    }
+    ~Sync()
+    {
+        if (mutex) {
+            vSemaphoreDelete(mutex);
+        }
+    }
+private:
+    SemaphoreHandle_t mutex{nullptr};
+};
+
 class RpcInstance {
+    friend class Sync;
 public:
     RpcEngine rpc{role::SERVER};
     int sock{-1};
@@ -43,11 +70,12 @@ public:
         ESP_RETURN_ON_ERROR(start_server(), TAG, "Failed to start RPC server");
         ESP_RETURN_ON_ERROR(rpc.init(), TAG, "Failed to init RPC engine");
         ESP_RETURN_ON_ERROR(esp_netif_napt_enable(netif), TAG, "Failed to enable NAPT");
+        ESP_RETURN_ON_ERROR(sync.init(), TAG, "Failed to init locks");
         ESP_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, handler, this), TAG, "Failed to register event");
         ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, handler, this), TAG, "Failed to register event");
         return xTaskCreate(task, "server", 8192, this, 5, nullptr) == pdTRUE ? ESP_OK : ESP_FAIL;
     }
-
+    Sync sync;
 private:
     esp_netif_t *netif{nullptr};
     static void task(void *ctx)
@@ -81,6 +109,7 @@ private:
     esp_err_t wifi_event(int32_t id)
     {
         ESP_LOGI(TAG, "Received WIFI event %" PRIi32, id);
+        std::lock_guard<Sync> lock(sync);
         ESP_RETURN_ON_ERROR(rpc.send(api_id::WIFI_EVENT, &id), TAG, "Failed to marshall WiFi event");
         return ESP_OK;
     }
@@ -97,6 +126,7 @@ private:
             ESP_RETURN_ON_ERROR(esp_netif_get_ip_info(netif, &ip_event.ppp_ip), TAG, "Failed to get IP info");
             ESP_LOGI(TAG, "IP address:" IPSTR, IP2STR(&ip_data->ip_info.ip));
         }
+        std::lock_guard<Sync> lock(sync);
         ESP_RETURN_ON_ERROR(rpc.send(api_id::IP_EVENT, &ip_event), TAG, "Failed to marshal IP event");
         return ESP_OK;
     }
@@ -114,7 +144,7 @@ private:
     {
         auto header = rpc.get_header();
         ESP_LOGI(TAG, "Received header id %d", (int) header.id);
-
+        std::lock_guard<Sync> lock(sync);
         switch (header.id) {
         case api_id::SET_MODE: {
             auto req = rpc.get_payload<wifi_mode_t>(api_id::SET_MODE, header);
