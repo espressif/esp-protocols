@@ -95,6 +95,7 @@ typedef struct {
     size_t                      client_key_len;
     bool                        use_global_ca_store;
     bool                        skip_cert_common_name_check;
+    const char                  *cert_common_name;
     esp_err_t                   (*crt_bundle_attach)(void *conf);
 } websocket_config_storage_t;
 
@@ -533,6 +534,13 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
         if (client->config->skip_cert_common_name_check) {
             esp_transport_ssl_skip_common_name_check(ssl);
         }
+        if (client->config->cert_common_name) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
+            esp_transport_ssl_set_common_name(ssl, client->config->cert_common_name);
+#else
+            ESP_LOGE(TAG, "cert_common_name requires ESP-IDF 5.1.0 or later");
+#endif
+        }
 
         esp_transport_handle_t wss = esp_transport_ws_init(ssl);
         ESP_WS_CLIENT_MEM_CHECK(TAG, wss, return ESP_ERR_NO_MEM);
@@ -668,6 +676,11 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     }
 
     // configure ssl related parameters
+    if (config->cert_common_name != NULL && config->skip_cert_common_name_check) {
+        ESP_LOGE(TAG, "Both cert_common_name and skip_cert_common_name_check are set, only one of them can be set");
+        goto _websocket_init_fail;
+    }
+
     client->config->use_global_ca_store = config->use_global_ca_store;
     client->config->cert = config->cert_pem;
     client->config->cert_len = config->cert_len;
@@ -676,6 +689,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->client_key = config->client_key;
     client->config->client_key_len = config->client_key_len;
     client->config->skip_cert_common_name_check = config->skip_cert_common_name_check;
+    client->config->cert_common_name = config->cert_common_name;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
 
     if (config->uri) {
