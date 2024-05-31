@@ -1,0 +1,9 @@
+menu "Ping command Configuration"
+
+    config PING_CMD_AUTO_REGISTRATION
+        bool "Enable Console command ping/dns Auto-registration"
+        default y
+        help
+            Enabling this allows for the autoregistration of the ping and dns commands.
+
+endmenu
