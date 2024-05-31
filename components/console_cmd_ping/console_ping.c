@@ -20,7 +20,7 @@
 static const char *TAG = "console_ping";
 SemaphoreHandle_t sync_semaphore;
 
-
+#if CONFIG_PING_CMD_AUTO_REGISTRATION
 /**
  * Static registration of this plugin is achieved by defining the plugin description
  * structure and placing it into .console_cmd_desc section.
@@ -30,7 +30,7 @@ static const console_cmd_plugin_desc_t __attribute__((section(".console_cmd_desc
     .name = "console_cmd_ping",
     .plugin_regd_fn = &console_cmd_ping_register
 };
-
+#endif
 
 static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args)
 {
