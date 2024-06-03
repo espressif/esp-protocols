@@ -61,8 +61,8 @@ Memory Usage configurations:
         .port = 4567,
         .memory_type = MALLOC_CAP_SPIRAM;
     };
-    //WebSocket client will connect to websocket.org using port 4567 and will
-    //use the external SPIRAM memory
+    //WebSocket client will connect to websocket.org using port 4567 
+    //Will use the external SPIRAM memory to allocate memory
     //if .memory_type is not defined it will use default caps MALLOC_CAP_DEFAULT
 
 
