@@ -10,6 +10,7 @@ Features
    * Supports WebSocket over TCP, TLS with mbedtls
    * Easy to setup with URI
    * Multiple instances (Multiple clients in one application)
+   * Use any Internal, External or any other CAPS memory allowed.
 
 Configuration
 -------------
@@ -50,6 +51,20 @@ overridden. Sample:
         .port = 4567,
     };
     //WebSocket client will connect to websocket.org using port 4567
+
+Memory Usage configurations:
+
+.. code:: c
+
+const esp_websocket_client_config_t ws_cfg = {
+        .uri = "ws://echo.websocket.org:123",
+        .port = 4567,
+        .memory_type = MALLOC_CAP_SPIRAM;
+    };
+    //WebSocket client will connect to websocket.org using port 4567 and will
+    //use the external SPIRAM memory
+    //if .memory_type is not defined it will use default caps MALLOC_CAP_DEFAULT
+
 
 TLS
 ^^^
