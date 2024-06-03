@@ -39,6 +39,12 @@ static const char *TAG = "websocket_client";
 #define WEBSOCKET_KEEP_ALIVE_INTERVAL   (5)
 #define WEBSOCKET_KEEP_ALIVE_COUNT      (3)
 
+#define VALID_MEMORY_FLAGS (MALLOC_CAP_EXEC | MALLOC_CAP_32BIT | MALLOC_CAP_8BIT | MALLOC_CAP_DMA | \
+                            MALLOC_CAP_PID2 | MALLOC_CAP_PID3 | MALLOC_CAP_PID4 | MALLOC_CAP_PID5 | \
+                            MALLOC_CAP_PID6 | MALLOC_CAP_PID7 | MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL | \
+                            MALLOC_CAP_DEFAULT | MALLOC_CAP_IRAM_8BIT | MALLOC_CAP_RETENTION | \
+                            MALLOC_CAP_RTCRAM | MALLOC_CAP_TCM | MALLOC_CAP_INVALID)
+
 #define ESP_WS_CLIENT_MEM_CHECK(TAG, a, action) if (!(a)) {                                         \
         ESP_LOGE(TAG,"%s(%d): %s", __FUNCTION__, __LINE__, "Memory exhausted");                     \
         action;                                                                                     \
@@ -152,14 +158,14 @@ static esp_err_t esp_websocket_new_buf(esp_websocket_client_handle_t client, boo
             free(client->tx_buffer);
         }
 
-        client->tx_buffer = calloc(1, client->buffer_size);
+        client->tx_buffer = heap_caps_calloc(1, client->buffer_size,client->memory_type);
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_buffer, return ESP_ERR_NO_MEM);
     } else {
         if (client->rx_buffer) {
             free(client->rx_buffer);
         }
 
-        client->rx_buffer = calloc(1, client->buffer_size);
+        client->rx_buffer = heap_caps_calloc(1, client->buffer_size,client->memory_type);    
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, return ESP_ERR_NO_MEM);
     }
 #endif
@@ -249,7 +255,7 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
         if (client->errormsg_buffer) {
             free(client->errormsg_buffer);
         }
-        client->errormsg_buffer = malloc(needed_size);
+        client->errormsg_buffer = heap_caps_malloc(needed_size,client->memory_type);
         if (client->errormsg_buffer == NULL) {
             client->errormsg_size = 0;
             ESP_LOGE(TAG, "Failed to allocate...");
@@ -268,7 +274,7 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
     return ESP_OK;
 }
 
-static char *http_auth_basic(const char *username, const char *password)
+static char *http_auth_basic(const char *username, const char *password, int memory_type)
 {
     int out;
     char *user_info = NULL;
@@ -285,7 +291,7 @@ static char *http_auth_basic(const char *username, const char *password)
     }
 
     esp_crypto_base64_encode(NULL, 0, &n, (const unsigned char *)user_info, strlen(user_info));
-    digest = calloc(1, strlen(WS_HTTP_BASIC_AUTH) + n + 1);
+    digest = heap_caps_calloc(1, strlen(WS_HTTP_BASIC_AUTH) + n + 1,memory_type);
     if (digest) {
         strcpy(digest, WS_HTTP_BASIC_AUTH);
         esp_crypto_base64_encode((unsigned char *)digest + 6, n, (size_t *)&out, (const unsigned char *)user_info, strlen(user_info));
@@ -332,7 +338,7 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
 
     if (cfg->username && cfg->password) {
         free(cfg->auth);
-        cfg->auth = http_auth_basic(cfg->username, cfg->password);
+        cfg->auth = http_auth_basic(cfg->username, cfg->password, client->memory_type);
         ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->auth, return ESP_ERR_NO_MEM);
     }
 
@@ -619,7 +625,19 @@ unlock_and_return:
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
 {
-    esp_websocket_client_handle_t client = calloc(1, sizeof(struct esp_websocket_client));
+    int memory_type = 0;
+    if ((config->memory_type & ~VALID_MEMORY_FLAGS) != 0) {
+        ESP_LOGW("WEBSOCKET", "Invalid memory_type flags set, using default internal memory.");
+        memory_type = MALLOC_CAP_INTERNAL;
+    } else if (config->memory_type == 0) {
+        ESP_LOGW("WEBSOCKET", "memory_type is not set, using default internal memory.");
+        memory_type = MALLOC_CAP_INTERNAL;
+    } else {
+        memory_type = config->memory_type;
+        ESP_LOGI("WEBSOCKET", "memory_type is set to %d", config->memory_type);
+    }
+      
+    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client),memory_type);   
     ESP_WS_CLIENT_MEM_CHECK(TAG, client, return NULL);
 
     esp_event_loop_args_t event_args = {
@@ -633,6 +651,8 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
         return NULL;
     }
 
+    client->memory_type = memory_type;
+
     if (config->keep_alive_enable == true) {
         client->keep_alive_cfg.keep_alive_enable = true;
         client->keep_alive_cfg.keep_alive_idle = (config->keep_alive_idle == 0) ? WEBSOCKET_KEEP_ALIVE_IDLE : config->keep_alive_idle;
@@ -641,7 +661,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     }
 
     if (config->if_name) {
-        client->if_name = calloc(1, sizeof(struct ifreq) + 1);
+        client->if_name = heap_caps_calloc(1, sizeof(struct ifreq) + 1,client->memory_type);       
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->if_name, goto _websocket_init_fail);
         memcpy(client->if_name, config->if_name, sizeof(struct ifreq));
     }
@@ -649,7 +669,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->lock = xSemaphoreCreateRecursiveMutex();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->lock, goto _websocket_init_fail);
 
-    client->config = calloc(1, sizeof(websocket_config_storage_t));
+    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t),client->memory_type);   
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
 
     if (config->transport == WEBSOCKET_TRANSPORT_OVER_TCP) {
@@ -708,11 +728,11 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->errormsg_buffer = NULL;
     client->errormsg_size = 0;
 #ifndef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
-    client->rx_buffer = malloc(buffer_size);
+    client->rx_buffer = heap_caps_malloc(buffer_size,client->memory_type);   
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, {
         goto _websocket_init_fail;
     });
-    client->tx_buffer = malloc(buffer_size);
+    client->tx_buffer = heap_caps_malloc(buffer_size,client->memory_type);   
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_buffer, {
         goto _websocket_init_fail;
     });
@@ -842,7 +862,7 @@ esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t clien
 
     // If no previous headers exist
     if (cfg->headers == NULL) {
-        cfg->headers = (char *)malloc(len);
+        cfg->headers = (char *)heap_caps_malloc(len,client->memory_type);   
         if (cfg->headers == NULL) {
             ESP_LOGE(TAG, "Failed to allocate...");
             return ESP_ERR_NO_MEM;
@@ -856,7 +876,7 @@ esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t clien
     size_t new_len = current_len + len;
 
     // Allocate memory for new headers
-    char *new_headers = (char *)malloc(new_len);
+    char *new_headers = (char *)heap_caps_malloc(new_len,client->memory_type);
     if (new_headers == NULL) {
         ESP_LOGE(TAG, "Failed to allocate...");
         return ESP_ERR_NO_MEM;
@@ -1143,7 +1163,7 @@ static int esp_websocket_client_send_close(esp_websocket_client_handle_t client,
     uint8_t *close_status_data = NULL;
     // RFC6455#section-5.5.1: The Close frame MAY contain a body (indicated by total_len >= 2)
     if (total_len >= 2) {
-        close_status_data = calloc(1, total_len);
+        close_status_data = heap_caps_calloc(1, total_len,client->memory_type);;
         ESP_WS_CLIENT_MEM_CHECK(TAG, close_status_data, return -1);
         // RFC6455#section-5.5.1: The first two bytes of the body MUST be a 2-byte representing a status
         uint16_t *code_network_order = (uint16_t *) close_status_data;
