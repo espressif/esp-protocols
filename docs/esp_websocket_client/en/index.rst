@@ -56,7 +56,7 @@ Memory Usage configurations:
 
 .. code:: c
 
-const esp_websocket_client_config_t ws_cfg = {
+    const esp_websocket_client_config_t ws_cfg = {
         .uri = "ws://echo.websocket.org:123",
         .port = 4567,
         .memory_type = MALLOC_CAP_SPIRAM;
