@@ -5300,28 +5300,57 @@ static void _mdns_execute_action(mdns_action_t *action)
         break;
     case ACTION_SERVICE_DEL:
         a = _mdns_server->services;
-        if (action->data.srv_del.service) {
-            if (_mdns_server->services == action->data.srv_del.service) {
-                _mdns_server->services = a->next;
-                _mdns_send_bye(&a, 1, false);
-                _mdns_remove_scheduled_service_packets(a->service);
-                _mdns_free_service(a->service);
-                free(a);
-            } else {
-                while (a->next && a->next != action->data.srv_del.service) {
-                    a = a->next;
+        mdns_srv_item_t *b = a;
+        if (action->data.srv_del.instance) {
+            while (a) {
+                if (_mdns_service_match_instance(a->service, action->data.srv_del.instance,
+                                                 action->data.srv_del.service, action->data.srv_del.proto,
+                                                 action->data.srv_del.hostname)) {
+                    if (_mdns_server->services != a) {
+                        b->next = a->next;
+                    } else {
+                        _mdns_server->services = a->next;
+                    }
+                    _mdns_send_bye(&a, 1, false);
+                    _mdns_remove_scheduled_service_packets(a->service);
+                    _mdns_free_service(a->service);
+                    free(a);
+                    break;
                 }
-                if (a->next == action->data.srv_del.service) {
-                    mdns_srv_item_t *b = a->next;
-                    a->next = a->next->next;
-                    _mdns_send_bye(&b, 1, false);
-                    _mdns_remove_scheduled_service_packets(b->service);
-                    _mdns_free_service(b->service);
-                    free(b);
+                b = a;
+                a = a->next;
+            }
+        } else {
+            while (a) {
+                if (_mdns_service_match(a->service, action->data.srv_del.service, action->data.srv_del.proto,
+                                        action->data.srv_del.hostname)) {
+                    if (_mdns_server->services != a) {
+                        b->next = a->next;
+                        _mdns_send_bye(&a, 1, false);
+                        _mdns_remove_scheduled_service_packets(a->service);
+                        _mdns_free_service(a->service);
+                        free(a);
+                        a = b->next;
+                        continue;
+                    } else {
+                        _mdns_server->services = a->next;
+                        _mdns_send_bye(&a, 1, false);
+                        _mdns_remove_scheduled_service_packets(a->service);
+                        _mdns_free_service(a->service);
+                        free(a);
+                        a = _mdns_server->services;
+                        b = a;
+                        continue;
+                    }
                 }
+                b = a;
+                a = a->next;
             }
         }
-
+        free((char *)action->data.srv_del.instance);
+        free((char *)action->data.srv_del.service);
+        free((char *)action->data.srv_del.proto);
+        free((char *)action->data.srv_del.hostname);
         break;
     case ACTION_SERVICES_CLEAR:
         _mdns_send_final_bye(false);
@@ -6501,6 +6530,16 @@ esp_err_t mdns_service_subtype_add_for_host(const char *instance_name, const cha
     if (!s) {
         return ESP_ERR_NOT_FOUND;
     }
+
+    mdns_subtype_t *srv_subtype = s->service->subtype;
+    while (srv_subtype) {
+        if (strcmp(srv_subtype->subtype, subtype) == 0) {
+            // The same subtype has already been added
+            return ESP_ERR_INVALID_ARG;
+        }
+        srv_subtype = srv_subtype->next;
+    }
+
     mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
     if (!action) {
         HOOK_MALLOC_FAILED;
@@ -6589,12 +6628,40 @@ esp_err_t mdns_service_remove_for_host(const char *instance, const char *service
         return ESP_ERR_NO_MEM;
     }
     action->type = ACTION_SERVICE_DEL;
-    action->data.srv_del.service = s;
+    action->data.srv_del.instance = NULL;
+    action->data.srv_del.hostname = NULL;
+    if (!_str_null_or_empty(instance)) {
+        action->data.srv_del.instance = strndup(instance, MDNS_NAME_BUF_LEN - 1);
+        if (!action->data.srv_del.instance) {
+            goto fail;
+        }
+    }
+
+    if (!_str_null_or_empty(hostname)) {
+        action->data.srv_del.hostname = strndup(hostname, MDNS_NAME_BUF_LEN - 1);
+        if (!action->data.srv_del.hostname) {
+            goto fail;
+        }
+    }
+
+    action->data.srv_del.service = strndup(service, MDNS_NAME_BUF_LEN - 1);
+    action->data.srv_del.proto = strndup(proto, MDNS_NAME_BUF_LEN - 1);
+    if (!action->data.srv_del.service || !action->data.srv_del.proto) {
+        goto fail;
+    }
+
     if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        free(action);
-        return ESP_ERR_NO_MEM;
+        goto fail;
     }
     return ESP_OK;
+
+fail:
+    free((char *)action->data.srv_del.instance);
+    free((char *)action->data.srv_del.service);
+    free((char *)action->data.srv_del.proto);
+    free((char *)action->data.srv_del.hostname);
+    free(action);
+    return ESP_ERR_NO_MEM;
 }
 
 esp_err_t mdns_service_remove(const char *service_type, const char *proto)
