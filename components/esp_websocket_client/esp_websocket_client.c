@@ -143,6 +143,7 @@ struct esp_websocket_client {
     int                         payload_offset;
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
+    int                         memory_type;
 };
 
 static uint64_t _tick_get_ms(void)
