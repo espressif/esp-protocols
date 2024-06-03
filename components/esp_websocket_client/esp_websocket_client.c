@@ -166,7 +166,7 @@ static esp_err_t esp_websocket_new_buf(esp_websocket_client_handle_t client, boo
             free(client->rx_buffer);
         }
 
-        client->rx_buffer = heap_caps_calloc(1, client->buffer_size,client->memory_type);    
+        client->rx_buffer = heap_caps_calloc(1, client->buffer_size,client->memory_type);
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, return ESP_ERR_NO_MEM);
     }
 #endif
@@ -628,17 +628,17 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 {
     int memory_type = 0;
     if ((config->memory_type & ~VALID_MEMORY_FLAGS) != 0) {
-        ESP_LOGW("WEBSOCKET", "Invalid memory_type flags set, using default internal memory.");
-        memory_type = MALLOC_CAP_INTERNAL;
+        ESP_LOGW("TAG", "Invalid memory_type flags set, using default internal memory.\n");
+        memory_type = MALLOC_CAP_DEFAULT;
     } else if (config->memory_type == 0) {
-        ESP_LOGW("WEBSOCKET", "memory_type is not set, using default internal memory.");
-        memory_type = MALLOC_CAP_INTERNAL;
+        memory_type = MALLOC_CAP_DEFAULT; //MALLOC_CAP_DEFAULT
+        ESP_LOGI("TAG","memory_type is not set, using MALLOC_CAP_DEFAULT memory [%d] versus external [%d].\n",memory_type,MALLOC_CAP_SPIRAM);
     } else {
         memory_type = config->memory_type;
-        ESP_LOGI("WEBSOCKET", "memory_type is set to %d", config->memory_type);
+        ESP_LOGI("TAG","memory_type is set to %d \n", config->memory_type);
     }
-      
-    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client),memory_type);   
+
+    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client),memory_type);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client, return NULL);
 
     esp_event_loop_args_t event_args = {
@@ -662,7 +662,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     }
 
     if (config->if_name) {
-        client->if_name = heap_caps_calloc(1, sizeof(struct ifreq) + 1,client->memory_type);       
+        client->if_name = heap_caps_calloc(1, sizeof(struct ifreq) + 1,memory_type);
         ESP_WS_CLIENT_MEM_CHECK(TAG, client->if_name, goto _websocket_init_fail);
         memcpy(client->if_name, config->if_name, sizeof(struct ifreq));
     }
@@ -670,7 +670,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->lock = xSemaphoreCreateRecursiveMutex();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->lock, goto _websocket_init_fail);
 
-    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t),client->memory_type);   
+    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t),memory_type);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
 
     if (config->transport == WEBSOCKET_TRANSPORT_OVER_TCP) {
@@ -682,7 +682,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     }
 
     if (!config->disable_auto_reconnect && config->reconnect_timeout_ms <= 0) {
-        client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
+      client->wait_timeout_ms = WEBSOCKET_RECONNECT_TIMEOUT_MS;
         ESP_LOGW(TAG, "`reconnect_timeout_ms` is not set, or it is less than or equal to zero, using default time out %d (milliseconds)", WEBSOCKET_RECONNECT_TIMEOUT_MS);
     } else {
         client->wait_timeout_ms = config->reconnect_timeout_ms;
@@ -729,11 +729,11 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->errormsg_buffer = NULL;
     client->errormsg_size = 0;
 #ifndef CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER
-    client->rx_buffer = heap_caps_malloc(buffer_size,client->memory_type);   
+    client->rx_buffer = heap_caps_malloc(buffer_size,client->memory_type);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->rx_buffer, {
         goto _websocket_init_fail;
     });
-    client->tx_buffer = heap_caps_malloc(buffer_size,client->memory_type);   
+    client->tx_buffer = heap_caps_malloc(buffer_size,client->memory_type);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_buffer, {
         goto _websocket_init_fail;
     });
@@ -863,7 +863,7 @@ esp_err_t esp_websocket_client_append_header(esp_websocket_client_handle_t clien
 
     // If no previous headers exist
     if (cfg->headers == NULL) {
-        cfg->headers = (char *)heap_caps_malloc(len,client->memory_type);   
+        cfg->headers = (char *)heap_caps_malloc(len,client->memory_type);
         if (cfg->headers == NULL) {
             ESP_LOGE(TAG, "Failed to allocate...");
             return ESP_ERR_NO_MEM;
