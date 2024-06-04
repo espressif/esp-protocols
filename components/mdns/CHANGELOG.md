@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.3.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.2)
+
+### Features
+
+- add check of instance when handling PTR query ([6af6ca5](https://github.com/espressif/esp-protocols/commit/6af6ca5))
+
+### Bug Fixes
+
+- Fix of mdns afl tests ([139166c](https://github.com/espressif/esp-protocols/commit/139166c))
+- remove same protocol services with different instances ([042533a](https://github.com/espressif/esp-protocols/commit/042533a))
+
 ## [1.3.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.3.1)
 
 ### Bug Fixes
