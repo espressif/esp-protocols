@@ -129,6 +129,15 @@ public:
         return ESP_OK;
     }
 
+    int get_socket_fd()
+    {
+        int sock;
+        if (esp_tls_get_conn_sockfd(tls_, &sock) != ESP_OK) {
+            return -1;
+        }
+        return sock;
+    }
+
     RpcHeader get_header()
     {
         RpcHeader header{};

@@ -16,7 +16,7 @@ struct esp_wifi_remote_mac_t {
 };
 
 struct esp_wifi_remote_eppp_ip_event {
-    uint32_t id;
+    int32_t id;
     esp_netif_ip_info_t wifi_ip;
     esp_netif_ip_info_t ppp_ip;
     esp_netif_dns_info_t dns;

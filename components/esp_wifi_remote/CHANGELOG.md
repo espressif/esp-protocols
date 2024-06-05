@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.2.3)
+
+### Bug Fixes
+
+- Fix server event/command race condtion using eventfd ([732b1d5](https://github.com/espressif/esp-protocols/commit/732b1d5))
+- Lock server before marshalling events ([9e13870](https://github.com/espressif/esp-protocols/commit/9e13870))
+
 ## [0.2.2](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.2.2)
 
 ### Bug Fixes
