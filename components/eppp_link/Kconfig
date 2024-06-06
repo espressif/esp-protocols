@@ -28,6 +28,12 @@ menu "eppp_link"
             help
                 Use SDIO.
 
+        config EPPP_LINK_USB_CDC
+            bool "USB"
+            depends on SOC_USB_OTG_SUPPORTED
+            help
+                Use USB CDC.
+
     endchoice
 
     config EPPP_LINK_CONN_MAX_RETRY
@@ -64,6 +70,28 @@ menu "eppp_link"
             depends on SOC_SDIO_SLAVE_SUPPORTED
             help
                 Use SDIO slave.
+
+    endchoice
+
+    choice EPPP_LINK_USB_CDC_ROLE
+        prompt "Choose USB CDC device or host"
+        depends on EPPP_LINK_USB_CDC
+        default EPPP_LINK_USB_CDC_DEVICE
+        help
+            Choose the preferred USB role, either device or host.
+
+        config EPPP_LINK_USB_CDC_HOST
+            bool "Host"
+            depends on EPPP_LINK_USB_CDC
+            help
+                Use USB CDC (ACM) host.
+
+        config EPPP_LINK_USB_CDC_DEVICE
+            bool "Device"
+            select TINYUSB_CDC_ENABLED
+            depends on EPPP_LINK_USB_CDC
+            help
+                Use USB CDC device.
 
     endchoice
 

@@ -141,6 +141,8 @@ void app_main(void)
     config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
     config.transport = EPPP_TRANSPORT_SDIO;
+#elif CONFIG_EPPP_LINK_USB_CDC
+    config.transport = EPPP_TRANSPORT_USB;
 #endif // transport device
 
     esp_netif_t *eppp_netif = eppp_listen(&config);

@@ -4,3 +4,5 @@ description: The component provides a general purpose PPP connectivity, typicall
 dependencies:
   idf: '>=5.2'
   espressif/esp_serial_slave_link: "^1.1.0"
+  espressif/esp_tinyusb: "^1"
+  usb_host_cdc_acm: "2.*"
