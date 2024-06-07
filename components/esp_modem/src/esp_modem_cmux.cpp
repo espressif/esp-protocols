@@ -150,7 +150,7 @@ bool CMux::data_available(uint8_t *data, size_t len)
             return false;
         }
     } else if ((type & FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
-        if ((len > 0 && (data[0] & 0xE1) == 0xE1) || (data == nullptr)) {
+        if ((data == nullptr) || (len > 0 && (data[0] & 0xE1) == 0xE1)) {
             // Not a DISC, ignore (MSC frame)
             return true;
         }
@@ -345,6 +345,9 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
         data = buffer.get();
         actual_len = term->read(data, buffer.size);
 #endif
+    }
+    if (data == nullptr) {
+        return false;
     }
     ESP_LOG_BUFFER_HEXDUMP("CMUX Received", data, actual_len, ESP_LOG_VERBOSE);
     CMuxFrame frame = { .ptr = data, .len = actual_len };
