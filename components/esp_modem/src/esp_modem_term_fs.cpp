@@ -155,7 +155,7 @@ int FdTerminal::write(uint8_t *data, size_t len)
 
 FdTerminal::~FdTerminal()
 {
-    stop();
+    FdTerminal::stop();
 }
 
 } // namespace esp_modem

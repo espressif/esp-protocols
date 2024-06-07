@@ -65,7 +65,6 @@ private:
     static void on_ppp_changed(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
     std::shared_ptr<DTE> ppp_dte;
-    esp_netif_t *netif;
     struct ppp_netif_driver driver {};
     SignalGroup signal;
     static const size_t PPP_STARTED = SignalGroup::bit0;
