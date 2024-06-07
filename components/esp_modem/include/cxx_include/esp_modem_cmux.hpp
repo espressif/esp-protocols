@@ -142,7 +142,6 @@ private:
     size_t frame_header_offset;
     uint8_t *payload_start;
     size_t total_payload_size;
-    int instance;
     int sabm_ack;
 
     /**

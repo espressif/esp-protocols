@@ -87,8 +87,10 @@ jobs:
           shell: bash
           if: ${{ inputs.run_coverage }}
           run: |
-            apt-get update && apt-get install -y python3-pip rsync
-            python -m pip install gcovr
+            apt-get update && apt-get install -y rsync
+            python3 -m venv .venv
+            source .venv/bin/activate
+            python3 -m pip install gcovr
             cd $GITHUB_WORKSPACE/${{inputs.component_path}}
             component=$(basename ${{ inputs.component_path }})
             gcov `find . -name "$component*gcda"`

@@ -69,7 +69,7 @@ void Netif::receive(uint8_t *data, size_t len)
 }
 
 Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
-    ppp_dte(std::move(e)), netif(ppp_netif)
+    ppp_dte(std::move(e))
 {
     driver.base.netif = ppp_netif;
     driver.ppp = this;

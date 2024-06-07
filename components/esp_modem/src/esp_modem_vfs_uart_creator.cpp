@@ -14,7 +14,7 @@
 #include "uart_resource.hpp"
 #include "vfs_resource/vfs_create.hpp"
 
-constexpr const char *TAG = "vfs_uart_creator";
+[[maybe_unused]] constexpr const char *TAG = "vfs_uart_creator";
 
 
 struct esp_modem_vfs_resource {

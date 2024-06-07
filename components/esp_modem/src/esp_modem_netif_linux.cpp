@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -29,11 +29,15 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
 
 void Netif::receive(uint8_t *data, size_t len)
 {
-    esp_netif_receive(netif, data, len);
+    esp_netif_receive(driver.base.netif, data, len);
 }
 
 Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
-    ppp_dte(std::move(e)), netif(ppp_netif) {}
+    ppp_dte(std::move(e))
+{
+    driver.base.netif = ppp_netif;
+    driver.ppp = this;
+}
 
 void Netif::start()
 {
@@ -41,8 +45,8 @@ void Netif::start()
         receive(data, len);
         return true;
     });
-    netif->transmit = esp_modem_dte_transmit;
-    netif->ctx = (void *)this;
+    driver.base.netif->transmit = esp_modem_dte_transmit;
+    driver.base.netif->ctx = (void *)this;
     signal.set(PPP_STARTED);
 }
 
