@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/espressif/esp-protocols/commits/console_cmd_wifi-v1.1.0)
+
+### Features
+
+- Added support to join pre-configured network ([bdbf16c1](https://github.com/espressif/esp-protocols/commit/bdbf16c1))
+
 ## [1.0.1](https://github.com/espressif/esp-protocols/commits/console_cmd_wifi-v1.0.1)
 
 ### Features

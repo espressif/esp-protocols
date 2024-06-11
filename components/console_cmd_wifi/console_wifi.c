@@ -21,6 +21,7 @@
 
 #define DEFAULT_SCAN_LIST_SIZE 10
 
+#if CONFIG_WIFI_CMD_AUTO_REGISTRATION
 /**
  * Static registration of this plugin is achieved by defining the plugin description
  * structure and placing it into .console_cmd_desc section.
@@ -30,6 +31,7 @@ static const console_cmd_plugin_desc_t __attribute__((section(".console_cmd_desc
     .name = "console_cmd_wifi",
     .plugin_regd_fn = &console_cmd_wifi_register
 };
+#endif
 
 typedef struct wifi_op_t {
     char *name;
@@ -55,8 +57,9 @@ static const int CONNECTED_BIT = BIT1;
 static wifi_op_t cmd_list[] = {
     {.name = "help", .operation = wifi_help_op, .arg_cnt = 2, .start_index = 1, .help = "wifi help: Prints the help text for all wifi commands"},
     {.name = "show", .operation = wifi_show_op, .arg_cnt = 3, .start_index = 1, .help = "wifi show network/sta: Scans and displays all available wifi APs./ Shows the details of wifi station."},
-    {.name = "join",  .operation = wifi_sta_join_op,  .arg_cnt = 4, .start_index = 2, .help = "wifi sta join <network ssid> <password>: Station joins the given wifi network."},
-    {.name = "join",  .operation = wifi_sta_join_op,  .arg_cnt = 5, .start_index = 2, .help = "wifi sta join <network ssid>: Station joins the given unsecured wifi network."},
+    {.name = "join",  .operation = wifi_sta_join_op,  .arg_cnt = 5, .start_index = 2, .help = "wifi sta join <network ssid> <password>: Station joins the given wifi network."},
+    {.name = "join",  .operation = wifi_sta_join_op,  .arg_cnt = 4, .start_index = 2, .help = "wifi sta join <network ssid>: Station joins the given unsecured wifi network."},
+    {.name = "join",  .operation = wifi_sta_join_op,  .arg_cnt = 3, .start_index = 2, .help = "wifi sta join: Station joins the pre-configured wifi network."},
     {.name = "leave", .operation = wifi_sta_leave_op,  .arg_cnt = 3, .start_index = 2, .help = "wifi sta leave: Station leaves the wifi network."},
 };
 
@@ -162,7 +165,6 @@ static esp_err_t wifi_show_op(wifi_op_t *self, int argc, char *argv[])
             ESP_LOGI(TAG, "Showing Joind AP details:");
             ESP_LOGI(TAG, "*************************");
             ESP_LOGI(TAG, "SSID: %s", wifi_config.sta.ssid);
-            ESP_LOGI(TAG, "Password: %s", wifi_config.sta.password);
             ESP_LOGI(TAG, "Channel: %d", wifi_config.sta.channel);
             ESP_LOGI(TAG, "bssid: %02x:%02x:%02x:%02x:%02x:%02x", wifi_config.sta.bssid[0],
                      wifi_config.sta.bssid[1], wifi_config.sta.bssid[2], wifi_config.sta.bssid[3],
@@ -184,7 +186,13 @@ static esp_err_t wifi_sta_join_op(wifi_op_t *self, int argc, char *argv[])
         return ESP_FAIL;
     }
 
-    strlcpy((char *) wifi_config.sta.ssid, argv[self->start_index + 1], sizeof(wifi_config.sta.ssid));
+    if (self->arg_cnt == 3) {
+        strlcpy((char *) wifi_config.sta.ssid, CONFIG_WIFI_CMD_NETWORK_SSID, sizeof(wifi_config.sta.ssid));
+        strlcpy((char *) wifi_config.sta.password, CONFIG_WIFI_CMD_NETWORK_PASSWORD, sizeof(wifi_config.sta.password));
+    } else {
+        strlcpy((char *) wifi_config.sta.ssid, argv[self->start_index + 1], sizeof(wifi_config.sta.ssid));
+    }
+
     if (self->arg_cnt == 5) {
         strlcpy((char *) wifi_config.sta.password, argv[self->start_index + 2], sizeof(wifi_config.sta.password));
     }
@@ -260,7 +268,7 @@ static esp_err_t do_cmd_wifi(int argc, char **argv)
  */
 esp_err_t console_cmd_wifi_register(void)
 {
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     esp_console_cmd_t command = {
         .command = "wifi",
         .help = "Command for wifi configuration and monitoring\n For more info run 'wifi help'",
