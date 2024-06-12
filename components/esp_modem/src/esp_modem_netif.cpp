@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -32,9 +32,24 @@ esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
 {
     auto *ppp = static_cast<Netif *>(h);
     if (ppp->signal.is_any(PPP_STARTED)) {
-        if (ppp->ppp_dte && ppp->ppp_dte->write((uint8_t *) buffer, len) > 0) {
-            return ESP_OK;
+        ESP_LOGD("Modem Netif", "Tx size(%d)", len);
+        if (!ppp->ppp_dte) {
+            return ESP_FAIL;
         }
+
+        uint8_t *ptr = (uint8_t *)buffer;
+        const size_t max_len = ppp->ppp_dte->get_buffer_size();
+        size_t remain = len;
+        while (remain > 0) {
+            int batch = std::min(max_len, remain);
+            if (ppp->ppp_dte->write(ptr, batch) <= 0) {
+                ESP_LOGE("Modem Netif", "write failedd");
+                return ESP_FAIL;
+            }
+            remain -= batch;
+            ptr += batch;
+        }
+        return ESP_OK;
     }
     return ESP_FAIL;
 }
@@ -65,6 +80,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
 
 void Netif::receive(uint8_t *data, size_t len)
 {
+    ESP_LOGD("Modem Netif", "Rx size(%d)", len);
     esp_netif_receive(driver.base.netif, data, len, nullptr);
 }
 

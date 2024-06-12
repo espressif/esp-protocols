@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -375,6 +375,11 @@ void DTE::handle_error(terminal_error err)
             err == terminal_error::UNEXPECTED_CONTROL_FLOW) {
         recover();
     }
+}
+
+size_t DTE::get_buffer_size()
+{
+    return buffer.size;
 }
 
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED

@@ -122,6 +122,8 @@ public:
      */
     bool recover();
 
+    size_t get_buffer_size();
+
 protected:
     /**
      * @brief Allows for locking the DTE
