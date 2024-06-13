@@ -7,3 +7,6 @@
 [submodule "components/libwebsockets/libwebsockets"]
 	path = components/libwebsockets/libwebsockets
 	url = https://github.com/warmcat/libwebsockets.git
+[submodule "components/freertos_tcp/FreeRTOS-Plus-TCP"]
+	path = components/freertos_tcp/FreeRTOS-Plus-TCP
+	url = https://github.com/david-cermak/FreeRTOS-Plus-TCP.git
