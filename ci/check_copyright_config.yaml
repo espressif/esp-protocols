@@ -40,6 +40,13 @@ examples_and_unit_tests:
   - CC0-1.0
   license_for_new_files: Unlicense OR CC0-1.0
 
+freertos_tcp_component:
+  include:
+    - 'components/freertos_tcp/port/**'
+  allowed_licenses:
+    - Apache-2.0
+    - MIT
+
 asio_component:
   include:
     - 'components/asio/port/**'
