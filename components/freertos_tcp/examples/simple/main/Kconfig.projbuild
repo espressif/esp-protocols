@@ -1,0 +1,16 @@
+menu "Example Configuration"
+
+    config EXAMPLE_HOSTNAME
+        string "hostname to connect to"
+        default "httpbin.org"
+        help
+            The example will connect to this hostname.
+
+    config EXAMPLE_PORT
+        int "Port"
+        range 0 65535
+        default 80
+        help
+            The remote port to which the client example will connect to.
+
+endmenu

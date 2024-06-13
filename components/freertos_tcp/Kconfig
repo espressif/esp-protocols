@@ -1,0 +1,28 @@
+menu "Amazon FreeRTOS plus TCP (AFpT)"
+
+    config AFPT_ENABLE
+        bool
+        default y
+        select ESP_NETIF_PROVIDE_CUSTOM_IMPLEMENTATION
+
+    config AFPT_LOCAL_HOSTNAME
+        string "Local netif hostname"
+        default 'espressif'
+        help
+            The default name this device will report to other devices on the network.
+            Could be updated at runtime with esp_netif_set_hostname()
+
+    config AFPT_IPV4
+        bool "Enable IPv4"
+        default y
+        help
+            Enable IPv4 stack. If you want to use IPv6 only TCP/IP stack, disable this.
+
+    config AFPT_IPV6
+        bool "Enable IPv6"
+        default n
+        help
+            Enable IPv6 function (Experimental - not included in MVP).
+            For MVP, use IPv4 only stack. If you want to use IPv4 only TCP/IP stack, disable this.
+
+endmenu
