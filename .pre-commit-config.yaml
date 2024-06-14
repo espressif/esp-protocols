@@ -48,7 +48,7 @@ repos:
       - id: check-copyright
         args: ['--ignore', 'ci/check_copyright_ignore.txt', '--config', 'ci/check_copyright_config.yaml']
   - repo: https://github.com/igrr/astyle_py.git
-    rev: c0013808882a15a0c0c2c1a9b5c903866c53a653
+    rev: v1.0.5
     hooks:
     -   id: astyle_py
         args: ['--style=otbs', '--attach-namespaces', '--attach-classes', '--indent=spaces=4', '--convert-tabs', '--align-pointer=name', '--align-reference=name', '--keep-one-line-statements', '--pad-header', '--pad-oper', '--exclude-list=ci/ignore_astyle.txt']
