@@ -21,6 +21,19 @@ menu "eppp_link"
             bool "SPI"
             help
                 Use SPI.
+
+        config EPPP_LINK_DEVICE_SDIO
+            bool "SDIO"
+            depends on SOC_SDMMC_HOST_SUPPORTED || SOC_SDIO_SLAVE_SUPPORTED
+            help
+                Use SDIO.
+
+        config EPPP_LINK_USB_CDC
+            bool "USB"
+            depends on SOC_USB_OTG_SUPPORTED
+            help
+                Use USB CDC.
+
     endchoice
 
     config EPPP_LINK_CONN_MAX_RETRY
@@ -34,8 +47,52 @@ menu "eppp_link"
     config EPPP_LINK_PACKET_QUEUE_SIZE
         int "Packet queue size"
         default 64
+        depends on EPPP_LINK_DEVICE_SPI
         help
             Size of the Tx packet queue.
             You can decrease the number for slower bit rates.
+
+    choice EPPP_LINK_SDIO_ROLE
+        prompt "Choose SDIO host or slave"
+        depends on EPPP_LINK_DEVICE_SDIO
+        default EPPP_LINK_DEVICE_SDIO_HOST if SOC_SDMMC_HOST_SUPPORTED
+        help
+            Select which either SDIO host or slave
+
+        config EPPP_LINK_DEVICE_SDIO_HOST
+            bool "Host"
+            depends on SOC_SDMMC_HOST_SUPPORTED
+            help
+                Use SDIO host.
+
+        config EPPP_LINK_DEVICE_SDIO_SLAVE
+            bool "SLAVE"
+            depends on SOC_SDIO_SLAVE_SUPPORTED
+            help
+                Use SDIO slave.
+
+    endchoice
+
+    choice EPPP_LINK_USB_CDC_ROLE
+        prompt "Choose USB CDC device or host"
+        depends on EPPP_LINK_USB_CDC
+        default EPPP_LINK_USB_CDC_DEVICE
+        help
+            Choose the preferred USB role, either device or host.
+
+        config EPPP_LINK_USB_CDC_HOST
+            bool "Host"
+            depends on EPPP_LINK_USB_CDC
+            help
+                Use USB CDC (ACM) host.
+
+        config EPPP_LINK_USB_CDC_DEVICE
+            bool "Device"
+            select TINYUSB_CDC_ENABLED
+            depends on EPPP_LINK_USB_CDC
+            help
+                Use USB CDC device.
+
+    endchoice
 
 endmenu

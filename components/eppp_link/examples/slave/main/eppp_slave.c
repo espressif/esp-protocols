@@ -128,16 +128,23 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
+//    ESP_ERROR_CHECK(esp_netif_init());
+//    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
-#else
+#elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
     config.uart.rx_io = CONFIG_EXAMPLE_UART_RX_PIN;
     config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
-#endif
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+    config.transport = EPPP_TRANSPORT_SDIO;
+#elif CONFIG_EPPP_LINK_USB_CDC
+    config.transport = EPPP_TRANSPORT_USB;
+#endif // transport device
+
     esp_netif_t *eppp_netif = eppp_listen(&config);
     if (eppp_netif == NULL) {
         ESP_LOGE(TAG, "Failed to setup connection");
