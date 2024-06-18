@@ -6,5 +6,5 @@ dependencies:
     version: '>=0.1'
   idf:
     version: '>=5.3'
-#  espressif/esp_hosted:
-#    version: '*'
+  espressif/esp_hosted:
+    version: '>=0.0.6'
