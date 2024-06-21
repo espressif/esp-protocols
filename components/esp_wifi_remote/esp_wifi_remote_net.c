@@ -59,6 +59,11 @@ WEAK void esp_wifi_internal_free_rx_buffer(void *buffer)
     free(buffer);
 }
 
+WEAK esp_err_t esp_wifi_internal_tx_by_ref(wifi_interface_t ifx, void *buffer, size_t len, void *netstack_buf)
+{
+    return esp_wifi_internal_tx(ifx, buffer, (uint16_t)len);
+}
+
 WEAK int esp_wifi_internal_tx(wifi_interface_t ifx, void *buffer, uint16_t len)
 {
     if (ifx == WIFI_IF_STA && s_tx_cb[0]) {
