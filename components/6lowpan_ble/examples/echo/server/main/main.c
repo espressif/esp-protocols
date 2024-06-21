@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,21 +38,18 @@
 //! What port we'll listen on.
 #define PORT 1234
 
-static const char* TAG = "main";
+static const char *TAG = "main";
 
 static bool do_scan();
-static int on_gap_event(struct ble_gap_event* event, void* arg);
+static int on_gap_event(struct ble_gap_event *event, void *arg);
 
 static lowpan6_ble_driver_handle s_l6ble_handle;
 
-static inline int on_gap_connected(struct ble_gap_event* event)
+static inline int on_gap_connected(struct ble_gap_event *event)
 {
-    if (event->connect.status == 0)
-    {
+    if (event->connect.status == 0) {
         ESP_LOGI(TAG, "BLE GAP connection established");
-    }
-    else
-    {
+    } else {
         ESP_LOGE(TAG, "BLE GAP connection failed; status=%d", event->connect.status);
         do_scan();
     }
@@ -57,7 +57,7 @@ static inline int on_gap_connected(struct ble_gap_event* event)
     return 0;
 }
 
-static inline int on_gap_disconnected(struct ble_gap_event* event)
+static inline int on_gap_disconnected(struct ble_gap_event *event)
 {
     ESP_LOGI(TAG, "BLE GAP connection disconnected; reason=%d", event->disconnect.reason);
 
@@ -68,12 +68,11 @@ static inline int on_gap_disconnected(struct ble_gap_event* event)
 
 static void on_lowpan6_ble_event(
     lowpan6_ble_driver_handle handle,
-    struct lowpan6_ble_event* event,
-    void* userdata
+    struct lowpan6_ble_event *event,
+    void *userdata
 )
 {
-    switch (event->type)
-    {
+    switch (event->type) {
     case LOWPAN6_BLE_EVENT_GAP_CONNECTED:
         on_gap_connected(event->gap_connected.event);
         break;
@@ -84,22 +83,19 @@ static void on_lowpan6_ble_event(
 }
 
 //! On discover, connect to _any_ device that advertises IPSS support.
-static inline int on_gap_event_discovery(struct ble_gap_event* event)
+static inline int on_gap_event_discovery(struct ble_gap_event *event)
 {
     struct ble_hs_adv_fields fields;
     int rc = ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to parse advertisement fields; rc=%d", rc);
         return 0;
     }
 
-    if (lowpan6_ble_connectable(&event->disc))
-    {
+    if (lowpan6_ble_connectable(&event->disc)) {
         // Cancel the scan so we can use the BLE device for connecting
         rc = ble_gap_disc_cancel();
-        if (rc != 0 && rc != BLE_HS_EALREADY)
-        {
+        if (rc != 0 && rc != BLE_HS_EALREADY) {
             ESP_LOGE(TAG, "Failed to cancel scan; rc=%d", rc);
             return rc;
         }
@@ -108,14 +104,13 @@ static inline int on_gap_event_discovery(struct ble_gap_event* event)
         // lowpan6 ble events. Note that the `lowpan6_ble` driver will replace the GAP event
         // callback in NimBLE here!
         esp_err_t err = lowpan6_ble_connect(
-            s_l6ble_handle,
-            &event->disc.addr,
-            BLE_CONNECT_TIMEOUT,
-            on_lowpan6_ble_event,
-            NULL
-        );
-        if (err != ESP_OK)
-        {
+                            s_l6ble_handle,
+                            &event->disc.addr,
+                            BLE_CONNECT_TIMEOUT,
+                            on_lowpan6_ble_event,
+                            NULL
+                        );
+        if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to lowpan6_ble_connect; err=%d", err);
         }
     }
@@ -123,10 +118,9 @@ static inline int on_gap_event_discovery(struct ble_gap_event* event)
     return 0;
 }
 
-static int on_gap_event(struct ble_gap_event* event, void* arg)
+static int on_gap_event(struct ble_gap_event *event, void *arg)
 {
-    switch (event->type)
-    {
+    switch (event->type) {
     case BLE_GAP_EVENT_DISC:
         return on_gap_event_discovery(event);
 
@@ -142,8 +136,7 @@ static bool do_scan()
 {
     uint8_t own_addr_type;
     int rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to automatically infer address type; rc=%d", rc);
         return false;
     }
@@ -160,8 +153,7 @@ static bool do_scan()
     // Start discovery and configure `on_gap_event` as our event callback. We'll use this to
     // initiate a lowpan6_ble connection once we've found the peer we want to connect to.
     rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, on_gap_event, NULL);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start GAP discovery; rc=%d", rc);
         return false;
     }
@@ -172,8 +164,7 @@ static bool do_scan()
 void on_sync()
 {
     int rc = ble_hs_util_ensure_addr(0);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to ensure addr");
         return;
     }
@@ -186,7 +177,7 @@ void on_reset(int reason)
     ESP_LOGI(TAG, "Resetting state; reason=%d", reason);
 }
 
-void nimble_host_task(void* param)
+void nimble_host_task(void *param)
 {
     ESP_LOGI(TAG, "BLE host task started");
     nimble_port_run();
@@ -203,14 +194,12 @@ void udp_task()
     server_addr.sin6_port   = htons(PORT);
 
     int s = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-    if (s < 0)
-    {
+    if (s < 0) {
         ESP_LOGE(TAG, "failed to create socket; rc=%d", s);
         return;
     }
 
-    if (bind(s, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1)
-    {
+    if (bind(s, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
         ESP_LOGE(TAG, "failed to bind address");
         close(s);
         return;
@@ -220,8 +209,7 @@ void udp_task()
     struct timeval tv;
     tv.tv_sec  = 0;
     tv.tv_usec = 0;
-    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
-    {
+    if (setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         ESP_LOGE(TAG, "failed to clear socket recv timeout");
         return;
     }
@@ -231,22 +219,20 @@ void udp_task()
     // These buffers are hard-code sized to match the buffers in the corresponding client.
     uint8_t rx_buffer[128];
     uint8_t tx_buffer[192];  // A bit bigger to fit the extra characters we add to responses.
-    while (1)
-    {
+    while (1) {
         ESP_LOGI(TAG, "waiting to receive...");
         struct sockaddr_in6 recv_addr;
         socklen_t recv_addr_len = sizeof(recv_addr);
 
         int len = recvfrom(
-            s,
-            rx_buffer,
-            sizeof(rx_buffer),
-            0,
-            (struct sockaddr*)&recv_addr,
-            &recv_addr_len
-        );
-        if (len < 0)
-        {
+                      s,
+                      rx_buffer,
+                      sizeof(rx_buffer),
+                      0,
+                      (struct sockaddr *)&recv_addr,
+                      &recv_addr_len
+                  );
+        if (len < 0) {
             ESP_LOGE(TAG, "Failed to receive from socket; errno=%d", errno);
             break;
         }
@@ -266,19 +252,18 @@ void udp_task()
         );
 
         // Prepare our response (prepend their message with `echo: `
-        snprintf((char*)tx_buffer, 192, "echo: %s", rx_buffer);
+        snprintf((char *)tx_buffer, 192, "echo: %s", rx_buffer);
 
         // Respond!
         int rc = sendto(
-            s,
-            tx_buffer,
-            strlen((char*)tx_buffer),
-            0,
-            (struct sockaddr*)&recv_addr,
-            recv_addr_len
-        );
-        if (rc < 0)
-        {
+                     s,
+                     tx_buffer,
+                     strlen((char *)tx_buffer),
+                     0,
+                     (struct sockaddr *)&recv_addr,
+                     recv_addr_len
+                 );
+        if (rc < 0) {
             ESP_LOGE(TAG, "Failed to send to socket; errno=%d", errno);
         }
     }
@@ -287,8 +272,7 @@ void udp_task()
 void app_main()
 {
     esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
@@ -306,8 +290,7 @@ void app_main()
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     int rc = ble_svc_gap_device_name_set("l6ble-server");
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to set GAP device name; rc=%d", rc);
         return;
     }
@@ -323,11 +306,10 @@ void app_main()
         .stack  = netstack_default_lowpan6_ble,
     };
 
-    esp_netif_t* lowpan6_ble_netif = esp_netif_new(&cfg);
+    esp_netif_t *lowpan6_ble_netif = esp_netif_new(&cfg);
 
     s_l6ble_handle = lowpan6_ble_create();
-    if (s_l6ble_handle != NULL)
-    {
+    if (s_l6ble_handle != NULL) {
         ESP_ERROR_CHECK(esp_netif_attach(lowpan6_ble_netif, s_l6ble_handle));
     }
 

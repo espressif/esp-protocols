@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +32,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 
-static const char* TAG = "main";
+static const char *TAG = "main";
 
 static uint8_t own_addr_type;
 struct sockaddr_in6 dest_addr;
@@ -38,10 +41,9 @@ struct sockaddr_in6 dest_addr;
 
 static void do_advertise();  // forward declaration
 
-static int on_gap_event(struct ble_gap_event* event, void* arg)
+static int on_gap_event(struct ble_gap_event *event, void *arg)
 {
-    switch (event->type)
-    {
+    switch (event->type) {
     case BLE_GAP_EVENT_CONNECT:
         // A new connection was established or a connection attempt failed.
         ESP_LOGI(
@@ -51,13 +53,10 @@ static int on_gap_event(struct ble_gap_event* event, void* arg)
             event->connect.status
         );
 
-        if (event->connect.status != 0)
-        {
+        if (event->connect.status != 0) {
             // Connection failed; resume advertising.
             do_advertise();
-        }
-        else
-        {
+        } else {
             // We've had a peer connect to us! We'll store their address in `dest_addr` so the
             // `udp_task` function below can send messages to the correct destination.
             struct ble_gap_conn_desc desc;
@@ -102,7 +101,7 @@ static void do_advertise()
 {
     struct ble_gap_adv_params adv_params;
     struct ble_hs_adv_fields fields;
-    const char* name;
+    const char *name;
     int rc;
 
     memset(&fields, 0, sizeof fields);
@@ -111,18 +110,19 @@ static void do_advertise()
     fields.tx_pwr_lvl_is_present = 1;
     fields.tx_pwr_lvl            = BLE_HS_ADV_TX_PWR_LVL_AUTO;
     name                         = ble_svc_gap_device_name();
-    fields.name                  = (uint8_t*)name;
+    fields.name                  = (uint8_t *)name;
     fields.name_len              = strlen(name);
     fields.name_is_complete      = 1;
 
     // Advertise support for the Internet Protocol Support Services (IPSS).
-    fields.uuids16             = (ble_uuid16_t[]) {BLE_UUID16_INIT(LOWPAN6_BLE_SERVICE_UUID_IPSS)};
+    fields.uuids16             = (ble_uuid16_t[]) {
+        BLE_UUID16_INIT(LOWPAN6_BLE_SERVICE_UUID_IPSS)
+    };
     fields.num_uuids16         = 1;
     fields.uuids16_is_complete = 1;
 
     rc = ble_gap_adv_set_fields(&fields);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Error setting advertisement data; rc=%d\n", rc);
         return;
     }
@@ -132,8 +132,7 @@ static void do_advertise()
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
     rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params, on_gap_event, NULL);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Error enabling advertisement; rc=%d\n", rc);
         return;
     }
@@ -147,14 +146,12 @@ static void on_reset(int reason)
 static void on_sync()
 {
     int rc = ble_hs_util_ensure_addr(0);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_ERROR_CHECK(ESP_FAIL);
     }
 
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to determine address type; rc=%d", rc);
         return;
     }
@@ -162,7 +159,7 @@ static void on_sync()
     do_advertise();
 }
 
-void nimble_task(void* params)
+void nimble_task(void *params)
 {
     ESP_LOGI(TAG, "BLE host task started");
 
@@ -170,7 +167,7 @@ void nimble_task(void* params)
     nimble_port_freertos_deinit();
 }
 
-void udp_task(esp_netif_t* lowpan6_netif)
+void udp_task(esp_netif_t *lowpan6_netif)
 {
     char rx_buffer[128];
 
@@ -178,8 +175,7 @@ void udp_task(esp_netif_t* lowpan6_netif)
     // would be to add a `lowpan6_ble` event for "netif up" that we can subscribe to in our
     // `lowpan6_ble_create_server` callback. Not currently implemented though so for the sake of
     // this example...
-    while (!esp_netif_is_netif_up(lowpan6_netif))
-    {
+    while (!esp_netif_is_netif_up(lowpan6_netif)) {
         ESP_LOGI(TAG, "netif not up, waiting...");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
@@ -194,8 +190,7 @@ void udp_task(esp_netif_t* lowpan6_netif)
     dest_addr.sin6_scope_id = esp_netif_get_netif_impl_index(lowpan6_netif);
 
     int sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-    if (sock < 0)
-    {
+    if (sock < 0) {
         ESP_LOGE(TAG, "Failed to create socket; errno=%d", errno);
         return;
     }
@@ -205,15 +200,13 @@ void udp_task(esp_netif_t* lowpan6_netif)
     struct timeval tv;
     tv.tv_sec  = 2;
     tv.tv_usec = 0;
-    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
-    {
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         ESP_LOGE(TAG, "Failed to set socket timeout");
         return;
     }
 
-    const char* payload = "hello it's me!!!";
-    while (1)
-    {
+    const char *payload = "hello it's me!!!";
+    while (1) {
         char addr_str[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, &dest_addr.sin6_addr, addr_str, INET6_ADDRSTRLEN);
         ESP_LOGI(TAG, "sending to %s", addr_str);
@@ -221,15 +214,14 @@ void udp_task(esp_netif_t* lowpan6_netif)
         // Fire a message over to the dest_addr. Note that the `sin6_addr` for this gets set in our
         // GAP connect callback.
         int err = sendto(
-            sock,
-            payload,
-            strlen(payload),
-            0,
-            (struct sockaddr*)&dest_addr,
-            sizeof(dest_addr)
-        );
-        if (err < 0)
-        {
+                      sock,
+                      payload,
+                      strlen(payload),
+                      0,
+                      (struct sockaddr *)&dest_addr,
+                      sizeof(dest_addr)
+                  );
+        if (err < 0) {
             ESP_LOGE(TAG, "Failed to send payload; errno=%d", errno);
             break;
         }
@@ -238,27 +230,21 @@ void udp_task(esp_netif_t* lowpan6_netif)
         struct sockaddr_in6 recv_addr;
         socklen_t recv_addr_len = sizeof(recv_addr);
         int len                 = recvfrom(
-            sock,
-            rx_buffer,
-            sizeof(rx_buffer) - 1,
-            0,
-            (struct sockaddr*)&recv_addr,
-            &recv_addr_len
-        );
-        if (len < 0)
-        {
-            if (errno == EAGAIN)
-            {
+                                      sock,
+                                      rx_buffer,
+                                      sizeof(rx_buffer) - 1,
+                                      0,
+                                      (struct sockaddr *)&recv_addr,
+                                      &recv_addr_len
+                                  );
+        if (len < 0) {
+            if (errno == EAGAIN) {
                 ESP_LOGD(TAG, "Receive timed out");
-            }
-            else
-            {
+            } else {
                 ESP_LOGE(TAG, "Failed to receive from socket; errno=%d", errno);
                 break;
             }
-        }
-        else
-        {
+        } else {
             rx_buffer[len] = 0;  // null terminate whatever we got
             ESP_LOGI(TAG, "Received %d bytes: `%s`", len, rx_buffer);
         }
@@ -266,8 +252,7 @@ void udp_task(esp_netif_t* lowpan6_netif)
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
 
-    if (sock != -1)
-    {
+    if (sock != -1) {
         shutdown(sock, 0);
         close(sock);
     }
@@ -276,8 +261,7 @@ void udp_task(esp_netif_t* lowpan6_netif)
 void app_main()
 {
     esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
@@ -295,8 +279,7 @@ void app_main()
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     int rc = ble_svc_gap_device_name_set("l6ble-client");
-    if (rc != 0)
-    {
+    if (rc != 0) {
         ESP_LOGE(TAG, "Failed to set GAP device name; rc=%d", rc);
         return;
     }
@@ -312,11 +295,10 @@ void app_main()
         .stack  = netstack_default_lowpan6_ble,
     };
 
-    esp_netif_t* lowpan6_ble_netif = esp_netif_new(&cfg);
+    esp_netif_t *lowpan6_ble_netif = esp_netif_new(&cfg);
 
     lowpan6_ble_driver_handle lowpan6_ble_driver = lowpan6_ble_create();
-    if (lowpan6_ble_driver != NULL)
-    {
+    if (lowpan6_ble_driver != NULL) {
         ESP_ERROR_CHECK(esp_netif_attach(lowpan6_ble_netif, lowpan6_ble_driver));
     }
 

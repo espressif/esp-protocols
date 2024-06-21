@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,4 +27,4 @@
  *
  * @param[in] addr The Bluetooth address to print.
  */
-char* debug_print_ble_addr(ble_addr_t* addr);
+char *debug_print_ble_addr(ble_addr_t *addr);

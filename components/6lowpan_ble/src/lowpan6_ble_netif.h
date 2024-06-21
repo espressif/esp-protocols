@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +20,14 @@
 
 #include "esp_idf_version.h"
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0)
-    // Add missing includes to esp_netif_types.h
-    // https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
-    #include "esp_err.h"
-    #include "esp_event_base.h"
-    #include "esp_netif_ip_addr.h"
+// Add missing includes to esp_netif_types.h
+// https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
+#include "esp_err.h"
+#include "esp_event_base.h"
+#include "esp_netif_ip_addr.h"
 
-    #include <stdbool.h>
-    #include <stdint.h>
+#include <stdbool.h>
+#include <stdint.h>
 #endif
 
 #include "esp_netif_types.h"
@@ -37,13 +40,13 @@
  * @param[in] peer_addr The BLE address of the peer we've connected to.
  * @param[in] our_addr Our BLE address for this connection.
  */
-void lowpan6_ble_netif_up(esp_netif_t* esp_netif, ble_addr_t* peer_addr, ble_addr_t* our_addr);
+void lowpan6_ble_netif_up(esp_netif_t *esp_netif, ble_addr_t *peer_addr, ble_addr_t *our_addr);
 
 /** Bring down the netif upon disconnection.
  *
  * @param[in] esp_netif The netif to mark down.
  */
-void lowpan6_ble_netif_down(esp_netif_t* netif);
+void lowpan6_ble_netif_down(esp_netif_t *netif);
 
 /** Convert a NimBLE BLE addr to an EUI64 identifier.
  *
@@ -53,7 +56,7 @@ void lowpan6_ble_netif_down(esp_netif_t* netif);
  * @param[in] addr The BLE addr to translate from.
  * @param[out] eui64 The resulting EUI64 address.
  */
-void nimble_addr_to_eui64(ble_addr_t const* addr, uint8_t* eui64);
+void nimble_addr_to_eui64(ble_addr_t const *addr, uint8_t *eui64);
 
 /** Create a link-local address from an EUI64 identifier.
  *
@@ -80,4 +83,4 @@ void nimble_addr_to_eui64(ble_addr_t const* addr, uint8_t* eui64);
  * @param[in] src The source EUI64 address. MUST contain at least 8 bytes.
  * @param[out] dst The resulting IPv6 address.
  */
-void ipv6_create_link_local_from_eui64(uint8_t const* src, ip6_addr_t* dst);
+void ipv6_create_link_local_from_eui64(uint8_t const *src, ip6_addr_t *dst);

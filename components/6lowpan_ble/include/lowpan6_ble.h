@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +28,14 @@
 #include <stdbool.h>
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0)
-    // Add missing includes to esp_netif_types.h
-    // https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
-    #include "esp_err.h"
-    #include "esp_event_base.h"
-    #include "esp_netif_ip_addr.h"
+// Add missing includes to esp_netif_types.h
+// https://github.com/espressif/esp-idf/commit/822129e234aaedf86e76fe92ab9b49c5f0a612e0
+#include "esp_err.h"
+#include "esp_event_base.h"
+#include "esp_netif_ip_addr.h"
 
-    #include <stdbool.h>
-    #include <stdint.h>
+#include <stdbool.h>
+#include <stdint.h>
 #endif
 
 #include "esp_netif_types.h"
@@ -100,39 +103,34 @@
 #endif
 // clang-format on
 
-enum lowpan6_ble_event_type
-{
+enum lowpan6_ble_event_type {
     LOWPAN6_BLE_EVENT_GAP_CONNECTED,
     LOWPAN6_BLE_EVENT_GAP_DISCONNECTED
 };
 
 //! Event struct for LoWPAN6 BLE events.
-struct lowpan6_ble_event
-{
+struct lowpan6_ble_event {
     //! Discriminator for the event data included in this event.
     enum lowpan6_ble_event_type type;
 
-    union
-    {
+    union {
         //! Data available for type LOWPAN6_BLE_EVENT_GAP_CONNECTED.
-        struct
-        {
+        struct {
             //! The underlying GAP event.
-            struct ble_gap_event* event;
+            struct ble_gap_event *event;
         } gap_connected;
 
         //! Data available for type LOWPAN6_BLE_EVENT_GAP_DISCONNECTED.
-        struct
-        {
+        struct {
             //! The underlying GAP event.
-            struct ble_gap_event* event;
+            struct ble_gap_event *event;
         } gap_disconnected;
     };
 };
 
-extern esp_netif_netstack_config_t* netstack_default_lowpan6_ble;
+extern esp_netif_netstack_config_t *netstack_default_lowpan6_ble;
 
-typedef struct lowpan6_ble_driver* lowpan6_ble_driver_handle;
+typedef struct lowpan6_ble_driver *lowpan6_ble_driver_handle;
 
 /** A LoWPAN6 BLE event handler
  *
@@ -142,8 +140,8 @@ typedef struct lowpan6_ble_driver* lowpan6_ble_driver_handle;
  */
 typedef void (*lowpan6_ble_event_handler)(
     lowpan6_ble_driver_handle handle,
-    struct lowpan6_ble_event* event,
-    void* userdata
+    struct lowpan6_ble_event *event,
+    void *userdata
 );
 
 /** Initialize the LoWPAN6 BLE module.
@@ -221,7 +219,7 @@ esp_err_t lowpan6_ble_destroy(lowpan6_ble_driver_handle driver);
  *
  * @returns True if the device is connectable, False otherwise.
  */
-bool lowpan6_ble_connectable(struct ble_gap_disc_desc* disc);
+bool lowpan6_ble_connectable(struct ble_gap_disc_desc *disc);
 
 /** Establish a LoWPAN6 BLE connection with the given BLE address.
  *
@@ -271,10 +269,10 @@ bool lowpan6_ble_connectable(struct ble_gap_disc_desc* disc);
  */
 esp_err_t lowpan6_ble_connect(
     lowpan6_ble_driver_handle handle,
-    ble_addr_t* addr,
+    ble_addr_t *addr,
     int32_t timeout_ms,
     lowpan6_ble_event_handler cb,
-    void* userdata
+    void *userdata
 );
 
 /** Disconnect the given LoWPAN6 BLE connection.
@@ -326,7 +324,7 @@ esp_err_t lowpan6_ble_disconnect(lowpan6_ble_driver_handle handle);
 esp_err_t lowpan6_ble_create_server(
     lowpan6_ble_driver_handle handle,
     lowpan6_ble_event_handler cb,
-    void* userdata
+    void *userdata
 );
 
 /** Transform the given BLE address into a link-local IPv6 address.
@@ -336,4 +334,4 @@ esp_err_t lowpan6_ble_create_server(
  *
  * @returns ESP_OK on success.
  */
-esp_err_t ble_addr_to_link_local(ble_addr_t* ble_addr, ip6_addr_t* ip_addr);
+esp_err_t ble_addr_to_link_local(ble_addr_t *ble_addr, ip6_addr_t *ip_addr);

@@ -1,4 +1,7 @@
-/* Copyright 2024 Tenera Care
+/*
+ * SPDX-FileCopyrightText: 2024 Tenera Care
+ *
+ * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +18,13 @@
 
 #include "debug_print_utils.h"
 
-char* debug_print_ble_addr(ble_addr_t* addr)
+char *debug_print_ble_addr(ble_addr_t *addr)
 {
     // 2 char per byte * 6 bytes + 5 colon + 1 null terminator
     // 12 + 5 + 1 == 18
     static char addr_buf[18];
 
-    if (addr != NULL)
-    {
+    if (addr != NULL) {
         // NimBLE addresses are stored in reverse order so we print these from index 5 to 0
         snprintf(
             addr_buf,
@@ -35,9 +37,7 @@ char* debug_print_ble_addr(ble_addr_t* addr)
             addr->val[1],
             addr->val[0]
         );
-    }
-    else
-    {
+    } else {
         strcpy(addr_buf, "null");
     }
 
