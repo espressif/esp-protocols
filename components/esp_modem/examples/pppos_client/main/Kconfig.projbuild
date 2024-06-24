@@ -9,7 +9,7 @@ menu "Example Configuration"
                 Connect to modem via UART.
         config EXAMPLE_SERIAL_CONFIG_USB
             bool "USB"
-            depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+            depends on IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4
             help
                 Connect to modem via USB (CDC-ACM class). For IDF version >= 4.4.
     endchoice
@@ -29,6 +29,11 @@ menu "Example Configuration"
             bool "BG96"
             help
                 Quectel BG96 is a series of LTE Cat M1/Cat NB1/EGPRS module.
+        config EXAMPLE_MODEM_DEVICE_EC20
+            depends on EXAMPLE_SERIAL_CONFIG_USB
+            bool "EC20"
+            help
+                Quectel EC20 is a series of LTE Cat M4 module.
         config EXAMPLE_MODEM_DEVICE_SIM7000
             depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM7000"
