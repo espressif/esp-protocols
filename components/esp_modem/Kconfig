@@ -36,6 +36,13 @@ menu "esp-modem"
             The typical reason for failing SABM request without a delay is that
             some devices (SIM800) send MSC requests just after opening a new DLCI.
 
+    config ESP_MODEM_CMUX_DELAY_AFTER_DLCI_DISCONNECT
+        int "Delay in ms to wait after closing virtual terminal"
+        default 0
+        help
+            Some devices might need a pause before sending disconnect command that closes
+            virtual terminal. This delay applies only to close DLCI in CMUX mode.
+
     config ESP_MODEM_CMUX_USE_SHORT_PAYLOADS_ONLY
         bool "CMUX to support only short payloads (<128 bytes)"
         default n
