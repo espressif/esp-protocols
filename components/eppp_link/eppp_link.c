@@ -12,6 +12,7 @@
 #include "esp_event.h"
 #include "esp_netif_ppp.h"
 #include "eppp_link.h"
+#include "esp_serial_slave_link/essl_sdio.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
 #include "driver/spi_master.h"
@@ -86,7 +87,18 @@ struct eppp_handle {
     bool netif_stop;
 };
 
+typedef esp_err_t (*transmit_t)(void *h, void *buffer, size_t len);
 
+#if CONFIG_EPPP_LINK_DEVICE_SDIO
+esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len);
+esp_err_t eppp_sdio_host_rx(esp_netif_t *netif);
+esp_err_t eppp_sdio_slave_rx(esp_netif_t *netif);
+esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len);
+esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *config);
+esp_err_t eppp_sdio_slave_init(void);
+void eppp_sdio_slave_deinit(void);
+void eppp_sdio_host_deinit(void);
+#else
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
     struct eppp_handle *handle = h;
@@ -125,9 +137,10 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_VERBOSE);
     uart_write_bytes(handle->uart_port, buffer, len);
-#endif
+#endif // DEVICE UART or SPI
     return ESP_OK;
 }
+#endif
 
 static void netif_deinit(esp_netif_t *netif)
 {
@@ -209,7 +222,11 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
 
     esp_netif_driver_ifconfig_t driver_cfg = {
         .handle = h,
+#if CONFIG_EPPP_LINK_DEVICE_SDIO
+        .transmit = role == EPPP_CLIENT ? eppp_sdio_host_tx : eppp_sdio_slave_tx,
+#else
         .transmit = transmit,
+#endif
     };
     const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
 
@@ -657,6 +674,20 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     }
     return ESP_OK;
 }
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+
+esp_err_t eppp_perform(esp_netif_t *netif)
+{
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    if (h->stop) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (h->role == EPPP_SERVER) {
+        return eppp_sdio_slave_rx(netif);
+    } else {
+        return eppp_sdio_host_rx(netif);
+    }
+}
 
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
@@ -700,6 +731,13 @@ void eppp_deinit(esp_netif_t *netif)
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     deinit_uart(esp_netif_get_io_driver(netif));
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    if (h->role == EPPP_CLIENT) {
+        eppp_sdio_host_deinit();
+    } else {
+        eppp_sdio_slave_deinit();
+    }
 #endif
     netif_deinit(netif);
 }
@@ -714,7 +752,6 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     esp_netif_t *netif = netif_init(role, config);
     if (!netif) {
         ESP_LOGE(TAG, "Failed to initialize PPP netif");
-        remove_handlers();
         return NULL;
     }
     esp_netif_ppp_config_t netif_params;
@@ -732,6 +769,18 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     init_uart(esp_netif_get_io_driver(netif), config);
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+    esp_err_t ret;
+    if (role == EPPP_SERVER) {
+        ret = eppp_sdio_slave_init();
+    } else {
+        ret = eppp_sdio_host_init(&config->sdio);
+    }
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
+        return NULL;
+    }
 #endif
     return netif;
 }
@@ -751,6 +800,12 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (config->transport != EPPP_TRANSPORT_SPI) {
         ESP_LOGE(TAG, "Invalid transport: SPI device must be enabled in Kconfig");
+        return NULL;
+    }
+#endif
+#if CONFIG_EPPP_LINK_DEVICE_SDIO
+    if (config->transport != EPPP_TRANSPORT_SDIO) {
+        ESP_LOGE(TAG, "Invalid transport: SDIO device must be enabled in Kconfig");
         return NULL;
     }
 #endif
