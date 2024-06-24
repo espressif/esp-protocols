@@ -94,6 +94,7 @@ void CMux::send_disconnect(size_t i)
         frame[4] = 0xFF - fcs_crc(frame);
         term->write(frame, sizeof(frame));
     }
+    usleep(CONFIG_ESP_MODEM_CMUX_DELAY_AFTER_DLCI_DISCONNECT * 1'000);
 }
 
 void CMux::send_sabm(size_t i)
