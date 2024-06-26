@@ -1,0 +1,5 @@
+version: "2.0.28~0"
+url: https://github.com/espressif/esp-protocols/tree/master/components/mosq
+description: The component provides a simple ESP32 port of mosquitto broker
+dependencies:
+  idf: '>=5.1'
