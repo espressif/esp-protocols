@@ -1,0 +1,31 @@
+name: "mosq: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_mosq:
+    if: contains(github.event.pull_request.labels.*.name, 'Comp::mosq') || github.event_name == 'push'
+    name: Build
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.3"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: "\"_GNU_SOURCE\" redefined"
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
+          python ci/build_apps.py components/mosquitto/examples/ -c
