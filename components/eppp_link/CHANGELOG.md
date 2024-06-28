@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/espressif/esp-protocols/commits/eppp-v0.2.0)
+
+### Features
+
+- Add support for SDIO transport ([085dd790](https://github.com/espressif/esp-protocols/commit/085dd790))
+
+### Bug Fixes
+
+- Fixed strict prototype API decl issue in SDIO ([eb09e426](https://github.com/espressif/esp-protocols/commit/eb09e426))
+- Fix SIDO host to check/clear interrupts atomically ([402176c9](https://github.com/espressif/esp-protocols/commit/402176c9))
+
 ## [0.1.1](https://github.com/espressif/esp-protocols/commits/eppp-v0.1.1)
 
 ### Bug Fixes

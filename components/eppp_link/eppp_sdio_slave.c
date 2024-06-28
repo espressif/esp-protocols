@@ -162,7 +162,7 @@ esp_err_t eppp_sdio_slave_rx(esp_netif_t *netif)
     return ESP_ERR_NOT_SUPPORTED;
 }
 
-void eppp_sdio_slave_deinit()
+void eppp_sdio_slave_deinit(void)
 {
 }
 

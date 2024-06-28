@@ -168,7 +168,7 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif)
     return ESP_OK;
 }
 
-void eppp_sdio_host_deinit()
+void eppp_sdio_host_deinit(void)
 {
     essl_sdio_deinit_dev(s_essl);
     sdmmc_host_deinit();
@@ -189,11 +189,11 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif)
     return ESP_ERR_NOT_SUPPORTED;
 }
 
-void eppp_sdio_host_deinit()
+void eppp_sdio_host_deinit(void)
 {
 }
 
-esp_err_t eppp_sdio_host_init()
+esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *config)
 {
     return ESP_ERR_NOT_SUPPORTED;
 }
