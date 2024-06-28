@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.3.0)
+
+### Features
+
+- add esp_wifi_internal_tx_by_ref ([ba35d14e](https://github.com/espressif/esp-protocols/commit/ba35d14e))
+- Make wifi_remote depend on esp_hosted ([ac9972aa](https://github.com/espressif/esp-protocols/commit/ac9972aa))
+
 ## [0.2.3](https://github.com/espressif/esp-protocols/commits/wifi_remote-v0.2.3)
 
 ### Bug Fixes
