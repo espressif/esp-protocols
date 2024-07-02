@@ -3,6 +3,10 @@ idf_component_register(SRCS "main.c"
                     "."
                     REQUIRES esp_websocket_client protocol_examples_common)
 
+idf_component_get_property(log_lib log COMPONENT_LIB)
+
+target_compile_options(${log_lib} PRIVATE -Wno-implicit-function-declaration)
+
 if(CONFIG_GCOV_ENABLED)
     target_compile_options(${COMPONENT_LIB} PUBLIC --coverage -fprofile-arcs -ftest-coverage)
     target_link_options(${COMPONENT_LIB} PUBLIC  --coverage -fprofile-arcs -ftest-coverage)
