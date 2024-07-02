@@ -535,7 +535,11 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
             esp_transport_ssl_skip_common_name_check(ssl);
         }
         if (client->config->cert_common_name) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
             esp_transport_ssl_set_common_name(ssl, client->config->cert_common_name);
+#else
+            ESP_LOGE(TAG, "cert_common_name requires ESP-IDF 5.1.0 or later");
+#endif
         }
 
         esp_transport_handle_t wss = esp_transport_ws_init(ssl);
