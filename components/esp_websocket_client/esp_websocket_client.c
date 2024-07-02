@@ -1278,6 +1278,43 @@ esp_err_t esp_websocket_client_set_ping_interval_sec(esp_websocket_client_handle
     return ESP_OK;
 }
 
+int esp_websocket_client_get_reconnect_timeout(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        ESP_LOGW(TAG, "Client was not initialized");
+        return -1;
+    }
+
+    if (!client->config->auto_reconnect) {
+        ESP_LOGW(TAG, "Automatic reconnect is disabled");
+        return -1;
+    }
+
+    return client->wait_timeout_ms;
+}
+
+esp_err_t esp_websocket_client_set_reconnect_timeout(esp_websocket_client_handle_t client, int reconnect_timeout_ms)
+{
+    if (client == NULL) {
+        ESP_LOGW(TAG, "Client was not initialized");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (reconnect_timeout_ms <= 0) {
+        ESP_LOGW(TAG, "Invalid reconnect timeout");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!client->config->auto_reconnect) {
+        ESP_LOGW(TAG, "Automatic reconnect is disabled");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    client->wait_timeout_ms = reconnect_timeout_ms;
+
+    return ESP_OK;
+}
+
 esp_err_t esp_websocket_register_events(esp_websocket_client_handle_t client,
                                         esp_websocket_event_id_t event,
                                         esp_event_handler_t event_handler,
