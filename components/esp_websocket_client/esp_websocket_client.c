@@ -676,7 +676,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
         ESP_LOGE(TAG, "Both cert_common_name and skip_cert_common_name_check are set, only one of them can be set");
         goto _websocket_init_fail;
     }
-    
+
     client->config->use_global_ca_store = config->use_global_ca_store;
     client->config->cert = config->cert_pem;
     client->config->cert_len = config->cert_len;
