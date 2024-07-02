@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.4.0)
+
+### Bug Fixes
+
+- Adds missing configuration fields ([d4c6d5ed](https://github.com/espressif/esp-protocols/commit/d4c6d5ed))
+
 ## [0.3.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.3.0)
 
 ### Bug Fixes
