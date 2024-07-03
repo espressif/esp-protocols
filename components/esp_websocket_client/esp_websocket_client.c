@@ -129,6 +129,7 @@ typedef enum {
 struct esp_websocket_client {
     esp_event_loop_handle_t     event_handle;
     TaskHandle_t                task_handle;
+    SemaphoreHandle_t           task_handle_lock;  /*!< Serializes access to task_handle so notifiers never signal a deleted task */
     esp_websocket_error_codes_t error_handle;
     esp_transport_list_handle_t transport_list;
     esp_transport_handle_t      transport;
@@ -505,6 +506,10 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         vSemaphoreDelete(client->lock);
         client->lock = NULL;
     }
+    if (client->task_handle_lock) {
+        vSemaphoreDelete(client->task_handle_lock);
+        client->task_handle_lock = NULL;
+    }
 #ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
     if (client->tx_lock) {
         vSemaphoreDelete(client->tx_lock);
@@ -531,6 +536,16 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
     client = NULL;
 }
 
+/* Wake up the client task early */
+static void notify_websocket_task(esp_websocket_client_handle_t client)
+{
+    xSemaphoreTake(client->task_handle_lock, portMAX_DELAY);
+    if (client->task_handle) {
+        xTaskNotifyGive(client->task_handle);
+    }
+    xSemaphoreGive(client->task_handle_lock);
+}
+
 static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
 {
     /* A running client cannot be stopped from the websocket task/event handler */
@@ -542,6 +557,7 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
 
     client->run = false;
     xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
+    notify_websocket_task(client);
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
@@ -806,6 +822,9 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 
     client->lock = xSemaphoreCreateRecursiveMutex();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->lock, goto _websocket_init_fail);
+
+    client->task_handle_lock = xSemaphoreCreateMutex();
+    ESP_WS_CLIENT_MEM_CHECK(TAG, client->task_handle_lock, goto _websocket_init_fail);
 
 #ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
     client->tx_lock = xSemaphoreCreateRecursiveMutex();
@@ -1316,7 +1335,7 @@ static void esp_websocket_client_task(void *pv)
             break;
         case WEBSOCKET_STATE_WAIT_TIMEOUT:
 
-            if (_tick_get_ms() - client->reconnect_tick_ms > client->wait_timeout_ms) {
+            if (_tick_get_ms() - client->reconnect_tick_ms >= (uint64_t)client->wait_timeout_ms) {
                 client->state = WEBSOCKET_STATE_INIT;
                 client->reconnect_tick_ms = _tick_get_ms();
                 ESP_LOGD(TAG, "Reconnecting...");
@@ -1385,8 +1404,18 @@ static void esp_websocket_client_task(void *pv)
                 ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_poll_read().");
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
-            // waiting for reconnection or a request to stop the client...
-            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            // Drain any stale notifications accumulated while outside WAIT_TIMEOUT,
+            // so the wait below only reacts to a fresh wake-up signal.
+            ulTaskNotifyTake(pdTRUE, 0);
+            // Wait for the remaining reconnect delay; the wait is woken early by
+            // xTaskNotifyGive (sent on stop, close, or reconnect-timeout change).
+            uint64_t elapsed_ms = _tick_get_ms() - client->reconnect_tick_ms;
+            int delay_ms = (elapsed_ms < (uint64_t)client->wait_timeout_ms)
+                           ? (int)((uint64_t)client->wait_timeout_ms - elapsed_ms)
+                           : 0;
+            if (client->run && delay_ms > 0) {
+                ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(delay_ms) + 1);
+            }
         } else if (WEBSOCKET_STATE_CLOSING == client->state &&
                    (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
             ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
@@ -1418,6 +1447,11 @@ static void esp_websocket_client_task(void *pv)
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_FINISH, NULL, 0);
     esp_transport_close(client->transport);
     client->state = WEBSOCKET_STATE_UNKNOW;
+    // Clear the handle under the lock so a concurrent notifier cannot signal this
+    // task (and dereference its TCB) after vTaskDelete() below frees it.
+    xSemaphoreTake(client->task_handle_lock, portMAX_DELAY);
+    client->task_handle = NULL;
+    xSemaphoreGive(client->task_handle_lock);
     if (client->selected_for_destroying == true) {
         destroy_and_free_resources(client);
     } else {
@@ -1532,6 +1566,7 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
     // If could not close gracefully within timeout, stop the client and disconnect
     client->run = false;
     xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
+    notify_websocket_task(client);
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
@@ -1654,7 +1689,11 @@ esp_err_t esp_websocket_client_set_reconnect_timeout(esp_websocket_client_handle
         return ESP_ERR_INVALID_STATE;
     }
 
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     client->wait_timeout_ms = reconnect_timeout_ms;
+    xSemaphoreGiveRecursive(client->lock);
+
+    notify_websocket_task(client);
 
     return ESP_OK;
 }
