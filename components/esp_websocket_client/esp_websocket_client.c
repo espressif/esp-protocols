@@ -22,6 +22,8 @@
 #include "esp_system.h"
 #include <errno.h>
 #include <arpa/inet.h>
+#include "esp_heap_caps.h"
+
 
 static const char *TAG = "websocket_client";
 
@@ -628,14 +630,14 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 {
     int memory_type = 0;
     if ((config->memory_type & ~VALID_MEMORY_FLAGS) != 0) {
-        ESP_LOGW("TAG", "Invalid memory_type flags set, using default internal memory.\n");
-        memory_type = MALLOC_CAP_DEFAULT;
+        ESP_LOGE("TAG", "Invalid memory_type flags set.\n");
+        return NULL;
     } else if (config->memory_type == 0) {
         memory_type = MALLOC_CAP_DEFAULT; //MALLOC_CAP_DEFAULT
-        ESP_LOGI("TAG","memory_type is not set, using MALLOC_CAP_DEFAULT memory [%d] versus external [%d].\n",memory_type,MALLOC_CAP_SPIRAM);
+        ESP_LOGD("TAG","memory_type is not set, using MALLOC_CAP_DEFAULT memory [%d] versus external [%d].\n",memory_type,MALLOC_CAP_SPIRAM);
     } else {
         memory_type = config->memory_type;
-        ESP_LOGI("TAG","memory_type is set to %d \n", config->memory_type);
+        ESP_LOGD("TAG","memory_type is set to %d \n", config->memory_type);
     }
 
     esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client),memory_type);
