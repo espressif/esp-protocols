@@ -500,6 +500,10 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
         if (client->keep_alive_cfg.keep_alive_enable) {
             esp_transport_ssl_set_keep_alive(ssl, &client->keep_alive_cfg);
         }
+        if (client->if_name) {
+            esp_transport_ssl_set_interface_name(ssl, client->if_name);
+        }
+
         if (client->config->use_global_ca_store == true) {
             esp_transport_ssl_enable_global_ca_store(ssl);
         } else if (client->config->cert) {
