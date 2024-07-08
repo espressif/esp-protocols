@@ -54,4 +54,14 @@ menu "Example Configuration"
             bool "Using simple UART-PPP driver"
     endchoice
 
+    config EXAMPLE_DEMONSTRATE_DNS_CLEAR_CACHE
+        bool "Run DNS clear cache"
+        default n
+        help
+            This example will cleanup the DNS cache
+            every iteration of the demo network operation.
+            This forces the TCP/IP stack to always resolve DNS names,
+            thus exercising potentially invalid DNS configuration.
+            Set this to "y" for testing, but keep as "n" for production.
+
 endmenu

@@ -1,2 +1,5 @@
+# You can use CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF
+# to perform DNS server updates automatically in esp_netif layers
+# instead of manually as it is demonstrated in this example
 CONFIG_LWIP_PPP_SUPPORT=y
 CONFIG_LWIP_PPP_NOTIFY_PHASE_SUPPORT=y
