@@ -14,6 +14,15 @@
 
 const static char *TAG = "mqtt_broker";
 
+#if CONFIG_EXAMPLE_BROKER_WITH_TLS
+extern const unsigned char servercert_start[] asm("_binary_servercert_pem_start");
+extern const unsigned char servercert_end[]   asm("_binary_servercert_pem_end");
+extern const unsigned char serverkey_start[] asm("_binary_serverkey_pem_start");
+extern const unsigned char serverkey_end[]   asm("_binary_serverkey_pem_end");
+extern const char cacert_start[] asm("_binary_cacert_pem_start");
+extern const char cacert_end[]   asm("_binary_cacert_pem_end");
+#endif
+
 #if CONFIG_EXAMPLE_BROKER_RUN_LOCAL_MQTT_CLIENT
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -74,7 +83,13 @@ static void mqtt_app_start(void *ctx)
     vTaskDelay(pdMS_TO_TICKS(1000));    // wait a second for the broker to start
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.hostname = config->host,
-        .broker.address.transport = MQTT_TRANSPORT_OVER_TCP,    // we support only TCP transport now
+#if CONFIG_EXAMPLE_BROKER_WITH_TLS
+        .broker.address.transport = MQTT_TRANSPORT_OVER_SSL,
+        .broker.verification.certificate = cacert_start,
+        .broker.verification.certificate_len = cacert_end - cacert_start,
+#else
+        .broker.address.transport = MQTT_TRANSPORT_OVER_TCP,
+#endif
         .broker.address.port = config->port,
     };
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -91,7 +106,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
-    struct mosq_broker_config config = { .host = NULL, .port = CONFIG_EXAMPLE_BROKER_PORT };
+    struct mosq_broker_config config = { .host = NULL, .port = CONFIG_EXAMPLE_BROKER_PORT, .tls_cfg = NULL };
 #if CONFIG_EXAMPLE_BROKER_USE_CONNECTED_NETIF
     esp_netif_ip_info_t ip;
     char bind_host[4 * 4];  // to hold IPv4 address
@@ -105,6 +120,17 @@ void app_main(void)
 #if CONFIG_EXAMPLE_BROKER_RUN_LOCAL_MQTT_CLIENT
     xTaskCreate(mqtt_app_start, "mqtt_client", 4096, &config, 4, NULL);
 #endif
+
+#if CONFIG_EXAMPLE_BROKER_WITH_TLS
+    esp_tls_cfg_server_t tls_cfg = {
+        .servercert_buf = servercert_start,
+        .servercert_bytes = servercert_end - servercert_start,
+        .serverkey_buf = serverkey_start,
+        .serverkey_bytes = serverkey_end - serverkey_start,
+    };
+    config.tls_cfg = &tls_cfg;
+#endif
+
     // broker continues to run in this task
     run_broker(&config);
 }

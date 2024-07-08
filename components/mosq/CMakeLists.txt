@@ -7,7 +7,6 @@ set(m_deps_dir ${m_dir}/deps)
 set(m_srcs
         ${m_lib_dir}/memory_mosq.c
         ${m_lib_dir}/util_mosq.c
-        ${m_lib_dir}/net_mosq.c
         ${m_lib_dir}/will_mosq.c
         ${m_lib_dir}/alias_mosq.c
         ${m_lib_dir}/send_mosq.c
@@ -46,7 +45,6 @@ set(m_srcs
         ${m_src_dir}/mux.c
         ${m_src_dir}/mux_epoll.c
         ${m_src_dir}/mux_poll.c
-        ${m_src_dir}/net.c
         ${m_src_dir}/password_mosq.c
         ${m_src_dir}/persist_read.c
         ${m_src_dir}/persist_read_v234.c
@@ -73,11 +71,17 @@ set(m_srcs
         ${m_src_dir}/xtreport.c)
 
 idf_component_register(SRCS ${m_srcs}
-                            port/callbacks.c port/config.c port/signals.c port/ifaddrs.c port/broker.c port/files.c
+                            port/callbacks.c
+                            port/config.c
+                            port/signals.c
+                            port/ifaddrs.c
+                            port/broker.c
+                            port/files.c
+                            port/net__esp_tls.c
                     PRIV_INCLUDE_DIRS port/priv_include port/priv_include/sys ${m_dir} ${m_src_dir}
                                       ${m_incl_dir} ${m_lib_dir} ${m_deps_dir}
                     INCLUDE_DIRS ${m_incl_dir} port/include
-                    PRIV_REQUIRES newlib
+                    PRIV_REQUIRES newlib esp-tls
         )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_BROKER")
