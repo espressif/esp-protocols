@@ -66,6 +66,18 @@ public:
     int write(DTE_Command command);
 
     /**
+     * @brief send data to the selected terminal, by default (without term_id argument)
+     * this API works the same as write: sends data to the secondary terminal, which is
+     * typically used as data terminal (for networking).
+     *
+     * @param data Data pointer to write
+     * @param len Data len to write
+     * @param term_id Terminal id: Primary if id==0, Secondary if id==1
+     * @return number of bytes written
+     */
+    int send(uint8_t *data, size_t len, int term_id = 1);
+
+    /**
      * @brief Reading from the underlying terminal
      * @param d Returning the data pointer of the received payload
      * @param len Length of the data payload

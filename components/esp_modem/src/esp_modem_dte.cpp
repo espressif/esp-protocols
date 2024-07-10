@@ -223,13 +223,13 @@ bool DTE::set_mode(modem_mode m)
         }
     }
     // transitions (COMMAND|DUAL|CMUX|UNDEF) -> DATA
-    if (m == modem_mode::DATA_MODE) {
+    if (m == modem_mode::DATA_MODE || m == modem_mode::RESUME_DATA_MODE) {
         if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::DUAL_MODE) {
             // mode stays the same, but need to swap terminals (as command has been switched)
             secondary_term.swap(primary_term);
             set_command_callbacks();
         } else {
-            mode = m;
+            mode = modem_mode::DATA_MODE;
         }
         return true;
     }
@@ -314,6 +314,12 @@ int DTE::read(uint8_t **d, size_t len)
 int DTE::write(uint8_t *data, size_t len)
 {
     return secondary_term->write(data, len);
+}
+
+int DTE::send(uint8_t *data, size_t len, int term_id)
+{
+    Terminal *term = term_id == 0 ? primary_term.get() : secondary_term.get();
+    return term->write(data, len);
 }
 
 int DTE::write(DTE_Command command)
