@@ -7521,6 +7521,21 @@ static mdns_browse_t *_mdns_browse_find_from(mdns_browse_t *b, mdns_name_t *name
     return b;
 }
 
+static bool is_txt_item_in_list(mdns_txt_item_t txt, uint8_t txt_value_len, mdns_txt_item_t *txt_list, uint8_t *txt_value_len_list, size_t txt_count)
+{
+    for (size_t i = 0; i < txt_count; i++) {
+        if (strcmp(txt.key, txt_list[i].key) == 0) {
+            if (txt_value_len == txt_value_len_list[i] && memcmp(txt.value, txt_list[i].value, txt_value_len) == 0) {
+                return true;
+            } else {
+                // The key value is unique, so there is no need to continue searching.
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
 /**
  * @brief  Called from parser to add TXT data to search result
  */
@@ -7541,9 +7556,20 @@ static void _mdns_browse_result_add_txt(mdns_browse_t *browse, const char *insta
                 !_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
+            bool should_update = false;
             if (r->txt) {
+                // Check if txt changed
+                if (txt_count != r->txt_count) {
+                    should_update = true;
+                } else {
+                    for (size_t txt_index = 0; txt_index < txt_count; txt_index++) {
+                        if (!is_txt_item_in_list(txt[txt_index], txt_value_len[txt_index], r->txt, r->txt_value_len, r->txt_count)) {
+                            should_update = true;
+                            break;
+                        }
+                    }
+                }
                 // If the result has a previous txt entry, we delete it and re-add.
-                // TODO: we need to check if txt changes.
                 for (size_t i = 0; i < r->txt_count; i++) {
                     free((char *)(r->txt[i].key));
                     free((char *)(r->txt[i].value));
@@ -7562,9 +7588,12 @@ static void _mdns_browse_result_add_txt(mdns_browse_t *browse, const char *insta
                     _mdns_result_update_ttl(r, ttl);
                 }
                 if (previous_ttl != r->ttl) {
-                    if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
-                        return;
-                    }
+                    should_update = true;
+                }
+            }
+            if (should_update) {
+                if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
+                    return;
                 }
             }
             return;
