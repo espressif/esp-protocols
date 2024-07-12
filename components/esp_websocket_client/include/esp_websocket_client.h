@@ -128,6 +128,7 @@ typedef struct {
     int                         network_timeout_ms;         /*!< Abort network operation if it is not completed after this value, in milliseconds (defaults to 10s) */
     size_t                      ping_interval_sec;          /*!< Websocket ping interval, defaults to 10 seconds if not set */
     struct ifreq                *if_name;                   /*!< The name of interface for data to go through. Use the default interface without setting */
+    esp_transport_handle_t      ext_transport;              /*!< External WebSocket tcp_transport handle to the client; or if null, the client will create its own transport handle. */
 } esp_websocket_client_config_t;
 
 /**

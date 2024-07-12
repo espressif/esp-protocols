@@ -97,6 +97,7 @@ typedef struct {
     bool                        skip_cert_common_name_check;
     const char                  *cert_common_name;
     esp_err_t                   (*crt_bundle_attach)(void *conf);
+    esp_transport_handle_t      ext_transport;
 } websocket_config_storage_t;
 
 typedef enum {
@@ -695,6 +696,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->skip_cert_common_name_check = config->skip_cert_common_name_check;
     client->config->cert_common_name = config->cert_common_name;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
+    client->config->ext_transport = config->ext_transport;
 
     if (config->uri) {
         if (esp_websocket_client_set_uri(client, config->uri) != ESP_OK) {
@@ -1118,9 +1120,13 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
     }
-    if (esp_websocket_client_create_transport(client) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create websocket transport");
-        return ESP_FAIL;
+
+    client->transport = client->config->ext_transport;
+    if (!client->transport) {
+        if (esp_websocket_client_create_transport(client) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create websocket transport");
+            return ESP_FAIL;
+        }
     }
 
     if (xTaskCreate(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
