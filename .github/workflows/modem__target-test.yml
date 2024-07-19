@@ -69,9 +69,11 @@ jobs:
       - modem
     env:
       TEST_DIR: components/esp_modem/${{ matrix.test.path }}
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
       - name: Clear repository
-        run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
+        run: |
+          sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
