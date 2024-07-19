@@ -1,4 +1,4 @@
 idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS
                     "."
-                    REQUIRES mdns)
+                    REQUIRES mdns console nvs_flash)

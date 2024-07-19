@@ -29,14 +29,15 @@ static void _mdns_browse_send(mdns_browse_t *browse);
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
 #endif
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP
-#include "esp_wifi.h"
-#endif
 
 #if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 1, 0)
 #define MDNS_ESP_WIFI_ENABLED CONFIG_SOC_WIFI_SUPPORTED
 #else
 #define MDNS_ESP_WIFI_ENABLED CONFIG_ESP_WIFI_ENABLED
+#endif
+
+#if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
+#include "esp_wifi.h"
 #endif
 
 #ifdef MDNS_ENABLE_DEBUG
@@ -4411,7 +4412,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
     }
 
     esp_netif_dhcp_status_t dcst;
-#if MDNS_ESP_WIFI_ENABLED
+#if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
         case WIFI_EVENT_STA_CONNECTED:

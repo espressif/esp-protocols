@@ -10,27 +10,41 @@ on:
 jobs:
   host_test_mdns:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
-    name: Host test
-    runs-on: ubuntu-22.04
-    container: espressif/idf:release-v5.1
+    name: Host test build
+    runs-on: ubuntu-20.04
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: espressif/esp-idf
+          ref: release/v5.3
+          submodules: recursive
+          fetch-depth: 1
+          path: idf
+
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
         with:
-          path: esp-protocols
+          path: protocols
 
-      - name: Build and Test
+      - name: Build tests
         shell: bash
         run: |
-          apt-get update && apt-get install -y dnsutils gcc g++
-          . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/host_test
-          idf.py build
-          ./build/mdns_host.elf &
+          sudo apt-get update && sudo apt-get install -y dnsutils gcc g++ libbsd-dev
+          cd $GITHUB_WORKSPACE/idf
+          export IDF_PATH=`pwd`
+          ./install.sh --enable-pytest
+          . export.sh
+          cd $GITHUB_WORKSPACE/protocols
+          python ./ci/build_apps.py components/mdns/tests/host_test/
+          cd components/mdns/tests/host_test
+          ./build_linux_app/mdns_host.elf &
           dig +short -p 5353 @224.0.0.251 myesp.local > ip.txt
           cat ip.txt | xargs dig +short -p 5353 @224.0.0.251 -x
           cat ip.txt
+          # run pytest
+          pytest
 
   build_afl_host_test_mdns:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
