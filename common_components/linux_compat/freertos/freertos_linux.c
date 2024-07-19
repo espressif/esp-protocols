@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,8 +12,24 @@
 #include <stdlib.h>
 #include <string.h>
 #include "osal/osal_api.h"
+#include <semaphore.h>
+
+typedef struct task_notifiers {
+    sem_t sem;
+    TaskHandle_t id;
+} task_notifiers_t;
+
+typedef struct pthread_params {
+    void *const param;
+    TaskFunction_t task;
+    bool started;
+    TaskHandle_t handle;
+} pthread_params_t;
 
 static uint64_t s_semaphore_data = 0;
+static task_notifiers_t *s_notifiers;
+static int s_threads = 0;
+pthread_mutex_t s_mutex;
 
 typedef enum queue_type_tag {
     MUTEX_REC,
@@ -89,6 +105,7 @@ BaseType_t xSemaphoreGiveRecursive( QueueHandle_t xQueue)
     }
     return pdFALSE;
 }
+
 BaseType_t xSemaphoreTake( QueueHandle_t xQueue, TickType_t pvTask )
 {
     struct generic_queue_handle *h = xQueue;
@@ -99,7 +116,6 @@ BaseType_t xSemaphoreTake( QueueHandle_t xQueue, TickType_t pvTask )
     return xQueueReceive(xQueue, &s_semaphore_data, portMAX_DELAY);
 }
 
-
 BaseType_t xSemaphoreTakeRecursive( QueueHandle_t xQueue, TickType_t pvTask )
 {
     struct generic_queue_handle *h = xQueue;
@@ -109,9 +125,6 @@ BaseType_t xSemaphoreTakeRecursive( QueueHandle_t xQueue, TickType_t pvTask )
     }
     return pdFALSE;
 }
-
-
-
 
 void vQueueDelete( QueueHandle_t xQueue )
 {
@@ -128,8 +141,7 @@ void vQueueDelete( QueueHandle_t xQueue )
 
 QueueHandle_t xSemaphoreCreateBinary(void)
 {
-    QueueHandle_t sempaphore =  xQueueCreate(1, 1);
-    return sempaphore;
+    return xQueueCreate(1, 1);
 }
 
 QueueHandle_t xSemaphoreCreateMutex(void)
@@ -145,6 +157,13 @@ QueueHandle_t xSemaphoreCreateRecursiveMutex(void)
 
 void vTaskDelete(TaskHandle_t *task)
 {
+    for (int i = 0; i < s_threads; ++i) {
+        if (task == s_notifiers[i].id) {
+            sem_destroy(&s_notifiers[i].sem);
+            s_notifiers[i].id = 0;
+        }
+    }
+
     if (task == NULL) {
         pthread_exit(0);
     }
@@ -171,14 +190,21 @@ void vTaskDelay( const TickType_t xTicksToDelay )
 
 void *pthread_task(void *params)
 {
-    struct {
-        void *const param;
-        TaskFunction_t task;
-        bool started;
-    } *pthread_params = params;
+    pthread_params_t *pthread_params = params;
 
     void *const param = pthread_params->param;
     TaskFunction_t task = pthread_params->task;
+
+    pthread_params->handle = xTaskGetCurrentTaskHandle();
+    if (s_threads == 0) {
+        pthread_mutex_init(&s_mutex, NULL);
+    }
+    pthread_mutex_lock(&s_mutex);
+    s_notifiers = realloc(s_notifiers, sizeof(struct task_notifiers) * (++s_threads));
+    assert(s_notifiers);
+    s_notifiers[s_threads - 1].id = pthread_params->handle;
+    sem_init(&s_notifiers[s_threads - 1].sem, 0, 0);
+    pthread_mutex_unlock(&s_mutex);
     pthread_params->started = true;
 
     task(param);
@@ -198,16 +224,12 @@ BaseType_t xTaskCreatePinnedToCore( TaskFunction_t pvTaskCode,
     return pdTRUE;
 }
 
-
 BaseType_t xTaskCreate(TaskFunction_t pvTaskCode, const char *const pcName, const uint32_t usStackDepth, void *const pvParameters, UBaseType_t uxPriority, TaskHandle_t *const pvCreatedTask)
 {
     pthread_t new_thread = (pthread_t)NULL;
     pthread_attr_t attr;
-    struct {
-        void *const param;
-        TaskFunction_t task;
-        bool started;
-    } pthread_params = { .param = pvParameters, .task = pvTaskCode};
+    pthread_params_t pthread_params = { .param = pvParameters, .task = pvTaskCode};
+
     int res = pthread_attr_init(&attr);
     assert(res == 0);
     res = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
@@ -215,20 +237,33 @@ BaseType_t xTaskCreate(TaskFunction_t pvTaskCode, const char *const pcName, cons
     res = pthread_create(&new_thread, &attr, pthread_task, &pthread_params);
     assert(res == 0);
 
-    if (pvCreatedTask) {
-        *pvCreatedTask = (void *)new_thread;
-    }
-
     // just wait till the task started so we can unwind params from the stack
     while (pthread_params.started == false) {
         usleep(1000);
     }
+    if (pvCreatedTask) {
+        *pvCreatedTask = pthread_params.handle;
+    }
+
     return pdTRUE;
 }
 
 void xTaskNotifyGive(TaskHandle_t task)
 {
-
+    int i = 0;
+    while (true) {
+        pthread_mutex_lock(&s_mutex);
+        if (task == s_notifiers[i].id) {
+            sem_post(&s_notifiers[i].sem);
+            pthread_mutex_unlock(&s_mutex);
+            return;
+        }
+        pthread_mutex_unlock(&s_mutex);
+        if (++i == s_threads) {
+            i = 0;
+        }
+        usleep(1000);
+    }
 }
 
 BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time )
@@ -238,7 +273,7 @@ BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, 
 
 TaskHandle_t xTaskGetCurrentTaskHandle(void)
 {
-    return NULL;
+    return (TaskHandle_t)pthread_self();
 }
 
 EventGroupHandle_t xEventGroupCreate( void )
@@ -269,4 +304,23 @@ EventBits_t xEventGroupSetBits( EventGroupHandle_t xEventGroup, const EventBits_
 EventBits_t xEventGroupWaitBits( EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToWaitFor, const BaseType_t xClearOnExit, const BaseType_t xWaitForAllBits, TickType_t xTicksToWait )
 {
     return osal_signal_wait(xEventGroup, uxBitsToWaitFor, xWaitForAllBits, xTicksToWait);
+}
+
+void ulTaskNotifyTake(bool clear_on_exit, uint32_t xTicksToWait)
+{
+    TaskHandle_t task = xTaskGetCurrentTaskHandle();
+    int i = 0;
+    while (true) {
+        pthread_mutex_lock(&s_mutex);
+        if (task == s_notifiers[i].id) {
+            pthread_mutex_unlock(&s_mutex);
+            sem_wait(&s_notifiers[i].sem);
+            return;
+        }
+        pthread_mutex_unlock(&s_mutex);
+        if (++i == s_threads) {
+            i = 0;
+        }
+        usleep(1000);
+    }
 }
