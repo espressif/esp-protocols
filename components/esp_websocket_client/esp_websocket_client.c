@@ -955,7 +955,9 @@ static void esp_websocket_client_task(void *pv)
     client->run = true;
 
     //get transport by scheme
-    client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
+    if (client->transport == NULL && client->config->ext_transport == NULL) {
+        client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
+    }
 
     if (client->transport == NULL) {
         ESP_LOGE(TAG, "There are no transports valid, stop websocket client");
@@ -1135,6 +1137,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+    ESP_LOGI(TAG, "Started");
     return ESP_OK;
 }
 
