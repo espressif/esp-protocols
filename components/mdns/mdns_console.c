@@ -1265,6 +1265,59 @@ static void register_mdns_undelegate_host(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_undelegate_host) );
 }
 
+static struct {
+    struct arg_str *service;
+    struct arg_str *proto;
+    struct arg_str *sub;
+    struct arg_str *instance;
+    struct arg_str *host;
+    struct arg_end *end;
+} mdns_service_subtype_args;
+
+static int cmd_mdns_service_subtype(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_service_subtype_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_service_subtype_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_service_subtype_args.service->sval[0] || !mdns_service_subtype_args.proto->sval[0] || !mdns_service_subtype_args.sub->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+    const char *instance = NULL;
+    if (mdns_service_subtype_args.instance->count && mdns_service_subtype_args.instance->sval[0]) {
+        instance = mdns_service_subtype_args.instance->sval[0];
+    }
+    const char *host = NULL;
+    if (mdns_service_subtype_args.host->count && mdns_service_subtype_args.host->sval[0]) {
+        host = mdns_service_subtype_args.host->sval[0];
+    }
+    ESP_ERROR_CHECK( mdns_service_subtype_add_for_host(instance, mdns_service_subtype_args.service->sval[0], mdns_service_subtype_args.proto->sval[0], host, mdns_service_subtype_args.sub->sval[0]) );
+    return 0;
+}
+
+static void register_mdns_service_subtype_set(void)
+{
+    mdns_service_subtype_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
+    mdns_service_subtype_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
+    mdns_service_subtype_args.sub = arg_str1(NULL, NULL, "<sub>", "Subtype");
+    mdns_service_subtype_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_service_subtype_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
+    mdns_service_subtype_args.end = arg_end(5);
+
+    const esp_console_cmd_t cmd_service_sub = {
+        .command = "mdns_service_subtype",
+        .help = "Adds subtype for service",
+        .hint = NULL,
+        .func = &cmd_mdns_service_subtype,
+        .argtable = &mdns_service_subtype_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_service_sub) );
+}
+
 void mdns_console_register(void)
 {
     register_mdns_init();
@@ -1283,6 +1336,7 @@ void mdns_console_register(void)
     register_mdns_lookup_service();
     register_mdns_delegate_host();
     register_mdns_undelegate_host();
+    register_mdns_service_subtype_set();
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();
