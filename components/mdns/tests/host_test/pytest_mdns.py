@@ -73,15 +73,17 @@ class DigWrapper:
             logger.info(f'Partial output before timeout: {e.stdout}')
             return e.stdout or ''
 
-    def check_record(self, name, query_type, expected=True):
+    def check_record(self, name, query_type, expected=True, expect=None):
         output = self.run_query(name, query_type=query_type)
         answers = self.parse_answer_section(output, query_type)
         logger.info(f'dig answers: {answers}')
+        if expect is None:
+            expect = name
         if expected:
-            assert any(name in answer for answer in answers), f"Expected service '{name}' not found in answer section"
+            assert any(expect in answer for answer in answers), f"Expected record '{expect}' not found in answer section"
         else:
             assert 'timeout' in output
-            assert not any(name in answer for answer in answers), f"Unexpected service '{name}' found in answer section"
+            assert not any(expect in answer for answer in answers), f"Unexpected record '{expect}' found in answer section"
 
 
 @pytest.fixture(scope='module')
@@ -149,6 +151,21 @@ def test_remove_delegated_service(mdns_console, dig_app):
     mdns_console.send_input('mdns_service_lookup _test2 _tcp -d')
     mdns_console.get_output('No results found!')
     dig_app.check_record('_test2._tcp.local', query_type='PTR', expected=False)
+
+
+def test_update_txt(mdns_console, dig_app):
+    mdns_console.send_input('mdns_service_txt_set _test _tcp key1 value1')
+    dig_app.check_record('local._test._tcp.local', query_type='SRV', expected=True)
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key1=value1')
+    mdns_console.send_input('mdns_service_txt_set _test _tcp key2 value2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key2=value2')
+    mdns_console.send_input('mdns_service_txt_remove _test _tcp key2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=False, expect='key2=value2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key1=value1')
+    mdns_console.send_input('mdns_service_txt_replace _test _tcp key3=value3 key4=value4')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=False, expect='key1=value1')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key3=value3')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key4=value4')
 
 
 if __name__ == '__main__':
