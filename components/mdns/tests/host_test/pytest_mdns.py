@@ -107,17 +107,18 @@ def test_remove_delegated_service(mdns_console, dig_app):
     mdns_console.get_output('MDNS: Service Instance: extern')
 
 
-def check_txt_for_service(instance, service, proto, mdns_console, dig_app, host=None):
+def check_txt_for_service(instance, service, proto, mdns_console, dig_app, host=None, with_inst=False):
     for_host_arg = f'-h {host}' if host is not None else ''
-    mdns_console.send_input(f'mdns_service_txt_set {service} {proto} {for_host_arg} key1 value1')
+    for_inst_arg = f'-i {instance}' if with_inst else ''
+    mdns_console.send_input(f'mdns_service_txt_set {service} {proto} {for_host_arg} {for_inst_arg} key1 value1')
     dig_app.check_record(f'{instance}.{service}.{proto}.local', query_type='SRV', expected=True)
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=True, expect='key1=value1')
-    mdns_console.send_input(f'mdns_service_txt_set {service} {proto} {for_host_arg} key2 value2')
+    mdns_console.send_input(f'mdns_service_txt_set {service} {proto} {for_host_arg} {for_inst_arg} key2 value2')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=True, expect='key2=value2')
-    mdns_console.send_input(f'mdns_service_txt_remove {service} {proto} {for_host_arg} key2')
+    mdns_console.send_input(f'mdns_service_txt_remove {service} {proto} {for_host_arg} {for_inst_arg} key2')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=False, expect='key2=value2')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=True, expect='key1=value1')
-    mdns_console.send_input(f'mdns_service_txt_replace {service} {proto} {for_host_arg} key3=value3 key4=value4')
+    mdns_console.send_input(f'mdns_service_txt_replace {service} {proto} {for_host_arg}  {for_inst_arg} key3=value3 key4=value4')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=False, expect='key1=value1')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=True, expect='key3=value3')
     dig_app.check_record(f'{service}.{proto}.local', query_type='TXT', expected=True, expect='key4=value4')
@@ -125,10 +126,25 @@ def check_txt_for_service(instance, service, proto, mdns_console, dig_app, host=
 
 def test_update_txt(mdns_console, dig_app):
     check_txt_for_service('local', '_test', '_tcp', mdns_console=mdns_console, dig_app=dig_app)
+    check_txt_for_service('local', '_test', '_tcp', mdns_console=mdns_console, dig_app=dig_app, with_inst=True)
 
 
 def test_update_delegated_txt(mdns_console, dig_app):
     check_txt_for_service('extern', '_test2', '_tcp', mdns_console=mdns_console, dig_app=dig_app, host='delegated')
+    check_txt_for_service('extern', '_test2', '_tcp', mdns_console=mdns_console, dig_app=dig_app, host='delegated', with_inst=True)
+
+
+def test_service_port_set(mdns_console, dig_app):
+    dig_app.check_record('local._test._tcp.local', query_type='SRV', expected=True, expect='80')
+    mdns_console.send_input('mdns_service_port_set _test _tcp 81')
+    dig_app.check_record('local._test._tcp.local', query_type='SRV', expected=True, expect='81')
+    mdns_console.send_input('mdns_service_port_set _test2 _tcp -h delegated 82')
+    dig_app.check_record('extern._test2._tcp.local', query_type='SRV', expected=True, expect='82')
+    mdns_console.send_input('mdns_service_port_set _test2 _tcp -h delegated -i extern 83')
+    dig_app.check_record('extern._test2._tcp.local', query_type='SRV', expected=True, expect='83')
+    mdns_console.send_input('mdns_service_port_set _test2 _tcp -h delegated -i invalid_inst 84')
+    mdns_console.get_output('ESP_ERR_NOT_FOUND')
+    dig_app.check_record('extern._test2._tcp.local', query_type='SRV', expected=True, expect='83')
 
 
 if __name__ == '__main__':

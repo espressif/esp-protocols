@@ -860,6 +860,8 @@ static struct {
     struct arg_str *service;
     struct arg_str *proto;
     struct arg_int *port;
+    struct arg_str *host;
+    struct arg_str *instance;
     struct arg_end *end;
 } mdns_service_port_set_args;
 
@@ -876,7 +878,19 @@ static int cmd_mdns_service_port_set(int argc, char **argv)
         return 1;
     }
 
-    ESP_ERROR_CHECK( mdns_service_port_set(mdns_service_port_set_args.service->sval[0], mdns_service_port_set_args.proto->sval[0], mdns_service_port_set_args.port->ival[0]) );
+    const char *host = NULL;
+    if (mdns_service_port_set_args.host->count && mdns_service_port_set_args.host->sval[0]) {
+        host = mdns_service_port_set_args.host->sval[0];
+    }
+    const char *instance = NULL;
+    if (mdns_service_port_set_args.instance->count && mdns_service_port_set_args.instance->sval[0]) {
+        instance = mdns_service_port_set_args.instance->sval[0];
+    }
+    esp_err_t err = mdns_service_port_set_for_host(instance, mdns_service_port_set_args.service->sval[0], mdns_service_port_set_args.proto->sval[0], host, mdns_service_port_set_args.port->ival[0]);
+    if (err != ESP_OK) {
+        printf("mdns_service_port_set_for_host() failed with %s\n", esp_err_to_name(err));
+        return 1;
+    }
     return 0;
 }
 
@@ -885,6 +899,8 @@ static void register_mdns_service_port_set(void)
     mdns_service_port_set_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
     mdns_service_port_set_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
     mdns_service_port_set_args.port = arg_int1(NULL, NULL, "<port>", "Service Port");
+    mdns_service_port_set_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
+    mdns_service_port_set_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
     mdns_service_port_set_args.end = arg_end(2);
 
     const esp_console_cmd_t cmd_add = {
