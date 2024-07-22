@@ -60,11 +60,15 @@ def test_mdns_init(mdns_console, dig_app):
 def test_add_service(mdns_console, dig_app):
     mdns_console.send_input('mdns_service_add _http _tcp 80 -i test_service')
     mdns_console.get_output('MDNS: Service Instance: test_service')
+    mdns_console.send_input('mdns_service_lookup _http _tcp')
+    mdns_console.get_output('PTR : test_service')
     dig_app.check_record('_http._tcp.local', query_type='PTR', expected=True)
 
 
 def test_remove_service(mdns_console, dig_app):
     mdns_console.send_input('mdns_service_remove _http _tcp')
+    mdns_console.send_input('mdns_service_lookup _http _tcp')
+    mdns_console.get_output('No results found!')
     dig_app.check_record('_http._tcp.local', query_type='PTR', expected=False)
 
 
