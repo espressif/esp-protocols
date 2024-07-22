@@ -1101,6 +1101,95 @@ static void register_mdns_lookup_service(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_lookup_service) );
 }
 
+static struct {
+    struct arg_str *hostname;
+    struct arg_str *address;
+    struct arg_end *end;
+} mdns_delegate_host_args;
+
+static int cmd_mdns_delegate_host(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_delegate_host_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_delegate_host_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_delegate_host_args.hostname->sval[0] || !mdns_delegate_host_args.address->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+
+    mdns_ip_addr_t addr = { .next = NULL};
+    esp_netif_str_to_ip4(mdns_delegate_host_args.address->sval[0], &addr.addr.u_addr.ip4);
+    addr.addr.type = ESP_IPADDR_TYPE_V4;
+
+    esp_err_t err = mdns_delegate_hostname_add(mdns_delegate_host_args.hostname->sval[0], &addr);
+    if (err) {
+        printf("mdns_delegate_hostname_add() failed\n");
+        return 1;
+    }
+    return 0;
+}
+
+static void register_mdns_delegate_host(void)
+{
+    mdns_delegate_host_args.hostname = arg_str1(NULL, NULL, "<hostname>", "Delegated hostname");
+    mdns_delegate_host_args.address = arg_str1(NULL, NULL, "<address>", "Delegated hosts address");
+    mdns_delegate_host_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd_delegate_host = {
+        .command = "mdns_delegate_host",
+        .help = "Add delegated hostname",
+        .hint = NULL,
+        .func = &cmd_mdns_delegate_host,
+        .argtable = &mdns_delegate_host_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_delegate_host) );
+}
+
+static struct {
+    struct arg_str *hostname;
+    struct arg_end *end;
+} mdns_undelegate_host_args;
+
+static int cmd_mdns_undelegate_host(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_undelegate_host_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_undelegate_host_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_undelegate_host_args.hostname->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+
+    if (mdns_delegate_hostname_remove(mdns_undelegate_host_args.hostname->sval[0]) != ESP_OK) {
+        printf("mdns_delegate_hostname_remove() failed\n");
+        return 1;
+    }
+    return 0;
+}
+
+static void register_mdns_undelegate_host(void)
+{
+    mdns_undelegate_host_args.hostname = arg_str1(NULL, NULL, "<hostname>", "Delegated hostname");
+    mdns_undelegate_host_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd_undelegate_host = {
+        .command = "mdns_undelegate_host",
+        .help = "Remove delegated hostname",
+        .hint = NULL,
+        .func = &cmd_mdns_undelegate_host,
+        .argtable = &mdns_undelegate_host_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_undelegate_host) );
+}
+
 void mdns_console_register(void)
 {
     register_mdns_init();
@@ -1117,6 +1206,8 @@ void mdns_console_register(void)
     register_mdns_service_remove_all();
 
     register_mdns_lookup_service();
+    register_mdns_delegate_host();
+    register_mdns_undelegate_host();
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();

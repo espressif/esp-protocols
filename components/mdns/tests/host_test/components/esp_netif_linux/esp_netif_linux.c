@@ -182,3 +182,16 @@ const char *esp_netif_get_ifkey(esp_netif_t *esp_netif)
 {
     return esp_netif->if_key;
 }
+
+esp_err_t esp_netif_str_to_ip4(const char *src, esp_ip4_addr_t *dst)
+{
+    if (src == NULL || dst == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    struct in_addr addr;
+    if (inet_pton(AF_INET, src, &addr) != 1) {
+        return ESP_FAIL;
+    }
+    dst->addr = addr.s_addr;
+    return ESP_OK;
+}
