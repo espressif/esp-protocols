@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -45,11 +45,6 @@
 
 #define portMAX_DELAY               0xFFFFFFFF
 #define portTICK_PERIOD_MS          1
-#define ESP_LOGW(a,b)
-#define ESP_LOGD(a,b)
-#define ESP_LOGE(a,b,c)
-#define ESP_LOGV(a,b,c,d)
-
 #define LWIP_HDR_PBUF_H
 #define __ESP_RANDOM_H__
 #define INC_TASK_H
