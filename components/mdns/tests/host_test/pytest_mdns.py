@@ -155,5 +155,26 @@ def test_service_subtype(mdns_console, dig_app):
     dig_app.check_record('_subtest2._sub._test2._tcp.local', query_type='PTR', expected=True)
 
 
+def test_service_set_instance(mdns_console, dig_app):
+    dig_app.check_record('local._test._tcp.local', query_type='SRV', expected=True)
+    mdns_console.send_input('mdns_service_instance_set _test _tcp local2')
+    dig_app.check_record('local2._test._tcp.local', query_type='SRV', expected=True)
+    mdns_console.send_input('mdns_service_instance_set _test2 _tcp extern2 -h delegated')
+    mdns_console.send_input('mdns_service_lookup _test2 _tcp -d')
+    mdns_console.get_output('PTR : extern2')
+    dig_app.check_record('extern2._test2._tcp.local', query_type='SRV', expected=True)
+    mdns_console.send_input('mdns_service_instance_set _test2 _tcp extern3 -h delegated -i extern')
+    mdns_console.get_output('ESP_ERR_NOT_FOUND')
+
+
+def test_service_remove_all(mdns_console, dig_app):
+    mdns_console.send_input('mdns_service_remove_all')
+    mdns_console.send_input('mdns_service_lookup _test2 _tcp -d')
+    mdns_console.get_output('No results found!')
+    mdns_console.send_input('mdns_service_lookup _test _tcp')
+    mdns_console.get_output('No results found!')
+    dig_app.check_record('_test._tcp.local', query_type='PTR', expected=False)
+
+
 if __name__ == '__main__':
     pytest.main(['-s', 'test_mdns.py'])

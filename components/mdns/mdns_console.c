@@ -818,6 +818,8 @@ static struct {
     struct arg_str *service;
     struct arg_str *proto;
     struct arg_str *instance;
+    struct arg_str *host;
+    struct arg_str *old_instance;
     struct arg_end *end;
 } mdns_service_instance_set_args;
 
@@ -833,8 +835,20 @@ static int cmd_mdns_service_instance_set(int argc, char **argv)
         printf("ERROR: Bad arguments!\n");
         return 1;
     }
+    const char *host = NULL;
+    if (mdns_service_instance_set_args.host->count && mdns_service_instance_set_args.host->sval[0]) {
+        host = mdns_service_instance_set_args.host->sval[0];
+    }
+    const char *old_instance = NULL;
+    if (mdns_service_instance_set_args.old_instance->count && mdns_service_instance_set_args.old_instance->sval[0]) {
+        old_instance = mdns_service_instance_set_args.old_instance->sval[0];
+    }
+    esp_err_t err = mdns_service_instance_name_set_for_host(old_instance, mdns_service_instance_set_args.service->sval[0], mdns_service_instance_set_args.proto->sval[0], host, mdns_service_instance_set_args.instance->sval[0]);
+    if (err != ESP_OK) {
+        printf("mdns_service_instance_name_set_for_host() failed with %s\n", esp_err_to_name(err));
+        return 1;
+    }
 
-    ESP_ERROR_CHECK( mdns_service_instance_name_set(mdns_service_instance_set_args.service->sval[0], mdns_service_instance_set_args.proto->sval[0], mdns_service_instance_set_args.instance->sval[0]) );
     return 0;
 }
 
@@ -843,7 +857,9 @@ static void register_mdns_service_instance_set(void)
     mdns_service_instance_set_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
     mdns_service_instance_set_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
     mdns_service_instance_set_args.instance = arg_str1(NULL, NULL, "<instance>", "Instance name");
-    mdns_service_instance_set_args.end = arg_end(2);
+    mdns_service_instance_set_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
+    mdns_service_instance_set_args.old_instance = arg_str0("i", "old_instance", "<old_instance>", "Instance name before update");
+    mdns_service_instance_set_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd_add = {
         .command = "mdns_service_instance_set",
