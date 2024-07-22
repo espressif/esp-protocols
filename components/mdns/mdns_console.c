@@ -19,7 +19,10 @@ static void mdns_print_results(mdns_result_t *results)
     mdns_ip_addr_t *a = NULL;
     int i = 1;
     while (r) {
-        printf("%d: Interface: %s, Type: %s\n", i++, esp_netif_get_ifkey(r->esp_netif), ip_protocol_str[r->ip_protocol]);
+        if (r->esp_netif) {
+            printf("%d: Interface: %s, Type: %s, TTL: %" PRIu32 "\n", i++, esp_netif_get_ifkey(r->esp_netif),
+                   ip_protocol_str[r->ip_protocol], r->ttl);
+        }
         if (r->instance_name) {
             printf("  PTR : %s\n", r->instance_name);
         }
@@ -1031,6 +1034,73 @@ static void register_mdns_service_remove_all(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_free) );
 }
 
+#define MDNS_MAX_LOOKUP_RESULTS CONFIG_MDNS_MAX_SERVICES
+
+static struct {
+    struct arg_str *instance;
+    struct arg_str *service;
+    struct arg_str *proto;
+    struct arg_lit *delegated;
+    struct arg_end *end;
+} mdns_lookup_service_args;
+
+static esp_err_t lookup_service(const char *instance, const char *service, const char *proto, size_t max_results,
+                                mdns_result_t **result, bool delegated)
+{
+    if (delegated) {
+        return mdns_lookup_delegated_service(instance, service, proto, max_results, result);
+    }
+    return mdns_lookup_selfhosted_service(instance, service, proto, max_results, result);
+}
+
+static int cmd_mdns_lookup_service(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_lookup_service_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_lookup_service_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_lookup_service_args.instance->sval[0] || !mdns_lookup_service_args.service->sval[0] || !mdns_lookup_service_args.proto->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+    mdns_result_t *results = NULL;
+    esp_err_t err = lookup_service(mdns_lookup_service_args.instance->count ? mdns_lookup_service_args.instance->sval[0] : NULL,
+                                   mdns_lookup_service_args.service->sval[0], mdns_lookup_service_args.proto->sval[0],
+                                   MDNS_MAX_LOOKUP_RESULTS, &results, mdns_lookup_service_args.delegated->count);
+    if (err) {
+        printf("Service lookup failed\n");
+        return 1;
+    }
+    if (!results) {
+        printf("No results found!\n");
+        return 0;
+    }
+    mdns_print_results(results);
+    mdns_query_results_free(results);
+    return 0;
+}
+
+static void register_mdns_lookup_service(void)
+{
+    mdns_lookup_service_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
+    mdns_lookup_service_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
+    mdns_lookup_service_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_lookup_service_args.delegated = arg_lit0("d", "delegated", "Lookup delegated services");
+    mdns_lookup_service_args.end = arg_end(4);
+
+    const esp_console_cmd_t cmd_lookup_service = {
+        .command = "mdns_service_lookup",
+        .help = "Lookup registered service",
+        .hint = NULL,
+        .func = &cmd_mdns_lookup_service,
+        .argtable = &mdns_lookup_service_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_lookup_service) );
+}
+
 void mdns_console_register(void)
 {
     register_mdns_init();
@@ -1045,6 +1115,8 @@ void mdns_console_register(void)
     register_mdns_service_txt_set();
     register_mdns_service_txt_remove();
     register_mdns_service_remove_all();
+
+    register_mdns_lookup_service();
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();
