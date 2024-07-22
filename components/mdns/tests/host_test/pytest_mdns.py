@@ -72,5 +72,15 @@ def test_remove_service(mdns_console, dig_app):
     dig_app.check_record('_http._tcp.local', query_type='PTR', expected=False)
 
 
+def test_delegate_host(mdns_console, dig_app):
+    mdns_console.send_input('mdns_delegate_host delegated 1.2.3.4')
+    dig_app.check_record('delegated.local', query_type='A', expected=True)
+
+
+def test_undelegate_host(mdns_console, dig_app):
+    mdns_console.send_input('mdns_undelegate_host delegated')
+    dig_app.check_record('delegated.local', query_type='A', expected=False)
+
+
 if __name__ == '__main__':
     pytest.main(['-s', 'test_mdns.py'])
