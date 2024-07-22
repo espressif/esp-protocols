@@ -104,5 +104,20 @@ def test_remove_delegated_service(mdns_console, dig_app):
     dig_app.check_record('_test2._tcp.local', query_type='PTR', expected=False)
 
 
+def test_update_txt(mdns_console, dig_app):
+    mdns_console.send_input('mdns_service_txt_set _test _tcp key1 value1')
+    dig_app.check_record('local._test._tcp.local', query_type='SRV', expected=True)
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key1=value1')
+    mdns_console.send_input('mdns_service_txt_set _test _tcp key2 value2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key2=value2')
+    mdns_console.send_input('mdns_service_txt_remove _test _tcp key2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=False, expect='key2=value2')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key1=value1')
+    mdns_console.send_input('mdns_service_txt_replace _test _tcp key3=value3 key4=value4')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=False, expect='key1=value1')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key3=value3')
+    dig_app.check_record('_test._tcp.local', query_type='TXT', expected=True, expect='key4=value4')
+
+
 if __name__ == '__main__':
     pytest.main(['-s', 'test_mdns.py'])

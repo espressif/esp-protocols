@@ -85,14 +85,16 @@ class DnsPythonWrapper:
                         answers.append(full_answer)
         return answers
 
-    def check_record(self, name, query_type, expected=True):
+    def check_record(self, name, query_type, expected=True, expect=None):
         output = self.run_query(name, query_type=query_type)
         answers = self.parse_answer_section(output, query_type)
         logger.info(f'answers: {answers}')
+        if expect is None:
+            expect = name
         if expected:
-            assert any(name in answer for answer in answers), f"Expected service '{name}' not found in answer section"
+            assert any(expect in answer for answer in answers), f"Expected record '{expect}' not found in answer section"
         else:
-            assert not any(name in answer for answer in answers), f"Unexpected service '{name}' found in answer section"
+            assert not any(expect in answer for answer in answers), f"Unexpected record '{expect}' found in answer section"
 
 
 if __name__ == '__main__':
