@@ -697,6 +697,7 @@ static struct {
     struct arg_str *proto;
     struct arg_int *port;
     struct arg_str *instance;
+    struct arg_str *host;
     struct arg_str *txt;
     struct arg_end *end;
 } mdns_add_args;
@@ -718,6 +719,11 @@ static int cmd_mdns_service_add(int argc, char **argv)
         instance = mdns_add_args.instance->sval[0];
         printf("MDNS: Service Instance: %s\n", instance);
     }
+    const char *host = NULL;
+    if (mdns_add_args.host->count && mdns_add_args.host->sval[0]) {
+        host = mdns_add_args.host->sval[0];
+        printf("MDNS: Service for delegated host: %s\n", host);
+    }
     mdns_txt_item_t *items = NULL;
     if (mdns_add_args.txt->count) {
         items = _convert_items(mdns_add_args.txt->sval, mdns_add_args.txt->count);
@@ -728,7 +734,8 @@ static int cmd_mdns_service_add(int argc, char **argv)
         }
     }
 
-    ESP_ERROR_CHECK( mdns_service_add(instance, mdns_add_args.service->sval[0], mdns_add_args.proto->sval[0], mdns_add_args.port->ival[0], items, mdns_add_args.txt->count) );
+    ESP_ERROR_CHECK( mdns_service_add_for_host(instance, mdns_add_args.service->sval[0], mdns_add_args.proto->sval[0],
+                     host, mdns_add_args.port->ival[0], items, mdns_add_args.txt->count) );
     free(items);
     return 0;
 }
@@ -739,6 +746,7 @@ static void register_mdns_service_add(void)
     mdns_add_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
     mdns_add_args.port = arg_int1(NULL, NULL, "<port>", "Service Port");
     mdns_add_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_add_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
     mdns_add_args.txt = arg_strn(NULL, NULL, "item", 0, 30, "TXT Items (name=value)");
     mdns_add_args.end = arg_end(2);
 
@@ -754,8 +762,10 @@ static void register_mdns_service_add(void)
 }
 
 static struct {
+    struct arg_str *instance;
     struct arg_str *service;
     struct arg_str *proto;
+    struct arg_str *host;
     struct arg_end *end;
 } mdns_remove_args;
 
@@ -772,7 +782,16 @@ static int cmd_mdns_service_remove(int argc, char **argv)
         return 1;
     }
 
-    ESP_ERROR_CHECK( mdns_service_remove(mdns_remove_args.service->sval[0], mdns_remove_args.proto->sval[0]) );
+    const char *instance = NULL;
+    if (mdns_remove_args.instance->count && mdns_remove_args.instance->sval[0]) {
+        instance = mdns_remove_args.instance->sval[0];
+    }
+    const char *host = NULL;
+    if (mdns_remove_args.host->count && mdns_remove_args.host->sval[0]) {
+        host = mdns_remove_args.host->sval[0];
+    }
+
+    ESP_ERROR_CHECK( mdns_service_remove_for_host(instance, mdns_remove_args.service->sval[0], mdns_remove_args.proto->sval[0], host) );
     return 0;
 }
 
@@ -780,7 +799,9 @@ static void register_mdns_service_remove(void)
 {
     mdns_remove_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
     mdns_remove_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
-    mdns_remove_args.end = arg_end(2);
+    mdns_remove_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
+    mdns_remove_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_remove_args.end = arg_end(4);
 
     const esp_console_cmd_t cmd_remove = {
         .command = "mdns_service_remove",

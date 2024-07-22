@@ -6079,7 +6079,7 @@ esp_err_t mdns_instance_name_set(const char *instance)
 esp_err_t mdns_service_add_for_host(const char *instance, const char *service, const char *proto, const char *hostname,
                                     uint16_t port, mdns_txt_item_t txt[], size_t num_items)
 {
-    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port || !hostname) {
+    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port || !_mdns_server->hostname) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -6087,6 +6087,10 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     if (!_mdns_can_add_more_services()) {
         MDNS_SERVICE_UNLOCK();
         return ESP_ERR_NO_MEM;
+    }
+
+    if (!hostname) {
+        hostname = _mdns_server->hostname;
     }
 
     mdns_srv_item_t *item = _mdns_get_service_item_instance(instance, service, proto, hostname);
