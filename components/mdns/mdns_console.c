@@ -901,6 +901,8 @@ static void register_mdns_service_port_set(void)
 static struct {
     struct arg_str *service;
     struct arg_str *proto;
+    struct arg_str *instance;
+    struct arg_str *host;
     struct arg_str *txt;
     struct arg_end *end;
 } mdns_txt_replace_args;
@@ -918,7 +920,16 @@ static int cmd_mdns_service_txt_replace(int argc, char **argv)
         printf("ERROR: Bad arguments!\n");
         return 1;
     }
-
+    const char *instance = NULL;
+    if (mdns_txt_replace_args.instance->count && mdns_txt_replace_args.instance->sval[0]) {
+        instance = mdns_txt_replace_args.instance->sval[0];
+        printf("MDNS: Service Instance: %s\n", instance);
+    }
+    const char *host = NULL;
+    if (mdns_txt_replace_args.host->count && mdns_txt_replace_args.host->sval[0]) {
+        host = mdns_txt_replace_args.host->sval[0];
+        printf("MDNS: Service for delegated host: %s\n", host);
+    }
     if (mdns_txt_replace_args.txt->count) {
         items = _convert_items(mdns_txt_replace_args.txt->sval, mdns_txt_replace_args.txt->count);
         if (!items) {
@@ -927,7 +938,7 @@ static int cmd_mdns_service_txt_replace(int argc, char **argv)
 
         }
     }
-    ESP_ERROR_CHECK( mdns_service_txt_set(mdns_txt_replace_args.service->sval[0], mdns_txt_replace_args.proto->sval[0], items, mdns_txt_replace_args.txt->count) );
+    ESP_ERROR_CHECK( mdns_service_txt_set_for_host(instance, mdns_txt_replace_args.service->sval[0], mdns_txt_replace_args.proto->sval[0], host, items, mdns_txt_replace_args.txt->count) );
     free(items);
     return 0;
 }
@@ -936,8 +947,10 @@ static void register_mdns_service_txt_replace(void)
 {
     mdns_txt_replace_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
     mdns_txt_replace_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
+    mdns_txt_replace_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_txt_replace_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
     mdns_txt_replace_args.txt = arg_strn(NULL, NULL, "item", 0, 30, "TXT Items (name=value)");
-    mdns_txt_replace_args.end = arg_end(2);
+    mdns_txt_replace_args.end = arg_end(5);
 
     const esp_console_cmd_t cmd_txt_set = {
         .command = "mdns_service_txt_replace",
@@ -953,6 +966,8 @@ static void register_mdns_service_txt_replace(void)
 static struct {
     struct arg_str *service;
     struct arg_str *proto;
+    struct arg_str *instance;
+    struct arg_str *host;
     struct arg_str *var;
     struct arg_str *value;
     struct arg_end *end;
@@ -970,8 +985,18 @@ static int cmd_mdns_service_txt_set(int argc, char **argv)
         printf("ERROR: Bad arguments!\n");
         return 1;
     }
+    const char *instance = NULL;
+    if (mdns_txt_set_args.instance->count && mdns_txt_set_args.instance->sval[0]) {
+        instance = mdns_txt_set_args.instance->sval[0];
+        printf("MDNS: Service Instance: %s\n", instance);
+    }
+    const char *host = NULL;
+    if (mdns_txt_set_args.host->count && mdns_txt_set_args.host->sval[0]) {
+        host = mdns_txt_set_args.host->sval[0];
+        printf("MDNS: Service for delegated host: %s\n", host);
+    }
 
-    ESP_ERROR_CHECK( mdns_service_txt_item_set(mdns_txt_set_args.service->sval[0], mdns_txt_set_args.proto->sval[0], mdns_txt_set_args.var->sval[0], mdns_txt_set_args.value->sval[0]) );
+    ESP_ERROR_CHECK( mdns_service_txt_item_set_for_host(instance, mdns_txt_set_args.service->sval[0], mdns_txt_set_args.proto->sval[0], host, mdns_txt_set_args.var->sval[0], mdns_txt_set_args.value->sval[0]) );
     return 0;
 }
 
@@ -981,7 +1006,9 @@ static void register_mdns_service_txt_set(void)
     mdns_txt_set_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
     mdns_txt_set_args.var = arg_str1(NULL, NULL, "<var>", "Item Name");
     mdns_txt_set_args.value = arg_str1(NULL, NULL, "<value>", "Item Value");
-    mdns_txt_set_args.end = arg_end(2);
+    mdns_txt_set_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_txt_set_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
+    mdns_txt_set_args.end = arg_end(6);
 
     const esp_console_cmd_t cmd_txt_set = {
         .command = "mdns_service_txt_set",
@@ -998,6 +1025,8 @@ static struct {
     struct arg_str *service;
     struct arg_str *proto;
     struct arg_str *var;
+    struct arg_str *instance;
+    struct arg_str *host;
     struct arg_end *end;
 } mdns_txt_remove_args;
 
@@ -1013,8 +1042,15 @@ static int cmd_mdns_service_txt_remove(int argc, char **argv)
         printf("ERROR: Bad arguments!\n");
         return 1;
     }
-
-    ESP_ERROR_CHECK( mdns_service_txt_item_remove(mdns_txt_remove_args.service->sval[0], mdns_txt_remove_args.proto->sval[0], mdns_txt_remove_args.var->sval[0]) );
+    const char *instance = NULL;
+    if (mdns_txt_remove_args.instance->count && mdns_txt_remove_args.instance->sval[0]) {
+        instance = mdns_txt_remove_args.instance->sval[0];
+    }
+    const char *host = NULL;
+    if (mdns_txt_remove_args.host->count && mdns_txt_remove_args.host->sval[0]) {
+        host = mdns_txt_remove_args.host->sval[0];
+    }
+    ESP_ERROR_CHECK( mdns_service_txt_item_remove_for_host(instance, mdns_txt_remove_args.service->sval[0], mdns_txt_remove_args.proto->sval[0], host, mdns_txt_remove_args.var->sval[0]) );
     return 0;
 }
 
@@ -1023,6 +1059,8 @@ static void register_mdns_service_txt_remove(void)
     mdns_txt_remove_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
     mdns_txt_remove_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
     mdns_txt_remove_args.var = arg_str1(NULL, NULL, "<var>", "Item Name");
+    mdns_txt_remove_args.instance = arg_str0("i", "instance", "<instance>", "Instance name");
+    mdns_txt_remove_args.host = arg_str0("h", "host", "<hostname>", "Service for this (delegated) host");
     mdns_txt_remove_args.end = arg_end(2);
 
     const esp_console_cmd_t cmd_txt_remove = {
