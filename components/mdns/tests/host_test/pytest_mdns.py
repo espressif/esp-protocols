@@ -82,5 +82,27 @@ def test_undelegate_host(mdns_console, dig_app):
     dig_app.check_record('delegated.local', query_type='A', expected=False)
 
 
+def test_add_delegated_service(mdns_console, dig_app):
+    mdns_console.send_input('mdns_delegate_host delegated 1.2.3.4')
+    dig_app.check_record('delegated.local', query_type='A', expected=True)
+    mdns_console.send_input('mdns_service_add _test _tcp 80 -i local')
+    mdns_console.get_output('MDNS: Service Instance: local')
+    mdns_console.send_input('mdns_service_add _test2 _tcp 80 -i extern -h delegated')
+    mdns_console.get_output('MDNS: Service Instance: extern')
+    mdns_console.send_input('mdns_service_lookup _test _tcp')
+    mdns_console.get_output('PTR : local')
+    mdns_console.send_input('mdns_service_lookup _test2 _tcp -d')
+    mdns_console.get_output('PTR : extern')
+    dig_app.check_record('_test2._tcp.local', query_type='PTR', expected=True)
+    dig_app.check_record('extern._test2._tcp.local', query_type='SRV', expected=True)
+
+
+def test_remove_delegated_service(mdns_console, dig_app):
+    mdns_console.send_input('mdns_service_remove _test2 _tcp -h delegated')
+    mdns_console.send_input('mdns_service_lookup _test2 _tcp -d')
+    mdns_console.get_output('No results found!')
+    dig_app.check_record('_test2._tcp.local', query_type='PTR', expected=False)
+
+
 if __name__ == '__main__':
     pytest.main(['-s', 'test_mdns.py'])
