@@ -1334,6 +1334,85 @@ static void register_mdns_service_subtype_set(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_service_sub) );
 }
 
+static struct {
+    struct arg_str *service;
+    struct arg_str *proto;
+    struct arg_end *end;
+} mdns_browse_args;
+
+static void mdns_browse_notifier(mdns_result_t *result)
+{
+    if (result) {
+        mdns_print_results(result);
+    }
+}
+
+static int cmd_mdns_browse(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_browse_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_browse_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_browse_args.service->sval[0] || !mdns_browse_args.proto->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+    mdns_browse_t *handle = mdns_browse_new(mdns_browse_args.service->sval[0], mdns_browse_args.proto->sval[0], mdns_browse_notifier);
+    return handle ? 0 : 1;
+}
+
+static void register_mdns_browse(void)
+{
+    mdns_browse_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
+    mdns_browse_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
+    mdns_browse_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd_browse = {
+        .command = "mdns_browse",
+        .help = "Start browsing",
+        .hint = NULL,
+        .func = &cmd_mdns_browse,
+        .argtable = &mdns_browse_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_browse) );
+}
+
+static int cmd_mdns_browse_del(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_browse_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_browse_args.end, argv[0]);
+        return 1;
+    }
+
+    if (!mdns_browse_args.service->sval[0] || !mdns_browse_args.proto->sval[0]) {
+        printf("ERROR: Bad arguments!\n");
+        return 1;
+    }
+    esp_err_t err = mdns_browse_delete(mdns_browse_args.service->sval[0], mdns_browse_args.proto->sval[0]);
+    return err == ESP_OK ? 0 : 1;
+}
+
+static void register_mdns_browse_del(void)
+{
+    mdns_browse_args.service = arg_str1(NULL, NULL, "<service>", "MDNS Service");
+    mdns_browse_args.proto = arg_str1(NULL, NULL, "<proto>", "IP Protocol");
+    mdns_browse_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd_browse_del = {
+        .command = "mdns_browse_del",
+        .help = "Stop browsing",
+        .hint = NULL,
+        .func = &cmd_mdns_browse_del,
+        .argtable = &mdns_browse_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_browse_del) );
+}
+
 void mdns_console_register(void)
 {
     register_mdns_init();
@@ -1353,6 +1432,9 @@ void mdns_console_register(void)
     register_mdns_delegate_host();
     register_mdns_undelegate_host();
     register_mdns_service_subtype_set();
+
+    register_mdns_browse();
+    register_mdns_browse_del();
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();
