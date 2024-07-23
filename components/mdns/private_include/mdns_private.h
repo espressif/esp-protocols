@@ -188,7 +188,6 @@ typedef enum {
     ACTION_HOSTNAME_SET,
     ACTION_INSTANCE_SET,
     ACTION_SERVICE_INSTANCE_SET,
-    ACTION_SERVICE_TXT_REPLACE,
     ACTION_SERVICE_TXT_SET,
     ACTION_SERVICE_TXT_DEL,
     ACTION_SERVICE_SUBTYPE_ADD,
@@ -447,14 +446,6 @@ typedef struct {
             mdns_srv_item_t *service;
             char *instance;
         } srv_instance;
-        struct {
-            mdns_srv_item_t *service;
-            uint16_t port;
-        } srv_port;
-        struct {
-            mdns_srv_item_t *service;
-            mdns_txt_linked_item_t *txt;
-        } srv_txt_replace;
         struct {
             mdns_srv_item_t *service;
             char *key;
