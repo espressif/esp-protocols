@@ -187,7 +187,6 @@ typedef enum {
     ACTION_SYSTEM_EVENT,
     ACTION_HOSTNAME_SET,
     ACTION_INSTANCE_SET,
-    ACTION_SERVICE_INSTANCE_SET,
     ACTION_SERVICES_CLEAR,
     ACTION_SEARCH_ADD,
     ACTION_SEARCH_SEND,
@@ -439,10 +438,6 @@ typedef struct {
             mdns_if_t interface;
             mdns_event_actions_t event_action;
         } sys_event;
-        struct {
-            mdns_srv_item_t *service;
-            char *instance;
-        } srv_instance;
         struct {
             mdns_search_once_t *search;
         } search_add;
