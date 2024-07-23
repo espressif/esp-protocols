@@ -5108,9 +5108,6 @@ static void _mdns_free_action(mdns_action_t *action)
     case ACTION_INSTANCE_SET:
         free(action->data.instance);
         break;
-    case ACTION_SERVICE_INSTANCE_SET:
-        free(action->data.srv_instance.instance);
-        break;
     case ACTION_SEARCH_ADD:
     //fallthrough
     case ACTION_SEARCH_SEND:
@@ -5171,15 +5168,6 @@ static void _mdns_execute_action(mdns_action_t *action)
         free((char *)_mdns_server->instance);
         _mdns_server->instance = action->data.instance;
         _mdns_restart_all_pcbs_no_instance();
-
-        break;
-    case ACTION_SERVICE_INSTANCE_SET:
-        if (action->data.srv_instance.service->service->instance) {
-            _mdns_send_bye(&action->data.srv_instance.service, 1, false);
-            free((char *)action->data.srv_instance.service->service->instance);
-        }
-        action->data.srv_instance.service->service->instance = action->data.srv_instance.instance;
-        _mdns_probe_all_pcbs(&action->data.srv_instance.service, 1, false, false);
 
         break;
     case ACTION_SERVICES_CLEAR:
@@ -6344,57 +6332,46 @@ esp_err_t mdns_service_subtype_add_for_host(const char *instance_name, const cha
 
     mdns_service_t *srv = s->service;
     mdns_subtype_t *subtype_item = (mdns_subtype_t *)malloc(sizeof(mdns_subtype_t));
-    ESP_GOTO_ON_FALSE(subtype_item, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+    ESP_GOTO_ON_FALSE(subtype_item, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
     subtype_item->subtype = strdup(subtype);
-    ESP_GOTO_ON_FALSE(subtype_item->subtype, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+    ESP_GOTO_ON_FALSE(subtype_item->subtype, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
     subtype_item->next = srv->subtype;
     srv->subtype = subtype_item;
 
 err:
     MDNS_SERVICE_UNLOCK();
-    if (ret == ESP_ERR_NO_MEM) {
-        HOOK_MALLOC_FAILED;
-    }
+    return ret;
+out_of_mem:
+    MDNS_SERVICE_UNLOCK();
+    HOOK_MALLOC_FAILED;
+    free(subtype_item);
     return ret;
 }
 
-esp_err_t mdns_service_instance_name_set_for_host(const char *instance_old, const char *service, const char *proto, const char *hostname,
+esp_err_t mdns_service_instance_name_set_for_host(const char *instance_old, const char *service, const char *proto, const char *host,
         const char *instance)
 {
     MDNS_SERVICE_LOCK();
-    if (!_mdns_server || !_mdns_server->services || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
-        MDNS_SERVICE_UNLOCK();
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (_str_null_or_empty(instance) || strlen(instance) > (MDNS_NAME_BUF_LEN - 1)) {
-        MDNS_SERVICE_UNLOCK();
-        return ESP_ERR_INVALID_ARG;
-    }
-    mdns_srv_item_t *s = _mdns_get_service_item_instance(instance_old, service, proto, hostname);
-    MDNS_SERVICE_UNLOCK();
-    if (!s) {
-        return ESP_ERR_NOT_FOUND;
-    }
-    char *new_instance = strndup(instance, MDNS_NAME_BUF_LEN - 1);
-    if (!new_instance) {
-        return ESP_ERR_NO_MEM;
-    }
+    esp_err_t ret = ESP_OK;
+    const char *hostname = host ? host : _mdns_server->hostname;
 
-    mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        free(new_instance);
-        return ESP_ERR_NO_MEM;
+    ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) &&
+                      !_str_null_or_empty(instance) && strlen(instance) <= (MDNS_NAME_BUF_LEN - 1), ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
+
+    mdns_srv_item_t *s = _mdns_get_service_item_instance(instance_old, service, proto, hostname);
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
+
+    if (s->service->instance) {
+        _mdns_send_bye(&s, 1, false);
+        free((char *)s->service->instance);
     }
-    action->type = ACTION_SERVICE_INSTANCE_SET;
-    action->data.srv_instance.service = s;
-    action->data.srv_instance.instance = new_instance;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        free(new_instance);
-        free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+    s->service->instance = strndup(instance, MDNS_NAME_BUF_LEN - 1);
+    ESP_GOTO_ON_FALSE(s->service->instance, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+    _mdns_probe_all_pcbs(&s, 1, false, false);
+
+err:
+    MDNS_SERVICE_UNLOCK();
+    return ret;
 }
 
 esp_err_t mdns_service_instance_name_set(const char *service, const char *proto, const char *instance)
@@ -6402,7 +6379,7 @@ esp_err_t mdns_service_instance_name_set(const char *service, const char *proto,
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    return mdns_service_instance_name_set_for_host(NULL, service, proto, _mdns_server->hostname, instance);
+    return mdns_service_instance_name_set_for_host(NULL, service, proto, NULL, instance);
 }
 
 esp_err_t mdns_service_remove_for_host(const char *instance, const char *service, const char *proto, const char *host)
@@ -6413,7 +6390,7 @@ esp_err_t mdns_service_remove_for_host(const char *instance, const char *service
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto),
                       ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
     mdns_srv_item_t *s = _mdns_get_service_item_instance(instance, service, proto, hostname);
-    ESP_GOTO_ON_FALSE(s, ESP_ERR_INVALID_ARG, err, TAG, "Service doesn't exist");
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
 
     mdns_srv_item_t *a = _mdns_server->services;
     mdns_srv_item_t *b = a;
