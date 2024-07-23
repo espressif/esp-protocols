@@ -5201,11 +5201,6 @@ static void _mdns_execute_action(mdns_action_t *action)
         _mdns_probe_all_pcbs(&action->data.srv_instance.service, 1, false, false);
 
         break;
-    case ACTION_SERVICE_PORT_SET:
-        action->data.srv_port.service->service->port = action->data.srv_port.port;
-        _mdns_announce_all_pcbs(&action->data.srv_port.service, 1, true);
-
-        break;
     case ACTION_SERVICE_TXT_REPLACE:
         service = action->data.srv_txt_replace.service->service;
         txt = service->txt;
@@ -6233,32 +6228,22 @@ handle_error:
     return NULL;
 }
 
-esp_err_t mdns_service_port_set_for_host(const char *instance, const char *service, const char *proto, const char *hostname, uint16_t port)
+esp_err_t mdns_service_port_set_for_host(const char *instance, const char *service, const char *proto, const char *host, uint16_t port)
 {
     MDNS_SERVICE_LOCK();
-    if (!_mdns_server || !_mdns_server->services || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port) {
-        MDNS_SERVICE_UNLOCK();
-        return ESP_ERR_INVALID_ARG;
-    }
+    esp_err_t ret = ESP_OK;
+    const char *hostname = host ? host : _mdns_server->hostname;
+    ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) && port,
+                      ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
     mdns_srv_item_t *s = _mdns_get_service_item_instance(instance, service, proto, hostname);
-    MDNS_SERVICE_UNLOCK();
-    if (!s) {
-        return ESP_ERR_NOT_FOUND;
-    }
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
 
-    mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-    action->type = ACTION_SERVICE_PORT_SET;
-    action->data.srv_port.service = s;
-    action->data.srv_port.port = port;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+    s->service->port = port;
+    _mdns_announce_all_pcbs(&s, 1, true);
+
+err:
+    MDNS_SERVICE_UNLOCK();
+    return ret;
 }
 
 esp_err_t mdns_service_port_set(const char *service, const char *proto, uint16_t port)
@@ -6266,7 +6251,7 @@ esp_err_t mdns_service_port_set(const char *service, const char *proto, uint16_t
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    return mdns_service_port_set_for_host(NULL, service, proto, _mdns_server->hostname, port);
+    return mdns_service_port_set_for_host(NULL, service, proto, NULL, port);
 }
 
 esp_err_t mdns_service_txt_set_for_host(const char *instance, const char *service, const char *proto, const char *hostname,
