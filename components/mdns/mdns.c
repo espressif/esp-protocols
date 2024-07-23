@@ -5111,10 +5111,6 @@ static void _mdns_free_action(mdns_action_t *action)
     case ACTION_SERVICE_INSTANCE_SET:
         free(action->data.srv_instance.instance);
         break;
-    case ACTION_SERVICE_TXT_SET:
-        free(action->data.srv_txt_set.key);
-        free(action->data.srv_txt_set.value);
-        break;
     case ACTION_SERVICE_TXT_DEL:
         free(action->data.srv_txt_del.key);
         break;
@@ -5164,7 +5160,6 @@ static void _mdns_execute_action(mdns_action_t *action)
     mdns_srv_item_t *a = NULL;
     mdns_service_t *service;
     char *key;
-    char *value;
     char *subtype;
     mdns_subtype_t *subtype_item;
     mdns_txt_linked_item_t *txt, * t;
@@ -5198,38 +5193,6 @@ static void _mdns_execute_action(mdns_action_t *action)
         _mdns_probe_all_pcbs(&action->data.srv_instance.service, 1, false, false);
 
         break;
-    case ACTION_SERVICE_TXT_SET:
-        service = action->data.srv_txt_set.service->service;
-        key = action->data.srv_txt_set.key;
-        value = action->data.srv_txt_set.value;
-        txt = service->txt;
-        while (txt) {
-            if (strcmp(txt->key, key) == 0) {
-                free((char *)txt->value);
-                free(key);
-                txt->value = value;
-                txt->value_len = action->data.srv_txt_set.value_len;
-                break;
-            }
-            txt = txt->next;
-        }
-        if (!txt) {
-            txt = (mdns_txt_linked_item_t *)malloc(sizeof(mdns_txt_linked_item_t));
-            if (!txt) {
-                HOOK_MALLOC_FAILED;
-                _mdns_free_action(action);
-                return;
-            }
-            txt->key = key;
-            txt->value = value;
-            txt->value_len = action->data.srv_txt_set.value_len;
-            txt->next = service->txt;
-            service->txt = txt;
-        }
-
-        _mdns_announce_all_pcbs(&action->data.srv_txt_set.service, 1, false);
-
-        break;
     case ACTION_SERVICE_TXT_DEL:
         service = action->data.srv_txt_del.service->service;
         key = action->data.srv_txt_del.key;
@@ -5258,7 +5221,7 @@ static void _mdns_execute_action(mdns_action_t *action)
         }
         free(key);
 
-        _mdns_announce_all_pcbs(&action->data.srv_txt_set.service, 1, false);
+        _mdns_announce_all_pcbs(&action->data.srv_txt_del.service, 1, false);
 
         break;
     case ACTION_SERVICE_SUBTYPE_ADD:
@@ -6281,51 +6244,53 @@ esp_err_t mdns_service_txt_set(const char *service, const char *proto, mdns_txt_
 }
 
 esp_err_t mdns_service_txt_item_set_for_host_with_explicit_value_len(const char *instance, const char *service, const char *proto,
-        const char *hostname, const char *key,
-        const char *value, uint8_t value_len)
+        const char *host, const char *key, const char *value_arg, uint8_t value_len)
 {
     MDNS_SERVICE_LOCK();
-    if (!_mdns_server || !_mdns_server->services || _str_null_or_empty(service) || _str_null_or_empty(proto) ||
-            _str_null_or_empty(key) || (!value && value_len)) {
-        MDNS_SERVICE_UNLOCK();
-        return ESP_ERR_INVALID_ARG;
-    }
+    esp_err_t ret = ESP_OK;
+    const char *hostname = host ? host : _mdns_server->hostname;
+    ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) && !_str_null_or_empty(key) &&
+                      !((!value_arg && value_len)), ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
+
     mdns_srv_item_t *s = _mdns_get_service_item_instance(instance, service, proto, hostname);
-    MDNS_SERVICE_UNLOCK();
-    if (!s) {
-        return ESP_ERR_NOT_FOUND;
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
+
+    mdns_service_t *srv = s->service;
+    char *value = NULL;
+    if (value_len > 0) {
+        value = (char *) malloc(value_len);
+        ESP_GOTO_ON_FALSE(s, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+        memcpy(value, value_arg, value_len);
+    } else {
+        value_len = 0;
     }
-    mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
+    mdns_txt_linked_item_t *txt = srv->txt;
+    while (txt) {
+        if (strcmp(txt->key, key) == 0) {
+            free((char *)txt->value);
+            txt->value = value;
+            txt->value_len = value_len;
+            break;
+        }
+        txt = txt->next;
+    }
+    if (!txt) {
+        txt = (mdns_txt_linked_item_t *)malloc(sizeof(mdns_txt_linked_item_t));
+        ESP_GOTO_ON_FALSE(s, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+        txt->key = strdup(key);
+        ESP_GOTO_ON_FALSE(txt->key, ESP_ERR_NO_MEM, err, TAG, "Out of memory");
+        txt->value = value;
+        txt->value_len = value_len;
+        txt->next = srv->txt;
+        srv->txt = txt;
     }
 
-    action->type = ACTION_SERVICE_TXT_SET;
-    action->data.srv_txt_set.service = s;
-    action->data.srv_txt_set.key = strdup(key);
-    if (!action->data.srv_txt_set.key) {
-        free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    if (value_len > 0) {
-        action->data.srv_txt_set.value = (char *)malloc(value_len);
-        if (!action->data.srv_txt_set.value) {
-            free(action->data.srv_txt_set.key);
-            free(action);
-            return ESP_ERR_NO_MEM;
-        }
-        memcpy(action->data.srv_txt_set.value, value, value_len);
-        action->data.srv_txt_set.value_len = value_len;
-    } else {
-        action->data.srv_txt_set.value = NULL;
-        action->data.srv_txt_set.value_len = 0;
-    }
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        free(action->data.srv_txt_set.key);
-        free(action->data.srv_txt_set.value);
-        free(action);
-        return ESP_ERR_NO_MEM;
+    _mdns_announce_all_pcbs(&s, 1, false);
+
+err:
+    MDNS_SERVICE_UNLOCK();
+    if (ret == ESP_ERR_NO_MEM) {
+        HOOK_MALLOC_FAILED;
     }
     return ESP_OK;
 }
@@ -6343,7 +6308,7 @@ esp_err_t mdns_service_txt_item_set(const char *service, const char *proto, cons
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    return mdns_service_txt_item_set_for_host_with_explicit_value_len(NULL, service, proto, _mdns_server->hostname, key,
+    return mdns_service_txt_item_set_for_host_with_explicit_value_len(NULL, service, proto, NULL, key,
             value, strlen(value));
 }
 
@@ -6353,8 +6318,7 @@ esp_err_t mdns_service_txt_item_set_with_explicit_value_len(const char *service,
     if (!_mdns_server) {
         return ESP_ERR_INVALID_STATE;
     }
-    return mdns_service_txt_item_set_for_host_with_explicit_value_len(NULL, service, proto, _mdns_server->hostname, key,
-            value, value_len);
+    return mdns_service_txt_item_set_for_host_with_explicit_value_len(NULL, service, proto, NULL, key, value, value_len);
 }
 
 esp_err_t mdns_service_txt_item_remove_for_host(const char *instance, const char *service, const char *proto, const char *hostname,
