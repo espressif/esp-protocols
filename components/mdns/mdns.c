@@ -5148,8 +5148,6 @@ static void _mdns_free_action(mdns_action_t *action)
  */
 static void _mdns_execute_action(mdns_action_t *action)
 {
-    mdns_srv_item_t *a = NULL;
-
     switch (action->type) {
     case ACTION_SYSTEM_EVENT:
         perform_event_action(action->data.sys_event.interface, action->data.sys_event.event_action);
@@ -5168,19 +5166,6 @@ static void _mdns_execute_action(mdns_action_t *action)
         free((char *)_mdns_server->instance);
         _mdns_server->instance = action->data.instance;
         _mdns_restart_all_pcbs_no_instance();
-
-        break;
-    case ACTION_SERVICES_CLEAR:
-        _mdns_send_final_bye(false);
-        a = _mdns_server->services;
-        _mdns_server->services = NULL;
-        while (a) {
-            mdns_srv_item_t *s = a;
-            a = a->next;
-            _mdns_remove_scheduled_service_packets(s->service);
-            _mdns_free_service(s->service);
-            free(s);
-        }
 
         break;
     case ACTION_SEARCH_ADD:
@@ -6453,27 +6438,27 @@ esp_err_t mdns_service_remove(const char *service_type, const char *proto)
 
 esp_err_t mdns_service_remove_all(void)
 {
-    if (!_mdns_server) {
-        return ESP_ERR_INVALID_ARG;
-    }
     MDNS_SERVICE_LOCK();
+    esp_err_t ret = ESP_OK;
+    ESP_GOTO_ON_FALSE(_mdns_server, ESP_ERR_INVALID_ARG, done, TAG, "Invalid state");
     if (!_mdns_server->services) {
-        MDNS_SERVICE_UNLOCK();
-        return ESP_OK;
+        goto done;
     }
-    MDNS_SERVICE_UNLOCK();
 
-    mdns_action_t *action = (mdns_action_t *)malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
+    _mdns_send_final_bye(false);
+    mdns_srv_item_t *services = _mdns_server->services;
+    _mdns_server->services = NULL;
+    while (services) {
+        mdns_srv_item_t *s = services;
+        services = services->next;
+        _mdns_remove_scheduled_service_packets(s->service);
+        _mdns_free_service(s->service);
+        free(s);
     }
-    action->type = ACTION_SERVICES_CLEAR;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+
+done:
+    MDNS_SERVICE_UNLOCK();
+    return ret;
 }
 
 /*
