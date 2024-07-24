@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -187,15 +187,6 @@ typedef enum {
     ACTION_SYSTEM_EVENT,
     ACTION_HOSTNAME_SET,
     ACTION_INSTANCE_SET,
-    ACTION_SERVICE_ADD,
-    ACTION_SERVICE_DEL,
-    ACTION_SERVICE_INSTANCE_SET,
-    ACTION_SERVICE_PORT_SET,
-    ACTION_SERVICE_TXT_REPLACE,
-    ACTION_SERVICE_TXT_SET,
-    ACTION_SERVICE_TXT_DEL,
-    ACTION_SERVICE_SUBTYPE_ADD,
-    ACTION_SERVICES_CLEAR,
     ACTION_SEARCH_ADD,
     ACTION_SEARCH_SEND,
     ACTION_SEARCH_END,
@@ -446,41 +437,6 @@ typedef struct {
             mdns_if_t interface;
             mdns_event_actions_t event_action;
         } sys_event;
-        struct {
-            mdns_srv_item_t *service;
-        } srv_add;
-        struct {
-            char *instance;
-            char *service;
-            char *proto;
-            char *hostname;
-        } srv_del;
-        struct {
-            mdns_srv_item_t *service;
-            char *instance;
-        } srv_instance;
-        struct {
-            mdns_srv_item_t *service;
-            uint16_t port;
-        } srv_port;
-        struct {
-            mdns_srv_item_t *service;
-            mdns_txt_linked_item_t *txt;
-        } srv_txt_replace;
-        struct {
-            mdns_srv_item_t *service;
-            char *key;
-            char *value;
-            uint8_t value_len;
-        } srv_txt_set;
-        struct {
-            mdns_srv_item_t *service;
-            char *key;
-        } srv_txt_del;
-        struct {
-            mdns_srv_item_t *service;
-            char *subtype;
-        } srv_subtype_add;
         struct {
             mdns_search_once_t *search;
         } search_add;

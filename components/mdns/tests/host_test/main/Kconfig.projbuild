@@ -12,4 +12,10 @@ menu "Test Configuration"
         help
             Name/ID if the network interface on which we run the mDNS host test
 
+    config TEST_CONSOLE
+        bool "Start console"
+        default n
+        help
+            Test uses esp_console for interactive testing.
+
 endmenu
