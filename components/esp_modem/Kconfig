@@ -63,4 +63,10 @@ menu "esp-modem"
             dce_factory::Factory::create_unique_dce_from<CustomModule, DCE*>(dce_config, std::move(dte), netif)
             Please refer to the pppos_client example for more details.
 
+    config ESP_MODEM_URC_HANDLER
+        bool "Enable support for adding URC handler"
+        default n
+        help
+            If enabled, APIs to add URC handler are available
+
 endmenu
