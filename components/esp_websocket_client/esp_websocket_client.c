@@ -1085,8 +1085,13 @@ static void esp_websocket_client_task(void *pv)
                 esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
+            // clear any pending notifications
+            ulTaskNotifyTake(pdTRUE, 0);
             // waiting for reconnecting...
-            vTaskDelay(client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            int delay = client->wait_timeout_ms - (_tick_get_ms() - client->reconnect_tick_ms);
+            if (client->run && delay >= 0) {
+                ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(delay) + 1);
+            }
         } else if (WEBSOCKET_STATE_CLOSING == client->state &&
                    (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
             ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
@@ -1160,6 +1165,9 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
 
 
     client->run = false;
+    if (client->task_handle) {
+        xTaskNotifyGive(client->task_handle);
+    }
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
@@ -1215,6 +1223,9 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
 
     // If could not close gracefully within timeout, stop the client and disconnect
     client->run = false;
+    if (client->task_handle) {
+        xTaskNotifyGive(client->task_handle);
+    }
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
@@ -1338,6 +1349,10 @@ esp_err_t esp_websocket_client_set_reconnect_timeout(esp_websocket_client_handle
     }
 
     client->wait_timeout_ms = reconnect_timeout_ms;
+
+    if (client->task_handle) {
+        xTaskNotifyGive(client->task_handle);
+    }
 
     return ESP_OK;
 }
