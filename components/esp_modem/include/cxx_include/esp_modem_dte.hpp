@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -93,6 +93,17 @@ public:
      * @param f Function to be called on DTE error
      */
     void set_error_cb(std::function<void(terminal_error err)> f);
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    /**
+     * @brief Allow setting a line callback for all incoming data
+     * @param line_cb
+     */
+    void set_urc_cb(got_line_cb line_cb)
+    {
+        command_cb.urc_handler = std::move(line_cb);
+    }
+#endif
 
     /**
      * @brief Sets the DTE to desired mode (Command/Data/Cmux)
@@ -191,6 +202,9 @@ private:
      * @brief This abstracts command callback processing and implements its locking, signaling of completion and timeouts.
      */
     struct command_cb {
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+        got_line_cb urc_handler {};                             /*!< URC callback if enabled */
+#endif
         static const size_t GOT_LINE = SignalGroup::bit0;       /*!< Bit indicating response available */
         got_line_cb got_line;                                   /*!< Supplied command callback */
         Lock line_lock{};                                       /*!< Command callback locking mechanism */
