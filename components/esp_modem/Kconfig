@@ -67,7 +67,13 @@ menu "esp-modem"
         int "Size in bytes for response from AT commands returning textual values (C-API)"
         default 128
         help
-            Some AT commands returns textrual values which C-API copy as c-string to user allocated space,
+            Some AT commands returns textual values which C-API copy as c-string to user allocated space,
             it also truncates the output data to this size. Increase this if some AT answers are truncated.
+
+    config ESP_MODEM_URC_HANDLER
+        bool "Enable support for adding URC handler"
+        default n
+        help
+            If enabled, APIs to add URC handler are available
 
 endmenu

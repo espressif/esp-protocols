@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -88,6 +88,13 @@ public:
     {
         return dte->recover();
     }
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    void set_urc(got_line_cb on_read_cb)
+    {
+        dte->set_urc_cb(on_read_cb);
+    }
+#endif
 
 protected:
     std::shared_ptr<DTE> dte;
