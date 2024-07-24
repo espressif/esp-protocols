@@ -5910,24 +5910,8 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     _mdns_server->services = item;
     _mdns_probe_all_pcbs(&item, 1, false, false);
     MDNS_SERVICE_UNLOCK();
-
-    size_t start = xTaskGetTickCount();
-    size_t timeout_ticks = pdMS_TO_TICKS(MDNS_SERVICE_ADD_TIMEOUT_MS);
-    MDNS_SERVICE_LOCK();
-    mdns_srv_item_t *target = _mdns_get_service_item_instance(instance, service, proto, hostname);
-    MDNS_SERVICE_UNLOCK();
-    while (target == NULL) {
-        uint32_t expired = xTaskGetTickCount() - start;
-        if (expired >= timeout_ticks) {
-            return ESP_FAIL; // Timeout
-        }
-        vTaskDelay(MIN(10 / portTICK_PERIOD_MS, timeout_ticks - expired));
-        MDNS_SERVICE_LOCK();
-        target = _mdns_get_service_item_instance(instance, service, proto, hostname);
-        MDNS_SERVICE_UNLOCK();
-    }
-
     return ESP_OK;
+
 err:
     MDNS_SERVICE_UNLOCK();
     _mdns_free_service(s);
