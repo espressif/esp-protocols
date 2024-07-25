@@ -28,6 +28,16 @@ menu "eppp_link"
             help
                 Use SDIO.
 
+        config EPPP_LINK_DEVICE_ETH
+            bool "Ethernet"
+            depends on SOC_EMAC_SUPPORTED
+            help
+                Use Ethernet.
+                This transport could employ a full fledged Ethernet connection
+                between two EPPP nodes via standard Ethernet cable.
+                It could be also effectively connected directly on PCB, EMAC to EMAC,
+                without any Ethernet PHY chips (using eth_dummy_phy driver).
+
     endchoice
 
     config EPPP_LINK_CONN_MAX_RETRY
@@ -66,5 +76,15 @@ menu "eppp_link"
                 Use SDIO slave.
 
     endchoice
+
+    config EPPP_LINK_ETHERNET_OUR_ADDRESS
+        string "MAC address our local node"
+        default "06:00:00:00:00:01"
+        depends on EPPP_LINK_DEVICE_ETH
+
+    config EPPP_LINK_ETHERNET_THEIR_ADDRESS
+        string "MAC address the remote node"
+        default "06:00:00:00:00:02"
+        depends on EPPP_LINK_DEVICE_ETH
 
 endmenu
