@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,7 @@
 #include "argtable3/argtable3.h"
 #include "mdns.h"
 #include "mdns_private.h"
+#include "inttypes.h"
 
 static const char *ip_protocol_str[] = {"V4", "V6", "MAX"};
 
@@ -26,7 +27,7 @@ static void mdns_print_results(mdns_result_t *results)
             printf("  SRV : %s.local:%u\n", r->hostname, r->port);
         }
         if (r->txt_count) {
-            printf("  TXT : [%u] ", r->txt_count);
+            printf("  TXT : [%u] ", (int)r->txt_count);
             for (size_t t = 0; t < r->txt_count; t++) {
                 printf("%s=%s; ", r->txt[t].key, r->txt[t].value);
             }
@@ -516,7 +517,7 @@ static int cmd_mdns_init(int argc, char **argv)
         printf("MDNS: Hostname: %s\n", mdns_init_args.hostname->sval[0]);
     }
 
-    if (mdns_init_args.instance->sval[0]) {
+    if (mdns_init_args.instance->count) {
         ESP_ERROR_CHECK( mdns_instance_name_set(mdns_init_args.instance->sval[0]) );
         printf("MDNS: Instance: %s\n", mdns_init_args.instance->sval[0]);
     }
