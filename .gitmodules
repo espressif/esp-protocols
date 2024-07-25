@@ -1,3 +1,6 @@
 [submodule "components/asio/asio"]
 	path = components/asio/asio
 	url = https://github.com/espressif/asio
+[submodule "components/freertos_tcp/FreeRTOS-Plus-TCP"]
+	path = components/freertos_tcp/FreeRTOS-Plus-TCP
+	url = https://github.com/david-cermak/FreeRTOS-Plus-TCP.git
