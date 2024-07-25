@@ -1,0 +1,5 @@
+components/netif_6lowpan_ble/examples:
+  disable:
+    - if: IDF_TARGET in ["esp32p4", "esp32h2"]
+      temporary: false
+      reason: No BLE support
