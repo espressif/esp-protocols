@@ -30,6 +30,18 @@
 #include "esp_event.h"
 #include <cJSON.h>
 
+#ifdef CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL
+#include "mbedtls/ssl.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/x509.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/error.h"
+#include "esp_idf_version.h"
+#include "esp_secure_cert_read.h"
+#include "esp_crt_bundle.h"
+#endif
+
 #define NO_DATA_TIMEOUT_SEC 5
 
 static const char *TAG = "websocket";
@@ -68,6 +80,34 @@ static void get_string(char *line, size_t size)
 }
 
 #endif /* CONFIG_WEBSOCKET_URI_FROM_STDIN */
+
+#ifdef CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL
+static esp_err_t test_ciphertext_validity(esp_ds_data_ctx_t *ds_data, unsigned char *dev_cert, size_t dev_cert_len)
+{
+    mbedtls_x509_crt crt;
+    mbedtls_x509_crt_init(&crt);
+    unsigned char *sig = NULL;
+
+    if (ds_data == NULL || dev_cert == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int ret = mbedtls_x509_crt_parse(&crt, dev_cert, dev_cert_len);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "Parsing of device certificate failed, returned %02X", ret);
+    }
+
+    esp_err_t esp_ret = esp_ds_init_data_ctx(ds_data);
+    if (esp_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialze the DS context");
+        return esp_ret;
+    }
+
+    const size_t sig_len = 256;
+    uint32_t hash[8] = {[0 ... 7] = 0xAABBCCDD};
+    return esp_ret;
+}
+#endif
 
 static void websocket_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -161,6 +201,49 @@ static void websocket_app_start(void)
 #elif CONFIG_WS_OVER_TLS_SERVER_AUTH
     extern const char cacert_start[] asm("_binary_ca_certificate_public_domain_pem_start"); // CA cert of wss://echo.websocket.event, modify it if using another server
     websocket_cfg.cert_pem = cacert_start;
+#endif
+
+#ifdef CONFIG_ESP_SECURE_CERT_DS_PERIPHERAL
+    uint32_t len = 0;
+    char *addr = NULL;
+    esp_err_t esp_ret = ESP_FAIL;
+
+    esp_ds_data_ctx_t *ds_data = NULL;
+    ESP_LOGI(TAG, "Successfully obtained the ds context before");
+    ds_data = esp_secure_cert_get_ds_ctx();
+    ESP_LOGI(TAG, "Successfully obtained the ds context after");
+    if (ds_data != NULL) {
+        ESP_LOGI(TAG, "Successfully obtained the ds context");
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, ds_data->esp_ds_data->c, ESP_DS_C_LEN, ESP_LOG_DEBUG);
+        ESP_LOG_BUFFER_HEX_LEVEL(TAG, ds_data->esp_ds_data->iv, ESP_DS_IV_LEN, ESP_LOG_DEBUG);
+        ESP_LOGI(TAG, "The value of rsa length is %d", ds_data->rsa_length_bits);
+        ESP_LOGI(TAG, "The value of efuse key id is %d", ds_data->efuse_key_id);
+    } else {
+        ESP_LOGE(TAG, "Failed to obtain the ds context");
+    }
+
+    /* Read the dev_cert addr again */
+    esp_ret = esp_secure_cert_get_device_cert(&addr, &len);
+    if (esp_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to obtain the dev cert flash address");
+    }
+
+    esp_ret = test_ciphertext_validity(ds_data, (unsigned char *)addr, len);
+    if (esp_ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to validate ciphertext");
+    } else {
+        ESP_LOGI(TAG, "Ciphertext validated succcessfully");
+    }
+    websocket_cfg.client_cert = addr;
+    websocket_cfg.client_ds_data = ds_data;
+    // websocket_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+    websocket_cfg.cert_pem = addr;
+    // extern const char cacert_start[] asm("_binary_ca_cert_pem_start"); // CA certificate
+    // websocket_cfg.cert_pem = cacert_start;
+    // websocket_cfg.client_key = NULL;
+
+//    extern const char cacert_start[] asm("_binary_ca_certificate_public_domain_pem_start"); // CA cert of wss://echo.websocket.event, modify it if using another server
+//    websocket_cfg.cert_pem = cacert_start;
 #endif
 
 #if CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
