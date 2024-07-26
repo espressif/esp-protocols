@@ -65,34 +65,45 @@ static esp_err_t receive(esp_eth_handle_t h, uint8_t *buffer, uint32_t len, void
     return ESP_FAIL;
 }
 
-esp_err_t eppp_transport_init(eppp_config_t *config, esp_netif_t *esp_netif)
+__attribute__((weak)) esp_err_t eppp_transport_ethernet_init(esp_eth_handle_t *handle_array[])
 {
     uint8_t eth_port_cnt = 0;
-    ESP_ERROR_CHECK(ethernet_init_all(&s_eth_handles, &eth_port_cnt));
-    if (eth_port_cnt > 1) {
-        ESP_LOGW(TAG, "multiple Ethernet devices detected, the first initialized is to be used!");
-    }
-    ESP_ERROR_CHECK(esp_eth_update_input_path(s_eth_handles[0], receive, esp_netif));
+    ESP_RETURN_ON_ERROR(ethernet_init_all(handle_array, &eth_port_cnt), TAG, "Failed to init common eth drivers");
+    ESP_RETURN_ON_FALSE(eth_port_cnt > 1, ESP_ERR_INVALID_ARG, TAG, "multiple Ethernet devices detected, please init only one");
+    return ESP_OK;
+}
+
+__attribute__((weak)) void eppp_transport_ethernet_deinit(esp_eth_handle_t *handle_array)
+{
+    ethernet_deinit_all(s_eth_handles);
+}
+
+
+esp_err_t eppp_transport_init(eppp_config_t *config, esp_netif_t *esp_netif)
+{
+    ESP_RETURN_ON_ERROR(eppp_transport_ethernet_init(&s_eth_handles), TAG, "Failed to initialize Ethernet driver");
+    ESP_RETURN_ON_ERROR(esp_eth_update_input_path(s_eth_handles[0], receive, esp_netif), TAG, "Failed to set Ethernet Rx callback");
     sscanf(CONFIG_EPPP_LINK_ETHERNET_OUR_ADDRESS, "%2" PRIu8 ":%2" PRIu8 ":%2" PRIi8 ":%2" PRIu8 ":%2" PRIu8 ":%2" PRIu8,
            &s_our_mac[0], &s_our_mac[1], &s_our_mac[2], &s_our_mac[3], &s_our_mac[4], &s_our_mac[5]);
 
     sscanf(CONFIG_EPPP_LINK_ETHERNET_THEIR_ADDRESS, "%2" PRIu8 ":%2" PRIu8 ":%2" PRIi8 ":%2" PRIu8 ":%2" PRIu8 ":%2" PRIu8,
            &s_their_mac[0], &s_their_mac[1], &s_their_mac[2], &s_their_mac[3], &s_their_mac[4], &s_their_mac[5]);
     esp_eth_ioctl(s_eth_handles[0], ETH_CMD_S_MAC_ADDR, s_our_mac);
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, event_handler, NULL));
-    ESP_ERROR_CHECK(esp_eth_start(s_eth_handles[0]));
+    ESP_RETURN_ON_ERROR(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, event_handler, NULL), TAG, "Failed to register Ethernet handlers");
+    ESP_RETURN_ON_ERROR(esp_eth_start(s_eth_handles[0]), TAG, "Failed to start Ethernet driver");
     return ESP_OK;
 }
 
 void eppp_transport_deinit(void)
 {
-    ethernet_deinit_all(s_eth_handles);
+    esp_eth_stop(s_eth_handles[0]);
+    eppp_transport_ethernet_deinit(s_eth_handles);
 }
 
 esp_err_t eppp_transport_tx(void *h, void *buffer, size_t len)
 {
     if (!s_is_connected) {
-        return ESP_OK;
+        return ESP_FAIL;
     }
     // setup Ethernet header
     header_t *head = (header_t *)s_out_buffer;
