@@ -10,7 +10,10 @@ Features
    * Supports WebSocket over TCP, TLS with mbedtls
    * Easy to setup with URI
    * Multiple instances (Multiple clients in one application)
-   * Use any Internal, External or any other CAPS memory allowed.
+   * Use Buffer and memory as Internal, External or any other CAPS memory allowed.
+   * Allow Task to use Internal, External or any other CAPS memory allowed.
+   * Allow Task to be created with or without CPU Core affinity.
+   
 
 Configuration
 -------------
@@ -52,7 +55,7 @@ overridden. Sample:
     };
     //WebSocket client will connect to websocket.org using port 4567
 
-Memory Usage configurations:
+Memory Usage configurations for TASK and BUFFERs:
 
 .. code:: c
 
@@ -61,9 +64,27 @@ Memory Usage configurations:
         .port = 4567,
         .memory_type = MALLOC_CAP_SPIRAM;
     };
-    //WebSocket client will connect to websocket.org using port 4567 
-    //Will use the external SPIRAM memory to allocate memory
-    //if .memory_type is not defined it will use default caps MALLOC_CAP_DEFAULT
+
+.. note:: WebSocket client will connect to websocket.org using port 4567 
+.. note:: Will use the external SPIRAM memory to allocate memory
+.. note:: if .memory_type is not defined it will use default caps MALLOC_CAP_DEFAULT
+.. note:: If .memory_type is defined it also will be used in the TASK creation
+    
+
+
+
+Task Affinity configurations:
+
+.. code:: c
+
+const esp_websocket_client_config_t ws_cfg = {
+        .uri = "ws://echo.websocket.org:123",
+        .port = 4567,
+        .memory_type = MALLOC_CAP_SPIRAM;
+        .core = 1;
+    };
+
+.. note:: The client is indifferent to the core if the option is not used. The memory_type is not necessary to definy the core affinity.
 
 
 TLS
