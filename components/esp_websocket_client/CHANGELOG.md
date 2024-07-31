@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.x.x](https://github.com/espressif/esp-protocols/commits/websocket-v1.x.x)
+
+### Features
+
+- WebSocket can use Extende memory region to Buffer using CAPS area ([0d0630ed76](https://github.com/espressif/esp-protocols/commit/0d0630ed76))
+- WebSocket Task can be created with CAPS area ([0d0630ed76](https://github.com/espressif/esp-protocols/commit/0d0630ed76))
+- Websocket Task can be pinned to a core or run without affinity ([0d0630ed76](https://github.com/espressif/esp-protocols/commit/0d0630ed76))
+
+### Bug Fixes
+
+TLDR
+
+### Updated
+
+TLDR
+
 ## [1.2.3](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.3)
 
 ### Features
