@@ -154,6 +154,7 @@ struct esp_websocket_client {
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
     int                         memory_type;
+    int                         core;
 };
 
 static uint64_t _tick_get_ms(void)
@@ -651,6 +652,20 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client),memory_type);
     ESP_WS_CLIENT_MEM_CHECK(TAG, client, return NULL);
 
+    if (config->core){
+      if (config->core >2){
+          ESP_LOGW("TAG", "Invalid core affinity flag set, using default tskNO_AFFINITY.\n");
+          client->core = tskNO_AFFINITY;
+      }
+      else{
+        client->core  = config->core;
+      }
+    }
+    else {
+          ESP_LOGW("TAG", "Invalid core affinity flag set, using default tskNO_AFFINITY.\n");
+          client->core = tskNO_AFFINITY;
+    }
+
     esp_event_loop_args_t event_args = {
         .queue_size = WEBSOCKET_EVENT_QUEUE_SIZE,
         .task_name = NULL // no task will be created
@@ -1119,7 +1134,8 @@ static void esp_websocket_client_task(void *pv)
     if (client->selected_for_destroying == true) {
         destroy_and_free_resources(client);
     }
-    vTaskDelete(NULL);
+    vTaskDeleteWithCaps(client->task_handle);
+
 }
 
 esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
@@ -1136,12 +1152,72 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
-    if (xTaskCreate(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                    client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
-        ESP_LOGE(TAG, "Error create websocket task");
-        return ESP_FAIL;
-    }
-    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+    if (!client->core) {
+      // No core affinity
+      if (!client->memory_type) {
+          // Default memory
+          if (xTaskCreatePinnedToCoreWithCaps(esp_websocket_client_task,
+                                              client->config->task_name ? client->config->task_name : "websocket_task",
+                                              client->config->task_stack,
+                                              client,
+                                              client->config->task_prio,
+                                              &client->task_handle,
+                                              tskNO_AFFINITY,
+                                              MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) != pdTRUE) {
+              ESP_LOGE(TAG, "Failed to create websocket task without core affinity using default memory");
+              return ESP_FAIL;
+          }
+          ESP_LOGD(TAG, "Websocket task created without core affinity using default memory");
+      } else {
+          // Specific memory type without core affinity
+          if (xTaskCreatePinnedToCoreWithCaps(esp_websocket_client_task,
+                                              client->config->task_name ? client->config->task_name : "websocket_task",
+                                              client->config->task_stack,
+                                              client,
+                                              client->config->task_prio,
+                                              &client->task_handle,
+                                              tskNO_AFFINITY,
+                                              client->memory_type) != pdTRUE) {
+              ESP_LOGE(TAG, "Failed to create websocket task without core affinity using specified memory type");
+              return ESP_FAIL;
+          }
+          ESP_LOGD(TAG, "Websocket task created without core affinity using specified memory type");
+      }
+  } else {
+      // With core affinity
+      if (!client->memory_type) {
+          // Default memory with core affinity
+          if (xTaskCreatePinnedToCoreWithCaps(esp_websocket_client_task,
+                                              client->config->task_name ? client->config->task_name : "websocket_task",
+                                              client->config->task_stack,
+                                              client,
+                                              client->config->task_prio,
+                                              &client->task_handle,
+                                              client->core,
+                                              MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) != pdTRUE) {
+              ESP_LOGE(TAG, "Failed to create websocket task with core affinity using default memory (MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)");
+              return ESP_FAIL;
+          }
+          ESP_LOGD(TAG, "Websocket task created with core affinity using default memory (MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)");
+      } else {
+          // Specific memory type with core affinity
+          if (xTaskCreatePinnedToCoreWithCaps(esp_websocket_client_task,
+                                              client->config->task_name ? client->config->task_name : "websocket_task",
+                                              client->config->task_stack,
+                                              client,
+                                              client->config->task_prio,
+                                              &client->task_handle,
+                                              client->core,
+                                              client->memory_type) != pdTRUE) {
+              ESP_LOGE(TAG, "Failed to create websocket task with core affinity using specified memory type");
+              return ESP_FAIL;
+          }
+          ESP_LOGD(TAG, "Websocket task created with core affinity using specified memory type (%d)", client->memory_type);
+      }
+  }
+
+
+   xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
     return ESP_OK;
 }
 
