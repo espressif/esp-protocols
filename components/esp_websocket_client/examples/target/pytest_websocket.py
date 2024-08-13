@@ -52,7 +52,7 @@ class Websocket(object):
     def run(self):
         if self.use_tls is True:
             ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ssl_context.load_cert_chain(certfile='main/certs/server_cert.pem', keyfile='main/certs/server_key.pem')
+            ssl_context.load_cert_chain(certfile='main/certs/server/server_cert.pem', keyfile='main/certs/server/server_key.pem')
             if self.client_verify is True:
                 ssl_context.load_verify_locations(cafile='main/certs/ca_cert.pem')
                 ssl_context.verify = ssl.CERT_REQUIRED

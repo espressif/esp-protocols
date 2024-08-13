@@ -19,6 +19,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "protocol_examples_common.h"
+#include "esp_crt_bundle.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -159,8 +160,12 @@ static void websocket_app_start(void)
     websocket_cfg.client_key = key_start;
     websocket_cfg.client_key_len = key_end - key_start;
 #elif CONFIG_WS_OVER_TLS_SERVER_AUTH
-    extern const char cacert_start[] asm("_binary_ca_certificate_public_domain_pem_start"); // CA cert of wss://echo.websocket.event, modify it if using another server
-    websocket_cfg.cert_pem = cacert_start;
+    // Using certificate bundle as default server certificate source
+    websocket_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+    // If using a custom certificate it could be added to certificate bundle, added to the build similar to client certificates in this examples,
+    // or read from NVS.
+    /* extern const char cacert_start[] asm("ADDED_CERTIFICATE"); */
+    /* websocket_cfg.cert_pem = cacert_start; */
 #endif
 
 #if CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
