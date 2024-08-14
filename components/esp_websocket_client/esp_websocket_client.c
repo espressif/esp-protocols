@@ -1082,7 +1082,9 @@ static void esp_websocket_client_task(void *pv)
                 } else {
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, errno=%d", read_select, errno);
                 }
+                xSemaphoreTakeRecursive(client->lock, lock_timeout);
                 esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+                xSemaphoreGiveRecursive(client->lock);
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
             // waiting for reconnecting...
