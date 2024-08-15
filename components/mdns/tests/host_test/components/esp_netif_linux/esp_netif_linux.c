@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,8 +15,11 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include "esp_netif_types.h"
+#include "esp_log.h"
 
 #define MAX_NETIFS  4
+
+static const char *TAG = "esp_netif_linux";
 
 static esp_netif_t *s_netif_list[MAX_NETIFS] = { 0 };
 
@@ -50,6 +53,7 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_
             struct sockaddr_in *pAddr = (struct sockaddr_in *) tmp->ifa_addr;
             inet_ntop(AF_INET, &pAddr->sin_addr, addr, sizeof(addr) );
             if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
+                ESP_LOGD(TAG, "AF_INET4: %s: %s\n", tmp->ifa_name, addr);
                 memcpy(&ip_info->ip.addr, &pAddr->sin_addr, 4);
             }
         }
@@ -103,7 +107,7 @@ esp_err_t esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if
             struct sockaddr_in6 *pAddr = (struct sockaddr_in6 *)tmp->ifa_addr;
             inet_ntop(AF_INET6, &pAddr->sin6_addr, addr, sizeof(addr) );
             if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
-                printf("AF_INET6: %s: %s\n", tmp->ifa_name, addr);
+                ESP_LOGD(TAG, "AF_INET6: %s: %s\n", tmp->ifa_name, addr);
                 memcpy(if_ip6->addr, &pAddr->sin6_addr, 4 * 4);
                 break;
             }
@@ -172,4 +176,9 @@ void esp_netif_destroy(esp_netif_t *esp_netif)
         }
     }
     free(esp_netif);
+}
+
+const char *esp_netif_get_ifkey(esp_netif_t *esp_netif)
+{
+    return esp_netif->if_key;
 }
