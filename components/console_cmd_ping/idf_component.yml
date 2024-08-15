@@ -1,4 +1,4 @@
-version: 1.0.0
+version: 1.1.0
 url: https://github.com/espressif/esp-protocols/tree/master/components/console_cmd_ping
 description: The component provides a console where the 'ping' command can be executed.
 dependencies:
