@@ -74,6 +74,9 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
 {
     esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
     switch (event_id) {
+    case WEBSOCKET_EVENT_BEGIN:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_BEGIN");
+        break;
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         break;
@@ -121,6 +124,9 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
             log_error_if_nonzero("reported from tls stack", data->error_handle.esp_tls_stack_err);
             log_error_if_nonzero("captured as transport's socket errno",  data->error_handle.esp_transport_sock_errno);
         }
+        break;
+    case WEBSOCKET_EVENT_FINISH:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_FINISH");
         break;
     }
 }

@@ -36,6 +36,8 @@ typedef enum {
     WEBSOCKET_EVENT_DATA,           /*!< When receiving data from the server, possibly multiple portions of the packet */
     WEBSOCKET_EVENT_CLOSED,         /*!< The connection has been closed cleanly */
     WEBSOCKET_EVENT_BEFORE_CONNECT, /*!< The event occurs before connecting */
+    WEBSOCKET_EVENT_BEGIN,          /*!< The event occurs once after thread creation, before event loop */
+    WEBSOCKET_EVENT_FINISH,         /*!< The event occurs once after event loop, before thread destruction */
     WEBSOCKET_EVENT_MAX
 } esp_websocket_event_id_t;
 
