@@ -14,12 +14,17 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3"]
+        include:
+          - idf_ver: "latest"
+            warning: "Warning: The smallest app partition is nearly full"
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
