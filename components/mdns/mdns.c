@@ -5211,6 +5211,7 @@ static void _mdns_execute_action(mdns_action_t *action)
             free((char *)action->data.delegate_hostname.hostname);
             free_address_list(action->data.delegate_hostname.address_list);
         }
+        xSemaphoreGive(_mdns_server->action_sema);
         break;
     case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
         if (!_mdns_delegate_hostname_set_address(action->data.delegate_hostname.hostname,
@@ -5774,6 +5775,7 @@ esp_err_t mdns_delegate_hostname_add(const char *hostname, const mdns_ip_addr_t 
         free(action);
         return ESP_ERR_NO_MEM;
     }
+    xSemaphoreTake(_mdns_server->action_sema, portMAX_DELAY);
     return ESP_OK;
 }
 
@@ -5893,7 +5895,7 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     ESP_GOTO_ON_FALSE(_mdns_can_add_more_services(), ESP_ERR_NO_MEM, err, TAG, "Cannot add more services");
 
     mdns_srv_item_t *item = _mdns_get_service_item_instance(instance, service, proto, hostname);
-    ESP_GOTO_ON_FALSE(!item, ESP_ERR_INVALID_ARG, err, TAG, "Already exists");
+    ESP_GOTO_ON_FALSE(!item, ESP_ERR_INVALID_ARG, err, TAG, "Service already exists");
 
     s = _mdns_create_service(service, proto, hostname, port, instance, num_items, txt);
     ESP_GOTO_ON_FALSE(s, ESP_ERR_NO_MEM, err, TAG, "Cannot create service: Out of memory");
