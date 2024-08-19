@@ -6185,6 +6185,10 @@ static mdns_txt_item_t *_copy_mdns_txt_items(mdns_txt_linked_item_t *items, uint
         ret_index++;
     }
     *txt_count = ret_index;
+    if (ret_index == 0) {   // handle empty TXT
+        *txt_value_len = NULL;
+        return NULL;
+    }
     ret = (mdns_txt_item_t *)calloc(ret_index, sizeof(mdns_txt_item_t));
     *txt_value_len = (uint8_t *)calloc(ret_index, sizeof(uint8_t));
     if (!ret || !(*txt_value_len)) {
