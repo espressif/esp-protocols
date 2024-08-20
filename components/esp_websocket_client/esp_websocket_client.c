@@ -206,6 +206,8 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
         event_data.error_handle.esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(esp_transport_get_error_handle(client->transport),
                 &client->error_handle.esp_tls_stack_err,
                 &client->error_handle.esp_tls_cert_verify_flags);
+        event_data.error_handle.esp_tls_stack_err = client->error_handle.esp_tls_stack_err;
+        event_data.error_handle.esp_tls_cert_verify_flags = client->error_handle.esp_tls_cert_verify_flags;
         event_data.error_handle.esp_transport_sock_errno = esp_transport_get_errno(client->transport);
     }
     event_data.error_handle.error_type = client->error_handle.error_type;
