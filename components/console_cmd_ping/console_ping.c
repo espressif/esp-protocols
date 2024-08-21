@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,7 +20,7 @@
 static const char *TAG = "console_ping";
 SemaphoreHandle_t sync_semaphore;
 
-
+#if CONFIG_PING_CMD_AUTO_REGISTRATION
 /**
  * Static registration of this plugin is achieved by defining the plugin description
  * structure and placing it into .console_cmd_desc section.
@@ -30,7 +30,7 @@ static const console_cmd_plugin_desc_t __attribute__((section(".console_cmd_desc
     .name = "console_cmd_ping",
     .plugin_regd_fn = &console_cmd_ping_register
 };
-
+#endif
 
 static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args)
 {
@@ -75,9 +75,13 @@ static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args)
         loss = 0;
     }
     if (IP_IS_V4(&target_addr)) {
+#if CONFIG_LWIP_IPV4
         printf("\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
+#endif
     } else {
+#if CONFIG_LWIP_IPV6
         printf("\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
+#endif
     }
     printf("%" PRIu32 " packets transmitted, %" PRIu32 " received, %" PRIu32 "%% packet loss, time %" PRIu32 "ms\n",
            transmitted, received, loss, total_time_ms);
@@ -150,11 +154,15 @@ static int do_ping_cmd(int argc, char **argv)
             return 1;
         }
         if (res->ai_family == AF_INET) {
+#if CONFIG_LWIP_IPV4
             struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
             inet_addr_to_ip4addr(ip_2_ip4(&target_addr), &addr4);
+#endif
         } else {
+#if CONFIG_LWIP_IPV6
             struct in6_addr addr6 = ((struct sockaddr_in6 *) (res->ai_addr))->sin6_addr;
             inet6_addr_to_ip6addr(ip_2_ip6(&target_addr), &addr6);
+#endif
         }
         freeaddrinfo(res);
     }

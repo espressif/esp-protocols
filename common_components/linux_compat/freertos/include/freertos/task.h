@@ -11,12 +11,15 @@
 extern "C" {
 #endif
 
+#define tskNO_AFFINITY      ( ( BaseType_t ) 0x7FFFFFFF )
 #define TaskHandle_t TaskHandle_t
 #define vSemaphoreDelete( xSemaphore ) vQueueDelete( ( QueueHandle_t ) ( xSemaphore ) )
 
 void vTaskDelay( const TickType_t xTicksToDelay );
 
 void xTaskNotifyGive(TaskHandle_t task);
+
+void ulTaskNotifyTake(bool stuff, uint32_t timeout);
 
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 

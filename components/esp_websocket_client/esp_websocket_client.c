@@ -206,6 +206,8 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
         event_data.error_handle.esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(esp_transport_get_error_handle(client->transport),
                 &client->error_handle.esp_tls_stack_err,
                 &client->error_handle.esp_tls_cert_verify_flags);
+        event_data.error_handle.esp_tls_stack_err = client->error_handle.esp_tls_stack_err;
+        event_data.error_handle.esp_tls_cert_verify_flags = client->error_handle.esp_tls_cert_verify_flags;
         event_data.error_handle.esp_transport_sock_errno = esp_transport_get_errno(client->transport);
     }
     event_data.error_handle.error_type = client->error_handle.error_type;
@@ -970,6 +972,7 @@ static void esp_websocket_client_task(void *pv)
 
     client->state = WEBSOCKET_STATE_INIT;
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_BEGIN, NULL, 0);
     int read_select = 0;
     while (client->run) {
         if (xSemaphoreTakeRecursive(client->lock, lock_timeout) != pdPASS) {
@@ -1106,6 +1109,7 @@ static void esp_websocket_client_task(void *pv)
         }
     }
 
+    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_FINISH, NULL, 0);
     esp_transport_close(client->transport);
     xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     client->state = WEBSOCKET_STATE_UNKNOW;

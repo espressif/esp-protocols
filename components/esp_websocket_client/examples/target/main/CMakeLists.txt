@@ -10,12 +10,6 @@ set(EMBED_FILES "") # Initialize an empty list for files to embed
         "certs/client_key.pem")
 #endif()
 
-# For testing purpose we are using CA of wss://echo.websocket.events
-#if(CONFIG_WS_OVER_TLS_SERVER_AUTH)
-    list(APPEND EMBED_FILES
-        "certs/ca_certificate_public_domain.pem")
-#endif()
-
 # Register the component with source files, include dirs, and any conditionally added embedded files
 idf_component_register(SRCS "${SRC_FILES}"
                        INCLUDE_DIRS "${INCLUDE_DIRS}"

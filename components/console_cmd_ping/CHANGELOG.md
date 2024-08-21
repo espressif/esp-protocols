@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.1.0)
+
+### Features
+
+- Added command getaddrinfo, set/get dnsserver to console_cmd_ping ([b80c19d7](https://github.com/espressif/esp-protocols/commit/b80c19d7))
+
 ## [1.0.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.0.0)
 
 ### Features
