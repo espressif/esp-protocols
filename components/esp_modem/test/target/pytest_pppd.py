@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 from __future__ import print_function, unicode_literals
 
@@ -9,14 +9,20 @@ from threading import Event, Thread
 import netifaces
 
 
-def run_server(server_stop, port, server_ip, client_ip):
+def run_server(server_stop, port, server_ip, client_ip, auth, auth_user, auth_password):
     print('Starting PPP server on port: {}'.format(port))
     try:
         arg_list = [
             'sudo', 'pppd', port, '115200',
-            '{}:{}'.format(server_ip, client_ip), 'modem', 'local', 'noauth',
+            '{}:{}'.format(server_ip, client_ip), 'modem', 'local',
             'debug', 'nocrtscts', 'nodetach', '+ipv6'
         ]
+        if auth:
+            arg_list.extend(['auth', '+chap'])
+            subprocess.run(['sudo', 'rm', '/etc/ppp/chap-secrets'])
+            subprocess.run(f"echo '{auth_user} * {auth_password} *' | sudo tee -a /etc/ppp/chap-secrets", shell=True)
+        else:
+            arg_list.append('noauth')
         p = subprocess.Popen(arg_list, stdout=subprocess.PIPE, bufsize=1)
         while not server_stop.is_set():
             if p.poll() is not None:
@@ -51,6 +57,9 @@ def test_examples_protocol_pppos_connect(dut):
     try:
         server_ip = dut.app.sdkconfig.get('TEST_APP_PPP_SERVER_IP')
         client_ip = dut.app.sdkconfig.get('TEST_APP_PPP_CLIENT_IP')
+        auth = dut.app.sdkconfig.get('TEST_APP_AUTH')
+        auth_user = dut.app.sdkconfig.get('TEST_APP_AUTH_USERNAME')
+        auth_password = dut.app.sdkconfig.get('TEST_APP_AUTH_PASSWORD')
     except Exception:
         print(
             'ENV_TEST_FAILURE: Some mandatory configuration not found in sdkconfig'
@@ -63,7 +72,7 @@ def test_examples_protocol_pppos_connect(dut):
     # Start the PPP server
     server_stop = Event()
     t = Thread(target=run_server,
-               args=(server_stop, port, server_ip, client_ip))
+               args=(server_stop, port, server_ip, client_ip, auth, auth_user, auth_password))
     t.start()
     try:
         ppp_server_timeout = time.time() + 30

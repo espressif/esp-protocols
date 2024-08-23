@@ -94,6 +94,10 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_modem_event, nullptr));
     ESP_ERROR_CHECK(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, nullptr));
 
+#if CONFIG_TEST_APP_AUTH
+    esp_netif_ppp_set_auth(ppp_netif, NETIF_PPP_AUTHTYPE_CHAP, CONFIG_TEST_APP_AUTH_USERNAME, CONFIG_TEST_APP_AUTH_PASSWORD);
+#endif
+
     modem_start_network();
     Catch::Session session;
     int numFailed = session.run();
