@@ -6398,22 +6398,14 @@ esp_err_t mdns_service_remove_for_host(const char *instance, const char *service
             if (_mdns_service_match(a->service, service, proto, hostname)) {
                 if (_mdns_server->services != a) {
                     b->next = a->next;
-                    _mdns_send_bye(&a, 1, false);
-                    _mdns_remove_scheduled_service_packets(a->service);
-                    _mdns_free_service(a->service);
-                    free(a);
-                    a = b->next;
-                    continue;
                 } else {
                     _mdns_server->services = a->next;
-                    _mdns_send_bye(&a, 1, false);
-                    _mdns_remove_scheduled_service_packets(a->service);
-                    _mdns_free_service(a->service);
-                    free(a);
-                    a = _mdns_server->services;
-                    b = a;
-                    continue;
                 }
+                _mdns_send_bye(&a, 1, false);
+                _mdns_remove_scheduled_service_packets(a->service);
+                _mdns_free_service(a->service);
+                free(a);
+                break;
             }
             b = a;
             a = a->next;
