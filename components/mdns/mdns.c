@@ -5956,11 +5956,6 @@ static mdns_txt_item_t *_copy_mdns_txt_items(mdns_txt_linked_item_t *items, uint
     for (mdns_txt_linked_item_t *tmp = items; tmp != NULL; tmp = tmp->next) {
         ret_index++;
     }
-    if (ret_index == 0) {
-        *txt_count = 0;
-        *txt_value_len = NULL;
-        return NULL;
-    }
     *txt_count = ret_index;
     if (ret_index == 0) {   // handle empty TXT
         *txt_value_len = NULL;
