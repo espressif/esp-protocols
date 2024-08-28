@@ -234,8 +234,8 @@ extern "C" void app_main(void)
         }
         std::cout << "Connected" << std::endl;
 
-        mqtt.subscribe("/topic/esp-modem");
-        mqtt.publish("/topic/esp-modem", "Hello modem");
+        mqtt.subscribe(CONFIG_EXAMPLE_MQTT_TEST_TOPIC);
+        mqtt.publish(CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA);
         if (!handler.wait_for(StatusHandler::MQTT_Data, 60000)) {
             ESP_LOGE(TAG, "Didn't receive published data within specified timeout... exiting");
             return;

@@ -129,4 +129,16 @@ menu "Example Configuration"
         help
             URL of an mqtt broker which this example connects to.
 
+    config EXAMPLE_MQTT_TEST_TOPIC
+        string "MQTT topic to publish/subscribe"
+        default "/topic/esp-pppos"
+        help
+            MQTT topic, which we subscribe on and publish to.
+
+    config EXAMPLE_MQTT_TEST_DATA
+        string "MQTT data to publish/receive"
+        default "esp32-pppos"
+        help
+            MQTT data message, which we publish and expect to receive.
+
 endmenu
