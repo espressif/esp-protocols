@@ -63,6 +63,16 @@ void run_all_wifi_apis(void)
     }
 
     {
+        const wifi_scan_default_params_t *config = NULL;
+        esp_wifi_set_scan_parameters(config);
+    }
+
+    {
+        wifi_scan_default_params_t *config = NULL;
+        esp_wifi_get_scan_parameters(config);
+    }
+
+    {
         esp_wifi_scan_stop();
     }
 
@@ -276,6 +286,11 @@ void run_all_wifi_apis(void)
     }
 
     {
+        wifi_csi_config_t *config = NULL;
+        esp_wifi_get_csi_config(config);
+    }
+
+    {
         _Bool en = 0;
         esp_wifi_set_csi(en);
     }
@@ -386,6 +401,50 @@ void run_all_wifi_apis(void)
     {
         int *rssi = NULL;
         esp_wifi_sta_get_rssi(rssi);
+    }
+
+    {
+        wifi_band_t band = 0;
+        esp_wifi_set_band(band);
+    }
+
+    {
+        wifi_band_t *band = NULL;
+        esp_wifi_get_band(band);
+    }
+
+    {
+        wifi_band_mode_t band_mode = 0;
+        esp_wifi_set_band_mode(band_mode);
+    }
+
+    {
+        wifi_band_mode_t *band_mode = NULL;
+        esp_wifi_get_band_mode(band_mode);
+    }
+
+    {
+        wifi_interface_t ifx = 0;
+        wifi_protocols_t *protocols = NULL;
+        esp_wifi_set_protocols(ifx, protocols);
+    }
+
+    {
+        wifi_interface_t ifx = 0;
+        wifi_protocols_t *protocols = NULL;
+        esp_wifi_get_protocols(ifx, protocols);
+    }
+
+    {
+        wifi_interface_t ifx = 0;
+        wifi_bandwidths_t *bw = NULL;
+        esp_wifi_set_bandwidths(ifx, bw);
+    }
+
+    {
+        wifi_interface_t ifx = 0;
+        wifi_bandwidths_t *bw = NULL;
+        esp_wifi_get_bandwidths(ifx, bw);
     }
 
 }

@@ -67,6 +67,16 @@ esp_err_t esp_wifi_remote_scan_start(const wifi_scan_config_t *config, _Bool blo
     return ESP_OK;
 }
 
+esp_err_t esp_wifi_remote_set_scan_parameters(const wifi_scan_default_params_t *config)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_get_scan_parameters(wifi_scan_default_params_t *config)
+{
+    return ESP_OK;
+}
+
 esp_err_t esp_wifi_remote_scan_stop(void)
 {
     return ESP_OK;
@@ -262,6 +272,11 @@ esp_err_t esp_wifi_remote_set_csi_config(const wifi_csi_config_t *config)
     return ESP_OK;
 }
 
+esp_err_t esp_wifi_remote_get_csi_config(wifi_csi_config_t *config)
+{
+    return ESP_OK;
+}
+
 esp_err_t esp_wifi_remote_set_csi(_Bool en)
 {
     return ESP_OK;
@@ -368,6 +383,46 @@ esp_err_t esp_wifi_remote_set_dynamic_cs(_Bool enabled)
 }
 
 esp_err_t esp_wifi_remote_sta_get_rssi(int *rssi)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_set_band(wifi_band_t band)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_get_band(wifi_band_t *band)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_set_band_mode(wifi_band_mode_t band_mode)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_get_band_mode(wifi_band_mode_t *band_mode)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
+{
+    return ESP_OK;
+}
+
+esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
 {
     return ESP_OK;
 }

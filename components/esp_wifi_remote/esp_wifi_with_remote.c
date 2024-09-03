@@ -67,6 +67,16 @@ esp_err_t esp_wifi_scan_start(const wifi_scan_config_t *config, _Bool block)
     return esp_wifi_remote_scan_start(config, block);
 }
 
+esp_err_t esp_wifi_set_scan_parameters(const wifi_scan_default_params_t *config)
+{
+    return esp_wifi_remote_set_scan_parameters(config);
+}
+
+esp_err_t esp_wifi_get_scan_parameters(wifi_scan_default_params_t *config)
+{
+    return esp_wifi_remote_get_scan_parameters(config);
+}
+
 esp_err_t esp_wifi_scan_stop(void)
 {
     return esp_wifi_remote_scan_stop();
@@ -262,6 +272,11 @@ esp_err_t esp_wifi_set_csi_config(const wifi_csi_config_t *config)
     return esp_wifi_remote_set_csi_config(config);
 }
 
+esp_err_t esp_wifi_get_csi_config(wifi_csi_config_t *config)
+{
+    return esp_wifi_remote_get_csi_config(config);
+}
+
 esp_err_t esp_wifi_set_csi(_Bool en)
 {
     return esp_wifi_remote_set_csi(en);
@@ -370,4 +385,44 @@ esp_err_t esp_wifi_set_dynamic_cs(_Bool enabled)
 esp_err_t esp_wifi_sta_get_rssi(int *rssi)
 {
     return esp_wifi_remote_sta_get_rssi(rssi);
+}
+
+esp_err_t esp_wifi_set_band(wifi_band_t band)
+{
+    return esp_wifi_remote_set_band(band);
+}
+
+esp_err_t esp_wifi_get_band(wifi_band_t *band)
+{
+    return esp_wifi_remote_get_band(band);
+}
+
+esp_err_t esp_wifi_set_band_mode(wifi_band_mode_t band_mode)
+{
+    return esp_wifi_remote_set_band_mode(band_mode);
+}
+
+esp_err_t esp_wifi_get_band_mode(wifi_band_mode_t *band_mode)
+{
+    return esp_wifi_remote_get_band_mode(band_mode);
+}
+
+esp_err_t esp_wifi_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    return esp_wifi_remote_set_protocols(ifx, protocols);
+}
+
+esp_err_t esp_wifi_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    return esp_wifi_remote_get_protocols(ifx, protocols);
+}
+
+esp_err_t esp_wifi_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
+{
+    return esp_wifi_remote_set_bandwidths(ifx, bw);
+}
+
+esp_err_t esp_wifi_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
+{
+    return esp_wifi_remote_get_bandwidths(ifx, bw);
 }
