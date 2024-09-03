@@ -71,6 +71,16 @@ WEAK esp_err_t esp_wifi_remote_scan_start(const wifi_scan_config_t *config, _Boo
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
 }
 
+WEAK esp_err_t esp_wifi_remote_set_scan_parameters(const wifi_scan_default_params_t *config)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_get_scan_parameters(wifi_scan_default_params_t *config)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
 WEAK esp_err_t esp_wifi_remote_scan_stop(void)
 {
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
@@ -266,6 +276,11 @@ WEAK esp_err_t esp_wifi_remote_set_csi_config(const wifi_csi_config_t *config)
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
 }
 
+WEAK esp_err_t esp_wifi_remote_get_csi_config(wifi_csi_config_t *config)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
 WEAK esp_err_t esp_wifi_remote_set_csi(_Bool en)
 {
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
@@ -372,6 +387,46 @@ WEAK esp_err_t esp_wifi_remote_set_dynamic_cs(_Bool enabled)
 }
 
 WEAK esp_err_t esp_wifi_remote_sta_get_rssi(int *rssi)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_set_band(wifi_band_t band)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_get_band(wifi_band_t *band)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_set_band_mode(wifi_band_mode_t band_mode)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_get_band_mode(wifi_band_mode_t *band_mode)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_set_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_get_protocols(wifi_interface_t ifx, wifi_protocols_t *protocols)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_set_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
+{
+    LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
+}
+
+WEAK esp_err_t esp_wifi_remote_get_bandwidths(wifi_interface_t ifx, wifi_bandwidths_t *bw)
 {
     LOG_UNSUPPORTED_AND_RETURN(ESP_ERR_NOT_SUPPORTED);
 }
