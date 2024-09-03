@@ -4,6 +4,7 @@ menu "Wi-Fi Remote"
         bool
         default y
 
+    orsource "./Kconfig.slave_select.in"
     orsource "./Kconfig.soc_wifi_caps.in"
     orsource "./Kconfig.rpc.in"
 

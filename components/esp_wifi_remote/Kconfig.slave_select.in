@@ -1,5 +1,4 @@
 # This file is auto-generated
-menu "ESP Hosted Mock"
     choice SLAVE_IDF_TARGET
     prompt "choose slave target"
     default SLAVE_IDF_TARGET_ESP32
@@ -15,9 +14,6 @@ menu "ESP Hosted Mock"
         bool "esp32c2"
     config SLAVE_IDF_TARGET_ESP32C6
         bool "esp32c6"
-    config SLAVE_IDF_TARGET_ESP32H2
-        bool "esp32h2"
-    config SLAVE_IDF_TARGET_ESP32P4
-        bool "esp32p4"
+    config SLAVE_IDF_TARGET_ESP32C5
+        bool "esp32c5"
     endchoice
-endmenu
