@@ -7,7 +7,7 @@ import re
 import subprocess
 from collections import namedtuple
 
-from idf_build_apps.constants import SUPPORTED_TARGETS
+from idf_build_apps.constants import PREVIEW_TARGETS, SUPPORTED_TARGETS
 from pycparser import c_ast, c_parser, preprocess_file
 
 Param = namedtuple('Param', ['ptr', 'array', 'qual', 'type', 'name'])
@@ -161,45 +161,42 @@ def get_vars(parameters):
 
 def generate_kconfig_wifi_caps(idf_path, component_path):
     kconfig = os.path.join(component_path, 'Kconfig.soc_wifi_caps.in')
+    slave_select = os.path.join(component_path, 'Kconfig.slave_select.in')
     sdkconfig_files = []
-    with open(kconfig, 'w') as out:
-        out.write(f'# {AUTO_GENERATED}\n')
-        for slave_target in SUPPORTED_TARGETS:
-            out.write(f'\nif SLAVE_IDF_TARGET_{slave_target.upper()}\n\n')
+    with open(kconfig, 'w') as slave_caps, open(slave_select, 'w') as slave:
+        slave_caps.write(f'# {AUTO_GENERATED}\n')
+        slave.write(f'# {AUTO_GENERATED}\n')
+        slave.write('    choice SLAVE_IDF_TARGET\n')
+        slave.write('    prompt "choose slave target"\n')
+        slave.write('    default SLAVE_IDF_TARGET_ESP32\n')
+        for slave_target in SUPPORTED_TARGETS + PREVIEW_TARGETS:
+            add_slave = False
+            kconfig_content = []
             soc_caps = os.path.join(idf_path, 'components', 'soc', slave_target, 'include', 'soc', 'Kconfig.soc_caps.in')
             with open(soc_caps, 'r') as f:
                 for line in f:
                     if line.strip().startswith('config SOC_WIFI_'):
                         if 'config SOC_WIFI_SUPPORTED' in line:
-                            # if WiFi supported for this target, test it as a slave
+                            # if WiFi supported for this target, add it to Kconfig slave options and test this slave
+                            add_slave = True
                             sdkconfig = os.path.join(component_path, 'test', 'smoke_test', f'sdkconfig.ci.slave_{slave_target}')
                             open(sdkconfig, 'w').write(f'CONFIG_SLAVE_IDF_TARGET_{slave_target.upper()}=y\n')
                             sdkconfig_files.append(sdkconfig)
-                        replaced = re.compile(r'SOC_WIFI_').sub('SLAVE_SOC_WIFI_', line)
-                        out.write(f'    {replaced}')
-                        line = f.readline()         # type
-                        out.write(f'    {line}')
-                        line = f.readline()         # default
-                        out.write(f'    {line}\n')
-            out.write(f'endif # {slave_target.upper()}\n')
-    return [kconfig] + sdkconfig_files
+                        replaced = re.sub(r'SOC_WIFI_', 'SLAVE_SOC_WIFI_', line)
+                        kconfig_content.append(f'    {replaced}')
+                        kconfig_content.append(f'    {f.readline()}')  # type
+                        kconfig_content.append(f'    {f.readline()}\n')  # default
+            if add_slave:
+                slave_caps.write(f'\nif SLAVE_IDF_TARGET_{slave_target.upper()}\n\n')
+                slave_caps.writelines(kconfig_content)
+                slave_caps.write(f'endif # {slave_target.upper()}\n')
 
+                slave_config_name = 'SLAVE_IDF_TARGET_' + slave_target.upper()
+                slave.write(f'    config {slave_config_name}\n')
+                slave.write(f'        bool "{slave_target}"\n')
 
-def generate_test_kconfig(component_path):
-    path = os.path.join(component_path, 'test','smoke_test','components','esp_hosted','Kconfig')
-    with open(path, 'w') as f:
-        f.write(f'# {AUTO_GENERATED}\n')
-        f.write('menu "ESP Hosted Mock"\n')
-        f.write('    choice SLAVE_IDF_TARGET\n')
-        f.write('    prompt "choose slave target"\n')
-        f.write('    default SLAVE_IDF_TARGET_ESP32\n')
-        for slave_target in SUPPORTED_TARGETS:
-            config = 'SLAVE_IDF_TARGET_' + slave_target.upper()
-            f.write(f'    config {config}\n')
-            f.write(f'        bool "{slave_target}"\n')
-        f.write('    endchoice\n')
-        f.write('endmenu\n')
-    return [path]
+        slave.write('    endchoice\n')
+    return [kconfig, slave_select] + sdkconfig_files
 
 
 def generate_remote_wifi_api(function_prototypes, component_path):
@@ -311,6 +308,7 @@ def generate_kconfig(idf_path, component_path):
         f.write('    config ESP_WIFI_REMOTE_ENABLED\n')
         f.write('        bool\n')
         f.write('        default y\n\n')
+        f.write('    orsource "./Kconfig.slave_select.in"\n')
         f.write('    orsource "./Kconfig.soc_wifi_caps.in"\n')
         f.write('    orsource "./Kconfig.rpc.in"\n')
         for line1 in lines:
@@ -376,8 +374,6 @@ making changes you might need to modify 'copyright_header.h' in the script direc
     function_prototypes = extract_function_prototypes(preprocess(idf_path, header), header)
 
     files_to_check = []
-
-    files_to_check += generate_test_kconfig(component_path)
 
     files_to_check += generate_kconfig_wifi_caps(idf_path, component_path)
 

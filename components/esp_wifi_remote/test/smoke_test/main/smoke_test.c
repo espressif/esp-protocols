@@ -16,6 +16,9 @@ void app_main(void)
     esp_wifi_init(&cfg);
     esp_wifi_deinit();
 
-    run_all_wifi_apis();
+#if CONFIG_SOC_WIFI_SUPPORTED
     run_all_wifi_remote_apis();
+#else
+    run_all_wifi_apis();
+#endif
 }
