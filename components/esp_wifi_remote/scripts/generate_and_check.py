@@ -332,6 +332,25 @@ def generate_kconfig(idf_path, component_path):
     return [remote_kconfig]
 
 
+def compare_files(base_dir, component_path, files_to_check):
+    failures = []
+    for file_path in files_to_check:
+        relative_path = os.path.relpath(file_path, component_path)
+        base_file = os.path.join(base_dir, relative_path)
+
+        if not os.path.exists(base_file):
+            failures.append((relative_path, 'File does not exist in base directory'))
+            continue
+
+        diff_cmd = ['diff', '-I', 'Copyright', file_path, base_file]
+        result = subprocess.run(diff_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:  # diff returns 0 if files are identical
+            failures.append((relative_path, result.stdout.decode('utf-8')))
+
+    return failures
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Build all projects',
@@ -346,6 +365,7 @@ Please be aware that the pregenerated files use the same copyright header, so af
 making changes you might need to modify 'copyright_header.h' in the script directory.
         ''')
     parser.add_argument('-s', '--skip-check', help='Skip checking the versioned files against the re-generated', action='store_true')
+    parser.add_argument('--base-dir', help='Base directory to compare generated files against', required=True)
     args = parser.parse_args()
 
     component_path = os.path.normpath(os.path.join(os.path.realpath(__file__),'..', '..'))
@@ -371,21 +391,17 @@ making changes you might need to modify 'copyright_header.h' in the script direc
 
     files_to_check += generate_kconfig(idf_path, component_path)
 
-    fail_test = False
-    failures = []
-    for f in files_to_check:
-        print(f'checking {f}')
-        rc, out, err, cmd = exec_cmd(['git', 'difftool', '-y', '-x', 'diff -I Copyright', '--', f])
-        if out == '' or out.isspace():
-            print('    - ok')
-        else:
-            print('    - FAILED!')
-            failures.append((f, out))
-            fail_test = True
+    if args.skip_check:
+        exit(0)
 
-    if fail_test:
+    failures = compare_files(args.base_dir, component_path, files_to_check)
+
+    if failures:
         print(parser.epilog)
-        print('\nDIfferent files:\n')
-        for i in failures:
-            print(f'{i[0]}\nChanges:\n{i[1]}')
+        print('\nDifferent files:\n')
+        for file, diff in failures:
+            print(f'{file}\nChanges:\n{diff}')
         exit(1)
+    else:
+        print('All files are identical to the base directory.')
+        exit(0)
