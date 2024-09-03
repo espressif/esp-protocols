@@ -8,3 +8,5 @@ dependencies:
     version: '>=5.3'
   espressif/esp_hosted:
     version: '>=0.0.6'
+    rules:
+    - if: "target in [esp32h2, esp32p4]"
