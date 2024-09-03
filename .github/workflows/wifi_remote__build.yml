@@ -24,8 +24,9 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
+          cp -r ./components/esp_wifi_remote ./components/esp_wifi_remote_base
           cd ./components/esp_wifi_remote/scripts
-          python generate_and_check.py
+          python generate_and_check.py --base-dir ../../esp_wifi_remote_base
 
   build_wifi_remote:
     if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
