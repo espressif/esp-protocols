@@ -63,4 +63,11 @@ menu "esp-modem"
             dce_factory::Factory::create_unique_dce_from<CustomModule, DCE*>(dce_config, std::move(dte), netif)
             Please refer to the pppos_client example for more details.
 
+    config ESP_MODEM_C_API_STR_MAX
+        int "Size in bytes for response from AT commands returning textual values (C-API)"
+        default 128
+        help
+            Some AT commands returns textrual values which C-API copy as c-string to user allocated space,
+            it also truncates the output data to this size. Increase this if some AT answers are truncated.
+
 endmenu
