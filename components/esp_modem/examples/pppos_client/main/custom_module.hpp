@@ -56,7 +56,7 @@ DCE *esp_modem_create_custom_dce(const esp_modem_dce_config_t *dce_config, std::
 /**
  * @brief This API is only needed for extending standard C-API, since we added get_time() method to our CustomModule
  *
- * @note This header is included from esp_modem_c_api.cpp, so it could use ESP_MODEM_C_API_STR_MAX macro
+ * @note This header is included from esp_modem_c_api.cpp, so it could use CONFIG_ESP_MODEM_C_API_STR_MAX macro
  * indicating maximum C-API string size
  *
  * @note In order to access the newly added API get_time(), we have to static_cast<> the GenericModule from DCE
@@ -70,10 +70,10 @@ extern "C" esp_err_t esp_modem_get_time(esp_modem_dce_t *dce_wrap, char *p_time)
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    std::string time{ESP_MODEM_C_API_STR_MAX};
+    std::string time{CONFIG_ESP_MODEM_C_API_STR_MAX};
     auto ret = command_response_to_esp_err(static_cast<SIM7600_WITH_TIME *>(dce_wrap->dce->get_module())->get_time(time));
     if (ret == ESP_OK && !time.empty()) {
-        strlcpy(p_time, time.c_str(), ESP_MODEM_C_API_STR_MAX);
+        strlcpy(p_time, time.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
 }
