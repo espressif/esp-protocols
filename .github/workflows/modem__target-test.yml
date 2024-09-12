@@ -15,7 +15,7 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32c3"]
-        test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
+        test: [ { app: pppd, path: test/target }, { app: pppd_chap_auth, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
         include:
           - idf_ver: "latest"
             idf_target: "esp32s2"
@@ -58,7 +58,7 @@ jobs:
       matrix:
         idf_ver: ["latest"]
         idf_target: ["esp32c3"]
-        test: [ { app: pppd, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
+        test: [ { app: pppd, path: test/target }, { app: pppd_chap_auth, path: test/target }, { app: sim800_c3, path: examples/pppos_client }, { app: sim800_cmux, path: examples/simple_cmux_client } ]
         include:
           - idf_ver: "latest"
             idf_target: "esp32s2"

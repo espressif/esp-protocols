@@ -27,12 +27,23 @@ menu "Test App Configuration"
         help
             Pin number of UART RX.
 
-    config TEST_APP_TCP_PORT
-        int "Port of test"
-        range 0 65535
-        default 2222
+    config TEST_APP_AUTH
+        bool "Use PPP authentication"
+        select LWIP_PPP_CHAP_SUPPORT
+        default n
         help
-            The remote port to which the client will connects to
-            once the PPP connection established
+            Set to true for the PPP client to use authentication
+
+    config TEST_APP_AUTH_USERNAME
+        string "Set username for authentication"
+        default "myclient"
+        help
+            Username to authenticate the PPP connection.
+
+    config TEST_APP_AUTH_PASSWORD
+        string "Set password for authentication"
+        default "mypassword"
+        help
+            Password to authenticate the PPP connection.
 
 endmenu
