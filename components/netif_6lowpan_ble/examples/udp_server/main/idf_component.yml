@@ -1,0 +1,4 @@
+dependencies:
+  espressif/netif_6lowpan_ble:
+    version: "*"
+    override_path: "../../.."
