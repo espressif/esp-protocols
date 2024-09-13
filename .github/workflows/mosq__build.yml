@@ -9,13 +9,16 @@ on:
 
 jobs:
   build_mosq:
-    if: contains(github.event.pull_request.labels.*.name, 'Comp::mosq') || github.event_name == 'push'
-    name: Build
+    if: contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push'
+    name: Mosquitto build
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.3"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/mosquitto/examples/broker
+      TARGET_TEST_DIR: build_esp32_default
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
@@ -28,4 +31,44 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
-          python ci/build_apps.py components/mosquitto/examples/ -c
+          python ci/build_apps.py ${TEST_DIR}
+          cd ${TEST_DIR}
+          ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
+          zip -qur artifacts.zip ${TARGET_TEST_DIR}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mosq_target_esp32_${{ matrix.idf_ver }}
+          path: ${{ env.TEST_DIR }}/artifacts.zip
+          if-no-files-found: error
+
+  test_mosq:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push' )
+    name: Mosquitto target test
+    needs: build_mosq
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.3"]
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    env:
+      TEST_DIR: components/mosquitto/examples/broker
+      TARGET_TEST_DIR: build_esp32_default
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mosq_target_esp32_${{ matrix.idf_ver }}
+          path: ${{ env.TEST_DIR }}/ci/
+      - name: Run Test
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          unzip ci/artifacts.zip -d ci
+          for dir in `ls -d ci/build_*`; do
+          rm -rf build sdkconfig.defaults
+          mv $dir build
+          python -m pytest --log-cli-level DEBUG --junit-xml=./results_esp32_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=esp32
+          done
