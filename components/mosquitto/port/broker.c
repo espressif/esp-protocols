@@ -94,7 +94,7 @@ static void listeners__stop(void)
     mosquitto__free(listensock);
 }
 
-int run_broker(struct mosq_broker_config *broker_config)
+int mosq_broker_start(struct mosq_broker_config *broker_config)
 {
 
     struct mosquitto__config config;

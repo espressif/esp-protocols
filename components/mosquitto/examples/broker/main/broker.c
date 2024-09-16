@@ -85,5 +85,5 @@ void app_main(void)
     mqtt_app_start(&config);
 #endif
     // broker continues to run in this task
-    run_broker(&config);
+    mosq_broker_start(&config);
 }
