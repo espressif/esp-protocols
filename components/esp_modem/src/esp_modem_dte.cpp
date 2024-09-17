@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -50,11 +50,9 @@ void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {
         Scoped<Lock> l(command_cb.line_lock);
-#ifndef CONFIG_ESP_MODEM_URC_HANDLER
-        if (command_cb.got_line == nullptr || command_cb.result != command_result::TIMEOUT) {
-            return false;   // this line has been processed already (got OK or FAIL previously)
+        if (command_cb.got_line == nullptr) {
+            return false;
         }
-#endif
         if (data) {
             // For terminals which post data directly with the callback (CMUX)
             // we cannot defragment unless we allocate, but
@@ -349,14 +347,9 @@ void DTE::on_read(got_line_cb on_read_cb)
 
 bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
 {
-#ifdef CONFIG_ESP_MODEM_URC_HANDLER
-    if (urc_handler) {
-        urc_handler(data, consumed + len);
-    }
-    if (result != command_result::TIMEOUT || got_line == nullptr) {
+    if (result != command_result::TIMEOUT) {
         return false;   // this line has been processed already (got OK or FAIL previously)
     }
-#endif
     if (memchr(data + consumed, separator, len)) {
         result = got_line(data, consumed + len);
         if (result == command_result::OK || result == command_result::FAIL) {
