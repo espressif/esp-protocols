@@ -22,7 +22,11 @@ if git log -1 -m --name-only --pretty="" | grep -q components/${comp}/idf_compon
     if [ $(git tag -l "$tag") ]; then
         echo "${comp}: version (${tag}) already exits"
     else
+        # skip components that do not have changelog
+        [ -f components/${comp}/CHANGELOG.md ] || continue
+
         echo "${comp}: Component version has been updated to ${version}"
+
         # creates release notes from the last entry (between first two "## sections")
         awk '/^## \[/{a++};{if(a==1){print}}' components/${comp}/CHANGELOG.md > release_notes.md
 
