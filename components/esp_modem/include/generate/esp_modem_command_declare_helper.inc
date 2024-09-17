@@ -3,7 +3,7 @@
 // Parameters
 // * handle different parameters for C++ and C API
 // * make parameter unique names, so they could be easily referenced and forwarded
-#define _ARG(param, name) param
+#define _ARG(param, name) name
 #define INT_IN(param, name) int  _ARG(param, name)
 #ifdef __cplusplus
 #include <string>
