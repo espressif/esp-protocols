@@ -17,6 +17,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
+#define CATCH_CONFIG_MAIN
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_session.hpp"
+
 static const char *TAG = "pppd_test";
 static EventGroupHandle_t event_group = NULL;
 
@@ -73,9 +77,6 @@ esp_err_t modem_init_network(esp_netif_t *netif);
 void modem_start_network();
 void modem_stop_network();
 
-bool test_connect();
-bool test_disconnect();
-
 extern "C" void app_main(void)
 {
 
@@ -99,27 +100,41 @@ extern "C" void app_main(void)
 #endif
 
     modem_start_network();
-
-    bool t1 = test_connect();
-    bool t2 = test_disconnect();
-
-    if (t1 && t2) {
-        ESP_LOGI(TAG, "All tests passed");
-    } else {
+    Catch::Session session;
+    int numFailed = session.run();
+    if (numFailed > 0) {
         ESP_LOGE(TAG, "Test FAILED!");
+    } else {
+        ESP_LOGI(TAG, "Test passed!");
     }
 
 }
 
-bool test_connect() //("Connect test", "[esp_modem]")
+TEST_CASE("Connect test", "[esp_modem]")
 {
     EventBits_t b = xEventGroupWaitBits(event_group, 1, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
-    return b == 1;
+    CHECK(b == 1);
 }
 
-bool test_disconnect() //("Disconnection test", "[esp_modem]")
+TEST_CASE("Disconnection test", "[esp_modem]")
 {
     modem_stop_network();
     EventBits_t b = xEventGroupWaitBits(event_group, 2, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
-    return b == 2;
+    CHECK(b == 2);
+}
+
+
+extern "C" {
+
+    static void handle(int nr)
+    {
+        ESP_LOGE(TAG, "Signal handler %d", nr);
+    }
+
+    _sig_func_ptr signal (int nr, _sig_func_ptr)
+    {
+        return handle;
+    }
+
+
 }
