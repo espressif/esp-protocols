@@ -49,7 +49,7 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
-          python ./scripts/generate_slave_configs.py ./components/esp_wifi_remote/${{matrix.test.path}}
+          python ./components/esp_wifi_remote/scripts/generate_slave_configs.py ./components/esp_wifi_remote/${{matrix.test.path}}
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
 
   build_wifi_remote_example:
@@ -77,3 +77,36 @@ jobs:
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.example.path}} -vv --preserve-all
+
+  build_idf_examples_with_wifi_remote:
+    if: contains(github.event.pull_request.labels.*.name, 'wifi_remote') || github.event_name == 'push'
+    name: Build IDF examples with WiFi Remote
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.3"]
+        idf_target: ["esp32p4", "esp32h2", "esp32s3"]
+        test: [ { app: idf_mqtt_example, path: "examples/protocols/mqtt/tcp" }]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+            key: ${{ matrix.idf_ver }}
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
+          export OVERRIDE_PATH=`pwd`/components/esp_wifi_remote
+          echo ${OVERRIDE_PATH}
+          sed -i '/espressif\/esp_wifi_remote:/a \ \ \ \ override_path: "${OVERRIDE_PATH}"' ${IDF_PATH}/${{matrix.test.path}}/main/idf_component.yml
+          cat ${IDF_PATH}/${{matrix.test.path}}/main/idf_component.yml
+          export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+          export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+          export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+          cd ${IDF_PATH}/${{matrix.test.path}}
+          idf-build-apps find --config sdkconfig.ci* -vv --target ${{ matrix.idf_target }}
+          idf-build-apps build --config sdkconfig.ci* -vv --target ${{ matrix.idf_target }}

@@ -10,7 +10,8 @@ if len(sys.argv) < 2:
 output_directory = sys.argv[1]
 
 # Input Kconfig file
-kconfig_file = f"idf_v{os.getenv('ESP_IDF_VERSION')}/Kconfig.slave_select.in"
+component_path = os.path.normpath(os.path.join(os.path.realpath(__file__),'..', '..'))
+kconfig_file = os.path.join(component_path, f"idf_v{os.getenv('ESP_IDF_VERSION')}", 'Kconfig.slave_select.in')
 
 # Output file prefix
 output_prefix = 'sdkconfig.ci.'

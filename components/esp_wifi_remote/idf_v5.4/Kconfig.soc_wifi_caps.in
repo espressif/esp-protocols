@@ -222,6 +222,10 @@ if SLAVE_IDF_TARGET_ESP32C6
         bool
         default y
 
+    config SLAVE_SOC_WIFI_MAC_VERSION_NUM
+        int
+        default 2
+
 endif # ESP32C6
 
 if SLAVE_IDF_TARGET_ESP32C5
@@ -266,6 +270,10 @@ if SLAVE_IDF_TARGET_ESP32C5
         bool
         default y
 
+    config SLAVE_SOC_WIFI_MAC_VERSION_NUM
+        int
+        default 3
+
 endif # ESP32C5
 
 if SLAVE_IDF_TARGET_ESP32C61
@@ -305,5 +313,9 @@ if SLAVE_IDF_TARGET_ESP32C61
     config SLAVE_SOC_WIFI_HE_SUPPORT
         bool
         default y
+
+    config SLAVE_SOC_WIFI_MAC_VERSION_NUM
+        int
+        default 3
 
 endif # ESP32C61
