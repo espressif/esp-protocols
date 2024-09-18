@@ -159,10 +159,9 @@ def get_vars(parameters):
     return definitions, comma_separated_names
 
 
-def generate_kconfig_wifi_caps(idf_path, component_path):
-    kconfig = os.path.join(component_path, 'Kconfig.soc_wifi_caps.in')
-    slave_select = os.path.join(component_path, 'Kconfig.slave_select.in')
-    sdkconfig_files = []
+def generate_kconfig_wifi_caps(idf_path, idf_ver_dir, component_path):
+    kconfig = os.path.join(component_path, idf_ver_dir, 'Kconfig.soc_wifi_caps.in')
+    slave_select = os.path.join(component_path, idf_ver_dir, 'Kconfig.slave_select.in')
     with open(kconfig, 'w') as slave_caps, open(slave_select, 'w') as slave:
         slave_caps.write(f'# {AUTO_GENERATED}\n')
         slave.write(f'# {AUTO_GENERATED}\n')
@@ -179,9 +178,6 @@ def generate_kconfig_wifi_caps(idf_path, component_path):
                         if 'config SOC_WIFI_SUPPORTED' in line:
                             # if WiFi supported for this target, add it to Kconfig slave options and test this slave
                             add_slave = True
-                            sdkconfig = os.path.join(component_path, 'test', 'smoke_test', f'sdkconfig.ci.slave_{slave_target}')
-                            open(sdkconfig, 'w').write(f'CONFIG_SLAVE_IDF_TARGET_{slave_target.upper()}=y\n')
-                            sdkconfig_files.append(sdkconfig)
                         replaced = re.sub(r'SOC_WIFI_', 'SLAVE_SOC_WIFI_', line)
                         kconfig_content.append(f'    {replaced}')
                         kconfig_content.append(f'    {f.readline()}')  # type
@@ -196,13 +192,13 @@ def generate_kconfig_wifi_caps(idf_path, component_path):
                 slave.write(f'        bool "{slave_target}"\n')
 
         slave.write('    endchoice\n')
-    return [kconfig, slave_select] + sdkconfig_files
+    return [kconfig, slave_select]
 
 
-def generate_remote_wifi_api(function_prototypes, component_path):
-    header = os.path.join(component_path, 'include', 'esp_wifi_remote_api.h')
-    wifi_source = os.path.join(component_path, 'esp_wifi_with_remote.c')
-    remote_source = os.path.join(component_path, 'esp_wifi_remote_weak.c')
+def generate_remote_wifi_api(function_prototypes, idf_ver_dir, component_path):
+    header = os.path.join(component_path, idf_ver_dir, 'include', 'esp_wifi_remote_api.h')
+    wifi_source = os.path.join(component_path, idf_ver_dir, 'esp_wifi_with_remote.c')
+    remote_source = os.path.join(component_path, idf_ver_dir, 'esp_wifi_remote_weak.c')
     with open(header, 'w') as f:
         f.write(COPYRIGHT_HEADER)
         f.write('#pragma once\n')
@@ -237,9 +233,9 @@ def generate_remote_wifi_api(function_prototypes, component_path):
     return [header, wifi_source, remote_source]
 
 
-def generate_hosted_mocks(function_prototypes, component_path):
-    source = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', 'esp_hosted_mock.c')
-    header = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', 'include', 'esp_hosted_mock.h')
+def generate_hosted_mocks(function_prototypes, idf_ver_dir, component_path):
+    source = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', idf_ver_dir, 'esp_hosted_mock.c')
+    header = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', idf_ver_dir, 'include', 'esp_hosted_mock.h')
     with open(source, 'w') as f, open(header, 'w') as h:
         f.write(COPYRIGHT_HEADER)
         h.write(COPYRIGHT_HEADER)
@@ -261,9 +257,9 @@ def generate_hosted_mocks(function_prototypes, component_path):
         return [source, header]
 
 
-def generate_test_cases(function_prototypes, component_path):
-    wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', 'all_wifi_calls.c')
-    remote_wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', 'all_wifi_remote_calls.c')
+def generate_test_cases(function_prototypes, idf_ver_dir, component_path):
+    wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', idf_ver_dir, 'all_wifi_calls.c')
+    remote_wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', idf_ver_dir, 'all_wifi_remote_calls.c')
     with open(wifi_cases, 'w') as wifi, open(remote_wifi_cases, 'w') as remote:
         wifi.write(COPYRIGHT_HEADER)
         remote.write(COPYRIGHT_HEADER)
@@ -287,8 +283,8 @@ def generate_test_cases(function_prototypes, component_path):
     return [wifi_cases, remote_wifi_cases]
 
 
-def generate_wifi_native(idf_path, component_path):
-    wifi_native = os.path.join(component_path, 'include', 'esp_wifi_types_native.h')
+def generate_wifi_native(idf_path, idf_ver_dir, component_path):
+    wifi_native = os.path.join(component_path, idf_ver_dir, 'include', 'esp_wifi_types_native.h')
     native_header = os.path.join(idf_path, 'components', 'esp_wifi', 'include', 'local', 'esp_wifi_types_native.h')
     orig_content = open(native_header, 'r').read()
     content = orig_content.replace('CONFIG_','CONFIG_SLAVE_')
@@ -296,21 +292,15 @@ def generate_wifi_native(idf_path, component_path):
     return [wifi_native]
 
 
-def generate_kconfig(idf_path, component_path):
-    remote_kconfig = os.path.join(component_path, 'Kconfig')
+def generate_kconfig(idf_path, idf_ver_dir, component_path):
+    remote_kconfig = os.path.join(component_path, idf_ver_dir, 'Kconfig.wifi.in')
     slave_configs = ['SOC_WIFI_', 'IDF_TARGET_']
     lines = open(os.path.join(idf_path, 'components', 'esp_wifi', 'Kconfig'), 'r').readlines()
     copy = 100      # just a big number to be greater than nested_if in the first few iterations
     nested_if = 0
     with open(remote_kconfig, 'w') as f:
+        f.write(f'# Wi-Fi configuration\n')
         f.write(f'# {AUTO_GENERATED}\n')
-        f.write('menu "Wi-Fi Remote"\n')
-        f.write('    config ESP_WIFI_REMOTE_ENABLED\n')
-        f.write('        bool\n')
-        f.write('        default y\n\n')
-        f.write('    orsource "./Kconfig.slave_select.in"\n')
-        f.write('    orsource "./Kconfig.soc_wifi_caps.in"\n')
-        f.write('    orsource "./Kconfig.rpc.in"\n')
         for line1 in lines:
             line = line1.strip()
             if re.match(r'^if\s+[A-Z_0-9]+\s*$', line):
@@ -326,7 +316,7 @@ def generate_kconfig(idf_path, component_path):
 
             if re.match(r'^if\s+\(?ESP_WIFI_ENABLED', line):
                 copy = nested_if
-        f.write('endmenu # Wi-Fi Remote\n')
+        f.write(f'# Wi-Fi configuration end\n')
     return [remote_kconfig]
 
 
@@ -363,8 +353,13 @@ Please be aware that the pregenerated files use the same copyright header, so af
 making changes you might need to modify 'copyright_header.h' in the script directory.
         ''')
     parser.add_argument('-s', '--skip-check', help='Skip checking the versioned files against the re-generated', action='store_true')
-    parser.add_argument('--base-dir', help='Base directory to compare generated files against', required=True)
+    parser.add_argument('--base-dir', help='Base directory to compare generated files against')
     args = parser.parse_args()
+
+    idf_version = os.getenv('ESP_IDF_VERSION')
+    if idf_version is None:
+        raise RuntimeError("Environment variable 'ESP_IDF_VERSION' wasn't set.")
+    idf_ver_dir = f'idf_v{idf_version}'
 
     component_path = os.path.normpath(os.path.join(os.path.realpath(__file__),'..', '..'))
     idf_path = os.getenv('IDF_PATH')
@@ -375,19 +370,22 @@ making changes you might need to modify 'copyright_header.h' in the script direc
 
     files_to_check = []
 
-    files_to_check += generate_kconfig_wifi_caps(idf_path, component_path)
+    files_to_check += generate_kconfig_wifi_caps(idf_path, idf_ver_dir, component_path)
 
-    files_to_check += generate_remote_wifi_api(function_prototypes, component_path)
+    files_to_check += generate_remote_wifi_api(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_hosted_mocks(function_prototypes, component_path)
+    files_to_check += generate_hosted_mocks(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_test_cases(function_prototypes, component_path)
+    files_to_check += generate_test_cases(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_wifi_native(idf_path, component_path)
+    files_to_check += generate_wifi_native(idf_path, idf_ver_dir, component_path)
 
-    files_to_check += generate_kconfig(idf_path, component_path)
+    files_to_check += generate_kconfig(idf_path, idf_ver_dir, component_path)
 
-    if args.skip_check:
+    for f in files_to_check:
+        print(f)
+
+    if args.skip_check or args.base_dir is None:
         exit(0)
 
     failures = compare_files(args.base_dir, component_path, files_to_check)

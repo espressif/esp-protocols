@@ -267,3 +267,43 @@ if SLAVE_IDF_TARGET_ESP32C5
         default y
 
 endif # ESP32C5
+
+if SLAVE_IDF_TARGET_ESP32C61
+
+    config SLAVE_SOC_WIFI_SUPPORTED
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_LIGHT_SLEEP_CLK_WIDTH
+        int
+        default 12
+
+    config SLAVE_SOC_WIFI_HW_TSF
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_FTM_SUPPORT
+        bool
+        default n
+
+    config SLAVE_SOC_WIFI_GCMP_SUPPORT
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_WAPI_SUPPORT
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_CSI_SUPPORT
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_MESH_SUPPORT
+        bool
+        default y
+
+    config SLAVE_SOC_WIFI_HE_SUPPORT
+        bool
+        default y
+
+endif # ESP32C61
