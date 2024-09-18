@@ -13,7 +13,7 @@ jobs:
     name: Check API compatibility of WiFi Remote
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["latest", "release-v5.3"]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -33,7 +33,7 @@ jobs:
     name: Build WiFi Remote Test
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["latest", "release-v5.3"]
         test: [ { app: smoke_test, path: "test/smoke_test" }]
     runs-on: ubuntu-20.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -49,6 +49,7 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
+          python ./scripts/generate_slave_configs.py ./components/esp_wifi_remote/${{matrix.test.path}}
           python ./ci/build_apps.py ./components/esp_wifi_remote/${{matrix.test.path}} -vv --preserve-all
 
   build_wifi_remote_example:
