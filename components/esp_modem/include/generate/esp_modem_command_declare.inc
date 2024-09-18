@@ -50,7 +50,6 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
  * @param[out] out Raw output from DTE
  * @param[in] pass Pattern in response for the API to return OK
  * @param[in] fail Pattern in response for the API to return FAIL
- * @param[in] cmd String command that's send to DTE
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
  */\
