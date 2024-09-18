@@ -156,12 +156,10 @@ bool DTE::exit_cmux()
     if (!cmux_term) {
         return false;
     }
-    if (!cmux_term->deinit()) {
-        return false;
-    }
+    const bool success = cmux_term->deinit();
     exit_cmux_internal();
     cmux_term.reset();
-    return true;
+    return success;
 }
 
 void DTE::exit_cmux_internal()
