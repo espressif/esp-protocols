@@ -1,14 +1,16 @@
+set(IDF_VER_DIR "idf_v${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}")
+
 if(NOT CONFIG_ESP_WIFI_ENABLED)
-    set(src_wifi_is_remote esp_wifi_remote.c esp_wifi_with_remote.c esp_wifi_remote_net.c)
+    set(src_wifi_is_remote esp_wifi_remote.c ${IDF_VER_DIR}/esp_wifi_with_remote.c esp_wifi_remote_net.c)
 endif()
 
 if(CONFIG_ESP_WIFI_REMOTE_LIBRARY_EPPP)
     set(src_wifi_remote_eppp eppp/wifi_remote_rpc_client.cpp eppp/wifi_remote_rpc_server.cpp eppp/eppp_init.c)
 else()
-    set(src_wifi_remote_weak esp_wifi_remote_weak.c)
+    set(src_wifi_remote_weak ${IDF_VER_DIR}/esp_wifi_remote_weak.c)
 endif()
 
-idf_component_register(INCLUDE_DIRS include
+idf_component_register(INCLUDE_DIRS include ${IDF_VER_DIR}/include
                     SRCS ${src_wifi_remote_weak}
                          ${src_wifi_remote_eppp}
                          ${src_wifi_is_remote}

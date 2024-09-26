@@ -63,6 +63,16 @@ void run_all_wifi_apis(void)
     }
 
     {
+        const wifi_scan_default_params_t *config = NULL;
+        esp_wifi_set_scan_parameters(config);
+    }
+
+    {
+        wifi_scan_default_params_t *config = NULL;
+        esp_wifi_get_scan_parameters(config);
+    }
+
+    {
         esp_wifi_scan_stop();
     }
 
@@ -273,6 +283,11 @@ void run_all_wifi_apis(void)
     {
         const wifi_csi_config_t *config = NULL;
         esp_wifi_set_csi_config(config);
+    }
+
+    {
+        wifi_csi_config_t *config = NULL;
+        esp_wifi_get_csi_config(config);
     }
 
     {

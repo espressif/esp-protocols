@@ -223,15 +223,3 @@ if SLAVE_IDF_TARGET_ESP32C6
         default y
 
 endif # ESP32C6
-
-if SLAVE_IDF_TARGET_ESP32H2
-
-endif # ESP32H2
-
-if SLAVE_IDF_TARGET_ESP32P4
-
-    config SLAVE_SOC_WIFI_LIGHT_SLEEP_CLK_WIDTH
-        int
-        default 12
-
-endif # ESP32P4

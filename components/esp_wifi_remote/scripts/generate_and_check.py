@@ -7,7 +7,7 @@ import re
 import subprocess
 from collections import namedtuple
 
-from idf_build_apps.constants import SUPPORTED_TARGETS
+from idf_build_apps.constants import PREVIEW_TARGETS, SUPPORTED_TARGETS
 from pycparser import c_ast, c_parser, preprocess_file
 
 Param = namedtuple('Param', ['ptr', 'array', 'qual', 'type', 'name'])
@@ -159,53 +159,46 @@ def get_vars(parameters):
     return definitions, comma_separated_names
 
 
-def generate_kconfig_wifi_caps(idf_path, component_path):
-    kconfig = os.path.join(component_path, 'Kconfig.soc_wifi_caps.in')
-    sdkconfig_files = []
-    with open(kconfig, 'w') as out:
-        out.write(f'# {AUTO_GENERATED}\n')
-        for slave_target in SUPPORTED_TARGETS:
-            out.write(f'\nif SLAVE_IDF_TARGET_{slave_target.upper()}\n\n')
+def generate_kconfig_wifi_caps(idf_path, idf_ver_dir, component_path):
+    kconfig = os.path.join(component_path, idf_ver_dir, 'Kconfig.soc_wifi_caps.in')
+    slave_select = os.path.join(component_path, idf_ver_dir, 'Kconfig.slave_select.in')
+    with open(kconfig, 'w') as slave_caps, open(slave_select, 'w') as slave:
+        slave_caps.write(f'# {AUTO_GENERATED}\n')
+        slave.write(f'# {AUTO_GENERATED}\n')
+        slave.write('    choice SLAVE_IDF_TARGET\n')
+        slave.write('    prompt "choose slave target"\n')
+        slave.write('    default SLAVE_IDF_TARGET_ESP32\n')
+        for slave_target in SUPPORTED_TARGETS + PREVIEW_TARGETS:
+            add_slave = False
+            kconfig_content = []
             soc_caps = os.path.join(idf_path, 'components', 'soc', slave_target, 'include', 'soc', 'Kconfig.soc_caps.in')
             with open(soc_caps, 'r') as f:
                 for line in f:
                     if line.strip().startswith('config SOC_WIFI_'):
                         if 'config SOC_WIFI_SUPPORTED' in line:
-                            # if WiFi supported for this target, test it as a slave
-                            sdkconfig = os.path.join(component_path, 'test', 'smoke_test', f'sdkconfig.ci.slave_{slave_target}')
-                            open(sdkconfig, 'w').write(f'CONFIG_SLAVE_IDF_TARGET_{slave_target.upper()}=y\n')
-                            sdkconfig_files.append(sdkconfig)
-                        replaced = re.compile(r'SOC_WIFI_').sub('SLAVE_SOC_WIFI_', line)
-                        out.write(f'    {replaced}')
-                        line = f.readline()         # type
-                        out.write(f'    {line}')
-                        line = f.readline()         # default
-                        out.write(f'    {line}\n')
-            out.write(f'endif # {slave_target.upper()}\n')
-    return [kconfig] + sdkconfig_files
+                            # if WiFi supported for this target, add it to Kconfig slave options and test this slave
+                            add_slave = True
+                        replaced = re.sub(r'SOC_WIFI_', 'SLAVE_SOC_WIFI_', line)
+                        kconfig_content.append(f'    {replaced}')
+                        kconfig_content.append(f'    {f.readline()}')  # type
+                        kconfig_content.append(f'    {f.readline()}\n')  # default
+            if add_slave:
+                slave_caps.write(f'\nif SLAVE_IDF_TARGET_{slave_target.upper()}\n\n')
+                slave_caps.writelines(kconfig_content)
+                slave_caps.write(f'endif # {slave_target.upper()}\n')
+
+                slave_config_name = 'SLAVE_IDF_TARGET_' + slave_target.upper()
+                slave.write(f'    config {slave_config_name}\n')
+                slave.write(f'        bool "{slave_target}"\n')
+
+        slave.write('    endchoice\n')
+    return [kconfig, slave_select]
 
 
-def generate_test_kconfig(component_path):
-    path = os.path.join(component_path, 'test','smoke_test','components','esp_hosted','Kconfig')
-    with open(path, 'w') as f:
-        f.write(f'# {AUTO_GENERATED}\n')
-        f.write('menu "ESP Hosted Mock"\n')
-        f.write('    choice SLAVE_IDF_TARGET\n')
-        f.write('    prompt "choose slave target"\n')
-        f.write('    default SLAVE_IDF_TARGET_ESP32\n')
-        for slave_target in SUPPORTED_TARGETS:
-            config = 'SLAVE_IDF_TARGET_' + slave_target.upper()
-            f.write(f'    config {config}\n')
-            f.write(f'        bool "{slave_target}"\n')
-        f.write('    endchoice\n')
-        f.write('endmenu\n')
-    return [path]
-
-
-def generate_remote_wifi_api(function_prototypes, component_path):
-    header = os.path.join(component_path, 'include', 'esp_wifi_remote_api.h')
-    wifi_source = os.path.join(component_path, 'esp_wifi_with_remote.c')
-    remote_source = os.path.join(component_path, 'esp_wifi_remote_weak.c')
+def generate_remote_wifi_api(function_prototypes, idf_ver_dir, component_path):
+    header = os.path.join(component_path, idf_ver_dir, 'include', 'esp_wifi_remote_api.h')
+    wifi_source = os.path.join(component_path, idf_ver_dir, 'esp_wifi_with_remote.c')
+    remote_source = os.path.join(component_path, idf_ver_dir, 'esp_wifi_remote_weak.c')
     with open(header, 'w') as f:
         f.write(COPYRIGHT_HEADER)
         f.write('#pragma once\n')
@@ -240,9 +233,9 @@ def generate_remote_wifi_api(function_prototypes, component_path):
     return [header, wifi_source, remote_source]
 
 
-def generate_hosted_mocks(function_prototypes, component_path):
-    source = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', 'esp_hosted_mock.c')
-    header = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', 'include', 'esp_hosted_mock.h')
+def generate_hosted_mocks(function_prototypes, idf_ver_dir, component_path):
+    source = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', idf_ver_dir, 'esp_hosted_mock.c')
+    header = os.path.join(component_path, 'test', 'smoke_test', 'components', 'esp_hosted', idf_ver_dir, 'include', 'esp_hosted_mock.h')
     with open(source, 'w') as f, open(header, 'w') as h:
         f.write(COPYRIGHT_HEADER)
         h.write(COPYRIGHT_HEADER)
@@ -264,9 +257,9 @@ def generate_hosted_mocks(function_prototypes, component_path):
         return [source, header]
 
 
-def generate_test_cases(function_prototypes, component_path):
-    wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', 'all_wifi_calls.c')
-    remote_wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', 'all_wifi_remote_calls.c')
+def generate_test_cases(function_prototypes, idf_ver_dir, component_path):
+    wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', idf_ver_dir, 'all_wifi_calls.c')
+    remote_wifi_cases = os.path.join(component_path, 'test', 'smoke_test', 'main', idf_ver_dir, 'all_wifi_remote_calls.c')
     with open(wifi_cases, 'w') as wifi, open(remote_wifi_cases, 'w') as remote:
         wifi.write(COPYRIGHT_HEADER)
         remote.write(COPYRIGHT_HEADER)
@@ -290,8 +283,8 @@ def generate_test_cases(function_prototypes, component_path):
     return [wifi_cases, remote_wifi_cases]
 
 
-def generate_wifi_native(idf_path, component_path):
-    wifi_native = os.path.join(component_path, 'include', 'esp_wifi_types_native.h')
+def generate_wifi_native(idf_path, idf_ver_dir, component_path):
+    wifi_native = os.path.join(component_path, idf_ver_dir, 'include', 'esp_wifi_types_native.h')
     native_header = os.path.join(idf_path, 'components', 'esp_wifi', 'include', 'local', 'esp_wifi_types_native.h')
     orig_content = open(native_header, 'r').read()
     content = orig_content.replace('CONFIG_','CONFIG_SLAVE_')
@@ -299,20 +292,15 @@ def generate_wifi_native(idf_path, component_path):
     return [wifi_native]
 
 
-def generate_kconfig(idf_path, component_path):
-    remote_kconfig = os.path.join(component_path, 'Kconfig')
+def generate_kconfig(idf_path, idf_ver_dir, component_path):
+    remote_kconfig = os.path.join(component_path, idf_ver_dir, 'Kconfig.wifi.in')
     slave_configs = ['SOC_WIFI_', 'IDF_TARGET_']
     lines = open(os.path.join(idf_path, 'components', 'esp_wifi', 'Kconfig'), 'r').readlines()
     copy = 100      # just a big number to be greater than nested_if in the first few iterations
     nested_if = 0
     with open(remote_kconfig, 'w') as f:
+        f.write(f'# Wi-Fi configuration\n')
         f.write(f'# {AUTO_GENERATED}\n')
-        f.write('menu "Wi-Fi Remote"\n')
-        f.write('    config ESP_WIFI_REMOTE_ENABLED\n')
-        f.write('        bool\n')
-        f.write('        default y\n\n')
-        f.write('    orsource "./Kconfig.soc_wifi_caps.in"\n')
-        f.write('    orsource "./Kconfig.rpc.in"\n')
         for line1 in lines:
             line = line1.strip()
             if re.match(r'^if\s+[A-Z_0-9]+\s*$', line):
@@ -328,8 +316,27 @@ def generate_kconfig(idf_path, component_path):
 
             if re.match(r'^if\s+\(?ESP_WIFI_ENABLED', line):
                 copy = nested_if
-        f.write('endmenu # Wi-Fi Remote\n')
+        f.write(f'# Wi-Fi configuration end\n')
     return [remote_kconfig]
+
+
+def compare_files(base_dir, component_path, files_to_check):
+    failures = []
+    for file_path in files_to_check:
+        relative_path = os.path.relpath(file_path, component_path)
+        base_file = os.path.join(base_dir, relative_path)
+
+        if not os.path.exists(base_file):
+            failures.append((relative_path, 'File does not exist in base directory'))
+            continue
+
+        diff_cmd = ['diff', '-I', 'Copyright', file_path, base_file]
+        result = subprocess.run(diff_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode != 0:  # diff returns 0 if files are identical
+            failures.append((relative_path, result.stdout.decode('utf-8')))
+
+    return failures
 
 
 if __name__ == '__main__':
@@ -346,7 +353,13 @@ Please be aware that the pregenerated files use the same copyright header, so af
 making changes you might need to modify 'copyright_header.h' in the script directory.
         ''')
     parser.add_argument('-s', '--skip-check', help='Skip checking the versioned files against the re-generated', action='store_true')
+    parser.add_argument('--base-dir', help='Base directory to compare generated files against')
     args = parser.parse_args()
+
+    idf_version = os.getenv('ESP_IDF_VERSION')
+    if idf_version is None:
+        raise RuntimeError("Environment variable 'ESP_IDF_VERSION' wasn't set.")
+    idf_ver_dir = f'idf_v{idf_version}'
 
     component_path = os.path.normpath(os.path.join(os.path.realpath(__file__),'..', '..'))
     idf_path = os.getenv('IDF_PATH')
@@ -357,35 +370,32 @@ making changes you might need to modify 'copyright_header.h' in the script direc
 
     files_to_check = []
 
-    files_to_check += generate_test_kconfig(component_path)
+    files_to_check += generate_kconfig_wifi_caps(idf_path, idf_ver_dir, component_path)
 
-    files_to_check += generate_kconfig_wifi_caps(idf_path, component_path)
+    files_to_check += generate_remote_wifi_api(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_remote_wifi_api(function_prototypes, component_path)
+    files_to_check += generate_hosted_mocks(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_hosted_mocks(function_prototypes, component_path)
+    files_to_check += generate_test_cases(function_prototypes, idf_ver_dir, component_path)
 
-    files_to_check += generate_test_cases(function_prototypes, component_path)
+    files_to_check += generate_wifi_native(idf_path, idf_ver_dir, component_path)
 
-    files_to_check += generate_wifi_native(idf_path, component_path)
+    files_to_check += generate_kconfig(idf_path, idf_ver_dir, component_path)
 
-    files_to_check += generate_kconfig(idf_path, component_path)
-
-    fail_test = False
-    failures = []
     for f in files_to_check:
-        print(f'checking {f}')
-        rc, out, err, cmd = exec_cmd(['git', 'difftool', '-y', '-x', 'diff -I Copyright', '--', f])
-        if out == '' or out.isspace():
-            print('    - ok')
-        else:
-            print('    - FAILED!')
-            failures.append((f, out))
-            fail_test = True
+        print(f)
 
-    if fail_test:
+    if args.skip_check or args.base_dir is None:
+        exit(0)
+
+    failures = compare_files(args.base_dir, component_path, files_to_check)
+
+    if failures:
         print(parser.epilog)
-        print('\nDIfferent files:\n')
-        for i in failures:
-            print(f'{i[0]}\nChanges:\n{i[1]}')
+        print('\nDifferent files:\n')
+        for file, diff in failures:
+            print(f'{file}\nChanges:\n{diff}')
         exit(1)
+    else:
+        print('All files are identical to the base directory.')
+        exit(0)
