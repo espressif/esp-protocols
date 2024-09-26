@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 """
 This file is used in CI for esp-protocols build tests
@@ -10,8 +10,6 @@ import sys
 
 from idf_build_apps import build_apps, find_apps, setup_logging
 from idf_build_apps.constants import SUPPORTED_TARGETS
-from packaging import version
-from pkg_resources import get_distribution
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -51,43 +49,24 @@ if __name__ == '__main__':
         SUPPORTED_TARGETS.append('linux')
         ignore_warning = 'warning: '  # Ignore all common warnings on linux builds
     setup_logging(2)
-    if version.parse(get_distribution('idf_build_apps').version) >= version.parse('2.0.0'):
-        apps = find_apps(
-            args.paths,
-            recursive=args.recursive,
-            target=args.target,
-            build_dir='build_@t_@w',
-            config_rules_str=args.rules,
-            build_log_filename='build_log.txt',
-            size_json_filename='size.json' if not args.linux else None,
-            check_warnings=True,
-            preserve=not args.delete,
-            manifest_files=args.manifests,
-            default_build_targets=SUPPORTED_TARGETS,
-            manifest_rootpath='.',
-        )
-    else:
-        apps = find_apps(
-            args.paths,
-            recursive=args.recursive,
-            target=args.target,
-            build_dir='build_@t_@w',
-            config_rules_str=args.rules,
-            build_log_path='build_log.txt',
-            size_json_path='size.json' if not args.linux else None,
-            check_warnings=True,
-            preserve=not args.delete,
-            manifest_files=args.manifests,
-            default_build_targets=SUPPORTED_TARGETS,
-            manifest_rootpath='.',
-        )
-
-    for app in apps:
-        print(app)
+    apps = find_apps(
+        args.paths,
+        recursive=args.recursive,
+        target=args.target,
+        build_dir='build_@t_@w',
+        config_rules_str=args.rules,
+        build_log_filename='build_log.txt',
+        size_json_filename='size.json' if not args.linux else None,
+        check_warnings=True,
+        manifest_files=args.manifests,
+        default_build_targets=SUPPORTED_TARGETS,
+        manifest_rootpath='.',
+    )
 
     sys.exit(
         build_apps(apps,
                    dry_run=False,
                    keep_going=False,
+                   no_preserve=args.delete,
                    ignore_warning_strs=ignore_warning)
     )
