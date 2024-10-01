@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -37,6 +37,17 @@ enum class modem_mode {
     CMUX_MANUAL_DATA,    /*!< Sets the primary terminal to DATA mode in manual CMUX */
     CMUX_MANUAL_COMMAND, /*!< Sets the primary terminal to COMMAND mode in manual CMUX */
     CMUX_MANUAL_SWAP,    /*!< Swaps virtual terminals in manual CMUX mode (primary <-> secondary) */
+    RESUME_DATA_MODE,    /*!< This is used when the device is already in DATA mode and we need the modem lib to
+                          * enter the mode without switching. On success, we would end up in DATA-mode, UNDEF otherwise */
+    RESUME_COMMAND_MODE, /*!< This is used when the device is already in COMMAND mode and we want to resume it
+                          * On success, we would end up in DATA-mode, UNDEF otherwise */
+    RESUME_CMUX_MANUAL_MODE, /*!< This is used when the device is already in CMUX mode and we need the modem lib to
+                              * enter it without switching. On success, we would end up in CMUX_MANUAL-mode, UNDEF otherwise */
+    RESUME_CMUX_MANUAL_DATA, /*!< This is used when the device is already in CMUX-DATA mode and we need the modem lib to
+                              * enter it without switching. On success, we would end up in CMUX_MANUAL-DATA mode, UNDEF otherwise */
+    AUTODETECT,              /*!< Auto-detection command: It tries to send a few packets in order to recognize which mode the
+                              * the device currently is and update the modem library mode. On success the modem is updated,
+                              * otherwise it's set to UNDEF */
 };
 
 /**
