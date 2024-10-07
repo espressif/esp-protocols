@@ -94,7 +94,14 @@ static void listeners__stop(void)
     mosquitto__free(listensock);
 }
 
-int mosq_broker_start(struct mosq_broker_config *broker_config)
+void net__set_tls_config(esp_tls_cfg_server_t *config);
+
+void mosq_broker_stop(void)
+{
+    run = 0;
+}
+
+int mosq_broker_run(struct mosq_broker_config *broker_config)
 {
 
     struct mosquitto__config config;
@@ -114,6 +121,10 @@ int mosq_broker_start(struct mosq_broker_config *broker_config)
     net__broker_init();
 
     config__init(&config);
+
+    if (broker_config->tls_cfg) {
+        net__set_tls_config(broker_config->tls_cfg);
+    }
 
     db.config = &config;
 

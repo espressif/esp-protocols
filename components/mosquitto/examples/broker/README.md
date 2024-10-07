@@ -2,7 +2,7 @@
 
 ## Overview
 
-This example runs a TCP broker on a specified host and port.
+This example runs a broker on TLS or TCP transport, specified host and port.
 
 ### How to use this example
 
@@ -12,6 +12,9 @@ After it connects via the specified network interface, it starts the mosquitto b
 If you enabled also the mqtt client, this example will connect to the local broker, subscribe and publish to a topic.
 
 You can connect to the ESP32 mosquitto broker using some other client using the ESP32 IPv4 address and the port specified in the project configuration menu.
+
+> [!IMPORTANT]
+> Please do not reuse the test certificates and keys used in this example. Note that these are single purpose, self-signed with common name set to `"127.0.0.1"`.
 
 ### Test version
 

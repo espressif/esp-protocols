@@ -5,6 +5,7 @@
  */
 #pragma once
 #include "mosquitto.h"
+#include "esp_tls.h"
 
 struct mosquitto__config;
 
@@ -17,6 +18,7 @@ struct mosquitto__config;
 struct mosq_broker_config {
     char *host; /*!< Address on which the broker is listening for connections */
     int port;   /*!< Port number of the broker to listen to */
+    esp_tls_cfg_server_t *tls_cfg;  /*!< ESP-TLS configuration (if TLS transport used) */
 };
 
 /**
@@ -28,4 +30,11 @@ struct mosq_broker_config {
  * @param config Mosquitto configuration structure
  * @return int Exit code (0 on success)
  */
-int mosq_broker_start(struct mosq_broker_config *config);
+int mosq_broker_run(struct mosq_broker_config *config);
+
+/**
+ * @brief Stops running broker
+ *
+ * @note After calling this API, function mosq_broker_run() unblocks and returns.
+ */
+void mosq_broker_stop(void);
