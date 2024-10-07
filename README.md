@@ -54,10 +54,6 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 
 * Brief introduction [README](components/eppp_link/README.md)
 
-### esp_wifi_remote
-
-* Brief introduction [README](components/esp_wifi_remote/README.md)
-
 ### mbedtls_cxx
 
 * Brief introduction [README](components/mbedtls_cxx/README.md)
