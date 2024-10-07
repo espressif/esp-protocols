@@ -1,21 +1,21 @@
 # ESP32 Mosquitto Port
 
-This is a lightweight port of the Mosquitto broker designed to run on the ESP32. It currently supports a single listener and TCP transport only.
+This is a lightweight port of the Mosquitto broker designed to run on the ESP32. It currently supports a single listener with TCP transport or TLS transport based on ESP-TLS library.
 
 ## Supported Options
 
-The Espressif port supports a limited set of options (with plans to add more in future releases). These options can be configured through a structure passed to the `mosq_broker_start()` function. For detailed information on available configuration options, refer to the [API documentation](api.md).
+The Espressif port supports a limited set of options (with plans to add more in future releases). These options can be configured through a structure passed to the `mosq_broker_run()` function. For detailed information on available configuration options, refer to the [API documentation](api.md).
 
 ## API
 
 ### Starting the Broker
 
-To start the broker, call the `mosq_broker_start()` function with a properly configured settings structure. The broker operates in the context of the calling task and does not create a separate task.
+To start the broker, call the `mosq_broker_run()` function with a properly configured settings structure. The broker operates in the context of the calling task and does not create a separate task.
 
 It's recommended to analyze the stack size needed for the task, but in general, the broker requires at least 4 kB of stack size.
 
 ```c
-mosq_broker_start(&config);
+mosq_broker_run(&config);
 ```
 
 ## Memory Footprint Considerations
