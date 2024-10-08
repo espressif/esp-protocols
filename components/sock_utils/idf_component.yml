@@ -1,0 +1,6 @@
+version: 0.0.0
+description: The component provides helper implementation of common system/socket utilities
+url: https://github.com/espressif/esp-protocols/tree/master/components/sock_utils
+dependencies:
+  idf:
+    version: '>=5.0'

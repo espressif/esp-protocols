@@ -1,0 +1,5 @@
+dependencies:
+  espressif/catch2: "^3.4.0"
+  sock_utils:
+    version: "*"
+    override_path: '../../../'
