@@ -229,13 +229,15 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     ESP_WS_CLIENT_STATE_CHECK(TAG, client, return ESP_FAIL);
     esp_transport_close(client->transport);
 
-    if (client->config->auto_reconnect) {
+    if (!client->config->auto_reconnect) {
+        client->run = false;
+        client->state = WEBSOCKET_STATE_UNKNOW;
+    } else {
         client->reconnect_tick_ms = _tick_get_ms();
         ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+        client->error_handle.error_type = error_type;
+        client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
     }
-
-    client->error_handle.error_type = error_type;
-    client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DISCONNECTED, NULL, 0);
     return ESP_OK;
 }
@@ -1051,10 +1053,6 @@ static void esp_websocket_client_task(void *pv)
             break;
         case WEBSOCKET_STATE_WAIT_TIMEOUT:
 
-            if (!client->config->auto_reconnect) {
-                client->run = false;
-                break;
-            }
             if (_tick_get_ms() - client->reconnect_tick_ms > client->wait_timeout_ms) {
                 client->state = WEBSOCKET_STATE_INIT;
                 client->reconnect_tick_ms = _tick_get_ms();
