@@ -61,3 +61,8 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### mbedtls_cxx
 
 * Brief introduction [README](components/mbedtls_cxx/README.md)
+
+### mosquitto
+
+* Brief introduction [README](components/mosquitto/README.md)
+* API documentation [api.md](components/mosquitto/api.md)

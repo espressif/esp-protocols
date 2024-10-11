@@ -100,5 +100,6 @@ jobs:
             components/console_cmd_wifi;
             components/esp_wifi_remote;
             components/mbedtls_cxx;
+            components/mosquitto;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
