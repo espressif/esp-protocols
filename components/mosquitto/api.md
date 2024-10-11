@@ -20,7 +20,8 @@
 
 | Type | Name |
 | ---: | :--- |
-|  int | [**mosq\_broker\_start**](#function-mosq_broker_start) (struct [**mosq\_broker\_config**](#struct-mosq_broker_config) \*config) <br>_Start mosquitto broker._ |
+|  int | [**mosq\_broker\_run**](#function-mosq_broker_run) (struct [**mosq\_broker\_config**](#struct-mosq_broker_config) \*config) <br>_Start mosquitto broker._ |
+|  void | [**mosq\_broker\_stop**](#function-mosq_broker_stop) (void) <br>_Stops running broker._ |
 
 
 ## Structures and Types Documentation
@@ -37,14 +38,16 @@ Variables:
 
 -  int port  <br>Port number of the broker to listen to
 
+-  esp\_tls\_cfg\_server\_t \* tls_cfg  <br>ESP-TLS configuration (if TLS transport used) Please refer to the ESP-TLS official documentation for more details on configuring the TLS options. You can open the respective docs with this idf.py command: `idf.py docs -sp api-reference/protocols/esp_tls.html`
+
 
 ## Functions Documentation
 
-### function `mosq_broker_start`
+### function `mosq_broker_run`
 
 _Start mosquitto broker._
 ```c
-int mosq_broker_start (
+int mosq_broker_run (
     struct mosq_broker_config *config
 )
 ```
@@ -63,3 +66,16 @@ This API runs the broker in the calling thread and blocks until the mosquitto ex
 **Returns:**
 
 int Exit code (0 on success)
+### function `mosq_broker_stop`
+
+_Stops running broker._
+```c
+void mosq_broker_stop (
+    void
+)
+```
+
+
+**Note:**
+
+After calling this API, function mosq\_broker\_run() unblocks and returns.

@@ -53,6 +53,7 @@ mosquitto_component:
   allowed_licenses:
     - EPL-2.0
     - Apache-2.0
+    - BSD-3-Clause
 
 slim_modem_examples:
   include:
