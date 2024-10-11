@@ -1,7 +1,8 @@
+---
 commitizen:
   bump_message: 'bump(mosq): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py mosquitto
   tag_format: mosq-v$version
-  version: 2.0.27
+  version: 2.0.28~0
   version_files:
-    - idf_component.yml
+  - idf_component.yml
