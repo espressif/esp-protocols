@@ -25,7 +25,7 @@ static esp_err_t _mdns_sync_browse_action(mdns_action_type_t type, mdns_browse_s
 static void _mdns_browse_sync(mdns_browse_sync_t *browse_sync);
 static void _mdns_browse_finish(mdns_browse_t *browse);
 static void _mdns_browse_add(mdns_browse_t *browse);
-static void _mdns_browse_send(mdns_browse_t *browse);
+static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface);
 
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
@@ -4476,7 +4476,11 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                         post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
                         post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
                     }
-
+                    mdns_browse_t *browse = _mdns_server->browse;
+                    while (browse) {
+                        _mdns_browse_send(browse, mdns_if);
+                        browse = browse->next;
+                    }
                 }
                 break;
                 default:
@@ -7119,7 +7123,9 @@ static void _mdns_browse_add(mdns_browse_t *browse)
         browse->next = _mdns_server->browse;
         _mdns_server->browse = browse;
     }
-    _mdns_browse_send(browse);
+    for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
+        _mdns_browse_send(browse, (mdns_if_t)interface_idx);
+    }
     if (found) {
         _mdns_browse_item_free(browse);
     }
@@ -7128,7 +7134,7 @@ static void _mdns_browse_add(mdns_browse_t *browse)
 /**
  * @brief  Send PTR query packet to all available interfaces for browsing.
  */
-static void _mdns_browse_send(mdns_browse_t *browse)
+static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface)
 {
     // Using search once for sending the PTR query
     mdns_search_once_t search = {0};
@@ -7141,11 +7147,8 @@ static void _mdns_browse_send(mdns_browse_t *browse)
     search.result = NULL;
     search.next = NULL;
 
-    uint8_t i, j;
-    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            _mdns_search_send_pcb(&search, (mdns_if_t)i, (mdns_ip_protocol_t)j);
-        }
+    for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
+        _mdns_search_send_pcb(&search, interface, (mdns_ip_protocol_t)protocol_idx);
     }
 }
 
