@@ -30,9 +30,11 @@ public:
     ~DCE_Mode() = default;
     bool set(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
     modem_mode get();
+    modem_mode guess(DTE *dte, bool with_cmux = false);
 
 private:
     bool set_unsafe(DTE *dte, ModuleIf *module, Netif &netif, modem_mode m);
+    modem_mode guess_unsafe(DTE *dte, bool with_cmux);
     modem_mode mode;
 
 };
@@ -77,6 +79,11 @@ public:
     command_result command(const std::string &command, got_line_cb got_line, uint32_t time_ms)
     {
         return dte->command(command, std::move(got_line), time_ms);
+    }
+
+    modem_mode guess_mode(bool with_cmux = false)
+    {
+        return mode.guess(dte.get(), with_cmux);
     }
 
     bool set_mode(modem_mode m)
