@@ -1147,6 +1147,17 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
 
 esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
 {
+    esp_err_t result = esp_websocket_client_initiate_stop(client);
+    if (result != ESP_OK)
+        return result;
+
+    xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
+    client->state = WEBSOCKET_STATE_UNKNOW;
+    return ESP_OK;
+}
+
+esp_err_t esp_websocket_client_initiate_stop(esp_websocket_client_handle_t client)
+{
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -1162,11 +1173,28 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
-
     client->run = false;
-    xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
-    client->state = WEBSOCKET_STATE_UNKNOW;
+
     return ESP_OK;
+}
+
+bool esp_websocket_client_is_already_stopped(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (client->run)
+        return false;
+
+    EventBits_t bits = xEventGroupClearBits(client->status_bits, 0);
+    if (bits & STOPPED_BIT)
+    {
+        client->state = WEBSOCKET_STATE_UNKNOW;
+        return true;
+    }
+
+    return false;
 }
 
 static int esp_websocket_client_send_close(esp_websocket_client_handle_t client, int code, const char *additional_data, int total_len, TickType_t timeout)
