@@ -6996,7 +6996,7 @@ static void _mdns_browse_item_free(mdns_browse_t *browse)
     free(browse->service);
     free(browse->proto);
     if (browse->result) {
-        mdns_query_results_free(browse->result);
+        _mdns_query_results_free(browse->result);
     }
     free(browse);
 }
