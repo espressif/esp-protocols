@@ -2,7 +2,7 @@
 
 rm -rf docs
 
-build-docs --target esp32 --language en
+build-docs --target esp32 --language en --project-path ../../
 
 mkdir -p docs/generic
 mv _build/en/esp32/html docs/generic

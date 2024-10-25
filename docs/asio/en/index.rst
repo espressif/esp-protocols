@@ -31,13 +31,13 @@ Internal asio settings for ESP include
 
 Application Example
 -------------------
-ESP examples are based on standard asio :example:`examples <../../../components/asio/examples>`:
+ESP examples are based on standard asio :component:`asio/examples`:
 
-- :example:`asio_chat <../../../components/asio/examples/asio_chat>`
-- :example:`async_request <../../../components/asio/examples/async_request>`
-- :example:`socks4 <../../../components/asio/examples/socks4>`
-- :example:`ssl_client_server <../../../components/asio/examples/ssl_client_server>`
-- :example:`tcp_echo_server <../../../components/asio/examples/tcp_echo_server>`
-- :example:`udp_echo_server <../../../components/asio/examples/udp_echo_server>`
+- :component:`asio/examples/asio_chat`
+- :component:`asio/examples/async_request`
+- :component:`asio/examples/socks4`
+- :component:`asio/examples/ssl_client_server`
+- :component:`asio/examples/tcp_echo_server`
+- :component:`asio/examples/udp_echo_server`
 
 Please refer to the specific example README.md for details
