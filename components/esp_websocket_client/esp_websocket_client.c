@@ -436,7 +436,7 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
     if (client->transport_list) {
         esp_transport_list_destroy(client->transport_list);
     }
-    vQueueDelete(client->lock);
+    vSemaphoreDelete(client->lock);
     free(client->tx_buffer);
     free(client->rx_buffer);
     free(client->errormsg_buffer);
