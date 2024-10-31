@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.3.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.3.0)
+
+### Features
+
+- add events for begin/end thread ([d7fa24bc](https://github.com/espressif/esp-protocols/commit/d7fa24bc))
+- Make example to use certificate bundle ([aecf6f80](https://github.com/espressif/esp-protocols/commit/aecf6f80))
+- propagate esp_tls stack error and cert verify flags ([234f579b](https://github.com/espressif/esp-protocols/commit/234f579b))
+- Add option to set and use cert_common_name in Websocket client ([3a6720de](https://github.com/espressif/esp-protocols/commit/3a6720de))
+- adding support for `if_name` when using WSS transport ([333a6893](https://github.com/espressif/esp-protocols/commit/333a6893))
+- allow updating reconnect timeout for retry backoffs ([bd9f0627](https://github.com/espressif/esp-protocols/commit/bd9f0627))
+- allow using external tcp transport handle ([83ea2876](https://github.com/espressif/esp-protocols/commit/83ea2876))
+- adding support for `keep_alive_enable` when using WSS transport ([c728eae5](https://github.com/espressif/esp-protocols/commit/c728eae5))
+
+### Bug Fixes
+
+- Prevent crash on network disconnect during send ([a453ca1f](https://github.com/espressif/esp-protocols/commit/a453ca1f))
+- use proper interface to delete semaphore ([991ac40d](https://github.com/espressif/esp-protocols/commit/991ac40d))
+- Move client to different state when disconnecting ([0d8f2a6d](https://github.com/espressif/esp-protocols/commit/0d8f2a6d))
+- fix of websocket host example ([5ccc018a](https://github.com/espressif/esp-protocols/commit/5ccc018a))
+- don't get transport from the list if external transport is used ([9d4d5d2d](https://github.com/espressif/esp-protocols/commit/9d4d5d2d))
+- Fix locking issues of `esp_websocket_client_send_with_exact_opcode` API ([6393fcd7](https://github.com/espressif/esp-protocols/commit/6393fcd7))
+
 ## [1.2.3](https://github.com/espressif/esp-protocols/commits/websocket-v1.2.3)
 
 ### Features
