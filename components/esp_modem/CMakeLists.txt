@@ -15,6 +15,13 @@ else()
 endif()
 
 
+if(CONFIG_ESP_MODEM_ENABLE_DEVELOPMENT_MODE)
+    set(command_dir "generate") # using in-place macro expansion with AT commands
+else()
+    set(command_dir "command") # using pre-generated AT commands
+endif()
+
+
 set(srcs ${platform_srcs}
         "src/esp_modem_dte.cpp"
         "src/esp_modem_dce.cpp"
@@ -26,12 +33,10 @@ set(srcs ${platform_srcs}
         "src/esp_modem_term_fs.cpp"
         "src/esp_modem_vfs_uart_creator.cpp"
         "src/esp_modem_vfs_socket_creator.cpp"
-        "src/esp_modem_modules.cpp")
-
-set(include_dirs "include")
+        "${command_dir}/src/esp_modem_modules.cpp")
 
 idf_component_register(SRCS "${srcs}"
-                    INCLUDE_DIRS "${include_dirs}"
+                    INCLUDE_DIRS include ${command_dir}/include
                     PRIV_INCLUDE_DIRS private_include
                     REQUIRES ${dependencies})
 

@@ -8,11 +8,13 @@
 
 #include <memory>
 #include <utility>
-#include "generate/esp_modem_command_declare.inc"
+//#include "generate/esp_modem_command_declare.inc"
 #include "cxx_include/esp_modem_command_library.hpp"
 #include "cxx_include/esp_modem_types.hpp"
 #include "esp_modem_dce_config.h"
 
+
+//  --- ESP-MODEM command module starts here ---
 namespace esp_modem {
 
 /**
@@ -112,10 +114,15 @@ public:
     /**
      * @brief Common DCE commands generated from the API AT list
      */
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-    virtual return_type name(__VA_ARGS__);
+#include "esp_modem_command_declare_helper.inc"
 
-    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...);)
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+    virtual return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
+
+//    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...); )
+
+#include "esp_modem_command_declare.inc"
+
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 

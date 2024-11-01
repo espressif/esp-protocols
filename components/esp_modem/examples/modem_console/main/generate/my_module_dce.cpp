@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -15,26 +15,15 @@
 #include <cstring>
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
-#include "generate/esp_modem_command_declare.inc"
+//#include "generate/esp_modem_command_declare.inc"
 #include "my_module_dce.hpp"
 
+//  --- ESP-MODEM command module starts here ---
 using namespace esp_modem;
 
 //
 // Define preprocessor's forwarding to dce_commands definitions
 //
-
-// Helper macros to handle multiple arguments of declared API
-#define ARGS0
-#define ARGS1 , p1
-#define ARGS2 , p1 , p2
-#define ARGS3 , p1 , p2 , p3
-#define ARGS4 , p1 , p2 , p3, p4
-#define ARGS5 , p1 , p2 , p3, p4, p5
-#define ARGS6 , p1 , p2 , p3, p4, p5, p6
-
-#define _ARGS(x)  ARGS ## x
-#define ARGS(x)  _ARGS(x)
 
 #define CMD_OK    (1)
 #define CMD_FAIL  (2)
@@ -42,16 +31,18 @@ using namespace esp_modem;
 //
 // Repeat all declarations and forward to the AT commands defined in esp_modem::dce_commands:: namespace
 //
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
-     return_type Shiny::DCE::name(__VA_ARGS__) { return esp_modem::dce_commands::name(this ARGS(arg_nr) ); }
+#include "esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+     return_type Shiny::DCE::name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__)) { return esp_modem::dce_commands::name(this ESP_MODEM_COMMAND_FORWARD_AFTER(__VA_ARGS__) ); }
 
-DECLARE_ALL_COMMAND_APIS(return_type name(...) )
+//DECLARE_ALL_COMMAND_APIS(return_type name(...) )
+#include "esp_modem_command_declare.inc"
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 std::unique_ptr<Shiny::DCE> create_shiny_dce(const esp_modem::dce_config *config,
-        std::shared_ptr<esp_modem::DTE> dte,
-        esp_netif_t *netif)
+                                             std::shared_ptr<esp_modem::DTE> dte,
+                                             esp_netif_t *netif)
 {
     return Shiny::Factory::create(config, std::move(dte), netif);
 }

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,7 +7,6 @@
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include <cxx_include/esp_modem_dce_factory.hpp>
-#include "socket_commands.inc"
 #include "sock_commands.hpp"
 #include <sys/socket.h>
 
@@ -102,11 +101,12 @@ class DCE : public ::esp_modem::GenericModule {
     using esp_modem::GenericModule::GenericModule;
 public:
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-esp_modem::return_type name(__VA_ARGS__);
+//  --- ESP-MODEM command module starts here ---
+#include "esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
 
-    DECLARE_SOCK_COMMANDS(declare name(Commandable *p, ...);)
-
+#include "socket_commands.inc"
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
     bool init();

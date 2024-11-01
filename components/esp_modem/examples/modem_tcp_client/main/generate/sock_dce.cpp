@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -304,23 +304,13 @@ std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr
     return Factory::create(config, std::move(dte));
 }
 
-// Helper macros to handle multiple arguments of declared API
-#define ARGS0
-#define ARGS1 , p1
-#define ARGS2 , p1 , p2
-#define ARGS3 , p1 , p2 , p3
 
-#define EXPAND_ARGS(x)  ARGS ## x
-#define ARGS(x)  EXPAND_ARGS(x)
+//  --- ESP-MODEM command module starts here ---
+#include "esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+     esp_modem::return_type DCE::name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__)) { return sock_commands::name(dte.get() ESP_MODEM_COMMAND_FORWARD_AFTER(__VA_ARGS__) ); }
 
-//
-// Repeat all declarations and forward to the AT commands defined in ::sock_commands namespace
-//
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
-     esp_modem::return_type DCE::name(__VA_ARGS__) { return sock_commands::name(dte.get() ARGS(arg_nr) ); }
-
-DECLARE_SOCK_COMMANDS(return_type name(...) )
-
+#include "socket_commands.inc"
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
 } // namespace sock_dce

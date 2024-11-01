@@ -3,15 +3,14 @@
 # Cleanup the generated html
 rm -rf html docs
 
-# Generate C++ API header of the DCE
-cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_dce.hpp
+pushd `pwd`
 
-# Generate C API header of the modem_api.h
-cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../../components/esp_modem/include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > en/esp_modem_api_commands.h
+cd ../../components/esp_modem/scripts
+./generate.sh ../../docs/esp_modem/generate/dce.rst
+./generate.sh ../../docs/esp_modem/generate/dce.hpp
+./generate.sh ../../docs/esp_modem/generate/dce.h
 
-
-# RST with links to C++ API
-cat ../../components/esp_modem/include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../../components/esp_modem/include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > en/cxx_api_links.rst
+popd
 
 build-docs --target esp32 --language en
 

@@ -6,37 +6,35 @@
 
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
-#include "generate/esp_modem_command_declare.inc"
 #include "cxx17_include/esp_modem_command_library_17.hpp"
+#include "cxx_include/esp_modem_dte.hpp"
 
+//  --- ESP-MODEM command module starts here ---
 namespace esp_modem {
 
 GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config) :
     dte(std::move(dte)), pdp(std::make_unique<PdpContext>(config->apn)) {}
 
-//
-// Define preprocessor's forwarding to dce_commands definitions
-//
 
-// Helper macros to handle multiple arguments of declared API
-#define ARGS0
-#define ARGS1 , p1
-#define ARGS2 , p1 , p2
-#define ARGS3 , p1 , p2 , p3
-#define ARGS4 , p1 , p2 , p3, p4
-#define ARGS5 , p1 , p2 , p3, p4, p5
-#define ARGS6 , p1 , p2 , p3, p4, p5, p6
+#include "esp_modem_command_declare_helper.inc"
 
-#define _ARGS(x)  ARGS ## x
-#define ARGS(x)  _ARGS(x)
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, type, ...) \
+    type GenericModule::name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__)) { \
+        return esp_modem::dce_commands::name(dte.get() ESP_MODEM_COMMAND_FORWARD_AFTER(__VA_ARGS__)); }
+
+#include "esp_modem_command_declare.inc"
+
+
+
+// Usage examples:
+// Zero arguments
+
+// Helper to apply the correct macro to each parameter
 
 //
 // Repeat all declarations and forward to the AT commands defined in esp_modem::dce_commands:: namespace
 //
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
-     return_type GenericModule::name(__VA_ARGS__) { return esp_modem::dce_commands::name(dte.get() ARGS(arg_nr) ); }
 
-DECLARE_ALL_COMMAND_APIS(return_type name(...))
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 

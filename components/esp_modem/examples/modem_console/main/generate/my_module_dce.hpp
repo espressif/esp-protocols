@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -16,6 +16,7 @@
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 
+//  --- ESP-MODEM command module starts here ---
 /**
  * @brief Definition of a custom DCE uses GenericModule and all its methods
  * but could override command processing. Here, for demonstration purposes only,
@@ -51,10 +52,12 @@ public:
         return dte->on_read(on_data);
     }
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-    esp_modem::return_type name(__VA_ARGS__);
+#include "../generate/include/esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+    esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
 
-    DECLARE_ALL_COMMAND_APIS(forwards name(...))
+//    DECLARE_ALL_COMMAND_APIS(forwards name(...))
+#include "../generate/include/esp_modem_command_declare.inc"
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -103,5 +106,5 @@ public:
  * @return unique pointer of the resultant DCE
  */
 std::unique_ptr<Shiny::DCE> create_shiny_dce(const esp_modem::dce_config *config,
-        std::shared_ptr<esp_modem::DTE> dte,
-        esp_netif_t *netif);
+                                             std::shared_ptr<esp_modem::DTE> dte,
+                                             esp_netif_t *netif);
