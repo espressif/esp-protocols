@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,7 +7,6 @@
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
 #include <cxx_include/esp_modem_dce_factory.hpp>
-#include "socket_commands.inc"
 #include "sock_commands.hpp"
 #include <sys/socket.h>
 
@@ -102,25 +101,49 @@ class DCE : public ::esp_modem::GenericModule {
     using esp_modem::GenericModule::GenericModule;
 public:
 
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-esp_modem::return_type name(__VA_ARGS__);
-
-    DECLARE_SOCK_COMMANDS(declare name(Commandable *p, ...);)
-
-#undef ESP_MODEM_DECLARE_DCE_COMMAND
-
+    /**
+     * @brief Opens network in AT command mode
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result net_open();
+    /**
+     * @brief Closes network in AT command mode
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result net_close();
+    /**
+     * @brief Opens a TCP connection
+     * @param[in] host Host name or IP address to connect to
+     * @param[in] port Port number
+     * @param[in] timeout Connection timeout
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result tcp_open(const std::string &host, int port, int timeout );
+    /**
+     * @brief Closes opened TCP socket
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result tcp_close();
+    /**
+     * @brief Gets modem IP address
+     * @param[out] addr String representation of modem's IP
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result get_ip(std::string &addr );
+    /**
+     * @brief Sets Rx mode
+     * @param[in] mode 0=auto, 1=manual
+     * @return OK, FAIL or TIMEOUT
+     */
+    esp_modem::command_result set_rx_mode(int mode );
     bool init();
     bool connect(std::string host, int port);
-
     void start_listening(int port);
-
     bool perform_sock();
-
     void set_idle()
     {
         signal.set(IDLE);
     }
-
     bool wait_to_idle(uint32_t ms)
     {
         if (!signal.wait(IDLE, ms)) {
@@ -133,7 +156,6 @@ esp_modem::return_type name(__VA_ARGS__);
         }
         return true;
     }
-
     int sync_recv(char *buffer, int len, int timeout_ms)
     {
         if (!wait_to_idle(timeout_ms)) {
@@ -155,7 +177,6 @@ esp_modem::return_type name(__VA_ARGS__);
         set_idle();
         return ret;
     }
-
     int sync_send(const char *buffer, size_t len, int timeout_ms)
     {
         int len_to_send = std::min(len, at.get_buf_len());
@@ -176,11 +197,10 @@ esp_modem::return_type name(__VA_ARGS__);
         set_idle();
         return len_to_send;
     }
-
     int wait_to_read(uint32_t ms)
     {
         if (at.has_data() > 0) {
-            ESP_LOGD("dce",  "Data buffered in modem (len=%d)", at.has_data());
+            ESP_LOGD("dce", "Data buffered in modem (len=%d)", at.has_data());
             return 1;
         }
         struct timeval tv = {
@@ -194,7 +214,7 @@ esp_modem::return_type name(__VA_ARGS__);
         if (s == 0) {
             return 0;
         } else if (s < 0) {
-            ESP_LOGE("dce",  "select error %d", errno);
+            ESP_LOGE("dce", "select error %d", errno);
             return -1;
         }
         if (FD_ISSET(data_ready_fd, &fdset)) {
@@ -203,17 +223,13 @@ esp_modem::return_type name(__VA_ARGS__);
         }
         return -1;
     }
-
 private:
     esp_modem::SignalGroup signal;
-
     void close_sock();
     bool accept_sock();
     bool sock_to_at();
     bool at_to_sock();
-
     void perform_at(uint8_t *data, size_t len);
-
     status state{status::IDLE};
     static constexpr uint8_t IDLE = 1;
     Responder at{sock, data_ready_fd, dte};
@@ -221,7 +237,5 @@ private:
     int listen_sock {-1};
     int data_ready_fd {-1};
 };
-
 std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr<esp_modem::DTE> dte);
-
 }

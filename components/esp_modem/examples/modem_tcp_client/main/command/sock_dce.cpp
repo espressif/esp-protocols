@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -304,23 +304,58 @@ std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr
     return Factory::create(config, std::move(dte));
 }
 
-// Helper macros to handle multiple arguments of declared API
-#define ARGS0
-#define ARGS1 , p1
-#define ARGS2 , p1 , p2
-#define ARGS3 , p1 , p2 , p3
 
-#define EXPAND_ARGS(x)  ARGS ## x
-#define ARGS(x)  EXPAND_ARGS(x)
-
-//
-// Repeat all declarations and forward to the AT commands defined in ::sock_commands namespace
-//
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
-     esp_modem::return_type DCE::name(__VA_ARGS__) { return sock_commands::name(dte.get() ARGS(arg_nr) ); }
-
-DECLARE_SOCK_COMMANDS(return_type name(...) )
-
-#undef ESP_MODEM_DECLARE_DCE_COMMAND
-
+/**
+ * @brief Opens network in AT command mode
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::net_open()
+{
+    return sock_commands::net_open(dte.get() );
+}
+/**
+ * @brief Closes network in AT command mode
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::net_close()
+{
+    return sock_commands::net_close(dte.get() );
+}
+/**
+ * @brief Opens a TCP connection
+ * @param[in] host Host name or IP address to connect to
+ * @param[in] port Port number
+ * @param[in] timeout Connection timeout
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::tcp_open(const std::string &host, int port, int timeout )
+{
+    return sock_commands::tcp_open(dte.get(), host, port, timeout );
+}
+/**
+ * @brief Closes opened TCP socket
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::tcp_close()
+{
+    return sock_commands::tcp_close(dte.get() );
+}
+/**
+ * @brief Gets modem IP address
+ * @param[out] addr String representation of modem's IP
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::get_ip(std::string &addr )
+{
+    return sock_commands::get_ip(dte.get(), addr );
+}
+/**
+ * @brief Sets Rx mode
+ * @param[in] mode 0=auto, 1=manual
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_modem::command_result DCE::set_rx_mode(int mode )
+{
+    return sock_commands::set_rx_mode(dte.get(), mode );
+}
 } // namespace sock_dce
