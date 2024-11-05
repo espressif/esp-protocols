@@ -222,6 +222,7 @@ static void websocket_app_start(void)
     char *long_data = malloc(size);
     memset(long_data, 'a', size);
     esp_websocket_client_send_text(client, long_data, size, portMAX_DELAY);
+    free(long_data);
 
     xSemaphoreTake(shutdown_sema, portMAX_DELAY);
     esp_websocket_client_close(client, portMAX_DELAY);
