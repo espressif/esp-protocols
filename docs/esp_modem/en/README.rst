@@ -197,7 +197,7 @@ we need to timely interrupt to process incoming data. Here'are few suggestions t
 * Increase internal UART rx buffer size
 * Increase UART terminal task priority
 * Use UART flow control
-If none of the above helps, you can check the test ``target_ota``, which performs OTA in two steps -- first read the data, then pass the data to mbedTLS. See the test ``README.md`` for more details.
+If none of the above helps, you can check the test :component:`esp_modem/test/target_ota`, which performs OTA in two steps -- first read the data, then pass the data to mbedTLS. See the test ``README.md`` for more details.
 
 Potential issues when using CMUX mode and these devices:
 
