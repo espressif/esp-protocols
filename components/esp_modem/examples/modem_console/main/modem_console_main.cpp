@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -89,7 +89,7 @@ void wakeup_modem(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
 }
 
-#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
 command_result handle_urc(uint8_t *data, size_t len)
 {
     ESP_LOG_BUFFER_HEXDUMP("on_read", data, len, ESP_LOG_INFO);
@@ -238,7 +238,9 @@ extern "C" void app_main(void)
         if (c->get_count_of(&SetModeArgs::mode)) {
             auto mode = c->get_string_of(&SetModeArgs::mode);
             modem_mode dev_mode;
-            if (mode == "UNDEF") {
+            if (mode == "AUTO") {
+                dev_mode = esp_modem::modem_mode::AUTODETECT;
+            } else if (mode == "UNDEF") {
                 dev_mode = esp_modem::modem_mode::UNDEF;
             } else if (mode == "CMUX1") {
                 dev_mode = esp_modem::modem_mode::CMUX_MANUAL_MODE;
@@ -370,15 +372,15 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Resetting the module...");
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
-#ifdef CONFIG_EXAMPLE_MODEM_DEVICE_SHINY
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
     const ConsoleCommand HandleURC("urc", "toggle urc handling", no_args, [&](ConsoleCommand * c) {
         static int cnt = 0;
         if (++cnt % 2) {
             ESP_LOGI(TAG, "Adding URC handler");
-            dce->set_on_read(handle_urc);
+            dce->set_urc(handle_urc);
         } else {
             ESP_LOGI(TAG, "URC removed");
-            dce->set_on_read(nullptr);
+            dce->set_urc(nullptr);
         }
         return 0;
     });

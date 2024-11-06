@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -87,8 +87,10 @@ void Netif::start()
         receive(data, len);
         return true;
     });
-    signal.set(PPP_STARTED);
-    esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
+    if (!signal.is_any(PPP_STARTED)) {
+        signal.set(PPP_STARTED);
+        esp_netif_action_start(driver.base.netif, nullptr, 0, nullptr);
+    }
 }
 
 void Netif::stop()
