@@ -234,3 +234,35 @@ this patch to adapt the exit sequence https://github.com/espressif/esp-protocols
       if ((frame_header[3] & 1) == 0) {
             if (frame_header_offset + frame.len <= 4) {
                   frame_header_offset += frame.len;
+
+4) Device CAVLI C16QS does not correctly enter CMUX mode with esp_modem.
+The CMUX as defined in 3GPP TS 27.010: SABM response (paragraph 5.4.1)
+should be a UA frame (upon success, DM frame on failure).
+This device however responds with 0x3F, which is neither UA nor DM.
+You can apply the below patch to adapt the entry sequence
+
+::
+
+      diff --git a/components/esp_modem/src/esp_modem_cmux.cpp b/components/esp_modem/src/esp_modem_cmux.cpp
+      index c47e13b..7afbf73 100644
+      --- a/components/esp_modem/src/esp_modem_cmux.cpp
+      +++ b/components/esp_modem/src/esp_modem_cmux.cpp
+      @@ -137,7 +137,8 @@ bool CMux::data_available(uint8_t *data, size_t len)
+            } else {
+                  return false;
+            }
+      -    } else if (data == nullptr && type == (FT_UA | PF) && len == 0) { // notify the initial SABM command
+      +    } else if (data == nullptr && (type == (FT_UA | PF) || type == 0x3f) && len == 0) { // notify the initial SABM command
+            Scoped<Lock> l(lock);
+            sabm_ack = dlci;
+      } else if (data == nullptr && dlci > 0) {
+      @@ -238,8 +239,7 @@ bool CMux::on_header(CMuxFrame &frame)
+      type = frame_header[2];
+      // Sanity check for expected values of DLCI and type,
+      // since CRC could be evaluated after the frame payload gets received
+      -    if (dlci > MAX_TERMINALS_NUM || (frame_header[1] & 0x01) == 0 ||
+      -            (((type & FT_UIH) != FT_UIH) &&  type != (FT_UA | PF) ) ) {
+      +    if (dlci > MAX_TERMINALS_NUM) {
+            recover_protocol(protocol_mismatch_reason::UNEXPECTED_HEADER);
+            return true;
+      }
