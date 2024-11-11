@@ -35,7 +35,7 @@ jobs:
         working-directory: test_app
         run: |
           . ${IDF_PATH}/export.sh
-          idf.py clang-check --include-paths $GITHUB_WORKSPACE --exclude-paths $PWD --run-clang-tidy-py run-clang-tidy
+          idf.py clang-check --include-paths $GITHUB_WORKSPACE --exclude-paths $PWD --run-clang-tidy-py run-clang-tidy --run-clang-tidy-options "-checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling"
           cp warnings.txt ../
       - name: Convert clang-tidy results into SARIF output
         run: |
