@@ -61,6 +61,14 @@ typedef struct {
 } mdns_txt_item_t;
 
 /**
+ * @brief   mDNS basic subtype item structure
+ *          Used in mdns_service_subtype_xxx() APIs
+ */
+typedef struct {
+    const char *subtype;                        /*!< subtype name */
+} mdns_subtype_item_t;
+
+/**
  * @brief   mDNS query linked list IP item
  */
 typedef struct mdns_ip_addr_s {
@@ -544,7 +552,7 @@ esp_err_t mdns_service_txt_item_remove_for_host(const char *instance, const char
         const char *key);
 
 /**
- * @brief  Add subtype for service.
+ * @brief  Add a subtype for service.
  *
  * @param  instance_name    instance name. If NULL, will find the first service with the same service type and protocol.
  * @param  service_type     service type (_http, _ftp, etc)
@@ -561,6 +569,60 @@ esp_err_t mdns_service_txt_item_remove_for_host(const char *instance, const char
 esp_err_t mdns_service_subtype_add_for_host(const char *instance_name, const char *service_type, const char *proto,
         const char *hostname, const char *subtype);
 
+/**
+ * @brief  Remove a subtype for service.
+ *
+ * @param  instance_name    instance name. If NULL, will find the first service with the same service type and protocol.
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  hostname         service hostname. If NULL, local hostname will be used.
+ * @param  subtype          The subtype to remove.
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NOT_FOUND Service not found
+ */
+esp_err_t mdns_service_subtype_remove_for_host(const char *instance_name, const char *service_type, const char *proto,
+        const char *hostname, const char *subtype);
+
+/**
+ * @brief  Add multiple subtypes for service at once.
+ *
+ * @param  instance_name    instance name. If NULL, will find the first service with the same service type and protocol.
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  hostname         service hostname. If NULL, local hostname will be used.
+ * @param  subtype          the pointer of subtype array to add.
+ * @param  num_items        number of items in subtype array
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NOT_FOUND Service not found
+ *     - ESP_ERR_NO_MEM memory error
+ */
+esp_err_t mdns_service_subtype_add_multiple_items_for_host(const char *instance_name, const char *service_type, const char *proto,
+        const char *hostname, mdns_subtype_item_t subtype[], uint8_t num_items);
+
+/**
+ * @brief  Update subtype for service.
+ *
+ * @param  instance_name    instance name. If NULL, will find the first service with the same service type and protocol.
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  hostname         service hostname. If NULL, local hostname will be used.
+ * @param  subtype          the pointer of subtype array to add.
+ * @param  num_items        number of items in subtype array
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NOT_FOUND Service not found
+ *     - ESP_ERR_NO_MEM memory error
+ */
+esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instance_name, const char *service_type, const char *proto,
+        const char *hostname, mdns_subtype_item_t subtype[], uint8_t num_items);
 /**
  * @brief  Remove and free all services from mDNS server
  *
