@@ -234,9 +234,9 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     } else {
         client->reconnect_tick_ms = _tick_get_ms();
         ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
-        client->error_handle.error_type = error_type;
         client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
     }
+    client->error_handle.error_type = error_type;
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DISCONNECTED, NULL, 0);
     return ESP_OK;
 }
