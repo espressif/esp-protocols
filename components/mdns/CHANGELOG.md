@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.1)
+
+### Features
+
+- Send PTR query for mdns browse when interface is ready ([010a404a](https://github.com/espressif/esp-protocols/commit/010a404a))
+
+### Bug Fixes
+
+- Prevent deadlock when deleting a browse request ([3f48f9ea](https://github.com/espressif/esp-protocols/commit/3f48f9ea))
+- Fix use after free reported by coverity ([25b3d5fd](https://github.com/espressif/esp-protocols/commit/25b3d5fd))
+- Fixed dead-code reported by coverity ([11846c7d](https://github.com/espressif/esp-protocols/commit/11846c7d))
+
 ## [1.4.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.0)
 
 ### Major changes
