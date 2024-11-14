@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.2)
+
+### Features
+
+- support update subtype ([062b8dca](https://github.com/espressif/esp-protocols/commit/062b8dca))
+
+### Updated
+
+- chore(mdns): Add more info to idf_component.yml ([4a1cb65c](https://github.com/espressif/esp-protocols/commit/4a1cb65c))
+
 ## [1.4.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.1)
 
 ### Features
