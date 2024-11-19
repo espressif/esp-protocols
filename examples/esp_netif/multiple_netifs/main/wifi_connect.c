@@ -75,7 +75,7 @@ static void wifi_destroy(iface_info_t *info)
     free(info);
 }
 
-iface_info_t *wifi_init(int prio)
+iface_info_t *example_wifi_init(int prio)
 {
     struct iface_info_t *wifi_info = malloc(sizeof(iface_info_t));
     assert(wifi_info);
