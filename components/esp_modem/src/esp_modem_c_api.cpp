@@ -451,3 +451,27 @@ extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *ap
     dce_wrap->dce->get_module()->configure_pdp_context(std::move(new_pdp));
     return ESP_OK;
 }
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got_line_fn)(uint8_t *data, size_t len))
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (got_line_fn == nullptr) {
+        dce_wrap->dce->set_urc(nullptr);
+        return ESP_OK;
+    }
+    dce_wrap->dce->set_urc([got_line_fn](uint8_t *data, size_t len) {
+        switch (got_line_fn(data, len)) {
+        case ESP_OK:
+            return command_result::OK;
+        case ESP_FAIL:
+            return command_result::FAIL;
+        default:
+            return command_result::TIMEOUT;
+        }
+    });
+    return ESP_OK;
+}
+#endif

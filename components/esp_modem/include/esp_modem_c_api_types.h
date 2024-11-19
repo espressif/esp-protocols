@@ -141,6 +141,21 @@ esp_err_t esp_modem_command(esp_modem_dce_t *dce, const char *command, esp_err_t
  */
 esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+/**
+ * @brief Sets a handler for unsolicited result codes (URCs) from the modem
+ *
+ * This function registers a callback that is triggered whenever an unsolicited
+ * result code (URC) is received from the modem. URCs are typically sent by the
+ * modem without a prior command to notify the host about certain events or status changes.
+ *
+ * @param dce Modem DCE handle
+ * @param got_line_cb Callback function which is called whenever a URC line is received
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
+#endif
+
 /**
  * @}
  */
