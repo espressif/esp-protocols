@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.1](https://github.com/espressif/esp-protocols/commits/modem-v1.2.1)
+
+### Bug Fixes
+
+- Use higher GPIO range to support new chips ([428fdbbd](https://github.com/espressif/esp-protocols/commit/428fdbbd), [#558](https://github.com/espressif/esp-protocols/issues/558))
+- Remove tests and support for IDFv4.4, added IDFv5.4 ([433a033f](https://github.com/espressif/esp-protocols/commit/433a033f))
+- Fix typo GENETIC -> GENERIC in mode types ([090b1ff8](https://github.com/espressif/esp-protocols/commit/090b1ff8), [#667](https://github.com/espressif/esp-protocols/issues/667))
+- Add support for URC handler into C-API ([295d99df](https://github.com/espressif/esp-protocols/commit/295d99df), [#180](https://github.com/espressif/esp-protocols/issues/180))
+
 ## [1.2.0](https://github.com/espressif/esp-protocols/commits/modem-v1.2.0)
 
 ### Features

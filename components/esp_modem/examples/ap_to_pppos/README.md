@@ -15,7 +15,3 @@ By default, this example simply connects to the PPP server using a supported dev
 This example however, doesn't rely on sending specific AT commands, just the bare minimum to setup the cellular network.
 Thus, if the `EXAMPLE_USE_MINIMAL_DCE` option is enabled, we directly inherit from the `ModuleIf` and implement only the basic commands.
 Also, to demonstrate the dce_factory functionality, a new `NetDCE_Factory` is implemented for creating the network module and the DCE.
-
-### Supported IDF versions
-
-This example is only supported from `v4.2`, since is uses NAPT feature.

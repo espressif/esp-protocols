@@ -18,9 +18,3 @@ For USB enabled targets (ESP32-S2, ESP32-S3, or ESP32-P4), it is possible to con
 USB example uses Quactel BG96 modem device. BG96 needs a positive pulse on its PWK pin to boot-up.
 
 This example supports USB modem hot-plugging and reconnection.
-
-### Supported IDF versions
-
-This example is only supported from `v4.1`, as this is the default dependency of `esp-modem` component.
-
-USB example is supported from `v4.4`.

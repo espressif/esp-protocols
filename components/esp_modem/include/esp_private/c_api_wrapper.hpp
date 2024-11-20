@@ -44,7 +44,7 @@ inline dce_factory::ModemType convert_modem_enum(esp_modem_dce_device_t module)
     case ESP_MODEM_DCE_SIM800:
         return esp_modem::dce_factory::ModemType::SIM800;
     default:
-    case ESP_MODEM_DCE_GENETIC:
+    case ESP_MODEM_DCE_GENERIC:
         return esp_modem::dce_factory::ModemType::GenericModule;
     }
 }

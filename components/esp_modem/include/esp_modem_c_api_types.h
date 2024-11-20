@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+/*  Compatibility macro to be removed in v2.0
+ */
+#define ESP_MODEM_DCE_GENETIC ESP_MODEM_DCE_GENERIC
+
 typedef struct esp_modem_dce_wrap esp_modem_dce_t;
 
 typedef struct esp_modem_PdpContext_t {
@@ -47,7 +51,7 @@ typedef enum esp_modem_dce_mode {
  * @brief DCE devices: Enum list of supported devices
  */
 typedef enum esp_modem_dce_device {
-    ESP_MODEM_DCE_GENETIC,  /**< The most generic device */
+    ESP_MODEM_DCE_GENERIC,  /**< The most generic device */
     ESP_MODEM_DCE_SIM7600,
     ESP_MODEM_DCE_SIM7070,
     ESP_MODEM_DCE_SIM7000,
@@ -140,6 +144,21 @@ esp_err_t esp_modem_command(esp_modem_dce_t *dce, const char *command, esp_err_t
  * @return ESP_OK on success
  */
 esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+/**
+ * @brief Sets a handler for unsolicited result codes (URCs) from the modem
+ *
+ * This function registers a callback that is triggered whenever an unsolicited
+ * result code (URC) is received from the modem. URCs are typically sent by the
+ * modem without a prior command to notify the host about certain events or status changes.
+ *
+ * @param dce Modem DCE handle
+ * @param got_line_cb Callback function which is called whenever a URC line is received
+ * @return ESP_OK on success, ESP_FAIL on failure
+ */
+esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
+#endif
 
 /**
  * @}

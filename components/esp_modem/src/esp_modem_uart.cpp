@@ -72,6 +72,7 @@ private:
     {
         auto t = static_cast<UartTerminal *>(task_param);
         t->task();
+        t->task_handle.task_handle = nullptr;
         vTaskDelete(nullptr);
     }
 
