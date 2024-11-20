@@ -16,14 +16,14 @@ menu "Test App Configuration"
     config TEST_APP_UART_TX_PIN
         int "TXD Pin Number"
         default 6
-        range 0 31
+        range 0 56
         help
             Pin number of UART TX.
 
     config TEST_APP_UART_RX_PIN
         int "RXD Pin Number"
         default 7
-        range 0 31
+        range 0 56
         help
             Pin number of UART RX.
 
