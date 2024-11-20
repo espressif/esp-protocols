@@ -13,11 +13,8 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v4.4", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
         example: ["pppos_client", "modem_console", "modem_tcp_client", "ap_to_pppos", "simple_cmux_client"]
-        exclude:
-          - idf_ver: "release-v4.4"
-            example: modem_tcp_client
         include:
           - idf_ver: "release-v5.0"
             example: "simple_cmux_client"
@@ -26,13 +23,7 @@ jobs:
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
-      - name: Check out code (v3) # @v4 failed due to Node 20's requirement, incompatible with older IDF versions
-        if: matrix.idf_ver != 'latest' && matrix.idf_ver < 'release-v5.0'
-        uses: actions/checkout@v3
-        with:
-          path: protocols
-      - name: Check out code (v4)
-        if: matrix.idf_ver == 'latest' || matrix.idf_ver >= 'release-v5.0'
+      - name: Check out code
         uses: actions/checkout@v4
         with:
           path: protocols
@@ -53,7 +44,7 @@ jobs:
     name: Build tests
     strategy:
       matrix:
-        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "latest"]
+        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
         test: ["target", "target_ota", "target_iperf"]
 
     runs-on: ubuntu-22.04

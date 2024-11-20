@@ -11,11 +11,3 @@ The example uses the following configuration options to demonstrate basic esp-mo
 * `EXAMPLE_NEED_SIM_PIN`: To unlock the SIM card with a PIN code if needed
 * `EXAMPLE_PERFORM_OTA`: To start simple OTA at the end of the example to exercise basic CMUX/modem networking. Please note that the option `CONFIG_UART_ISR_IN_IRAM` is not enabled automatically, so that buffer overflows are expected and CMUX/PPP and networking should recover.
 * `EXAMPLE_USE_VFS_TERM`: To demonstrate using an abstract file descriptor to talk to the device (instead of the UART driver directly). This option could be used when implementing a custom VFS driver.
-
-## About the esp_modem
-
-Please check the component [README](../../README.md)
-
-### Supported IDF versions
-
-This example is only supported from `v4.3`, since is uses an experimental `esp_event_cxx` component.

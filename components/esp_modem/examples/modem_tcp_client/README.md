@@ -22,7 +22,3 @@ To enable this mode, please set `EXAMPLE_CUSTOM_TCP_TRANSPORT=y`
 This configuration could be used with any network library, which is connecting to a localhost endpoint instead of remote one. This example creates a localhost listener which basically mimics the remote endpoint by forwarding the traffic between the library and the TCP/socket layer of the modem (which is already secure if the TLS is used in the network library)
 
 ![with localhost listener](at_client_localhost.png)
-
-### Supported IDF versions
-
-This example is supported from IDF `v5.0`.

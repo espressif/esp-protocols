@@ -17,7 +17,3 @@ over PPPoS, i.e. over the modem serial line.
 * Experiment with the network, after getting the IP from the modem device
     - directly in the code
     - in the system (need to set `tun` interface IP, dns servers, and routing the desired traffic over the tun interface)
-
-### Supported IDF versions
-
-This example (using the default CMake IDF build system) is only supported from `v4.4`, since is uses `idf.py`'s linux target.

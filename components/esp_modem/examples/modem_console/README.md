@@ -25,9 +25,3 @@ USB example uses Quactel BG96 modem device. BG96 needs a positive pulse on its P
 This example supports USB modem hot-plugging and reconnection. There is one limitation coming from esp_console component:
 When esp_console REPL is being destroyed (after USB mode disconnection or after `exit` command), it will block on UART read.
 You must send a character to it (via idf.py monitor), so it unblocks and properly exits.
-
-### Supported IDF versions
-
-This example is only supported from `v4.2`, due to support of the console repl mode.
-
-USB example is supported from `v4.4`.
