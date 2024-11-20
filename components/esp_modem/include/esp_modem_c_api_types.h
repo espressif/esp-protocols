@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+/*  Compatibility macro to be removed in v2.0
+ */
+#define ESP_MODEM_DCE_GENETIC ESP_MODEM_DCE_GENERIC
+
 typedef struct esp_modem_dce_wrap esp_modem_dce_t;
 
 typedef struct esp_modem_PdpContext_t {
@@ -47,7 +51,7 @@ typedef enum esp_modem_dce_mode {
  * @brief DCE devices: Enum list of supported devices
  */
 typedef enum esp_modem_dce_device {
-    ESP_MODEM_DCE_GENETIC,  /**< The most generic device */
+    ESP_MODEM_DCE_GENERIC,  /**< The most generic device */
     ESP_MODEM_DCE_SIM7600,
     ESP_MODEM_DCE_SIM7070,
     ESP_MODEM_DCE_SIM7000,

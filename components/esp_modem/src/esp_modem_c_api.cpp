@@ -60,7 +60,7 @@ extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, con
 
 extern "C" esp_modem_dce_t *esp_modem_new(const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif)
 {
-    return esp_modem_new_dev(ESP_MODEM_DCE_GENETIC, dte_config, dce_config, netif);
+    return esp_modem_new_dev(ESP_MODEM_DCE_GENERIC, dte_config, dce_config, netif);
 }
 
 extern "C" void esp_modem_destroy(esp_modem_dce_t *dce_wrap)
