@@ -99,6 +99,20 @@ void Netif::stop()
     signal.clear(PPP_STARTED);
 }
 
+void Netif::resume()
+{
+    ppp_dte->set_read_cb([this](uint8_t *data, size_t len) -> bool {
+        receive(data, len);
+        return true;
+    });
+    signal.set(PPP_STARTED);
+}
+
+void Netif::pause()
+{
+    signal.clear(PPP_STARTED);
+}
+
 Netif::~Netif()
 {
     if (signal.is_any(PPP_STARTED)) {

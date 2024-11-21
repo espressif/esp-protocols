@@ -103,6 +103,28 @@ public:
     }
 #endif
 
+    /**
+     * @brief Pauses/Unpauses network temporarily
+     * @param do_pause true to pause, false to unpause
+     * @param force true to ignore command failures and continue
+     * @return command_result of the underlying commands
+     */
+    command_result pause_netif(bool do_pause, bool force = false)
+    {
+        command_result result;
+        if (do_pause) {
+            netif.pause();
+            dte->set_command_callbacks();
+            result = device->set_command_mode();
+        } else {
+            result = device->resume_data_mode();
+            if (result == command_result::OK || force) {
+                netif.resume();
+            }
+        }
+        return result;
+    }
+
 protected:
     std::shared_ptr<DTE> dte;
     std::shared_ptr<SpecificModule> device;
