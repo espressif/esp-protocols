@@ -1,0 +1,34 @@
+name: "mdns: rust-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  host_test_mdns:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+    name: Host test build
+    runs-on: ubuntu-22.04
+    container: espressif/idf:latest
+
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+
+      - name: Build and Test
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          # Add Rust to the current PATH
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          . "$HOME/.cargo/env"
+          rustc --version
+          cargo --version
+          . ${IDF_PATH}/export.sh
+          cd components/mdns/examples/simple_query/
+          idf.py build
+          cd ../..
+          COMPILE_COMMANDS_DIR=examples/simple_query/build/ cargo run --example usage
