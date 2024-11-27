@@ -11,10 +11,23 @@ struct CompileCommand {
 }
 
 fn main() {
-    // Get the directory for compile_commands.json from an environment variable
-    let compile_commands_dir = env::var("COMPILE_COMMANDS_DIR")
-        .unwrap_or_else(|_| ".".to_string()); // Default to current directory
 
+    println!("cargo:rerun-if-env-changed=COMPILE_COMMANDS_DIR");
+    // Get the directory for compile_commands.json from an environment variable
+    let compile_commands_dir = match env::var("COMPILE_COMMANDS_DIR") {
+        Ok(dir) => dir,
+        Err(_) => {
+            // If the environment variable is not defined, return early
+            println!("COMPILE_COMMANDS_DIR not set, skipping custom build.");
+            // this is a native build
+            // println!("cargo:rustc-cfg=native");
+            return;
+        }
+    };
+
+    // building with FFI of mdns_networking
+    println!("COMPILE_COMMANDS_DIR set, enabling FFI feature.");
+    println!("cargo:rustc-cfg=feature=\"ffi\"");
     // Construct the path to the compile_commands.json file
     let compile_commands_path = Path::new(&compile_commands_dir).join("compile_commands.json");
 

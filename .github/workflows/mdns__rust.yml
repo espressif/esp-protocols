@@ -31,4 +31,7 @@ jobs:
           cd components/mdns/examples/simple_query/
           idf.py build
           cd ../..
+          # FFI build
           COMPILE_COMMANDS_DIR=examples/simple_query/build/ cargo run --example usage
+          # Default build
+          cargo run --example usage

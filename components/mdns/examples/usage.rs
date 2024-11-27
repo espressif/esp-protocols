@@ -3,12 +3,16 @@
 use mdns::*;
 use std::thread;
 use std::time::Duration;
+use std::net::{UdpSocket, Ipv4Addr};
+use socket2::{Socket, Domain, Type, Protocol};
 
-pub fn test_mdns() {
+
+
+fn test_mdns() {
     let ip4 = EspIpAddr {
         u_addr: EspIpUnion {
             ip4: EspIp4Addr {
-                addr: u32::from_le_bytes([224, 0, 0, 251]), // Convert 224.0.0.251 to big-endian
+                addr: u32::from_le_bytes([224, 0, 0, 251]),
             },
         },
         addr_type: ESP_IPADDR_TYPE_V4,
@@ -25,11 +29,13 @@ pub fn test_mdns() {
         return;
     }
 
-    let query_packet = create_mdns_query();
-    println!("{:?}", query_packet);
+    // let query_packet = create_mdns_query();
+    // println!("{:?}", query_packet);
 
-    let len = mdns_udp_pcb_write_rust(MdnsIf::Netif0, MdnsIpProtocol::Ip4, ip4, 5353, &query_packet);
-    println!("Bytes sent: {}", len);
+
+
+    // let len = mdns_udp_pcb_write_rust(MdnsIf::Netif0, MdnsIpProtocol::Ip4, ip4, 5353, &query_packet);
+    // println!("Bytes sent: {}", len);
 
     thread::sleep(Duration::from_millis(500));
 
@@ -38,17 +44,20 @@ pub fn test_mdns() {
     }
 }
 
+
 fn main() {
     // Initialize mDNS
     mdns::mdns_init();
 
 //     // Query for a specific host
 //     mdns::mdns_query_host_rust("example.local");
-
+    mdns::mdns_query("david-work.local");
+    thread::sleep(Duration::from_millis(500));
     // Deinitialize mDNS
     mdns::mdns_deinit();
 
-    test_mdns();
+
+    // test_mdns();
 
 //     let result = mdns::mdns_pcb_init_rust(mdns::MdnsIf::Netif0, mdns::MdnsIpProtocol::Ip4);
 //     match result {

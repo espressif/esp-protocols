@@ -176,7 +176,7 @@ static inline esp_netif_t *esp_netif_from_preset_if(mdns_predef_if_t predef_if)
  * @param tcpip_if Ordinal number of the interface
  * @return Pointer ot the esp_netif object if the interface is available, NULL otherwise
  */
-esp_netif_t *_mdns_get_esp_netif23(mdns_if_t tcpip_if)
+esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         if (s_esp_netifs[tcpip_if].netif == NULL && s_esp_netifs[tcpip_if].predefined) {
@@ -347,7 +347,7 @@ static bool _mdns_can_add_more_services(void)
     return true;
 }
 
-esp_err_t _mdns_send_rx_action23(mdns_rx_packet_t *packet)
+esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
 {
     mdns_action_t *action = NULL;
 
