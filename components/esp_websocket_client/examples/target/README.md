@@ -63,6 +63,42 @@ Please see the openssl man pages (man openssl) for more details.
 It is **strongly recommended** to not reuse the example certificate in your application;
 it is included only for demonstration.
 
+#### 3) Configure the DS peripheral
+
+* i) Install the [esp_secure_cert configuration utility](https://github.com/espressif/esp_secure_cert_mgr/tree/main/tools#esp_secure_cert-configuration-tool) with following comma    nd:
+```
+pip install esp-secure-cert-tool
+```
+* ii) The DS peripheral can be configured by executing the following command:
+
+```
+configure_esp_secure_cert.py -p /* Serial port */ --device-cert /* Device cert */ --private-key /* RSA priv key */ --target_chip /* target chip */ --configure_ds  --skip_flash
+```
+This command shall generate a partition named `esp_secure_cert.bin` in the `esp_secure_cert_data` directory. This partition would be aumatically detected by the build system and     flashed at appropriate offset when `idf.py flash` command is used. For this process, the command must be executed in the current folder only.
+
+In the command USB COM port is nothing but the serial port to which the ESP chip is connected. see
+[check serial port](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/establish-serial-connection.html#check-port-on-windows) for more details.
+RSA private key is nothing but the client private key ( RSA ) generated in Step 2.
+
+> Note: More details about the `esp-secure-cert-tool` utility can be found [here](https://github.com/espressif/esp_secure_cert_mgr/tree/main/tools).
+
+#### 4) Connection cofiguration
+* Open the project configuration menu (`idf.py menuconfig`)
+* Configure Wi-Fi or Ethernet under "Example Connection Configuration" menu. See "Establishing Wi-Fi or Ethernet Connection" section in [examples/protocols/README.md](../../READM    E.md) for more details.
+
+### Build and Flash
+
+Build the project and flash it to the board, then run monitor tool to view serial output:
+
+```
+idf.py -p PORT flash monitor
+```
+
+(To exit the serial monitor, type ``Ctrl-]``.)
+
+See the Getting Started Guide for full steps to configure and use ESP-IDF to build projects.
+
+
 ### Build and Flash
 
 Build the project and flash it to the board, then run monitor tool to view serial output:
