@@ -77,7 +77,9 @@ public:
                 if (set_command_mode() == command_result::OK) {
                     return true;
                 }
-                Task::Delay(1000); // Mandatory 1s pause after escape
+                // send a newline to delimit the escape from the upcoming sync command
+                uint8_t delim = '\n';
+                dte->write(&delim, 1);
                 if (sync() == command_result::OK) {
                     return true;
                 }

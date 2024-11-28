@@ -52,7 +52,6 @@ void Netif::start()
 
 void Netif::stop()
 {
-    ppp_dte->set_read_cb(nullptr);
     signal.clear(PPP_STARTED);
 }
 

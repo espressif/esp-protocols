@@ -76,4 +76,13 @@ menu "esp-modem"
         help
             If enabled, APIs to add URC handler are available
 
+    config ESP_MODEM_PPP_ESCAPE_BEFORE_EXIT
+        bool "Send escape sequence when switching PPP -> CMD"
+        default n
+        help
+            If enabled, the library sends a PPP escape ("+++" command)
+            to switch to command mode. This make switching from PPP to CMD
+            mode more robust for some devices (e.g. Quectel), but might cause
+            trouble for other devices (e.g. SIMCOM).
+
 endmenu
