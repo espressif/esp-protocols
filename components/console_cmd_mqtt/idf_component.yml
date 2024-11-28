@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 1.0.0
 url: https://github.com/espressif/esp-protocols/tree/master/components/console_cmd_mqtt
 description: The component provides a console where the 'mqtt' command can be executed.
 license: Apache-2.0
