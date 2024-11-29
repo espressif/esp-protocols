@@ -223,15 +223,27 @@ static int ppp_cmd_iperf(int argc, char **argv)
            cfg.flag & IPERF_FLAG_TCP ? "tcp" : "udp",
            cfg.flag & IPERF_FLAG_SERVER ? "server" : "client",
            (uint16_t) cfg.source_ip4 & 0xFF,
-           (uint16_t) (cfg.source_ip4 >> 8) & 0xFF,
-           (uint16_t) (cfg.source_ip4 >> 16) & 0xFF,
-           (uint16_t) (cfg.source_ip4 >> 24) & 0xFF,
+           (uint16_t)(cfg.source_ip4 >> 8) & 0xFF,
+           (uint16_t)(cfg.source_ip4 >> 16) & 0xFF,
+           (uint16_t)(cfg.source_ip4 >> 24) & 0xFF,
            cfg.sport,
            cfg.destination_ip4 & 0xFF, (cfg.destination_ip4 >> 8) & 0xFF,
            (cfg.destination_ip4 >> 16) & 0xFF, (cfg.destination_ip4 >> 24) & 0xFF, cfg.dport,
            cfg.interval, cfg.time);
 
     iperf_start(&cfg);
+    return 0;
+}
+static int restart(int argc, char **argv)
+{
+    ESP_LOGI("main", "Restarting");
+    esp_restart();
+    return 0;
+}
+static int heap_size(int argc, char **argv)
+{
+    uint32_t heap_size = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
+    ESP_LOGI(TAG, "min heap size: %" PRIu32, heap_size);
     return 0;
 }
 
@@ -286,4 +298,25 @@ void register_pppd(void)
         .argtable = &iperf_args
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&iperf_cmd));
+
+    {
+        const esp_console_cmd_t cmd = {
+            .command = "restart",
+            .help = "Restart the program",
+            .hint = NULL,
+            .func = &restart,
+        };
+        ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
+
+    }
+    {
+        const esp_console_cmd_t heap_cmd = {
+            .command = "heap",
+            .help = "Get minimum size of free heap memory that was available during program execution",
+            .hint = NULL,
+            .func = &heap_size,
+        };
+        ESP_ERROR_CHECK(esp_console_cmd_register(&heap_cmd));
+    }
+
 }
