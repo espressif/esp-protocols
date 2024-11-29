@@ -98,6 +98,7 @@ jobs:
             components/console_cmd_ping;
             components/console_cmd_ifconfig;
             components/console_cmd_wifi;
+            components/console_cmd_mqtt;
             components/mbedtls_cxx;
             components/mosquitto;
             components/sock_utils;
