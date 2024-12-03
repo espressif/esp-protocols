@@ -254,7 +254,7 @@ extern "C" void app_main(void)
 
 
 #if CONFIG_EXAMPLE_MODEM_DEVICE_SIM7070_GNSS == 1
-    esp_modem_gps_t gps;
+    sim70xx_gps_t gps;
 
     for (int i = 0; i < 200; ++i) {
         if (dce->get_gnss_information_sim70xx(gps) == esp_modem::command_result::OK) {
@@ -279,7 +279,7 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "gps.dop_h %f gps.dop_p %f gps.dop_v %f ",
                      gps.dop_h,   gps.dop_p,   gps.dop_v );
             ESP_LOGI(TAG, "gps.sats_in_view  %i",
-                     gps.sats_in_view);
+                     gps.sat.num);
             ESP_LOGI(TAG, "gps.hpa  %f gps.vpa  %f",
                      gps.hpa, gps.vpa);
         }
@@ -291,10 +291,12 @@ extern "C" void app_main(void)
 
 #if CONFIG_EXAMPLE_PERFORM_OTA == 1
     esp_http_client_config_t config = { };
+    esp_https_ota_config_t ota_config = { };
+    ota_config.http_config = &config;
     config.skip_cert_common_name_check = true;
     config.url = CONFIG_EXAMPLE_PERFORM_OTA_URI;
 
-    esp_err_t ret = esp_https_ota(&config);
+    esp_err_t ret = esp_https_ota(&ota_config);
     if (ret == ESP_OK) {
         esp_restart();
     } else {

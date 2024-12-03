@@ -815,22 +815,22 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT = \
-    $(PROJECT_PATH)/../components/esp_modem/include/esp_modem_api.h \
+    $(PROJECT_PATH)/../components/esp_modem/command/include/esp_modem_api.h \
     $(PROJECT_PATH)/../components/esp_modem/include/esp_modem_c_api_types.h \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_api.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/esp_modem_config.h \
     $(PROJECT_PATH)/../components/esp_modem/include/esp_modem_dce_config.h \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce_factory.hpp \
-    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_command_library.hpp \
-    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce_module.hpp \
+    $(PROJECT_PATH)/../components/esp_modem/command/include/cxx_include/esp_modem_command_library.hpp \
+    $(PROJECT_PATH)/../components/esp_modem/command/include/cxx_include/esp_modem_dce_module.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dte.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_netif.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_types.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_terminal.hpp \
     $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_cmux.hpp \
-    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce.hpp \
-    $(PROJECT_PATH)/../docs/esp_modem/en/esp_modem_api_commands.h \
-    $(PROJECT_PATH)/../docs/esp_modem/en/esp_modem_dce.hpp
+    $(PROJECT_PATH)/../components/esp_modem/include/cxx_include/esp_modem_dce_template.hpp \
+    $(PROJECT_PATH)/../docs/esp_modem/command/dce.h \
+    $(PROJECT_PATH)/../docs/esp_modem/command/dce.hpp
 
 
 # The last two are generated

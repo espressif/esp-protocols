@@ -91,3 +91,21 @@ jobs:
         run_executable: false
         run_coverage: false
         pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"
+
+  esp_modem_generated_commands:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    name: Generated commands compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+      - name: Compat check
+        shell: bash
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y astyle
+          cd components/esp_modem
+          find examples/ -type f -regex '.*/generate/.*\.\(hpp\|cpp\)' -exec ./scripts/generate.sh {} \;
+          ./scripts/generate.sh
+          git diff --name-only
+          git diff --quiet
