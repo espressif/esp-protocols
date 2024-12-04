@@ -18,7 +18,6 @@ namespace transitions {
 
 static bool exit_data(DTE &dte, ModuleIf &device, Netif &netif)
 {
-    netif.stop();
     auto signal = std::make_shared<SignalGroup>();
     std::weak_ptr<SignalGroup> weak_signal = signal;
     dte.set_read_cb([&netif, weak_signal](uint8_t *data, size_t len) -> bool {
@@ -32,7 +31,7 @@ static bool exit_data(DTE &dte, ModuleIf &device, Netif &netif)
         if (memchr(data, '\n', len))
         {
             ESP_LOG_BUFFER_HEXDUMP("esp-modem: debug_data (CMD)", data, len, ESP_LOG_DEBUG);
-            const auto pass = std::list<std::string_view>({"NO CARRIER", "DISCONNECTED"});
+            const auto pass = std::list<std::string_view>({"NO CARRIER", "DISCONNECTED", "OK"});
             std::string_view response((char *) data, len);
             for (auto &it : pass)
                 if (response.find(it) != std::string::npos) {
@@ -44,8 +43,14 @@ static bool exit_data(DTE &dte, ModuleIf &device, Netif &netif)
         }
         return false;
     });
+    netif.stop();
     netif.wait_until_ppp_exits();
-    if (!signal->wait(1, 2000)) {
+#ifdef ESP_MODEM_PPP_ESCAPE_BEFORE_EXIT
+    std::array<uint8_t, 3> ppp_escape = {'+', '+', '+'};
+    dte.write(ppp_escape.data(), ppp_escape.size());
+#endif
+    if (!signal->wait(1, 2000)) { // wait for any of the disconnection messages
+        // if no reply -> set device to command mode
         dte.set_read_cb(nullptr);
         if (!device.set_mode(modem_mode::COMMAND_MODE)) {
             return false;

@@ -24,6 +24,7 @@ jobs:
           chmod +x clang-tidy-sarif
           curl -sSL https://raw.githubusercontent.com/espressif/idf-extra-components/master/.github/filter_sarif.py -o filter_sarif.py
       - name: Install pyclang
+        shell: bash
         run: |
           . ${IDF_PATH}/export.sh
           pip install pyclang~=0.2.0
