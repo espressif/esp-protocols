@@ -123,7 +123,12 @@ bool CMux::data_available(uint8_t *data, size_t len)
 {
     if (data && (type & FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
         int virtual_term = dlci - 1;
-        if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
+        if (virtual_term < MAX_TERMINALS_NUM) {
+            if (read_cb[virtual_term] == nullptr) {
+                // ignore all virtual terminal's data before we completely establish CMUX
+                ESP_LOG_BUFFER_HEXDUMP("CMUX Rx before init", data, len, ESP_LOG_DEBUG);
+                return true;
+            }
             // Post partial data (or defragment to post on CMUX footer)
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
             if (payload_start == nullptr) {
@@ -142,7 +147,11 @@ bool CMux::data_available(uint8_t *data, size_t len)
         sabm_ack = dlci;
     } else if (data == nullptr && dlci > 0) {
         int virtual_term = dlci - 1;
-        if (virtual_term < MAX_TERMINALS_NUM && read_cb[virtual_term]) {
+        if (virtual_term < MAX_TERMINALS_NUM) {
+            if (read_cb[virtual_term] == nullptr) {
+                // silently ignore this CMUX frame (not finished entering CMUX, yet)
+                return true;
+            }
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif

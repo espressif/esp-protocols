@@ -9,6 +9,20 @@ from threading import Event, Thread
 import netifaces
 
 
+def is_esp32(port):
+    """
+    Check if the given port is connected to an ESP32 using esptool.
+    """
+    try:
+        result = subprocess.run(
+            ['esptool.py', '--port', port, 'chip_id'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True
+        )
+        return 'ESP32' in result.stdout
+    except subprocess.CalledProcessError:
+        return False
+
+
 def run_server(server_stop, port, server_ip, client_ip, auth, auth_user, auth_password):
     print('Starting PPP server on port: {}'.format(port))
     try:
@@ -66,13 +80,27 @@ def test_examples_protocol_pppos_connect(dut):
         )
         raise
 
-    # the PPP test env uses two ttyUSB's: one for ESP32 board, another one for ppp server
-    # use the other port for PPP server than the DUT/ESP
-    port = '/dev/ttyUSB0' if dut.serial.port == '/dev/ttyUSB1' else '/dev/ttyUSB1'
+    # the PPP test env uses three ttyUSB's: two for ESP32 board and another one for the ppp server
+    # we need to detect the server_port (for PPPD)
+    server_port = None
+    for i in ['/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2']:
+        if i == dut.serial.port:
+            print(f'DUT port: {i}')
+        elif is_esp32(i):
+            print(f'Some other ESP32: {i}')
+        else:
+            print(f'Port for PPPD: {i}')
+            server_port = i
+    if server_port is None:
+        print(
+            'ENV_TEST_FAILURE: Cannot locate PPPD port'
+        )
+        raise
+
     # Start the PPP server
     server_stop = Event()
     t = Thread(target=run_server,
-               args=(server_stop, port, server_ip, client_ip, auth, auth_user, auth_password))
+               args=(server_stop, server_port, server_ip, client_ip, auth, auth_user, auth_password))
     t.start()
     try:
         ppp_server_timeout = time.time() + 30
