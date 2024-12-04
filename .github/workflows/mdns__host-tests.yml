@@ -23,7 +23,9 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
+          ${IDF_PATH}/install.sh
           . ${IDF_PATH}/export.sh
+          pip install esp-idf-kconfig==2.3.0
           python -m pip install idf-build-apps dnspython pytest pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf
           cd $GITHUB_WORKSPACE/protocols
           # Build host tests app (with all configs and targets supported)

@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.2", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
         test: [ { app: example, path: "examples/query_advertise" }, { app: unit_test, path: "tests/unit_test" }, { app: test_app, path: "tests/test_apps" } ]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -23,7 +23,9 @@ jobs:
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
+          ${IDF_PATH}/install.sh
           . ${IDF_PATH}/export.sh
+          pip install esp-idf-kconfig==2.3.0
           python -m pip install idf-build-apps
           # Build default configs for all targets
           python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -d
