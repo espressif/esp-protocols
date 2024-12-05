@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -317,6 +317,20 @@ void app_main(void)
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
+
+#if CONFIG_EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
+    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+    esp_modem_pause_net(dce, true);
+    err = esp_modem_get_signal_quality(dce, &rssi, &ber);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d", err);
+        return;
+    }
+    ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
+    esp_modem_pause_net(dce, false);
+    esp_mqtt_client_publish(mqtt_client, CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA, 0, 0, 0);
+#endif
+
     ESP_LOGI(TAG, "Waiting for MQTT data");
     xEventGroupWaitBits(event_group, GOT_DATA_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
     CHECK_USB_DISCONNECTION(event_group);

@@ -161,6 +161,17 @@ esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_
 #endif
 
 /**
+ * @brief This API provides support for temporarily pausing networking in order
+ * to send/receive AT commands and resume networking afterwards.
+ * @note This function does not switch modes, the modem is still in data mode.
+ *
+ * @param dce Modem DCE handle
+ * @param pause true to pause the network interface, false to resume networking
+ * @return ESP_OK on success
+ */
+esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce, bool pause);
+
+/**
  * @}
  */
 
