@@ -385,6 +385,17 @@ extern "C" void app_main(void)
         return 0;
     });
 #endif
+    const ConsoleCommand PauseNetwork("pause_net", "toggle network pause", no_args, [&](ConsoleCommand * c) {
+        static int cnt = 0;
+        if (++cnt % 2) {
+            ESP_LOGI(TAG, "Pausing netif");
+            dce->pause_netif(true);
+        } else {
+            ESP_LOGI(TAG, "Unpausing netif");
+            dce->pause_netif(false);
+        }
+        return 0;
+    });
 
     const struct SetApn {
         SetApn(): apn(STR1, nullptr, nullptr, "<apn>", "APN (Access Point Name)") {}

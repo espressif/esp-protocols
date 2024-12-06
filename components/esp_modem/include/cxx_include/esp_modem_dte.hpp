@@ -145,6 +145,12 @@ public:
      */
     bool recover();
 
+    /**
+     * @brief Set internal command callbacks to the underlying terminal.
+     * Here we capture command replies to be processed by supplied command callbacks in  struct command_cb.
+     */
+    void set_command_callbacks();
+
 protected:
     /**
      * @brief Allows for locking the DTE
@@ -203,12 +209,6 @@ private:
         }
     } inflatable;
 #endif // CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
-
-    /**
-     * @brief Set internal command callbacks to the underlying terminal.
-     * Here we capture command replies to be processed by supplied command callbacks in  struct command_cb.
-     */
-    void set_command_callbacks();
 
     /**
      * @brief This abstracts command callback processing and implements its locking, signaling of completion and timeouts.

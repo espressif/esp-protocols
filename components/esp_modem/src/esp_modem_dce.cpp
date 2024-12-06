@@ -328,8 +328,15 @@ modem_mode DCE_Mode::guess_unsafe(DTE *dte, bool with_cmux)
         if (reply_pos >= sizeof(probe::ppp::lcp_echo_reply_head)) {
             // check for initial 2 bytes
             auto *ptr = static_cast<uint8_t *>(memmem(reply, reply_pos, probe::ppp::lcp_echo_reply_head.data(), 2));
-            // and check the other two bytes for protocol ID: LCP
+            // and check the other two bytes for protocol ID:
+            // * either LCP reply
             if (ptr && ptr[3] == probe::ppp::lcp_echo_reply_head[3] && ptr[4] == probe::ppp::lcp_echo_reply_head[4]) {
+                if (auto signal = weak_signal.lock()) {
+                    signal->set(probe::ppp::mode);
+                }
+            }
+            // * or LCP conf request
+            if (ptr && ptr[3] == probe::ppp::lcp_echo_request[3] && ptr[4] == probe::ppp::lcp_echo_request[4]) {
                 if (auto signal = weak_signal.lock()) {
                     signal->set(probe::ppp::mode);
                 }

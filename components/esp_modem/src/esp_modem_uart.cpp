@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -176,13 +176,20 @@ int UartTerminal::read(uint8_t *data, size_t len)
     uart_get_buffered_data_len(uart.port, &length);
     length = std::min(len, length);
     if (length > 0) {
-        return uart_read_bytes(uart.port, data, length, portMAX_DELAY);
+        int read_len = uart_read_bytes(uart.port, data, length, portMAX_DELAY);
+#if CONFIG_ESP_MODEM_ADD_DEBUG_LOGS
+        ESP_LOG_BUFFER_HEXDUMP("uart-rx", data, read_len, ESP_LOG_DEBUG);
+#endif
+        return read_len;
     }
     return 0;
 }
 
 int UartTerminal::write(uint8_t *data, size_t len)
 {
+#if CONFIG_ESP_MODEM_ADD_DEBUG_LOGS
+    ESP_LOG_BUFFER_HEXDUMP("uart-tx", data, len, ESP_LOG_DEBUG);
+#endif
     return uart_write_bytes_compat(uart.port, data, len);
 }
 

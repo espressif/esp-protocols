@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -53,6 +53,16 @@ public:
      * @brief Stop the network interface
      */
     void stop();
+
+    /**
+     * @brief Pause the network interface
+     */
+    void pause();
+
+    /**
+     * @brief Resume the network interface
+     */
+    void resume();
 
     void receive(uint8_t *data, size_t len);
 
