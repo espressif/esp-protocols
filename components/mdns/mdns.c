@@ -1544,6 +1544,11 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     mdns_debug_packet(packet, index);
 #endif
 
+    ESP_LOG_BUFFER_HEXDUMP(TAG, packet, index, ESP_LOG_INFO);
+    for (int i = 0; i < index; ++i) {
+        printf("0x%02x, ", packet[i]);
+    }
+    printf("\n");
     _mdns_udp_pcb_write(p->tcpip_if, p->ip_protocol, &p->dst, p->port, packet, index);
 }
 
