@@ -516,3 +516,11 @@ extern "C" esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce_wrap, bool pause)
     }
     return command_response_to_esp_err(dce_wrap->dce->pause_netif(pause));
 }
+
+extern "C" esp_err_t esp_modem_hang_up(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->hang_up());
+}
