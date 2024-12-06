@@ -211,4 +211,13 @@ menu "Example Configuration"
             publishes another MQTT message.
             Connection to the MQTT broker should be kept.
 
+    config EXAMPLE_DETECT_MODE_BEFORE_CONNECT
+        bool "Detect mode before connect"
+        default n
+        help
+            Set this to true to demonstrate mode auto-detection.
+            If enabled, the example tries to recognize the actual mode.
+            If mode is detected correctly and it is not a command mode,
+            then the example switches to command mode.
+
 endmenu
