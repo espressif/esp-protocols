@@ -91,6 +91,11 @@ public:
         return mode.set(dte.get(), device.get(), netif, m);
     }
 
+    modem_mode get_mode()
+    {
+        return mode.get();
+    }
+
     bool recover()
     {
         return dte->recover();
@@ -109,11 +114,12 @@ public:
      * @param force true to ignore command failures and continue
      * @return command_result of the underlying commands
      */
-    command_result pause_netif(bool do_pause, bool force = false)
+    command_result pause_netif(bool do_pause, bool force = false, int delay = 1000)
     {
         command_result result;
         if (do_pause) {
             netif.pause();
+            Task::Delay(delay); // Mandatory 1s pause before
             dte->set_command_callbacks();
             result = device->set_command_mode();
         } else {

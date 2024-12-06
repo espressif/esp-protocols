@@ -45,6 +45,8 @@ typedef enum esp_modem_dce_mode {
     ESP_MODEM_MODE_CMUX_MANUAL_SWAP,    /**< Swap terminals in CMUX manual mode */
     ESP_MODEM_MODE_CMUX_MANUAL_DATA,    /**< Set DATA mode in CMUX manual mode */
     ESP_MODEM_MODE_CMUX_MANUAL_COMMAND, /**< Set COMMAND mode in CMUX manual mode */
+    ESP_MODEM_MODE_DETECT,              /**< Detect the mode and resume it (if sucessfully detected) */
+    ESP_MODEM_MODE_UNDEF,
 } esp_modem_dce_mode_t;
 
 /**
@@ -171,6 +173,7 @@ esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_
  */
 esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce, bool pause);
 
+esp_modem_dce_mode_t esp_modem_get_mode(esp_modem_dce_t *dce);
 /**
  * @}
  */

@@ -177,7 +177,7 @@ void app_main(void)
     dte_config.uart_config.rx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE;
     dte_config.uart_config.tx_buffer_size = CONFIG_EXAMPLE_MODEM_UART_TX_BUFFER_SIZE;
     dte_config.uart_config.event_queue_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_QUEUE_SIZE;
-    dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
+    dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE * 2;
     dte_config.task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
 
@@ -248,6 +248,22 @@ void app_main(void)
 
     xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT);
 
+    esp_err_t err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DETECT);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_DETECT) failed with %d", err);
+        return;
+    }
+    ESP_LOGI(TAG, "Mode detected!");
+    esp_modem_dce_mode_t mode = esp_modem_get_mode(dce);
+    ESP_LOGI(TAG, "Current mode is : %d", mode);
+    if (mode != ESP_MODEM_MODE_COMMAND) {
+        err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
+            return;
+        }
+    }
+
     /* Run the modem demo app */
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
     // check if PIN needed
@@ -262,7 +278,7 @@ void app_main(void)
 #endif
 
     int rssi, ber;
-    esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
+    err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d %s", err, esp_err_to_name(err));
         return;
