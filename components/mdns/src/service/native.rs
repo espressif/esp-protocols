@@ -2,13 +2,11 @@ use super::service::Service;
 use std::thread;
 
 use std::net::{UdpSocket, Ipv4Addr};
-use dns_parser::rdata::null;
 use socket2::{Socket, Domain, Type, Protocol};
 use nix::unistd::{pipe, read, write, close};
 use nix::sys::select::{select, FdSet};
 use nix::sys::time::TimeVal;
-use std::os::fd::{AsRawFd, FromRawFd};
-use std::mem::MaybeUninit;
+use std::os::fd::AsRawFd;
 
 enum Action {
     Action1,
