@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "gethostname.h"
 #include "ifaddrs.h"
 #include "esp_netif.h"
 #include "esp_event.h"
@@ -148,6 +149,30 @@ TEST_CASE("gai_strerror()", "[sock_utils]")
     CHECK(str_error != NULL);
 }
 
+TEST_CASE("gethostname()", "[sock_utils]")
+{
+    const char *test_netif_name = "station";
+    char hostname[32];
+    int ret;
+
+    // expect failure
+    ret = gethostname(hostname, strlen(CONFIG_LWIP_LOCAL_HOSTNAME) - 1);
+    CHECK(ret == -1);
+
+    // happy flow with the default name
+    ret = gethostname(hostname, sizeof(hostname));
+    CHECK(ret == 0);
+    CHECK(strcmp(hostname, CONFIG_LWIP_LOCAL_HOSTNAME) == 0);
+
+    // happy flow with the netif name
+    esp_netif_t *esp_netif = create_test_netif(test_netif_name, 1);
+    REQUIRE(esp_netif != NULL);
+    CHECK(esp_netif_set_hostname(esp_netif, test_netif_name) == ESP_OK);
+    ret = gethostname(hostname, sizeof(hostname));
+    CHECK(ret == 0);
+    CHECK(strcmp(hostname, test_netif_name) == 0);
+    esp_netif_destroy(esp_netif);
+}
 
 extern "C" void app_main(void)
 {
