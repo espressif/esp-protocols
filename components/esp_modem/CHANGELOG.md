@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0](https://github.com/espressif/esp-protocols/commits/modem-v1.3.0)
+
+### Features
+
+- Add mode detection to the example ([18f196fa](https://github.com/espressif/esp-protocols/commit/18f196fa))
+- Support for pausing network in C-API ([1db83cd1](https://github.com/espressif/esp-protocols/commit/1db83cd1))
+- Add support for pausing netif ([247f1681](https://github.com/espressif/esp-protocols/commit/247f1681), [#699](https://github.com/espressif/esp-protocols/issues/699))
+
+### Bug Fixes
+
+- Minor cleanup of pppos example ([5e929902](https://github.com/espressif/esp-protocols/commit/5e929902))
+- Fix PPP mode detection to accept LCP/conf ([c989c6ad](https://github.com/espressif/esp-protocols/commit/c989c6ad))
+- Refine mode switch data->command ([8b6ea331](https://github.com/espressif/esp-protocols/commit/8b6ea331), [#692](https://github.com/espressif/esp-protocols/issues/692))
+- Detect serial ports properly ([0cb59ff8](https://github.com/espressif/esp-protocols/commit/0cb59ff8))
+- Fix CMUX enter to ignore URC before transition ([1284f66d](https://github.com/espressif/esp-protocols/commit/1284f66d), [#669](https://github.com/espressif/esp-protocols/issues/669))
+
 ## [1.2.1](https://github.com/espressif/esp-protocols/commits/modem-v1.2.1)
 
 ### Bug Fixes
