@@ -91,6 +91,11 @@ public:
         return mode.set(dte.get(), device.get(), netif, m);
     }
 
+    modem_mode get_mode()
+    {
+        return mode.get();
+    }
+
     bool recover()
     {
         return dte->recover();
@@ -102,6 +107,29 @@ public:
         dte->set_urc_cb(on_read_cb);
     }
 #endif
+
+    /**
+     * @brief Pauses/Unpauses network temporarily
+     * @param do_pause true to pause, false to unpause
+     * @param force true to ignore command failures and continue
+     * @return command_result of the underlying commands
+     */
+    command_result pause_netif(bool do_pause, bool force = false, int delay = 1000)
+    {
+        command_result result;
+        if (do_pause) {
+            netif.pause();
+            Task::Delay(delay); // Mandatory 1s pause before
+            dte->set_command_callbacks();
+            result = device->set_command_mode();
+        } else {
+            result = device->resume_data_mode();
+            if (result == command_result::OK || force) {
+                netif.resume();
+            }
+        }
+        return result;
+    }
 
 protected:
     std::shared_ptr<DTE> dte;

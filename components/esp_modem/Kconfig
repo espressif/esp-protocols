@@ -85,4 +85,11 @@ menu "esp-modem"
             mode more robust for some devices (e.g. Quectel), but might cause
             trouble for other devices (e.g. SIMCOM).
 
+    config ESP_MODEM_ADD_DEBUG_LOGS
+        bool "Add UART Tx/Rx logs"
+        default n
+        help
+            If enabled, the library dumps all transmitted and received data.
+            This option is only used for debugging.
+
 endmenu

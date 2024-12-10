@@ -12,7 +12,7 @@ def test_pppos_connect(dut):
       4. checks that the client cleanly disconnects
     """
     # Check the sequence of connecting, publishing, disconnecting
-    dut.expect('Modem Connect to PPP Server')
+    dut.expect('Modem Connect to PPP Server', timeout=90)
     # Check for MQTT connection and the data event
     dut.expect('MQTT_EVENT_CONNECTED')
     dut.expect('MQTT_EVENT_DATA')

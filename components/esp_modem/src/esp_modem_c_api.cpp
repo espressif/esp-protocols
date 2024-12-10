@@ -95,12 +95,43 @@ extern "C" esp_err_t esp_modem_sync(esp_modem_dce_t *dce_wrap)
     return command_response_to_esp_err(dce_wrap->dce->sync());
 }
 
+extern "C" esp_modem_dce_mode_t esp_modem_get_mode(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_MODEM_MODE_UNDEF;
+    }
+    auto mode = dce_wrap->dce->get_mode();
+    switch (mode) {
+    default:
+    case modem_mode::UNDEF:
+        return ESP_MODEM_MODE_UNDEF;
+    case modem_mode::COMMAND_MODE:
+        return ESP_MODEM_MODE_COMMAND;
+    case modem_mode::DATA_MODE:
+        return ESP_MODEM_MODE_DATA;
+    case modem_mode::CMUX_MODE:
+        return ESP_MODEM_MODE_CMUX;
+    case modem_mode::CMUX_MANUAL_MODE:
+        return ESP_MODEM_MODE_CMUX_MANUAL;
+    case modem_mode::CMUX_MANUAL_EXIT:
+        return ESP_MODEM_MODE_CMUX_MANUAL_EXIT;
+    case modem_mode::CMUX_MANUAL_DATA:
+        return ESP_MODEM_MODE_CMUX_MANUAL_DATA;
+    case modem_mode::CMUX_MANUAL_COMMAND:
+        return ESP_MODEM_MODE_CMUX_MANUAL_COMMAND;
+    case modem_mode::CMUX_MANUAL_SWAP:
+        return ESP_MODEM_MODE_CMUX_MANUAL_SWAP;
+    }
+}
+
 extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce_mode_t mode)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     switch (mode) {
+    case ESP_MODEM_MODE_UNDEF:
+        return dce_wrap->dce->set_mode(modem_mode::UNDEF) ? ESP_OK : ESP_FAIL;
     case ESP_MODEM_MODE_DATA:
         return dce_wrap->dce->set_mode(modem_mode::DATA_MODE) ? ESP_OK : ESP_FAIL;
     case ESP_MODEM_MODE_COMMAND:
@@ -117,6 +148,8 @@ extern "C" esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce_wrap, esp_modem_dce
         return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_DATA) ? ESP_OK : ESP_FAIL;
     case ESP_MODEM_MODE_CMUX_MANUAL_COMMAND:
         return dce_wrap->dce->set_mode(modem_mode::CMUX_MANUAL_COMMAND) ? ESP_OK : ESP_FAIL;
+    case ESP_MODEM_MODE_DETECT:
+        return dce_wrap->dce->set_mode(modem_mode::AUTODETECT) ? ESP_OK : ESP_FAIL;
     }
     return ESP_ERR_NOT_SUPPORTED;
 }
@@ -475,3 +508,19 @@ extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got
     return ESP_OK;
 }
 #endif
+
+extern "C" esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce_wrap, bool pause)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->pause_netif(pause));
+}
+
+extern "C" esp_err_t esp_modem_hang_up(esp_modem_dce_t *dce_wrap)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return command_response_to_esp_err(dce_wrap->dce->hang_up());
+}

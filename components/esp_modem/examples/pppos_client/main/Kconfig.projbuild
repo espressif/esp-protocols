@@ -201,4 +201,23 @@ menu "Example Configuration"
         help
             MQTT data message, which we publish and expect to receive.
 
+    config EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
+        bool "Demonstrate netif pause"
+        default n
+        help
+            Set this to true to demonstrate network pausing.
+            If enabled, the example waits for an MQTT data, then temporarily
+            drops network to check signal quality, resumes networking and
+            publishes another MQTT message.
+            Connection to the MQTT broker should be kept.
+
+    config EXAMPLE_DETECT_MODE_BEFORE_CONNECT
+        bool "Detect mode before connect"
+        default n
+        help
+            Set this to true to demonstrate mode auto-detection.
+            If enabled, the example tries to recognize the actual mode.
+            If mode is detected correctly and it is not a command mode,
+            then the example switches to command mode.
+
 endmenu

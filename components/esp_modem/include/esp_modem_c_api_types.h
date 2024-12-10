@@ -45,6 +45,8 @@ typedef enum esp_modem_dce_mode {
     ESP_MODEM_MODE_CMUX_MANUAL_SWAP,    /**< Swap terminals in CMUX manual mode */
     ESP_MODEM_MODE_CMUX_MANUAL_DATA,    /**< Set DATA mode in CMUX manual mode */
     ESP_MODEM_MODE_CMUX_MANUAL_COMMAND, /**< Set COMMAND mode in CMUX manual mode */
+    ESP_MODEM_MODE_DETECT,              /**< Detect the mode and resume it (if sucessfully detected) */
+    ESP_MODEM_MODE_UNDEF,
 } esp_modem_dce_mode_t;
 
 /**
@@ -160,6 +162,18 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
 #endif
 
+/**
+ * @brief This API provides support for temporarily pausing networking in order
+ * to send/receive AT commands and resume networking afterwards.
+ * @note This function does not switch modes, the modem is still in data mode.
+ *
+ * @param dce Modem DCE handle
+ * @param pause true to pause the network interface, false to resume networking
+ * @return ESP_OK on success
+ */
+esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce, bool pause);
+
+esp_modem_dce_mode_t esp_modem_get_mode(esp_modem_dce_t *dce);
 /**
  * @}
  */

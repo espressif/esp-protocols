@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -34,6 +34,7 @@
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
+static const int DISCONNECT_BIT = BIT1;
 static const int GOT_DATA_BIT = BIT2;
 static const int USB_DISCONNECTED_BIT = BIT3; // Used only with USB DTE but we define it unconditionally, to avoid too many #ifdefs in the code
 
@@ -55,6 +56,7 @@ static void usb_terminal_error_handler(esp_modem_terminal_error_t err)
 }
 #define CHECK_USB_DISCONNECTION(event_group) \
 if ((xEventGroupGetBits(event_group) & USB_DISCONNECTED_BIT) == USB_DISCONNECTED_BIT) { \
+    ESP_LOGE(TAG, "USB_DISCONNECTED_BIT destroying modem dce");                                            \
     esp_modem_destroy(dce); \
     continue; \
 }
@@ -140,6 +142,7 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "GOT ip event!!!");
     } else if (event_id == IP_EVENT_PPP_LOST_IP) {
         ESP_LOGI(TAG, "Modem Disconnect from PPP Server");
+        xEventGroupSetBits(event_group, DISCONNECT_BIT);
     } else if (event_id == IP_EVENT_GOT_IP6) {
         ESP_LOGI(TAG, "GOT IPv6 event!");
 
@@ -158,6 +161,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, NULL));
 
     /* Configure the PPP netif */
+    esp_err_t err;
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_PPP_APN);
     esp_netif_config_t netif_ppp_config = ESP_NETIF_DEFAULT_PPP();
     esp_netif_t *esp_netif = esp_netif_new(&netif_ppp_config);
@@ -205,7 +209,7 @@ void app_main(void)
 #endif
     assert(dce);
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
-        esp_err_t err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
+        err = esp_modem_set_flow_control(dce, 2, 2);  //2/2 means HW Flow Control.
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
             return;
@@ -246,7 +250,27 @@ void app_main(void)
 #error Invalid serial connection to modem.
 #endif
 
-    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT);
+#if CONFIG_EXAMPLE_DETECT_MODE_BEFORE_CONNECT
+    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
+
+    err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DETECT);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_DETECT) failed with %d", err);
+        return;
+    }
+    esp_modem_dce_mode_t mode = esp_modem_get_mode(dce);
+    ESP_LOGI(TAG, "Mode detection completed: current mode is: %d", mode);
+    if (mode == ESP_MODEM_MODE_DATA) {  // set back to command mode
+        err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
+            return;
+        }
+        ESP_LOGI(TAG, "Command mode restored");
+    }
+#endif // CONFIG_EXAMPLE_DETECT_MODE_BEFORE_CONNECT
+
+    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
 
     /* Run the modem demo app */
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
@@ -262,7 +286,7 @@ void app_main(void)
 #endif
 
     int rssi, ber;
-    esp_err_t err = esp_modem_get_signal_quality(dce, &rssi, &ber);
+    err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d %s", err, esp_err_to_name(err));
         return;
@@ -301,22 +325,41 @@ void app_main(void)
     }
     /* Wait for IP address */
     ESP_LOGI(TAG, "Waiting for IP address");
-    xEventGroupWaitBits(event_group, CONNECT_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    xEventGroupWaitBits(event_group, CONNECT_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT, pdFALSE, pdFALSE,
+                        pdMS_TO_TICKS(60000));
     CHECK_USB_DISCONNECTION(event_group);
+    if ((xEventGroupGetBits(event_group) & CONNECT_BIT) != CONNECT_BIT) {
+        ESP_LOGW(TAG, "Modem not connected, switching back to the command mode");
+        err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
+            return;
+        }
+        ESP_LOGI(TAG, "Command mode restored");
+        return;
+    }
 
     /* Config MQTT */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     esp_mqtt_client_config_t mqtt_config = {
         .broker.address.uri = CONFIG_EXAMPLE_MQTT_BROKER_URI,
     };
-#else
-    esp_mqtt_client_config_t mqtt_config = {
-        .uri = CONFIG_EXAMPLE_MQTT_BROKER_URI,
-    };
-#endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
+
+#if CONFIG_EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
+    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
+    esp_modem_pause_net(dce, true);
+    err = esp_modem_get_signal_quality(dce, &rssi, &ber);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_modem_get_signal_quality failed with %d", err);
+        return;
+    }
+    ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
+    esp_modem_pause_net(dce, false);
+    esp_mqtt_client_publish(mqtt_client, CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA, 0, 0, 0);
+#endif // CONFIG_EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
+
     ESP_LOGI(TAG, "Waiting for MQTT data");
     xEventGroupWaitBits(event_group, GOT_DATA_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
     CHECK_USB_DISCONNECTION(event_group);
