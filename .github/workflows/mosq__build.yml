@@ -30,7 +30,11 @@ jobs:
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
           python ci/build_apps.py ${TEST_DIR}
-          cd ${TEST_DIR}
+          cd ${TEST_DIR}/../serverless_mqtt
+          # manual tests for now -- build both peers
+          idf.py -B build1 -DSDKCONFIG=build1/sdkconfig -DPEER1=1 build
+          idf.py -B build2 -DSDKCONFIG=build2/sdkconfig -DPEER2=1 build
+          cd ../broker
           ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
           zip -qur artifacts.zip ${TARGET_TEST_DIR}
       - uses: actions/upload-artifact@v4
