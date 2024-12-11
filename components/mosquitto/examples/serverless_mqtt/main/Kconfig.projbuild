@@ -1,0 +1,55 @@
+menu "Example Configuration"
+
+    menu "AP Configuration"
+        comment "AP Configuration"
+
+        config EXAMPLE_AP_SSID
+            string "Wi-Fi SSID"
+            default "myssid"
+            help
+                Set the SSID of Wi-Fi ap interface.
+
+        config EXAMPLE_AP_PASSWORD
+            string "Wi-Fi Password"
+            default "12345678"
+            help
+                Set the password of Wi-Fi ap interface.
+
+    endmenu
+
+    menu "STA Configuration"
+        comment "STA Configuration"
+
+        config EXAMPLE_STA_SSID
+            string "WiFi Station SSID"
+            default "mystationssid"
+            help
+                SSID for the example's sta to connect to.
+
+        config EXAMPLE_STA_PASSWORD
+            string "WiFi Station Password"
+            default "mystationpassword"
+            help
+                WiFi station password for the example to use.
+    endmenu
+
+    config EXAMPLE_MQTT_BROKER_URI
+        string "MQTT Broker URL"
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the mqtt broker use for synchronisation and exchanging
+            ICE connect info (description and candidates).
+
+    config EXAMPLE_MQTT_SYNC_TOPIC
+        string "MQTT topic for synchronisation"
+        default "/topic/serverless_mqtt"
+        help
+            MQTT topic used fo synchronisation.
+
+    config EXAMPLE_STUN_SERVER
+        string "Hostname of STUN server"
+        default "stun.l.google.com"
+        help
+            STUN server hostname.
+
+endmenu
