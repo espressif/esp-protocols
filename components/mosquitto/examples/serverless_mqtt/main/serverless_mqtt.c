@@ -14,10 +14,10 @@
 #include "juice/juice.h"
 #include "cJSON.h"
 
-#if defined(PEER1)
+#if defined(CONFIG_EXAMPLE_SERVERLESS_ROLE_PEER1)
 #define OUR_PEER "1"
 #define THEIR_PEER "2"
-#elif defined(PEER2)
+#elif defined(CONFIG_EXAMPLE_SERVERLESS_ROLE_PEER2)
 #define OUR_PEER "2"
 #define THEIR_PEER "1"
 #endif
@@ -126,7 +126,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             xEventGroupSetBits(s_state, PEER_DESC_PUBLISHED); // this will complete the sync process
             // and destroy the mqtt client
         }
-#ifdef PEER1
+#ifdef CONFIG_EXAMPLE_SERVERLESS_ROLE_PEER1
         if (event->data_len == 1 && event->data[0] == '1' && (bits & PEER_SYNC2) == 0) {
             if (esp_mqtt_client_publish(client, PUBLISH_SYNC_TOPIC, "2", 1, 1, 0) >= 0) {
                 xEventGroupSetBits(s_state, PEER_SYNC2);
@@ -183,7 +183,7 @@ static esp_err_t sync_peers(void)
         }
         ESP_GOTO_ON_FALSE((bits & PEER_FAIL) == 0, ESP_FAIL, err, TAG, "Failed to sync with the other peer");
         ESP_GOTO_ON_FALSE(retry++ < max_sync_retry, ESP_FAIL, err, TAG, "Failed to sync after %d seconds", retry);
-#ifdef PEER1
+#ifdef CONFIG_EXAMPLE_SERVERLESS_ROLE_PEER1
         ESP_RETURN_ON_FALSE(esp_mqtt_client_publish(client, PUBLISH_SYNC_TOPIC, "0", 1, 1, 0) >= 0,
                             ESP_FAIL, TAG, "Failed to publish mqtt message");
 #endif

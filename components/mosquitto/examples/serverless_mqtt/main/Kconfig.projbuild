@@ -52,4 +52,21 @@ menu "Example Configuration"
         help
             STUN server hostname.
 
+    choice EXAMPLE_SERVERLESS_ROLE
+        prompt "Choose your role"
+        default EXAMPLE_SERVERLESS_ROLE_PEER1
+        help
+            Choose either peer1 or peer2.
+            It's not very important which device is peer1
+            (peer-1 sends sync messages, peer2 listens for them)
+            It is important that we have two peers,
+            one with peer1 config, another one with peer2 config
+
+        config EXAMPLE_SERVERLESS_ROLE_PEER1
+            bool "peer1"
+
+        config EXAMPLE_SERVERLESS_ROLE_PEER2
+            bool "peer2"
+    endchoice
+
 endmenu

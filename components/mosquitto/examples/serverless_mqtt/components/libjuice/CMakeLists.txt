@@ -34,7 +34,6 @@ set(JUICE_SOURCES   ${libjuice_dir}/src/addr.c
 #                    ${libjuice_dir}/src/random.c
         )
 
-message(INFO ${JUICE_SOURCES})
 idf_component_register(SRCS     port/juice_random.c
                                 ${JUICE_SOURCES}
                        INCLUDE_DIRS "include"  "${libjuice_dir}/include" "${libjuice_dir}/include/juice"
