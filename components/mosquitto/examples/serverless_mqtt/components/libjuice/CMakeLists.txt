@@ -41,3 +41,4 @@ idf_component_register(SRCS     port/juice_random.c
                        PRIV_REQUIRES sock_utils)
 
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
+set_source_files_properties(${libjuice_dir}/src/udp.c PROPERTIES COMPILE_FLAGS -Wno-unused-variable)
