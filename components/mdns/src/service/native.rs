@@ -7,6 +7,7 @@ use nix::unistd::{pipe, read, write, close};
 use nix::sys::select::{select, FdSet};
 use nix::sys::time::TimeVal;
 use std::os::fd::AsRawFd;
+use std::ptr::null;
 
 enum Action {
     Action1,
@@ -53,10 +54,14 @@ impl NativeService
                 read_fds.insert(read_fd);
 
 
-                let mut timeout = TimeVal::new(0, 100_000);
+                let mut timeout = TimeVal::new(0, 500_000);
 
                 match select(read_fd.max(socket_fd) + 1, Some(&mut read_fds), None, None, Some(&mut timeout)) {
-                    Ok(0) => println!("ThreadHousekeeper: Performing housekeeping tasks"),
+                    Ok(0) => {
+                        println!("ThreadHousekeeper: Performing housekeeping tasks");
+                        let buf = vec![];
+                        local_cb(&buf);
+                    }
                     Ok(_) => {
                         if read_fds.contains(socket_fd) {
                             // let mut buf: [MaybeUninit<u8>; 1500] = unsafe { MaybeUninit::uninit().assume_init() };
