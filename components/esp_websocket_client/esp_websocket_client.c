@@ -126,7 +126,7 @@ struct esp_websocket_client {
     bool                        wait_for_pong_resp;
     bool                        selected_for_destroying;
     EventGroupHandle_t          status_bits;
-    SemaphoreHandle_t            lock;
+    SemaphoreHandle_t           lock;
     size_t                      errormsg_size;
     char                        *errormsg_buffer;
     char                        *rx_buffer;
