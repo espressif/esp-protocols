@@ -122,7 +122,6 @@ struct esp_websocket_client {
     uint64_t                    ping_tick_ms;
     uint64_t                    pingpong_tick_ms;
     int                         wait_timeout_ms;
-    int                         auto_reconnect;
     bool                        run;
     bool                        wait_for_pong_resp;
     bool                        selected_for_destroying;
