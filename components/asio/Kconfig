@@ -1,6 +1,15 @@
 menu "ESP-ASIO"
     visible if LWIP_IPV6
 
+    config ASIO_IS_ENABLED
+        # Invisible option that is enabled if ASIO is added to the IDF components.
+        # This is used to "select" LWIP_NETIF_API option
+        # which enables if_indextoname() and if_nametoindex() functions
+        # (these are optionally used in asio)
+        bool
+        default "y"
+        select LWIP_NETIF_API
+
     config ASIO_SSL_SUPPORT
         bool "Enable SSL/TLS support of ASIO"
         default n
