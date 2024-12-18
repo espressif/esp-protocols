@@ -8,7 +8,7 @@
 //
 
 #include "asio/detail/config.hpp"
-#include "openssl_stub.hpp"
+#include "asio/ssl/detail/openssl_types.hpp"
 #include <cstring>
 #include "asio/detail/throw_error.hpp"
 #include "asio/error.hpp"
