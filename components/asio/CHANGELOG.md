@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.32.0](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0)
+
+### Features
+
+- Upgrade asio to 1.32 ([b2674a0b](https://github.com/espressif/esp-protocols/commit/b2674a0b))
+- Drop esp/asio patches in favor of sock-utils ([ac633898](https://github.com/espressif/esp-protocols/commit/ac633898))
+
+### Bug Fixes
+
+- Re-applie refs to common comps idf_component.yml ([9fe44a45](https://github.com/espressif/esp-protocols/commit/9fe44a45))
+- Reference common component from IDF ([74fc228c](https://github.com/espressif/esp-protocols/commit/74fc228c))
+- Revert referencing protocol_examples_common from IDF ([f9e0281a](https://github.com/espressif/esp-protocols/commit/f9e0281a))
+- reference protocol_examples_common from IDF ([09abb18b](https://github.com/espressif/esp-protocols/commit/09abb18b))
+- specify override_path in example manifest files ([1d8923cf](https://github.com/espressif/esp-protocols/commit/1d8923cf))
+
+### Updated
+
+- docs(asio): Updates asio docs ([ce9337d3](https://github.com/espressif/esp-protocols/commit/ce9337d3))
+
 ## [1.28.2~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.2_0)
 
 ### Bug Fixes
