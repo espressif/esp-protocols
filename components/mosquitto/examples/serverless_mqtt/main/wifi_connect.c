@@ -71,7 +71,8 @@ esp_err_t wifi_connect(void)
     wifi_config_t wifi_ap_config = {
         .ap = {
             .ssid = CONFIG_EXAMPLE_AP_SSID,
-            .password = CONFIG_EXAMPLE_AP_SSID,
+            .password = CONFIG_EXAMPLE_AP_PASSWORD,
+            .authmode = WIFI_AUTH_WPA2_PSK,
             .max_connection = 4,
         },
     };
@@ -106,4 +107,16 @@ err:
     esp_event_loop_delete_default();
     return ret;
 
+}
+
+_Thread_local char s_ipv4_addr[4 * 4]; // 4 octets + '.'/term
+
+char *wifi_get_ipv4(wifi_interface_t interface)
+{
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey(interface == WIFI_IF_AP ? "WIFI_AP_DEF" : "WIFI_STA_DEF");
+    ESP_RETURN_ON_FALSE(netif, NULL, TAG, "Failed to find default Wi-Fi netif");
+    esp_netif_ip_info_t ip_info;
+    ESP_RETURN_ON_FALSE(esp_netif_get_ip_info(netif, &ip_info) == ESP_OK, NULL, TAG, "Failed to get IP from netif");
+    ESP_RETURN_ON_FALSE(esp_ip4addr_ntoa(&ip_info.ip, s_ipv4_addr, sizeof(s_ipv4_addr)) != NULL, NULL, TAG, "Failed to convert IP");
+    return s_ipv4_addr;
 }

@@ -1,9 +1,9 @@
-# Serverless MQTT Example
+# Brokerless MQTT Example
 
 MQTT served by (two) mosquitto's running on two ESP chips.
 
-* Leverages MQTT connectivity between private two networks without cloud premisses.
-* Creates two local MQTT servers (on ESP32x's) which are being synchronized over peer to peer connection (established via ICE protocol, by libjuice).
+* Leverages MQTT connectivity between two private networks without cloud premisses.
+* Creates two local MQTT servers (on ESP32x's) which are being synchronized over peer to peer connection (established via ICE protocol, by [libjuice](https://github.com/paullouisageneau/libjuice)).
 
 ## How it works
 

@@ -7,7 +7,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "mqtt_client.h"
+#include "esp_wifi.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "esp_check.h"
 #include "esp_sleep.h"
 #include "mosq_broker.h"
@@ -50,6 +52,7 @@ static cJSON *s_peer_desc_json = NULL;
 static char *s_peer_desc = NULL;
 static esp_mqtt_client_handle_t s_local_mqtt = NULL;
 
+char *wifi_get_ipv4(wifi_interface_t interface);
 esp_err_t wifi_connect(void);
 static esp_err_t sync_peers(void);
 static esp_err_t create_candidates(void);
@@ -62,8 +65,8 @@ void app_main(void)
     ESP_GOTO_ON_ERROR(wifi_connect(), err, TAG, "Failed to initialize WiFi");
     ESP_GOTO_ON_ERROR(create_local_broker(), err, TAG, "Failed to create local broker");
     ESP_GOTO_ON_ERROR(create_candidates(), err, TAG, "Failed to create juice candidates");
-    ESP_GOTO_ON_ERROR(sync_peers(), err, TAG, "Failed to sync with the ohter peer");
-    EventBits_t bits = xEventGroupWaitBits(s_state, PEER_FAIL | PEER_CONNECTED, pdFALSE, pdFALSE, pdMS_TO_TICKS(20000));
+    ESP_GOTO_ON_ERROR(sync_peers(), err, TAG, "Failed to sync with the other peer");
+    EventBits_t bits = xEventGroupWaitBits(s_state, PEER_FAIL | PEER_CONNECTED, pdFALSE, pdFALSE, pdMS_TO_TICKS(90000));
     if (bits & PEER_CONNECTED) {
         ESP_LOGI(TAG, "Peer is connected!");
         ESP_GOTO_ON_ERROR(create_local_client(), err, TAG, "Failed to create forwarding mqtt client");
@@ -71,8 +74,8 @@ void app_main(void)
         return;
     }
 err:
-    ESP_LOGE(TAG, "Non recoverable error, going to sleep for some time");
-    esp_deep_sleep(1000000LL * 30);
+    ESP_LOGE(TAG, "Non recoverable error, going to sleep for some time (random, max 20s)");
+    esp_deep_sleep(1000000LL * (esp_random() % 20));
 }
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
@@ -161,7 +164,7 @@ static esp_err_t sync_peers(void)
     esp_err_t ret = ESP_OK;
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_EXAMPLE_MQTT_BROKER_URI,
-        .task.stack_size = 16384,
+        .task.stack_size = CONFIG_EXAMPLE_MQTT_CLIENT_STACK_SIZE,
     };
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     ESP_GOTO_ON_FALSE(client, ESP_ERR_NO_MEM, err, TAG, "Failed to create mqtt client");
@@ -256,6 +259,7 @@ static esp_err_t create_candidates(void)
     esp_err_t ret = ESP_OK;
     juice_set_log_level(JUICE_LOG_LEVEL_INFO);
     juice_config_t config = { .stun_server_host = CONFIG_EXAMPLE_STUN_SERVER,
+                              .bind_address = wifi_get_ipv4(WIFI_IF_STA),
                               .stun_server_port = 19302,
                               .cb_state_changed = juice_state,
                               .cb_candidate = juice_candidate,
@@ -310,8 +314,10 @@ static esp_err_t create_local_client(void)
 {
     esp_err_t ret = ESP_OK;
     esp_mqtt_client_config_t mqtt_cfg = {
-        .broker.address.uri = "mqtt://192.168.4.1:3333",
-        .task.stack_size = 16384,
+        .broker.address.transport = MQTT_TRANSPORT_OVER_TCP,
+        .broker.address.hostname = wifi_get_ipv4(WIFI_IF_AP),
+        .broker.address.port = CONFIG_EXAMPLE_MQTT_BROKER_PORT,
+        .task.stack_size = CONFIG_EXAMPLE_MQTT_CLIENT_STACK_SIZE,
         .credentials.client_id = "local_mqtt"
     };
     s_local_mqtt = esp_mqtt_client_init(&mqtt_cfg);
@@ -356,7 +362,7 @@ static void handle_message(char *client, char *topic, char *payload, int len, in
 
 static void broker_task(void *ctx)
 {
-    struct mosq_broker_config config = { .host = "192.168.4.1", .port = 3333, .handle_message_cb = handle_message };
+    struct mosq_broker_config config = { .host = wifi_get_ipv4(WIFI_IF_AP), .port = CONFIG_EXAMPLE_MQTT_BROKER_PORT, .handle_message_cb = handle_message };
     mosq_broker_run(&config);
     vTaskDelete(NULL);
 }

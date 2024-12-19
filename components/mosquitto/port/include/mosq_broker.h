@@ -25,7 +25,10 @@ struct mosq_broker_config {
                                      * You can open the respective docs with this idf.py command:
                                      * `idf.py docs -sp api-reference/protocols/esp_tls.html`
                                      */
-    void (*handle_message_cb)(char *client, char *topic, char *data, int len, int qos, int retain);
+    void (*handle_message_cb)(char *client, char *topic, char *data, int len, int qos, int retain); /*!<
+                                     * On message callback. If configured, user function is called
+                                     * whenever mosquitto processes a message.
+                                     */
 };
 
 /**

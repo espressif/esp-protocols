@@ -52,6 +52,19 @@ menu "Example Configuration"
         help
             STUN server hostname.
 
+    config EXAMPLE_MQTT_CLIENT_STACK_SIZE
+        int "Stack size for mqtt client"
+        default 16384
+        help
+            Set stack size for the mqtt client.
+            Need more stack, since calling juice API from the handler.
+
+    config EXAMPLE_MQTT_BROKER_PORT
+        int "port for the mosquitto to listen to"
+        default 1883
+        help
+            This is a port which the local mosquitto uses.
+
     choice EXAMPLE_SERVERLESS_ROLE
         prompt "Choose your role"
         default EXAMPLE_SERVERLESS_ROLE_PEER1
