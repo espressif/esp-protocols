@@ -81,7 +81,8 @@ idf_component_register(SRCS ${m_srcs}
                     PRIV_INCLUDE_DIRS port/priv_include port/priv_include/sys ${m_dir} ${m_src_dir}
                                       ${m_incl_dir} ${m_lib_dir} ${m_deps_dir}
                     INCLUDE_DIRS ${m_incl_dir} port/include
-                    PRIV_REQUIRES newlib esp-tls
+                    REQUIRES esp-tls
+                    PRIV_REQUIRES newlib
         )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_BROKER")

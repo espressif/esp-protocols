@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
-      TEST_DIR: components/mosquitto/examples/broker
+      TEST_DIR: components/mosquitto/examples
+      TARGET_TEST: broker
       TARGET_TEST_DIR: build_esp32_default
     steps:
       - name: Checkout esp-protocols
@@ -29,14 +30,15 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
-          python ci/build_apps.py ${TEST_DIR}
-          cd ${TEST_DIR}
+          python ci/build_apps.py -c ${TEST_DIR} -m components/mosquitto/.build-test-rules.yml
+          # upload only the target test artifacts
+          cd ${TEST_DIR}/${TARGET_TEST}
           ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
           zip -qur artifacts.zip ${TARGET_TEST_DIR}
       - uses: actions/upload-artifact@v4
         with:
           name: mosq_target_esp32_${{ matrix.idf_ver }}
-          path: ${{ env.TEST_DIR }}/artifacts.zip
+          path: ${{ env.TEST_DIR }}/${{ env.TARGET_TEST }}/artifacts.zip
           if-no-files-found: error
 
   test_mosq:

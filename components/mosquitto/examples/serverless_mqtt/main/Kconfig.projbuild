@@ -1,0 +1,85 @@
+menu "Example Configuration"
+
+    menu "AP Configuration"
+        comment "AP Configuration"
+
+        config EXAMPLE_AP_SSID
+            string "Wi-Fi SSID"
+            default "myssid"
+            help
+                Set the SSID of Wi-Fi ap interface.
+
+        config EXAMPLE_AP_PASSWORD
+            string "Wi-Fi Password"
+            default "12345678"
+            help
+                Set the password of Wi-Fi ap interface.
+
+    endmenu
+
+    menu "STA Configuration"
+        comment "STA Configuration"
+
+        config EXAMPLE_STA_SSID
+            string "WiFi Station SSID"
+            default "mystationssid"
+            help
+                SSID for the example's sta to connect to.
+
+        config EXAMPLE_STA_PASSWORD
+            string "WiFi Station Password"
+            default "mystationpassword"
+            help
+                WiFi station password for the example to use.
+    endmenu
+
+    config EXAMPLE_MQTT_BROKER_URI
+        string "MQTT Broker URL"
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the mqtt broker use for synchronisation and exchanging
+            ICE connect info (description and candidates).
+
+    config EXAMPLE_MQTT_SYNC_TOPIC
+        string "MQTT topic for synchronisation"
+        default "/topic/serverless_mqtt"
+        help
+            MQTT topic used fo synchronisation.
+
+    config EXAMPLE_STUN_SERVER
+        string "Hostname of STUN server"
+        default "stun.l.google.com"
+        help
+            STUN server hostname.
+
+    config EXAMPLE_MQTT_CLIENT_STACK_SIZE
+        int "Stack size for mqtt client"
+        default 16384
+        help
+            Set stack size for the mqtt client.
+            Need more stack, since calling juice API from the handler.
+
+    config EXAMPLE_MQTT_BROKER_PORT
+        int "port for the mosquitto to listen to"
+        default 1883
+        help
+            This is a port which the local mosquitto uses.
+
+    choice EXAMPLE_SERVERLESS_ROLE
+        prompt "Choose your role"
+        default EXAMPLE_SERVERLESS_ROLE_PEER1
+        help
+            Choose either peer1 or peer2.
+            It's not very important which device is peer1
+            (peer-1 sends sync messages, peer2 listens for them)
+            It is important that we have two peers,
+            one with peer1 config, another one with peer2 config
+
+        config EXAMPLE_SERVERLESS_ROLE_PEER1
+            bool "peer1"
+
+        config EXAMPLE_SERVERLESS_ROLE_PEER2
+            bool "peer2"
+    endchoice
+
+endmenu
