@@ -13,7 +13,9 @@
 #include "util_mosq.h"
 #include "utlist.h"
 #include "lib_load.h"
+#include "mosq_broker.h"
 
+mosq_message_cb_t g_mosq_message_callback = NULL;
 
 int mosquitto_callback_register(
     mosquitto_plugin_id_t *identifier,
@@ -44,5 +46,8 @@ void plugin__handle_disconnect(struct mosquitto *context, int reason)
 
 int plugin__handle_message(struct mosquitto *context, struct mosquitto_msg_store *stored)
 {
+    if (g_mosq_message_callback) {
+        g_mosq_message_callback(context->id, stored->topic, stored->payload, stored->payloadlen, stored->qos, stored->retain);
+    }
     return MOSQ_ERR_SUCCESS;
 }
