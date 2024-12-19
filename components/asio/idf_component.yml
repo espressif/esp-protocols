@@ -1,4 +1,4 @@
-version: "1.28.2~0"
+version: "1.32.0~0"
 description: Cross-platform C++ library for network and I/O programming
 url: https://github.com/espressif/esp-protocols/tree/master/components/asio
 issues: https://github.com/espressif/esp-protocols/issues
@@ -7,3 +7,5 @@ repository: https://github.com/espressif/esp-protocols.git
 dependencies:
   idf:
     version: ">=5.0"
+  espressif/sock_utils:
+    version: "^0.1"
