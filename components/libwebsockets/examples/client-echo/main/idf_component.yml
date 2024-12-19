@@ -1,0 +1,4 @@
+dependencies:
+  espressif/libwebsockets:
+    version: "*"
+    override_path: "../../../"
