@@ -1,4 +1,22 @@
+# Changelog
+
+## [2.0.20](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20)
+
+### Features
+
+- Upgrade to mosquitto v2.0.20 ([3b2c614d](https://github.com/espressif/esp-protocols/commit/3b2c614d))
+- Add support for on-message callback ([cdeab8f5](https://github.com/espressif/esp-protocols/commit/cdeab8f5))
+- Add example with two brokers synced on P2P ([d57b8c5b](https://github.com/espressif/esp-protocols/commit/d57b8c5b))
+
+### Bug Fixes
+
+- Fix dependency issues moving esp-tls to public deps ([6cce87e4](https://github.com/espressif/esp-protocols/commit/6cce87e4))
+
 ## [2.0.28~0](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.28_0)
+
+### Warning
+
+Incorrect version number! This version published under `2.0.28~0` is based on upstream v2.0.18
 
 ### Features
 
