@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.2.0)
+
+### Features
+
+- Declare socketpair and gai_strerror via standard headers ([b090a3cb](https://github.com/espressif/esp-protocols/commit/b090a3cb))
+- Add support for gethostname() ([f7c0b756](https://github.com/espressif/esp-protocols/commit/f7c0b756))
+
 ## [0.1.0](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.1.0)
 
 ### Features
