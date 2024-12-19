@@ -32,3 +32,10 @@
 #ifndef AF_UNIX
 #define AF_UNIX         1
 #endif
+
+#ifndef PF_LOCAL
+/*
+ * In POSIX, AF_UNIX and PF_LOCAL are essentially synonymous.
+ */
+#define PF_LOCAL        AF_UNIX
+#endif
