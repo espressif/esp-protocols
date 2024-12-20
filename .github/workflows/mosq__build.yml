@@ -73,3 +73,30 @@ jobs:
           mv $dir build
           python -m pytest --log-cli-level DEBUG --junit-xml=./results_esp32_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=esp32
           done
+
+  check_consistency:
+    name: Checks that API docs and versions are consistent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checks API Docs and versions
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install doxygen
+          pip install esp-doxybook
+          cd components/mosquitto
+          cp api.md api_orig.md
+          ./generate_api_docs.sh
+          diff -wB api.md api_orig.md
+          # check version consistency
+          CONFIG_VERSION=$(grep -Po '(?<=#define VERSION ")[^"]*' port/priv_include/config.h)
+          CZ_VERSION=$(grep -Po '(?<=version: )[^"]*' .cz.yaml)
+          COMP_VERSION=$(grep -Po '(?<=version: ")[^"]*' idf_component.yml)
+          if [ "$CONFIG_VERSION" != "v$CZ_VERSION" ] || [ "$CONFIG_VERSION" != "v$COMP_VERSION" ]; then
+            echo "Version mismatch detected:"
+            echo "config.h: $CONFIG_VERSION"
+            echo ".cz.yaml: $CZ_VERSION"
+            echo "idf_component.yml: $COMP_VERSION"
+            exit 1
+          fi
+          echo "Versions are consistent: $CONFIG_VERSION"
