@@ -5,6 +5,17 @@
  */
 #pragma once
 
+#include "sdkconfig.h"
+#ifndef CONFIG_IDF_TARGET_LINUX
+#include <netinet/in.h>   // For network-related definitions
+#include <sys/socket.h>   // For socket-related definitions
+#include <net/if.h>       // For interface flags (e.g., IFF_UP)
+#include <netdb.h>        // For NI_NUMERICHOST, NI_NUMERICSERV, etc.
+#include <errno.h>        // For EAI_BADFLAGS
+#include <sys/un.h>       // For AF_UNIX
+#include <sys/types.h>    // For PF_LOCAL
+#endif
+
 #ifndef NI_NUMERICHOST
 #define NI_NUMERICHOST  0x1
 #endif
