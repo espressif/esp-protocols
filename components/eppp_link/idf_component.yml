@@ -4,3 +4,4 @@ description: The component provides a general purpose PPP connectivity, typicall
 dependencies:
   idf: '>=5.2'
   espressif/esp_serial_slave_link: "^1.1.0"
+  espressif/ethernet_init: '>=0.0.7'
