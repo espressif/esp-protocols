@@ -3,3 +3,5 @@ url: https://github.com/espressif/esp-protocols/tree/master/components/mosquitto
 description: The component provides a simple ESP32 port of mosquitto broker
 dependencies:
   idf: '>=5.1'
+  espressif/sock_utils:
+    version: '^0.2'
