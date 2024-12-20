@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.20~1](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_1)
+
+### Bug Fixes
+
+- Use sock_utils instead of func stubs ([3cd0ed37](https://github.com/espressif/esp-protocols/commit/3cd0ed37))
+- Update API docs adding on-message callback ([5dcc3330](https://github.com/espressif/esp-protocols/commit/5dcc3330))
+
 ## [2.0.20](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20)
 
 ### Features

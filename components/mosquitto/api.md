@@ -15,6 +15,7 @@
 | Type | Name |
 | ---: | :--- |
 | struct | [**mosq\_broker\_config**](#struct-mosq_broker_config) <br>_Mosquitto configuration structure._ |
+| typedef void(\* | [**mosq\_message\_cb\_t**](#typedef-mosq_message_cb_t)  <br> |
 
 ## Functions
 
@@ -34,11 +35,19 @@ ESP port of mosquittto supports only the options in this configuration structure
 
 Variables:
 
+-  void(\* handle_message_cb  <br>On message callback. If configured, user function is called whenever mosquitto processes a message.
+
 -  char \* host  <br>Address on which the broker is listening for connections
 
 -  int port  <br>Port number of the broker to listen to
 
 -  esp\_tls\_cfg\_server\_t \* tls_cfg  <br>ESP-TLS configuration (if TLS transport used) Please refer to the ESP-TLS official documentation for more details on configuring the TLS options. You can open the respective docs with this idf.py command: `idf.py docs -sp api-reference/protocols/esp_tls.html`
+
+### typedef `mosq_message_cb_t`
+
+```c
+typedef void(* mosq_message_cb_t) (char *client, char *topic, char *data, int len, int qos, int retain);
+```
 
 
 ## Functions Documentation

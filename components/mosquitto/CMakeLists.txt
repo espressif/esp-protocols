@@ -74,16 +74,15 @@ idf_component_register(SRCS ${m_srcs}
                             port/callbacks.c
                             port/config.c
                             port/signals.c
-                            port/ifaddrs.c
                             port/broker.c
                             port/files.c
                             port/net__esp_tls.c
+                            port/sysconf.c
                     PRIV_INCLUDE_DIRS port/priv_include port/priv_include/sys ${m_dir} ${m_src_dir}
                                       ${m_incl_dir} ${m_lib_dir} ${m_deps_dir}
                     INCLUDE_DIRS ${m_incl_dir} port/include
                     REQUIRES esp-tls
-                    PRIV_REQUIRES newlib
-        )
+                    PRIV_REQUIRES newlib sock_utils)
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_BROKER")
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
