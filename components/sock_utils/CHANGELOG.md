@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.2.1)
+
+### Bug Fixes
+
+- Fix potential macro colission including standard headers ([ade9448c](https://github.com/espressif/esp-protocols/commit/ade9448c))
+
 ## [0.2.0](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.2.0)
 
 ### Features
