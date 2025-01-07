@@ -6429,8 +6429,8 @@ esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instan
     MDNS_SERVICE_LOCK();
     esp_err_t ret = ESP_OK;
     int cur_index = 0;
-    ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service_type) && !_str_null_or_empty(proto) &&
-                      (num_items > 0), ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
+    ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service_type) && !_str_null_or_empty(proto),
+                      ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
 
     mdns_srv_item_t *s = _mdns_get_service_item_instance(instance_name, service_type, proto, hostname);
     ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
@@ -6450,8 +6450,9 @@ esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instan
             goto exit;
         }
     }
-
-    _mdns_announce_all_pcbs(&s, 1, false);
+    if (num_items) {
+        _mdns_announce_all_pcbs(&s, 1, false);
+    }
 err:
     if (ret == ESP_ERR_NO_MEM) {
         for (int idx = 0; idx < cur_index; idx++) {

@@ -615,6 +615,8 @@ esp_err_t mdns_service_subtype_add_multiple_items_for_host(const char *instance_
  * @param  subtype          the pointer of subtype array to add.
  * @param  num_items        number of items in subtype array
  *
+ * @note  If `num_items` is 0, then remove all subtypes.
+ *
  * @return
  *     - ESP_OK success
  *     - ESP_ERR_INVALID_ARG Parameter error
