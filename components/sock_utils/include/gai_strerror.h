@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,13 +18,14 @@ extern "C" {
 #endif
 
 /**
-* @brief Returns a numeric string representing of `getaddrinfo()` error code.
+* @brief Returns a string representing of `getaddrinfo()` error code.
 *
-* @param[in] ecode Error code returned by `getaddrinfo()`.
+* @param[in] errcode Error code returned by `getaddrinfo()`.
 *
-* @return A pointer to a string describing the error.
+* @return A pointer to a string containing the error code, for example "EAI_NONAME"
+* for EAI_NONAME error type.
 */
-const char *gai_strerror(int ecode);
+const char *gai_strerror(int errcode);
 
 #ifdef __cplusplus
 }
