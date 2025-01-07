@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.2.2)
+
+### Bug Fixes
+
+- Fix gai_strerror() impl to return const string ([f12a2056](https://github.com/espressif/esp-protocols/commit/f12a2056))
+
 ## [0.2.1](https://github.com/espressif/esp-protocols/commits/sock_utils-v0.2.1)
 
 ### Bug Fixes
