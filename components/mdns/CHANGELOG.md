@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.3)
+
+### Features
+
+- support zero item when update subtype ([5bd82c01](https://github.com/espressif/esp-protocols/commit/5bd82c01))
+
 ## [1.4.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.2)
 
 ### Features
