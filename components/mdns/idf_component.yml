@@ -1,4 +1,4 @@
-version: "1.4.2"
+version: "1.4.3"
 description: "Multicast UDP service used to provide local network service and host discovery."
 url: "https://github.com/espressif/esp-protocols/tree/master/components/mdns"
 issues: "https://github.com/espressif/esp-protocols/issues"
