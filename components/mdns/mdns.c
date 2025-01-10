@@ -4479,10 +4479,11 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                 case IP_EVENT_GOT_IP6: {
                     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *) event_data;
                     mdns_if_t mdns_if = _mdns_get_if_from_esp_netif(event->esp_netif);
-                    if (mdns_if < MDNS_MAX_INTERFACES) {
-                        post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
-                        post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
+                    if (mdns_if >= MDNS_MAX_INTERFACES) {
+                        return;
                     }
+                    post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
+                    post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
                     mdns_browse_t *browse = _mdns_server->browse;
                     while (browse) {
                         _mdns_browse_send(browse, mdns_if);
