@@ -5895,7 +5895,7 @@ esp_err_t mdns_instance_name_set(const char *instance)
 esp_err_t mdns_service_add_for_host(const char *instance, const char *service, const char *proto, const char *host,
                                     uint16_t port, mdns_txt_item_t txt[], size_t num_items)
 {
-    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port || !_mdns_server->hostname) {
+    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !_mdns_server->hostname) {
         return ESP_ERR_INVALID_ARG;
     }
 
