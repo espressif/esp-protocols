@@ -5,19 +5,17 @@
  */
 
 #include <string.h>
-#include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_event.h"
+#include "esp_random.h"
+#include "esp_check.h"
 #include "mdns.h"
 #include "mdns_private.h"
 #include "mdns_networking.h"
-#include "esp_log.h"
-#include "esp_random.h"
-#include "esp_check.h"
 
 static void _mdns_browse_item_free(mdns_browse_t *browse);
 static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *browse);
