@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -334,6 +334,9 @@ static mdns_host_item_t *mdns_get_host_item(const char *hostname)
 
 static bool _mdns_can_add_more_services(void)
 {
+#if MDNS_MAX_SERVICES == 0
+    return false;
+#else
     mdns_srv_item_t *s = _mdns_server->services;
     uint16_t service_num = 0;
     while (s) {
@@ -343,8 +346,8 @@ static bool _mdns_can_add_more_services(void)
             return false;
         }
     }
-
     return true;
+#endif
 }
 
 esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
@@ -5901,7 +5904,8 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     const char *hostname = host ? host : _mdns_server->hostname;
     mdns_service_t *s = NULL;
 
-    ESP_GOTO_ON_FALSE(_mdns_can_add_more_services(), ESP_ERR_NO_MEM, err, TAG, "Cannot add more services");
+    ESP_GOTO_ON_FALSE(_mdns_can_add_more_services(), ESP_ERR_NO_MEM, err, TAG,
+                      "Cannot add more services, please increase CONFIG_MDNS_MAX_SERVICES (%d)", CONFIG_MDNS_MAX_SERVICES);
 
     mdns_srv_item_t *item = _mdns_get_service_item_instance(instance, service, proto, hostname);
     ESP_GOTO_ON_FALSE(!item, ESP_ERR_INVALID_ARG, err, TAG, "Service already exists");
