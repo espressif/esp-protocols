@@ -3486,8 +3486,9 @@ static void _mdns_result_txt_create(const uint8_t *data, size_t len, mdns_txt_it
     uint16_t i = 0, y;
     size_t partLen = 0;
     int num_items = _mdns_txt_items_count_get(data, len);
-    if (num_items < 0) {
-        return;//error
+    if (num_items < 0 || num_items > SIZE_MAX / sizeof(mdns_txt_item_t)) {
+        // Error: num_items is incorrect (or too large to allocate)
+        return;
     }
 
     if (!num_items) {
