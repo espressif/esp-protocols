@@ -5346,7 +5346,8 @@ static void _mdns_service_task(void *pvParameters)
     for (;;) {
         if (_mdns_server && _mdns_server->action_queue) {
             if (xQueueReceive(_mdns_server->action_queue, &a, portMAX_DELAY) == pdTRUE) {
-                if (a && a->type == ACTION_TASK_STOP) {
+                assert(a);
+                if (a->type == ACTION_TASK_STOP) {
                     break;
                 }
                 MDNS_SERVICE_LOCK();
