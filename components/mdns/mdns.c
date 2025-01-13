@@ -253,12 +253,13 @@ static char *_mdns_mangle_name(char *in)
         }
         sprintf(ret, "%s-2", in);
     } else {
-        ret = malloc(strlen(in) + 2); //one extra byte in case 9-10 or 99-100 etc
+        size_t in_len = strlen(in);
+        ret = malloc(in_len + 2); //one extra byte in case 9-10 or 99-100 etc
         if (ret == NULL) {
             HOOK_MALLOC_FAILED;
             return NULL;
         }
-        strcpy(ret, in);
+        memcpy(ret, in, in_len);
         int baseLen = p - in; //length of 'bla' in 'bla-123'
         //overwrite suffix with new suffix
         sprintf(ret + baseLen, "-%d", suffix + 1);
