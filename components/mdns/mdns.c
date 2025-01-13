@@ -1812,7 +1812,6 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
             return false;
         }
     } else if (question->type == MDNS_TYPE_SDPTR) {
-        shared = true;
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_SDPTR, service, NULL, false, false)) {
             return false;
         }
