@@ -1,23 +1,21 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <string.h>
-#include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_event.h"
+#include "esp_random.h"
+#include "esp_check.h"
 #include "mdns.h"
 #include "mdns_private.h"
 #include "mdns_networking.h"
-#include "esp_log.h"
-#include "esp_random.h"
-#include "esp_check.h"
 
 static void _mdns_browse_item_free(mdns_browse_t *browse);
 static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *browse);
@@ -334,6 +332,9 @@ static mdns_host_item_t *mdns_get_host_item(const char *hostname)
 
 static bool _mdns_can_add_more_services(void)
 {
+#if MDNS_MAX_SERVICES == 0
+    return false;
+#else
     mdns_srv_item_t *s = _mdns_server->services;
     uint16_t service_num = 0;
     while (s) {
@@ -343,8 +344,8 @@ static bool _mdns_can_add_more_services(void)
             return false;
         }
     }
-
     return true;
+#endif
 }
 
 esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
@@ -3485,8 +3486,9 @@ static void _mdns_result_txt_create(const uint8_t *data, size_t len, mdns_txt_it
     uint16_t i = 0, y;
     size_t partLen = 0;
     int num_items = _mdns_txt_items_count_get(data, len);
-    if (num_items < 0) {
-        return;//error
+    if (num_items < 0 || num_items > SIZE_MAX / sizeof(mdns_txt_item_t)) {
+        // Error: num_items is incorrect (or too large to allocate)
+        return;
     }
 
     if (!num_items) {
@@ -4477,10 +4479,11 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                 case IP_EVENT_GOT_IP6: {
                     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *) event_data;
                     mdns_if_t mdns_if = _mdns_get_if_from_esp_netif(event->esp_netif);
-                    if (mdns_if < MDNS_MAX_INTERFACES) {
-                        post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
-                        post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
+                    if (mdns_if >= MDNS_MAX_INTERFACES) {
+                        return;
                     }
+                    post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
+                    post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
                     mdns_browse_t *browse = _mdns_server->browse;
                     while (browse) {
                         _mdns_browse_send(browse, mdns_if);
@@ -5892,7 +5895,7 @@ esp_err_t mdns_instance_name_set(const char *instance)
 esp_err_t mdns_service_add_for_host(const char *instance, const char *service, const char *proto, const char *host,
                                     uint16_t port, mdns_txt_item_t txt[], size_t num_items)
 {
-    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !port || !_mdns_server->hostname) {
+    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto) || !_mdns_server->hostname) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -5901,7 +5904,8 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     const char *hostname = host ? host : _mdns_server->hostname;
     mdns_service_t *s = NULL;
 
-    ESP_GOTO_ON_FALSE(_mdns_can_add_more_services(), ESP_ERR_NO_MEM, err, TAG, "Cannot add more services");
+    ESP_GOTO_ON_FALSE(_mdns_can_add_more_services(), ESP_ERR_NO_MEM, err, TAG,
+                      "Cannot add more services, please increase CONFIG_MDNS_MAX_SERVICES (%d)", CONFIG_MDNS_MAX_SERVICES);
 
     mdns_srv_item_t *item = _mdns_get_service_item_instance(instance, service, proto, hostname);
     ESP_GOTO_ON_FALSE(!item, ESP_ERR_INVALID_ARG, err, TAG, "Service already exists");

@@ -288,7 +288,7 @@ typedef struct {
 static err_t _mdns_pcb_init_api(struct tcpip_api_call_data *api_call_msg)
 {
     mdns_api_call_t *msg = (mdns_api_call_t *)api_call_msg;
-    msg->err = _udp_pcb_init(msg->tcpip_if, msg->ip_protocol);
+    msg->err = _udp_pcb_init(msg->tcpip_if, msg->ip_protocol) == ESP_OK ? ERR_OK : ERR_IF;
     return msg->err;
 }
 

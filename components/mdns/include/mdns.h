@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include "sdkconfig.h"
 #include <esp_netif.h>
 
 #define MDNS_TYPE_A                 0x0001
@@ -20,6 +21,13 @@ extern "C" {
 #define MDNS_TYPE_OPT               0x0029
 #define MDNS_TYPE_NSEC              0x002F
 #define MDNS_TYPE_ANY               0x00FF
+
+#if defined(CONFIG_LWIP_IPV6) && defined(CONFIG_MDNS_RESPOND_REVERSE_QUERIES)
+#define MDNS_NAME_MAX_LEN           (64+4)                  // Need to account for IPv6 reverse queries (64 char address  + ".ip6" )
+#else
+#define MDNS_NAME_MAX_LEN           64                      // Maximum string length of hostname, instance, service and proto
+#endif
+#define MDNS_NAME_BUF_LEN           (MDNS_NAME_MAX_LEN+1)   // Maximum char buffer size to hold hostname, instance, service or proto
 
 /**
  * @brief   Asynchronous query handle
