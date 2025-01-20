@@ -253,12 +253,13 @@ static char *_mdns_mangle_name(char *in)
         }
         sprintf(ret, "%s-2", in);
     } else {
-        ret = malloc(strlen(in) + 2); //one extra byte in case 9-10 or 99-100 etc
+        size_t in_len = strlen(in);
+        ret = malloc(in_len + 2); //one extra byte in case 9-10 or 99-100 etc
         if (ret == NULL) {
             HOOK_MALLOC_FAILED;
             return NULL;
         }
-        strcpy(ret, in);
+        memcpy(ret, in, in_len);
         int baseLen = p - in; //length of 'bla' in 'bla-123'
         //overwrite suffix with new suffix
         sprintf(ret + baseLen, "-%d", suffix + 1);
@@ -1811,7 +1812,6 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
             return false;
         }
     } else if (question->type == MDNS_TYPE_SDPTR) {
-        shared = true;
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_SDPTR, service, NULL, false, false)) {
             return false;
         }
@@ -2355,6 +2355,11 @@ static void _mdns_restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
         srv_count++;
         a = a->next;
     }
+    if (srv_count == 0) {
+        // proble only IP
+        _mdns_init_pcb_probe(tcpip_if, ip_protocol, NULL, 0, true);
+        return;
+    }
     mdns_srv_item_t *services[srv_count];
     size_t i = 0;
     a = _mdns_server->services;
@@ -2554,6 +2559,10 @@ static void _mdns_restart_all_pcbs(void)
     while (a) {
         srv_count++;
         a = a->next;
+    }
+    if (srv_count == 0) {
+        _mdns_probe_all_pcbs(NULL, 0, true, true);
+        return;
     }
     mdns_srv_item_t *services[srv_count];
     size_t l = 0;
@@ -2898,11 +2907,12 @@ static int _mdns_check_srv_collision(mdns_service_t *service, uint16_t priority,
 static int _mdns_check_txt_collision(mdns_service_t *service, const uint8_t *data, size_t len)
 {
     size_t data_len = 0;
-    if (len == 1 && service->txt) {
+    if (len <= 1 && service->txt) {     // len==0 means incorrect packet (and handled by the packet parser)
+        // but handled here again to fix clang-tidy warning on VLA "uint8_t our[0];"
         return -1;//we win
     } else if (len > 1 && !service->txt) {
         return 1;//they win
-    } else if (len == 1 && !service->txt) {
+    } else if (len <= 1 && !service->txt) {
         return 0;//same
     }
 
@@ -3788,7 +3798,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
             mdns_class &= 0x7FFF;
 
             content = data_ptr + data_len;
-            if (content > (data + len)) {
+            if (content > (data + len) || data_len == 0) {
                 goto clear_rx_packet;
             }
 
@@ -4271,15 +4281,10 @@ clear_rx_packet:
         free(record);
     }
     free(parsed_packet);
-    if (browse_result_instance) {
-        free(browse_result_instance);
-    }
-    if (browse_result_service) {
-        free(browse_result_service);
-    }
-    if (browse_result_proto) {
-        free(browse_result_proto);
-    }
+    free(browse_result_instance);
+    free(browse_result_service);
+    free(browse_result_proto);
+    free(out_sync_browse);
 }
 
 /**
@@ -5346,7 +5351,8 @@ static void _mdns_service_task(void *pvParameters)
     for (;;) {
         if (_mdns_server && _mdns_server->action_queue) {
             if (xQueueReceive(_mdns_server->action_queue, &a, portMAX_DELAY) == pdTRUE) {
-                if (a && a->type == ACTION_TASK_STOP) {
+                assert(a);
+                if (a->type == ACTION_TASK_STOP) {
                     break;
                 }
                 MDNS_SERVICE_LOCK();
