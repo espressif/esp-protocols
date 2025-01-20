@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.5.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.0)
+
+### Features
+
+- supported removal of subtype when updating service ([4ad88e29](https://github.com/espressif/esp-protocols/commit/4ad88e29))
+
+### Bug Fixes
+
+- Fix zero-sized VLA clang-tidy warnings ([196198ec](https://github.com/espressif/esp-protocols/commit/196198ec))
+- Remove dead store to arg variable shared ([e838bf03](https://github.com/espressif/esp-protocols/commit/e838bf03))
+- Fix name mangling not to use strcpy() ([99b54ac3](https://github.com/espressif/esp-protocols/commit/99b54ac3))
+- Fix potential null derefernce in _mdns_execute_action() ([f5be2f41](https://github.com/espressif/esp-protocols/commit/f5be2f41))
+- Fix AFL test mock per espressif/esp-idf@a5bc08fb55c ([3d8835cf](https://github.com/espressif/esp-protocols/commit/3d8835cf))
+- Fixed potential out-of-bound interface error ([24f55ce9](https://github.com/espressif/esp-protocols/commit/24f55ce9))
+- Fixed incorrect error conversion ([8f8516cc](https://github.com/espressif/esp-protocols/commit/8f8516cc))
+- Fixed potential overflow when allocating txt data ([75a8e864](https://github.com/espressif/esp-protocols/commit/75a8e864))
+- Move MDNS_NAME_BUF_LEN to public headers ([907087c0](https://github.com/espressif/esp-protocols/commit/907087c0), [#724](https://github.com/espressif/esp-protocols/issues/724))
+- Cleanup includes in mdns.c ([68a9e148](https://github.com/espressif/esp-protocols/commit/68a9e148), [#725](https://github.com/espressif/esp-protocols/issues/725))
+- Allow advertizing service with port==0 ([827ea65f](https://github.com/espressif/esp-protocols/commit/827ea65f))
+- Fixed complier warning if MDNS_MAX_SERVICES==0 ([95377216](https://github.com/espressif/esp-protocols/commit/95377216), [#611](https://github.com/espressif/esp-protocols/issues/611))
+
 ## [1.4.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.4.3)
 
 ### Features
