@@ -2390,6 +2390,53 @@ static void _mdns_send_bye(mdns_srv_item_t **services, size_t len, bool include_
 }
 
 /**
+ * @brief  Send bye for particular subtypes
+ */
+static void _mdns_send_bye_subtype(mdns_srv_item_t *service, const char *instance_name, mdns_subtype_t *remove_subtypes)
+{
+    uint8_t i, j;
+    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
+        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
+            if (mdns_is_netif_ready(i, j)) {
+                mdns_tx_packet_t *packet = _mdns_alloc_packet_default((mdns_if_t)i, (mdns_ip_protocol_t)j);
+                packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
+                if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, service->service, NULL, true, true)) {
+                    _mdns_free_tx_packet(packet);
+                    return;
+                }
+
+                static uint8_t pkt[MDNS_MAX_PACKET_SIZE];
+                uint16_t index = MDNS_HEAD_LEN;
+                memset(pkt, 0, MDNS_HEAD_LEN);
+                mdns_out_answer_t *a;
+                uint8_t count;
+
+                _mdns_set_u16(pkt, MDNS_HEAD_FLAGS_OFFSET, packet->flags);
+                _mdns_set_u16(pkt, MDNS_HEAD_ID_OFFSET, packet->id);
+
+                count = 0;
+                a = packet->answers;
+                while (a) {
+                    if (a->type == MDNS_TYPE_PTR && a->service) {
+                        const mdns_subtype_t *current_subtype = remove_subtypes;
+                        while (current_subtype) {
+                            count += (_mdns_append_subtype_ptr_record(pkt, &index, instance_name, current_subtype->subtype, a->service->service, a->service->proto, a->flush, a->bye) > 0);
+                            current_subtype = current_subtype->next;
+                        }
+                    }
+                    a = a->next;
+                }
+                _mdns_set_u16(pkt, MDNS_HEAD_ANSWERS_OFFSET, count);
+
+                _mdns_udp_pcb_write(packet->tcpip_if, packet->ip_protocol, &packet->dst, packet->port, pkt, index);
+
+                _mdns_free_tx_packet(packet);
+            }
+        }
+    }
+}
+
+/**
  * @brief  Send announcement on particular PCB
  */
 static void _mdns_announce_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool include_ip)
@@ -2804,14 +2851,20 @@ static void _mdns_remove_scheduled_service_packets(mdns_service_t *service)
     }
 }
 
+static void _mdns_free_subtype(mdns_subtype_t *subtype)
+{
+    while (subtype) {
+        mdns_subtype_t *next = subtype->next;
+        free((char *)subtype->subtype);
+        free(subtype);
+        subtype = next;
+    }
+}
+
 static void _mdns_free_service_subtype(mdns_service_t *service)
 {
-    while (service->subtype) {
-        mdns_subtype_t *next = service->subtype->next;
-        free((char *)service->subtype->subtype);
-        free(service->subtype);
-        service->subtype = next;
-    }
+    _mdns_free_subtype(service->subtype);
+    service->subtype = NULL;
 }
 
 /**
@@ -6357,9 +6410,21 @@ esp_err_t mdns_service_subtype_remove_for_host(const char *instance_name, const 
     ret = _mdns_service_subtype_remove_for_host(s, subtype);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "Failed to remove the subtype: %s", subtype);
 
-    // TODO: Need to transmit a sendbye message for the removed subtype.
-    // TODO: Need to remove this subtype answer from the scheduled answer list.
+    // Transmit a sendbye message for the removed subtype.
+    mdns_subtype_t *remove_subtypes = (mdns_subtype_t *)malloc(sizeof(mdns_subtype_t));
+    ESP_GOTO_ON_FALSE(remove_subtypes, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
+    remove_subtypes->subtype = strdup(subtype);
+    ESP_GOTO_ON_FALSE(remove_subtypes->subtype, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
+    remove_subtypes->next = NULL;
+
+    _mdns_send_bye_subtype(s, instance_name, remove_subtypes);
+    _mdns_free_subtype(remove_subtypes);
 err:
+    MDNS_SERVICE_UNLOCK();
+    return ret;
+out_of_mem:
+    HOOK_MALLOC_FAILED;
+    free(remove_subtypes);
     MDNS_SERVICE_UNLOCK();
     return ret;
 }
@@ -6433,6 +6498,56 @@ esp_err_t mdns_service_subtype_add_for_host(const char *instance_name, const cha
     return mdns_service_subtype_add_multiple_items_for_host(instance_name, service_type, proto, hostname, _subtype, 1);
 }
 
+static mdns_subtype_t *_mdns_service_find_subtype_needed_sendbye(mdns_service_t *service, mdns_subtype_item_t subtype[],
+        uint8_t num_items)
+{
+    if (!service) {
+        return NULL;
+    }
+
+    mdns_subtype_t *current = service->subtype;
+    mdns_subtype_t *prev = NULL;
+    mdns_subtype_t *prev_goodbye = NULL;
+    mdns_subtype_t *out_goodbye_subtype = NULL;
+
+    while (current) {
+        bool subtype_in_update = false;
+
+        for (int i = 0; i < num_items; i++) {
+            if (strcmp(subtype[i].subtype, current->subtype) == 0) {
+                subtype_in_update = true;
+                break;
+            }
+        }
+
+        if (!subtype_in_update) {
+            // Remove from original list
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                service->subtype = current->next;
+            }
+
+            mdns_subtype_t *to_move = current;
+            current = current->next;
+
+            // Add to goodbye list
+            to_move->next = NULL;
+            if (prev_goodbye) {
+                prev_goodbye->next = to_move;
+            } else {
+                out_goodbye_subtype = to_move;
+            }
+            prev_goodbye = to_move;
+        } else {
+            prev = current;
+            current = current->next;
+        }
+    }
+
+    return out_goodbye_subtype;
+}
+
 esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instance_name, const char *service_type, const char *proto,
         const char *hostname, mdns_subtype_item_t subtype[], uint8_t num_items)
 {
@@ -6445,7 +6560,13 @@ esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instan
     mdns_srv_item_t *s = _mdns_get_service_item_instance(instance_name, service_type, proto, hostname);
     ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
 
-    // TODO: find subtype needs to say sendbye
+    mdns_subtype_t *goodbye_subtype = _mdns_service_find_subtype_needed_sendbye(s->service, subtype, num_items);
+
+    if (goodbye_subtype) {
+        _mdns_send_bye_subtype(s, instance_name, goodbye_subtype);
+    }
+
+    _mdns_free_subtype(goodbye_subtype);
     _mdns_free_service_subtype(s->service);
 
     for (; cur_index < num_items; cur_index++) {
