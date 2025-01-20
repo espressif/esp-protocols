@@ -75,6 +75,7 @@ jobs:
           done
 
   check_consistency:
+    if: contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push'
     name: Checks that API docs and versions are consistent
     runs-on: ubuntu-latest
     steps:
