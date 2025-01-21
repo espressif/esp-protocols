@@ -20,7 +20,7 @@ mosq_broker_run(&config);
 
 ## Memory Footprint Considerations
 
-The broker primarily uses the heap for internal data, with minimal use of static/BSS memory. It consumes approximately 60 kB of program memory.
+The broker primarily uses the heap for internal data, with minimal use of static/BSS memory. It consumes approximately 60 kB of program memory and minimum 5kB of stack size.
 
 - **Initial Memory Usage**: ~2 kB of heap on startup
 - **Per Client Memory Usage**: ~4 kB of heap for each connected client

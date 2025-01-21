@@ -101,3 +101,77 @@ jobs:
             exit 1
           fi
           echo "Versions are consistent: $CONFIG_VERSION"
+
+  build_idf_tests_with_mosq:
+    name: Build IDF tests
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32"]
+        test: [ { app: publish, path: "tools/test_apps/protocols/mqtt/publish_connect_test" }]
+    runs-on: ubuntu-20.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TARGET_TEST_DIR: build_esp32_local_broker
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          pip install idf-component-manager idf-build-apps --upgrade
+          export MOSQUITTO_PATH=`pwd`/components/mosquitto
+          # to use the actual version of mosquitto
+          sed -i '/espressif\/mosquitto:/a \ \ \ \ override_path: "${MOSQUITTO_PATH}"' ${IDF_PATH}/${{matrix.test.path}}/main/idf_component.yml
+          export PEDANTIC_FLAGS="-DIDF_CI_BUILD -Werror -Werror=deprecated-declarations -Werror=unused-variable -Werror=unused-but-set-variable -Werror=unused-function"
+          export EXTRA_CFLAGS="${PEDANTIC_FLAGS} -Wstrict-prototypes"
+          export EXTRA_CXXFLAGS="${PEDANTIC_FLAGS}"
+          cd ${IDF_PATH}/${{matrix.test.path}}
+          idf-build-apps find --config sdkconfig.ci.local_broker -vv --target ${{ matrix.idf_target }} --build-dir=${TARGET_TEST_DIR}
+          idf-build-apps build --config sdkconfig.ci.local_broker -vv --target ${{ matrix.idf_target }} --build-dir=${TARGET_TEST_DIR}
+          ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
+          # to replace mqtt test configs with specific mosquitto markers
+          python ${MOSQUITTO_PATH}/test/replace_decorators.py pytest_mqtt_publish_app.py ${TARGET_TEST_DIR}/pytest_mosquitto.py
+          zip -qur ${GITHUB_WORKSPACE}/artifacts.zip ${TARGET_TEST_DIR}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mosq_publish_esp32_${{ matrix.idf_ver }}
+          path: artifacts.zip
+          if-no-files-found: error
+
+  test_idf_ci_with_mosq:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push' )
+    name: Mosquitto IDF target tests
+    needs: build_idf_tests_with_mosq
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    env:
+      TEST_DIR: examples
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mosq_publish_esp32_${{ matrix.idf_ver }}
+          path: ${{ env.TEST_DIR }}/ci/
+      - name: Run Test
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          python -m pip install pytest-embedded-serial-esp pytest-embedded-idf pytest-rerunfailures pytest-timeout pytest-ignore-test-results "paho-mqtt<2"
+          unzip ci/artifacts.zip -d ci
+          for dir in `ls -d ci/build_*`; do
+          rm -rf build sdkconfig.defaults
+          mv $dir build
+          mv build/*.py .
+          # Run only "test_mosquitto" marked tests
+          python -m pytest --log-cli-level DEBUG --junit-xml=./results_esp32_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=esp32 -m test_mosquitto
+          done
