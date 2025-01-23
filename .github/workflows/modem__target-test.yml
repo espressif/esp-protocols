@@ -42,7 +42,7 @@ jobs:
           idf.py set-target ${{ matrix.idf_target }}
           idf.py build
           $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh ${GITHUB_WORKSPACE}/${TEST_DIR}/build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/build
@@ -75,7 +75,7 @@ jobs:
         run: |
           sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
       - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/build
