@@ -4298,6 +4298,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
         } else {
             free(out_sync_browse);
         }
+        out_sync_browse = NULL;
     }
 
 clear_rx_packet:
