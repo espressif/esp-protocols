@@ -206,7 +206,7 @@ size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, c
         ESP_LOGE(TAG, "espaddr_to_inet() failed: Mismatch of IP protocols");
         return 0;
     }
-    ESP_LOGD(TAG, "[sock=%d]: Sending to IP %s port %d", sock, get_string_address(&in_addr), port);
+    ESP_LOGI(TAG, "[sock=%d]: Sending to IP %s port %d", sock, get_string_address(&in_addr), port);
     ssize_t actual_len = sendto(sock, data, len, 0, (struct sockaddr *)&in_addr, ss_size);
     if (actual_len < 0) {
         ESP_LOGE(TAG, "[sock=%d]: _mdns_udp_pcb_write sendto() has failed\n errno=%d: %s", sock, errno, strerror(errno));
