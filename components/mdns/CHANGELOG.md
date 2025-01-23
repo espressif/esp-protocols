@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.1)
+
+### Bug Fixes
+
+- Fix incorrect memory free for mdns browse ([4451a8c5](https://github.com/espressif/esp-protocols/commit/4451a8c5))
+
 ## [1.5.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.0)
 
 ### Features
