@@ -751,12 +751,12 @@ static uint16_t _mdns_append_fqdn(uint8_t *packet, uint16_t *index, const char *
         //empty string so terminate
         return _mdns_append_u8(packet, index, 0);
     }
-    mdns_name_t name;
     static char buf[MDNS_NAME_BUF_LEN];
     uint8_t len = strlen(strings[0]);
     //try to find first the string length in the packet (if it exists)
     uint8_t *len_location = (uint8_t *)memchr(packet, (char)len, *index);
     while (len_location) {
+        mdns_name_t name;
         //check if the string after len_location is the string that we are looking for
         if (memcmp(len_location + 1, strings[0], len)) { //not continuing with our string
 search_next:
