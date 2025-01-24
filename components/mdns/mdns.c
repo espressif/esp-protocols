@@ -2399,6 +2399,9 @@ static void _mdns_send_bye_subtype(mdns_srv_item_t *service, const char *instanc
         for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
             if (mdns_is_netif_ready(i, j)) {
                 mdns_tx_packet_t *packet = _mdns_alloc_packet_default((mdns_if_t)i, (mdns_ip_protocol_t)j);
+                if (packet == NULL) {
+                    return;
+                }
                 packet->flags = MDNS_FLAGS_QR_AUTHORITATIVE;
                 if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, service->service, NULL, true, true)) {
                     _mdns_free_tx_packet(packet);
