@@ -61,6 +61,16 @@ menu "mDNS"
         default 0x0 if MDNS_TASK_AFFINITY_CPU0
         default 0x1 if MDNS_TASK_AFFINITY_CPU1
 
+    choice MDNS_TASK_MEMORY_ALLOC_FROM
+        prompt "Select mDNS task create on which type of memory"
+        default MDNS_TASK_CREATE_FROM_INTERNAL
+        config MDNS_TASK_CREATE_FROM_SPIRAM
+            bool "mDNS task creates on the SPIRAM"
+            depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+        config MDNS_TASK_CREATE_FROM_INTERNAL
+            bool "mDNS task creates on the internal RAM"
+    endchoice
+
     config MDNS_SERVICE_ADD_TIMEOUT_MS
         int "mDNS adding service timeout (ms)"
         range 10 30000
