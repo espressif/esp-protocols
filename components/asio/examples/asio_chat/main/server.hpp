@@ -120,7 +120,7 @@ private:
                          asio::buffer(read_msg_.body(), read_msg_.body_length()),
         [this, self](std::error_code ec, std::size_t /*length*/) {
             if (!ec) {
-                ESP_LOGD("asio-chat:", "%s", read_msg_.body());
+                ESP_LOGD("asio-chat", "%.*s", read_msg_.body_length(), read_msg_.body());
                 room_.deliver(read_msg_);
                 do_read_header();
             } else {
