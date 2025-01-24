@@ -7,3 +7,5 @@ repository: https://github.com/espressif/esp-protocols.git
 dependencies:
   idf:
     version: ">=5.0"
+  espressif/sock_utils:
+    version: "^0.1"

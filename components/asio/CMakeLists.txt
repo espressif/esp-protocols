@@ -6,8 +6,8 @@ if(NOT CONFIG_LWIP_IPV6 AND NOT CMAKE_BUILD_EARLY_EXPANSION)
     return()
 endif()
 
-set(asio_sources "asio/asio/src/asio.cpp")
-set(asio_requires lwip)
+set(asio_sources "asio/asio/src/asio.cpp" "port/src/asio_stub.cpp")
+set(asio_requires lwip sock_utils)
 
 if(CONFIG_ASIO_SSL_SUPPORT)
     list(APPEND asio_sources
@@ -18,7 +18,7 @@ if(CONFIG_ASIO_SSL_SUPPORT)
 endif()
 
 idf_component_register(SRCS ${asio_sources}
-                    INCLUDE_DIRS "asio/asio/include" "port/include"
+                    INCLUDE_DIRS "port/include" "asio/asio/include"
                     PRIV_INCLUDE_DIRS ${asio_priv_includes}
                     PRIV_REQUIRES ${asio_requires})
 
@@ -30,6 +30,7 @@ target_compile_definitions(${COMPONENT_LIB} PUBLIC SA_RESTART=0x01
                                                    ASIO_STANDALONE
                                                    ASIO_HAS_PTHREADS
                                                    OPENSSL_NO_ENGINE
+                                                   ASIO_DETAIL_IMPL_POSIX_EVENT_IPP  # this replaces asio's posix_event constructor
 )
 
 if(NOT CONFIG_COMPILER_CXX_EXCEPTIONS)

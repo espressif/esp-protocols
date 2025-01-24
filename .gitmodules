@@ -1,6 +1,6 @@
 [submodule "components/asio/asio"]
 	path = components/asio/asio
-	url = https://github.com/espressif/asio
+	url = https://github.com/chriskohlhoff/asio
 [submodule "components/mosquitto/mosquitto"]
 	path = components/mosquitto/mosquitto
 	url = https://github.com/eclipse/mosquitto
