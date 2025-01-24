@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.32.0](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0)
+
+### Features
+
+- Upgrade asio to 1.32 ([9bdd429c](https://github.com/espressif/esp-protocols/commit/9bdd429c))
+- Drop esp/asio patches in favor of sock-utils ([27435b7f](https://github.com/espressif/esp-protocols/commit/27435b7f))
+
+### Bug Fixes
+
+- Fix chat example to print only the message body ([76aaea08](https://github.com/espressif/esp-protocols/commit/76aaea08))
+- Make asio enable if_nametoindex to fix linking ([5db32cce](https://github.com/espressif/esp-protocols/commit/5db32cce))
+- Re-applie refs to common comps idf_component.yml ([9fe44a45](https://github.com/espressif/esp-protocols/commit/9fe44a45))
+- Reference common component from IDF ([74fc228c](https://github.com/espressif/esp-protocols/commit/74fc228c))
+- Revert referencing protocol_examples_common from IDF ([f9e0281a](https://github.com/espressif/esp-protocols/commit/f9e0281a))
+- reference protocol_examples_common from IDF ([09abb18b](https://github.com/espressif/esp-protocols/commit/09abb18b))
+- specify override_path in example manifest files ([1d8923cf](https://github.com/espressif/esp-protocols/commit/1d8923cf))
+
+### Updated
+
+- docs(asio): Updates asio docs ([ce9337d3](https://github.com/espressif/esp-protocols/commit/ce9337d3))
+
 ## [1.28.2~0](https://github.com/espressif/esp-protocols/commits/asio-1.28.2_0)
 
 ### Bug Fixes

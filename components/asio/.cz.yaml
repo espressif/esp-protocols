@@ -1,7 +1,8 @@
+---
 commitizen:
   bump_message: 'bump(asio): $current_version -> $new_version'
   pre_bump_hooks: python ../../ci/changelog.py asio
   tag_format: asio-v$version
-  version: 1.28.0~0
+  version: 1.32.0
   version_files:
   - idf_component.yml
