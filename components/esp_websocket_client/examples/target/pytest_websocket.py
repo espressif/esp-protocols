@@ -55,7 +55,7 @@ class Websocket(object):
             ssl_context.load_cert_chain(certfile='main/certs/server/server_cert.pem', keyfile='main/certs/server/server_key.pem')
             if self.client_verify is True:
                 ssl_context.load_verify_locations(cafile='main/certs/ca_cert.pem')
-                ssl_context.verify = ssl.CERT_REQUIRED
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
             ssl_context.check_hostname = False
             self.server = SimpleSSLWebSocketServer('', self.port, WebsocketTestEcho, ssl_context=ssl_context)
         else:
