@@ -126,8 +126,8 @@
 
 #define MDNS_TIMER_PERIOD_US        (CONFIG_MDNS_TIMER_PERIOD_MS*1000)
 
-#define MDNS_SERVICE_LOCK()     xSemaphoreTake(_mdns_service_semaphore, portMAX_DELAY)
-#define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(_mdns_service_semaphore)
+#define MDNS_SERVICE_LOCK()     xSemaphoreTakeRecursive(_mdns_service_semaphore, portMAX_DELAY)
+#define MDNS_SERVICE_UNLOCK()   xSemaphoreGiveRecursive(_mdns_service_semaphore)
 
 #define queueToEnd(type, queue, item)       \
     if (!queue) {                           \
