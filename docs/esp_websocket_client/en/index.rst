@@ -66,12 +66,42 @@ Configuration:
 .. note:: If you want to verify the server, then you need to provide a certificate in PEM format, and provide to ``cert_pem`` in :cpp:type:`websocket_client_config_t`. If no certficate is provided then the TLS connection will default to not requiring verification.
 
 PEM certificate for this example could be extracted from an openssl `s_client` command connecting to websocket.org.
-In case a host operating system has `openssl` and `sed` packages installed, one could execute the following command to download and save the root or intermediate root certificate to a file (Note for Windows users: Both Linux like environment or Windows native packages may be used).
-```
-echo "" | openssl s_client -showcerts -connect websocket.org:443 | sed -n "1,/Root/d; /BEGIN/,/END/p" | openssl x509 -outform PEM >websocket_org.pem
-```
+In case a host operating system has `openssl` and `sed` packages installed, one could execute the following command to download and save the root or intermediate root certificate to a file (Note for Windows users: Both Linux like environment or Windows native packages may be used). ::
+
+    echo "" | openssl s_client -showcerts -connect websocket.org:443 \
+        | sed -n "1,/Root/d; /BEGIN/,/END/p" \
+        | openssl x509 -outform PEM \
+        > websocket_org.pem
 
 This command will extract the second certificate in the chain and save it as a pem-file.
+
+Mutual TLS with DS Peripheral
+"""""""""""""""""""""""""""""
+
+To leverage the Digital Signature (DS) peripheral on supported targets, use `esp_secure_cert_mgr <https://github.com/espressif/esp_secure_cert_mgr/>`_ to flash an encrypted client certificate. In your project, add the dependency: ::
+
+    idf.py add-dependency esp_secure_cert_mgr
+
+Set ``client_cert`` and ``client_ds_data`` in the config struct:
+
+.. code:: c
+
+    char *client_cert = NULL;
+    uint32_t client_cert_len = 0;
+    esp_err_t err = esp_secure_cert_get_device_cert(&client_cert, &client_cert_len);
+    assert(err == ESP_OK);
+
+    esp_ds_data_ctx_t *ds_data = esp_secure_cert_get_ds_ctx();
+    assert(ds_data != NULL);
+
+    esp_websocket_client_config_t config = {
+        .uri = "wss://echo.websocket.org",
+        .cert_pem = (const char *)websocket_org_pem_start,
+        .client_cert = client_cert,
+        .client_ds_data = ds_data,
+    };
+
+.. note:: ``client_cert`` provided by `esp_secure_cert_mgr` is a null-terminated PEM; so ``client_cert_len`` (DER format) should not be set.
 
 Subprotocol
 ^^^^^^^^^^^
@@ -91,14 +121,14 @@ For more options on :cpp:type:`esp_websocket_client_config_t`, please refer to A
 
 Events
 ------
-* `WEBSOCKET_EVENT_BEGIN': The client thread is running.
+* `WEBSOCKET_EVENT_BEGIN`: The client thread is running.
 * `WEBSOCKET_EVENT_BEFORE_CONNECT`: The client is about to connect.
 * `WEBSOCKET_EVENT_CONNECTED`: The client has successfully established a connection to the server. The client is now ready to send and receive data. Contains no event data.
 * `WEBSOCKET_EVENT_DATA`: The client has successfully received and parsed a WebSocket frame. The event data contains a pointer to the payload data, the length of the payload data as well as the opcode of the received frame. A message may be fragmented into multiple events if the length exceeds the buffer size. This event will also be posted for non-payload frames, e.g. pong or connection close frames.
 * `WEBSOCKET_EVENT_ERROR`: The client has experienced an error. Examples include transport write or read failures.
 * `WEBSOCKET_EVENT_DISCONNECTED`: The client has aborted the connection due to the transport layer failing to read data, e.g. because the server is unavailable. Contains no event data.
 * `WEBSOCKET_EVENT_CLOSED`: The connection has been closed cleanly.
-* `WEBSOCKET_EVENT_FINISH': The client thread is about to exit.
+* `WEBSOCKET_EVENT_FINISH`: The client thread is about to exit.
 
 If the client handle is needed in the event handler it can be accessed through the pointer passed to the event handler:
 
