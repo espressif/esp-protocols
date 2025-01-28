@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.2)
+
+### Bug Fixes
+
+- Fix potential NULL deref when sending sub-buy ([e7273c46](https://github.com/espressif/esp-protocols/commit/e7273c46))
+- Fix _mdns_append_fqdn excessive stack usage ([bd23c233](https://github.com/espressif/esp-protocols/commit/bd23c233))
+
 ## [1.5.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.1)
 
 ### Bug Fixes
