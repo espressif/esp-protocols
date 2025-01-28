@@ -73,6 +73,34 @@ echo "" | openssl s_client -showcerts -connect websocket.org:443 | sed -n "1,/Ro
 
 This command will extract the second certificate in the chain and save it as a pem-file.
 
+Mutual TLS with DS Peripheral
+"""""""""""""""""""""""""""""
+
+To leverage the Digital Signature (DS) peripheral on supported targets, use `esp_secure_cert_mgr <https://github.com/espressif/esp_secure_cert_mgr/>`_ to flash an encrypted client certificate. In your project, add the dependency: ::
+
+    idf.py add-dependency esp_secure_cert_mgr
+
+Set ``client_cert`` and ``client_ds_data`` in the config struct:
+
+.. code:: c
+
+    char *client_cert = NULL;
+    uint32_t client_cert_len = 0;
+    esp_err_t err = esp_secure_cert_get_device_cert(&client_cert, &client_cert_len);
+    assert(err == ESP_OK);
+
+    esp_ds_data_ctx_t *ds_data = esp_secure_cert_get_ds_ctx();
+    assert(ds_data != NULL);
+
+    esp_websocket_client_config_t config = {
+        .uri = "wss://echo.websocket.org",
+        .cert_pem = (const char *)websocket_org_pem_start,
+        .client_cert = client_cert,
+        .client_ds_data = ds_data,
+    };
+
+.. note:: ``client_cert`` provided by `esp_secure_cert_mgr` is a null-terminated PEM; so ``client_cert_len`` (DER format) should not be set.
+
 Subprotocol
 ^^^^^^^^^^^
 
