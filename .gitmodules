@@ -4,3 +4,6 @@
 [submodule "components/mosquitto/mosquitto"]
 	path = components/mosquitto/mosquitto
 	url = https://github.com/eclipse/mosquitto
+[submodule "components/libwebsockets/libwebsockets"]
+	path = components/libwebsockets/libwebsockets
+	url = https://github.com/warmcat/libwebsockets.git
