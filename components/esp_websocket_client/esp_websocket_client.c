@@ -449,6 +449,21 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
     client = NULL;
 }
 
+static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
+{
+    /* A running client cannot be stopped from the websocket task/event handler */
+    TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
+    if (running_task == client->task_handle) {
+        ESP_LOGE(TAG, "Client cannot be stopped from websocket task");
+        return ESP_FAIL;
+    }
+
+    client->run = false;
+    xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
+    client->state = WEBSOCKET_STATE_UNKNOW;
+    return ESP_OK;
+}
+
 static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_handle_t client, const char *scheme)
 {
     esp_transport_handle_t trans = esp_transport_list_get_transport(client->transport_list, scheme);
@@ -754,6 +769,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->status_bits, {
         goto _websocket_init_fail;
     });
+    xEventGroupSetBits(client->status_bits, STOPPED_BIT);
 
     client->buffer_size = buffer_size;
     return client;
@@ -768,9 +784,11 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (client->run) {
-        esp_websocket_client_stop(client);
+
+    if (client->status_bits && (STOPPED_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
+        stop_wait_task(client);
     }
+
     destroy_and_free_resources(client);
     return ESP_OK;
 }
@@ -1159,23 +1177,13 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!client->run) {
+
+    if (xEventGroupGetBits(client->status_bits) & STOPPED_BIT) {
         ESP_LOGW(TAG, "Client was not started");
         return ESP_FAIL;
     }
 
-    /* A running client cannot be stopped from the websocket task/event handler */
-    TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
-    if (running_task == client->task_handle) {
-        ESP_LOGE(TAG, "Client cannot be stopped from websocket task");
-        return ESP_FAIL;
-    }
-
-
-    client->run = false;
-    xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
-    client->state = WEBSOCKET_STATE_UNKNOW;
-    return ESP_OK;
+    return stop_wait_task(client);
 }
 
 static int esp_websocket_client_send_close(esp_websocket_client_handle_t client, int code, const char *additional_data, int total_len, TickType_t timeout)
