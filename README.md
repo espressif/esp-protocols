@@ -66,3 +66,7 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### Socket helpers (sock-utils)
 
 * Brief introduction [README](components/sock_utils/README.md)
+
+### libwebsockets
+
+* Brief introduction [README](components/libwebsockets/README.md)
