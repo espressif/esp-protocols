@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.4.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.4.0)
+
+### Features
+
+- Support DS peripheral for mutual TLS ([55385ec3](https://github.com/espressif/esp-protocols/commit/55385ec3))
+
+### Bug Fixes
+
+- wait for task on destroy ([42674b49](https://github.com/espressif/esp-protocols/commit/42674b49))
+- Fix pytest to verify client correctly ([9046af8f](https://github.com/espressif/esp-protocols/commit/9046af8f))
+- propagate error type ([eeeb9006](https://github.com/espressif/esp-protocols/commit/eeeb9006))
+- fix example buffer leak ([5219c39d](https://github.com/espressif/esp-protocols/commit/5219c39d))
+
+### Updated
+
+- chore(websocket): align structure members ([beb6e57e](https://github.com/espressif/esp-protocols/commit/beb6e57e))
+- chore(websocket): remove unused client variable ([15d3a01e](https://github.com/espressif/esp-protocols/commit/15d3a01e))
+
 ## [1.3.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.3.0)
 
 ### Features
