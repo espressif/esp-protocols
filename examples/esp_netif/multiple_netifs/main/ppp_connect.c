@@ -85,7 +85,7 @@ static void ppp_destroy(iface_info_t *info)
     free(info);
 }
 
-iface_info_t *init_ppp(int prio)
+iface_info_t *example_ppp_init(int prio)
 {
     struct ppp_info_t *ppp_info = calloc(1, sizeof(struct ppp_info_t));
     assert(ppp_info);
