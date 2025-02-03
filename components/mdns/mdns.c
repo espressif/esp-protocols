@@ -25,8 +25,6 @@ static void _mdns_browse_finish(mdns_browse_t *browse);
 static void _mdns_browse_add(mdns_browse_t *browse);
 static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface);
 
-static void _mdns_task_free_with_caps(void);
-
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
 #endif
@@ -64,7 +62,7 @@ static const char *TAG = "mdns";
 
 static volatile TaskHandle_t _mdns_service_task_handle = NULL;
 static SemaphoreHandle_t _mdns_service_semaphore = NULL;
-StackType_t *_mdns_stack_buffer;
+static StackType_t *_mdns_stack_buffer;
 
 static void _mdns_search_finish_done(void);
 static mdns_search_once_t *_mdns_search_find_from(mdns_search_once_t *search, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
@@ -5427,8 +5425,8 @@ static void _mdns_service_task(void *pvParameters)
             vTaskDelay(500 * portTICK_PERIOD_MS);
         }
     }
-    _mdns_task_free_with_caps();
     _mdns_service_task_handle = NULL;
+    vTaskDelete(NULL);
 }
 
 static void _mdns_timer_cb(void *arg)
@@ -5485,12 +5483,6 @@ err:
     return ret;
 }
 
-static void _mdns_task_free_with_caps(void)
-{
-    vTaskDelete(_mdns_service_task_handle);
-    heap_caps_free(_mdns_stack_buffer);
-}
-
 /**
  * @brief  Start the service thread if not running
  *
@@ -5545,7 +5537,7 @@ static esp_err_t _mdns_service_task_stop(void)
         mdns_action_t *a = &action;
         action.type = ACTION_TASK_STOP;
         if (xQueueSend(_mdns_server->action_queue, &a, (TickType_t)0) != pdPASS) {
-            _mdns_task_free_with_caps();
+            vTaskDelete(_mdns_service_task_handle);
             _mdns_service_task_handle = NULL;
         }
         while (_mdns_service_task_handle) {
@@ -5775,6 +5767,8 @@ void mdns_free(void)
     mdns_service_remove_all();
     free_delegated_hostnames();
     _mdns_service_task_stop();
+    // at this point, the service task is deleted, so we can destroy the stack size
+    heap_caps_free(_mdns_stack_buffer);
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
             mdns_pcb_deinit_local(i, j);
