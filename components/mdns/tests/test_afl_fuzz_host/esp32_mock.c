@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -124,4 +124,14 @@ void esp_log(esp_log_config_t config, const char *tag, const char *format, ...)
 uint32_t esp_log_timestamp(void)
 {
     return 0;
+}
+
+void *heap_caps_malloc(size_t size, uint32_t caps)
+{
+    return malloc(size);
+}
+
+void heap_caps_free( void *ptr)
+{
+    free(ptr);
 }

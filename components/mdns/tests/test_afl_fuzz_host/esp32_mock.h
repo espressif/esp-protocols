@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -38,6 +38,10 @@
 #define ESP_ERR_INVALID_RESPONSE    0x108
 #define ESP_ERR_INVALID_CRC         0x109
 
+#define MDNS_TASK_MEMORY_LOG        "internal RAM"
+#define MALLOC_CAP_8BIT             (1<<2)
+#define MALLOC_CAP_INTERNAL         (1<<11)
+
 #define pdTRUE                      true
 #define pdFALSE                     false
 #define pdPASS          ( pdTRUE )
@@ -62,6 +66,7 @@
 #define vSemaphoreDelete(s)         free(s)
 #define queueQUEUE_TYPE_MUTEX       ( ( uint8_t ) 1U
 #define xTaskCreatePinnedToCore(a,b,c,d,e,f,g)     *(f) = malloc(1)
+#define xTaskCreateStaticPinnedToCore(a,b,c,d,e,f,g,h)     true
 #define vTaskDelay(m)               usleep((m)*0)
 #define esp_random()                (rand()%UINT32_MAX)
 
@@ -79,7 +84,8 @@ typedef void *QueueHandle_t;
 typedef void *TaskHandle_t;
 typedef int    BaseType_t;
 typedef uint32_t TickType_t;
-
+typedef void *StackType_t;
+typedef void *StaticTask_t;
 
 struct udp_pcb {
     uint8_t dummy;
@@ -132,5 +138,7 @@ esp_err_t esp_event_handler_unregister(const char *event_base, int32_t event_id,
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t task);
 BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time );
+void *heap_caps_malloc(size_t size, uint32_t caps);
+void heap_caps_free(void *ptr);
 
 #endif //_ESP32_COMPAT_H_
