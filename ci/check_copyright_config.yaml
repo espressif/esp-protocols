@@ -55,6 +55,14 @@ mosquitto_component:
     - Apache-2.0
     - BSD-3-Clause
 
+avahi_component:
+  include:
+    - 'components/avahi/**'
+  allowed_licenses:
+    - LGPL-2.1
+    - Apache-2.0
+    - Unlicense OR CC0-1.0
+
 slim_modem_examples:
   include:
     - 'examples/esp_netif/slip_custom_netif/**'
