@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -210,6 +210,20 @@ void *pthread_task(void *params)
     task(param);
 
     return NULL;
+}
+
+TaskHandle_t xTaskCreateStaticPinnedToCore( TaskFunction_t pxTaskCode,
+        const char *const pcName,
+        const uint32_t ulStackDepth,
+        void *const pvParameters,
+        UBaseType_t uxPriority,
+        StackType_t *const puxStackBuffer,
+        StaticTask_t *const pxTaskBuffer,
+        const BaseType_t xCoreID )
+{
+    static TaskHandle_t pvCreatedTask;
+    xTaskCreate(pxTaskCode, pcName, ulStackDepth, pvParameters, uxPriority, &pvCreatedTask);
+    return pvCreatedTask;
 }
 
 BaseType_t xTaskCreatePinnedToCore( TaskFunction_t pvTaskCode,
