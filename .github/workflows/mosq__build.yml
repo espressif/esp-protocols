@@ -103,6 +103,9 @@ jobs:
           echo "Versions are consistent: $CONFIG_VERSION"
 
   build_idf_tests_with_mosq:
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push' )
     name: Build IDF tests
     strategy:
       matrix:
