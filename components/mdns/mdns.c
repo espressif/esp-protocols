@@ -1879,7 +1879,11 @@ static void _mdns_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_
         shared = q->type == MDNS_TYPE_PTR || q->type == MDNS_TYPE_SDPTR || !parsed_packet->probe;
         if (q->type == MDNS_TYPE_SRV || q->type == MDNS_TYPE_TXT) {
             mdns_srv_item_t *service = _mdns_get_service_item_instance(q->host, q->service, q->proto, NULL);
-            if (service == NULL || !_mdns_create_answer_from_service(packet, service->service, q, shared, send_flush)) {
+            if (service == NULL) {  // Service not found, but we continue to the next question
+                q = q->next;
+                continue;
+            }
+            if (!_mdns_create_answer_from_service(packet, service->service, q, shared, send_flush)) {
                 _mdns_free_tx_packet(packet);
                 return;
             } else {
