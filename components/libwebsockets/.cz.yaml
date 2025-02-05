@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(lws): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py libwebsockets
+  tag_format: lws-v$version
+  version: 4.3.3
+  version_files:
+  - idf_component.yml
