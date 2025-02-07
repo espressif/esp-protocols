@@ -51,7 +51,7 @@ else
 endif
 CPP=$(CC)
 LD=$(CC)
-OBJECTS=esp32_mock.o mdns.o test.o esp_netif_mock.o
+OBJECTS=esp32_mock.o mdns.o test.o esp_netif_mock.o mdns_utils.o mdns_packet.o
 
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
@@ -70,6 +70,10 @@ all: $(TEST_NAME)
 mdns.o: ../../mdns.c
 	@echo "[CC] $<"
 	@$(CC) $(CFLAGS) -include mdns_mock.h $(MDNS_C_DEPENDENCY_INJECTION) -c $< -o $@
+
+%.o: ../../%.c
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -include mdns_mock.h -c $< -o $@
 
 $(TEST_NAME): $(OBJECTS)
 	@echo "[LD] $@"
