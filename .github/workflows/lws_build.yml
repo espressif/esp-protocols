@@ -1,0 +1,86 @@
+name: "lws: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_lws:
+    if: contains(github.event.pull_request.labels.*.name, 'lws') || github.event_name == 'push'
+    name: Libwebsockets build
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.3", "release-v5.4"]
+        test: [ { app: example, path: "examples/client" }]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/libwebsockets/${{ matrix.test.path }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          python -m pip install idf-build-apps
+          python ./ci/build_apps.py ${TEST_DIR}
+          cd ${TEST_DIR}
+          for dir in `ls -d build_esp32_*`; do
+          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh `pwd`/$dir
+          zip -qur artifacts.zip $dir
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lws_target_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ env.TEST_DIR }}/artifacts.zip
+          if-no-files-found: error
+
+  run-target-lws:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'lws') || github.event_name == 'push' )
+    name: Target test
+    needs: build_lws
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["latest", "release-v5.3", "release-v5.4"]
+        idf_target: ["esp32"]
+        test: [ { app: example, path: "examples/client" }]
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    env:
+      TEST_DIR: components/libwebsockets/${{ matrix.test.path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lws_target_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
+          path: ${{ env.TEST_DIR }}/ci/
+      - name: Install Python packages
+        env:
+          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+        run: |
+          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
+      - name: Run Example Test on target
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          unzip ci/artifacts.zip -d ci
+          for dir in `ls -d ci/build_*`; do
+          rm -rf build sdkconfig.defaults
+          mv $dir build
+          python -m pytest --log-cli-level DEBUG --junit-xml=./results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=${{ matrix.idf_target }}
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results_${{ matrix.test.app }}_${{ matrix.idf_target }}_${{ matrix.idf_ver }}.xml
+          path: components/libwebsockets/${{ matrix.test.path }}/*.xml
