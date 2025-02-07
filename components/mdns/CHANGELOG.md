@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.3)
+
+### Bug Fixes
+
+- Fix responder to ignore only invalid queries ([cd07228f](https://github.com/espressif/esp-protocols/commit/cd07228f), [#754](https://github.com/espressif/esp-protocols/issues/754))
+
 ## [1.5.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.2)
 
 ### Bug Fixes
