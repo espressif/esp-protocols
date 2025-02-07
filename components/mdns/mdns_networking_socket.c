@@ -22,6 +22,9 @@
 #include <sys/param.h>
 #include "esp_log.h"
 #include "mdns_mem_caps.h"
+#include "mdns_utils.h"
+#include "mdns_netif.h"
+#include "mdns_service.h"
 
 #if defined(CONFIG_IDF_TARGET_LINUX)
 #include <sys/ioctl.h>
@@ -58,6 +61,26 @@ struct pbuf  {
 #define s6_addr32 un.u32_addr
 #endif // CONFIG_IDF_TARGET_LINUX
 
+static esp_err_t send_rx_action(mdns_rx_packet_t *packet)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = ACTION_RX_HANDLE;
+    action->data.rx_handle.packet = packet;
+    if (!mdns_priv_queue_action(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+
 static void __attribute__((constructor)) ctor_networking_socket(void)
 {
     for (int i = 0; i < sizeof(s_interfaces) / sizeof(s_interfaces[0]); ++i) {
@@ -71,29 +94,29 @@ static void delete_socket(int sock)
     close(sock);
 }
 
-bool mdns_is_netif_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+bool mdns_priv_if_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return s_interfaces[tcpip_if].proto & (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
 }
 
-void *_mdns_get_packet_data(mdns_rx_packet_t *packet)
+void *mdns_priv_get_packet_data(mdns_rx_packet_t *packet)
 {
     return packet->pb->payload;
 }
 
-size_t _mdns_get_packet_len(mdns_rx_packet_t *packet)
+size_t mdns_priv_get_packet_len(mdns_rx_packet_t *packet)
 {
     return packet->pb->len;
 }
 
-void _mdns_packet_free(mdns_rx_packet_t *packet)
+void mdns_priv_packet_free(mdns_rx_packet_t *packet)
 {
     mdns_mem_free(packet->pb->payload);
     mdns_mem_free(packet->pb);
     mdns_mem_free(packet);
 }
 
-esp_err_t _mdns_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     s_interfaces[tcpip_if].proto &= ~(ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
     if (s_interfaces[tcpip_if].proto == 0) {
@@ -192,7 +215,7 @@ static inline size_t espaddr_to_inet(const esp_ip_addr_t *addr, const uint16_t p
     return ss_addr_len;
 }
 
-size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, const esp_ip_addr_t *ip, uint16_t port, uint8_t *data, size_t len)
+size_t mdns_priv_if_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, const esp_ip_addr_t *ip, uint16_t port, uint8_t *data, size_t len)
 {
     if (!(s_interfaces[tcpip_if].proto & (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6))) {
         return 0;
@@ -210,7 +233,7 @@ size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, c
     ESP_LOGD(TAG, "[sock=%d]: Sending to IP %s port %d", sock, get_string_address(&in_addr), port);
     ssize_t actual_len = sendto(sock, data, len, 0, (struct sockaddr *)&in_addr, ss_size);
     if (actual_len < 0) {
-        ESP_LOGE(TAG, "[sock=%d]: _mdns_udp_pcb_write sendto() has failed\n errno=%d: %s", sock, errno, strerror(errno));
+        ESP_LOGE(TAG, "[sock=%d]: mdns_priv_if_write sendto() has failed\n errno=%d: %s", sock, errno, strerror(errno));
     }
     return actual_len;
 }
@@ -325,8 +348,8 @@ void sock_recv_task(void *arg)
                     packet->dest.type = packet->src.type;
                     packet->ip_protocol =
                         packet->src.type == ESP_IPADDR_TYPE_V4 ? MDNS_IP_PROTOCOL_V4 : MDNS_IP_PROTOCOL_V6;
-                    if (_mdns_send_rx_action(packet) != ESP_OK) {
-                        ESP_LOGE(TAG, "_mdns_send_rx_action failed!");
+                    if (send_rx_action(packet) != ESP_OK) {
+                        ESP_LOGE(TAG, "send_rx_action failed!");
                         mdns_mem_free(packet->pb->payload);
                         mdns_mem_free(packet->pb);
                         mdns_mem_free(packet);
@@ -338,7 +361,7 @@ void sock_recv_task(void *arg)
     vTaskDelete(NULL);
 }
 
-static void mdns_networking_init(void)
+static void networking_init(void)
 {
     if (s_run_sock_recv_task == false) {
         s_run_sock_recv_task = true;
@@ -352,7 +375,7 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
         return true;
     }
     int sock = s_interfaces[tcpip_if].sock;
-    esp_netif_t *netif = _mdns_get_esp_netif(tcpip_if);
+    esp_netif_t *netif = mdns_priv_get_esp_netif(tcpip_if);
     if (sock < 0) {
         sock = create_socket(netif);
     }
@@ -369,14 +392,14 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
     return true;
 }
 
-esp_err_t _mdns_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+esp_err_t mdns_priv_if_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    ESP_LOGI(TAG, "_mdns_pcb_init(tcpip_if=%lu, ip_protocol=%lu)", (unsigned long)tcpip_if, (unsigned long)ip_protocol);
+    ESP_LOGI(TAG, "mdns_priv_if_init(tcpip_if=%lu, ip_protocol=%lu)", (unsigned long)tcpip_if, (unsigned long)ip_protocol);
     if (!create_pcb(tcpip_if, ip_protocol)) {
         return ESP_FAIL;
     }
 
-    mdns_networking_init();
+    networking_init();
     return ESP_OK;
 }
 

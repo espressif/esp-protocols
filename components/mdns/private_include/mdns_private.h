@@ -3,8 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef MDNS_PRIVATE_H_
-#define MDNS_PRIVATE_H_
+#pragma once
 
 #include "sdkconfig.h"
 #include "mdns.h"
@@ -15,11 +14,6 @@
 #include "freertos/semphr.h"
 #include "esp_timer.h"
 #include "esp_system.h"
-
-#ifdef CONFIG_MDNS_ENABLE_DEBUG_PRINTS
-#define MDNS_ENABLE_DEBUG
-#define _mdns_dbg_printf(...) printf(__VA_ARGS__)
-#endif
 
 /** Number of predefined interfaces */
 #ifndef CONFIG_MDNS_PREDEF_NETIF_STA
@@ -90,14 +84,6 @@
 #define MDNS_ANSWER_AAAA_SIZE       16
 
 #define MDNS_SERVICE_PORT           5353                    // UDP port that the server runs on
-#define MDNS_SERVICE_STACK_DEPTH    CONFIG_MDNS_TASK_STACK_SIZE
-#define MDNS_TASK_PRIORITY          CONFIG_MDNS_TASK_PRIORITY
-#if (MDNS_TASK_PRIORITY > ESP_TASK_PRIO_MAX)
-#error "mDNS task priority is higher than ESP_TASK_PRIO_MAX"
-#elif (MDNS_TASK_PRIORITY > ESP_TASKD_EVENT_PRIO)
-#warning "mDNS task priority is higher than ESP_TASKD_EVENT_PRIO, mDNS library might not work correctly"
-#endif
-#define MDNS_TASK_AFFINITY          CONFIG_MDNS_TASK_AFFINITY
 #define MDNS_SERVICE_ADD_TIMEOUT_MS CONFIG_MDNS_SERVICE_ADD_TIMEOUT_MS
 
 #define MDNS_PACKET_QUEUE_LEN       16                      // Maximum packets that can be queued for parsing
@@ -126,9 +112,6 @@
 
 #define MDNS_TIMER_PERIOD_US        (CONFIG_MDNS_TIMER_PERIOD_MS*1000)
 
-#define MDNS_SERVICE_LOCK()     xSemaphoreTake(_mdns_service_semaphore, portMAX_DELAY)
-#define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(_mdns_service_semaphore)
-
 #define queueToEnd(type, queue, item)       \
     if (!queue) {                           \
         queue = item;                       \
@@ -156,22 +139,11 @@
 
 #define queueFree(type, queue)  while (queue) { type * _q = queue; queue = queue->next; mdns_mem_free(_q); }
 
-#define PCB_STATE_IS_PROBING(s) (s->state > PCB_OFF && s->state < PCB_ANNOUNCE_1)
-#define PCB_STATE_IS_ANNOUNCING(s) (s->state > PCB_PROBE_3 && s->state < PCB_RUNNING)
-#define PCB_STATE_IS_RUNNING(s) (s->state == PCB_RUNNING)
-
 #ifndef HOOK_MALLOC_FAILED
-#define HOOK_MALLOC_FAILED  ESP_LOGE(TAG, "Cannot allocate memory (line: %d, free heap: %" PRIu32 " bytes)", __LINE__, esp_get_free_heap_size());
+#define HOOK_MALLOC_FAILED  do { ESP_LOGE(TAG, "Cannot allocate memory (%s(%d), free heap: %" PRIu32 " bytes)", __func__, __LINE__, esp_get_free_heap_size()); } while(0)
 #endif
 
 typedef size_t mdns_if_t;
-
-typedef enum {
-    PCB_OFF, PCB_DUP, PCB_INIT,
-    PCB_PROBE_1, PCB_PROBE_2, PCB_PROBE_3,
-    PCB_ANNOUNCE_1, PCB_ANNOUNCE_2, PCB_ANNOUNCE_3,
-    PCB_RUNNING
-} mdns_pcb_state_t;
 
 typedef enum {
     MDNS_ANSWER, MDNS_NS, MDNS_EXTRA
@@ -196,6 +168,10 @@ typedef enum {
     ACTION_MAX
 } mdns_action_type_t;
 
+typedef enum {
+    ACTION_RUN,
+    ACTION_CLEANUP,
+} mdns_action_subtype_t;
 
 typedef struct {
     uint16_t id;
@@ -342,15 +318,6 @@ typedef struct mdns_tx_packet_s {
     uint16_t id;
 } mdns_tx_packet_t;
 
-typedef struct {
-    mdns_pcb_state_t state;
-    mdns_srv_item_t **probe_services;
-    uint8_t probe_services_len;
-    uint8_t probe_ip;
-    uint8_t probe_running;
-    uint16_t failed_probes;
-} mdns_pcb_t;
-
 typedef enum {
     SEARCH_OFF,
     SEARCH_INIT,
@@ -405,21 +372,6 @@ typedef struct mdns_browse_sync {
     mdns_browse_result_sync_t *sync_result;
 } mdns_browse_sync_t;
 
-typedef struct mdns_server_s {
-    struct {
-        mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
-    } interfaces[MDNS_MAX_INTERFACES];
-    const char *hostname;
-    const char *instance;
-    mdns_srv_item_t *services;
-    QueueHandle_t action_queue;
-    SemaphoreHandle_t action_sema;
-    mdns_tx_packet_t *tx_queue_head;
-    mdns_search_once_t *search_once;
-    esp_timer_handle_t timer_handle;
-    mdns_browse_t *browse;
-} mdns_server_t;
-
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -452,17 +404,3 @@ typedef struct {
         } browse_sync;
     } data;
 } mdns_action_t;
-
-/*
- * @brief  Convert mnds if to esp-netif handle
- *
- * @param  tcpip_if     mdns supported interface as internal enum
- *
- * @return
- *     - ptr to esp-netif on success
- *     - NULL if no available netif for current interface index
- */
-esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if);
-
-
-#endif /* MDNS_PRIVATE_H_ */
