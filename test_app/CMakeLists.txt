@@ -15,6 +15,7 @@ set(EXTRA_COMPONENT_DIRS
     ../components/console_simple_init
     ../components/mbedtls_cxx
     ../components/sock_utils
+    ../components/libwebsockets
     ../components/mdns)
 
 
