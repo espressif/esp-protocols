@@ -29,6 +29,8 @@ jobs:
           # Build host tests app (with all configs and targets supported)
           python ./ci/build_apps.py components/mdns/tests/host_test/
           cd components/mdns/tests/host_test
+          ls -la
+          ls -ls build*
           # First run the linux_app and send a quick A query and a reverse query
           ./build_linux_app/mdns_host.elf &
           python dnsfixture.py A myesp.local --ip_only | xargs python dnsfixture.py X
@@ -55,8 +57,11 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          cd components/mdns/tests/test_afl_fuzz_host/
-          make INSTR=off
+          cd components/mdns/tests/host_unit_test/
+          idf.py reconfigure
+          mkdir build2 && cd build2
+          cmake ..
+          cmake --build .
       - name: Test no malloc functions
         shell: bash
         run: |
@@ -68,6 +73,39 @@ jobs:
             diff -q $file /tmp/$file || exit 1
             echo "OK"
           done
+
+  host_unit_test:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+    name: Unit tests on host
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+      - name: Install bsdlib and ruby
+        run: |
+          apt-get update -y
+          apt-get install -y libbsd-dev ruby
+      - name: Build and run unit tests
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd components/mdns/tests/host_unit_test/
+          idf.py reconfigure
+          mkdir build2 && cd build2
+          cmake -DUNIT_TESTS=test_receiver ..
+          cmake --build .
+          ctest --extra-verbose
+          cd ..
+          mkdir build3 && cd build3
+          cmake -DUNIT_TESTS=test_sender ..
+          cmake --build .
+          ctest --extra-verbose
+
 
   fuzz_test:
     if: contains(github.event.pull_request.labels.*.name, 'mdns-fuzz') || github.event_name == 'push'
@@ -98,13 +136,26 @@ jobs:
         shell: bash
         run: |
           export IDF_PATH=$GITHUB_WORKSPACE/idf
-          cd components/mdns/tests/test_afl_fuzz_host/
-          make fuzz
+          cd components/mdns/tests/host_unit_test/
+          pip install dnslib
+          cd input && python generate_cases.py && cd ..
+          cmake -B build2 -S . -G "Ninja" -DCMAKE_C_COMPILER=afl-cc
+          cmake --build build2
+          timeout 10m afl-fuzz -i input -o out -- build2/mdns_host_unit_test || \
+          if [ $? -eq 124 ]; then  # timeout exit code
+            if [ -n "$(find out/default/crashes -type f 2>/dev/null)" ]; then
+              echo "Crashes found!";
+              tar -czf out/default/crashes.tar.gz -C out/default crashes;
+              exit 1;
+            fi
+          else
+            exit 1;
+          fi
 
       - name: Upload Crash Artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: fuzz-crashes
-          path: components/mdns/tests/test_afl_fuzz_host/out/default/crashes.tar.gz
+          path: components/mdns/tests/host_unit_test/out/default/crashes.tar.gz
           if-no-files-found: ignore
