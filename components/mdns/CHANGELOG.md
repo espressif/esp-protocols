@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.6.0)
+
+### Features
+
+- support allocating mDNS task from SPIRAM ([8fcad10c](https://github.com/espressif/esp-protocols/commit/8fcad10c))
+
+### Bug Fixes
+
+- Use correct task delete function ([eb4ab524](https://github.com/espressif/esp-protocols/commit/eb4ab524))
+
+### Updated
+
+- ci(mdns): Fix mdns host test layers with static task creation ([0690eba3](https://github.com/espressif/esp-protocols/commit/0690eba3))
+
 ## [1.5.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.5.3)
 
 ### Bug Fixes
