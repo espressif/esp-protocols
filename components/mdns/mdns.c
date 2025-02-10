@@ -5472,7 +5472,7 @@ static esp_err_t _mdns_stop_timer(void)
 static esp_err_t _mdns_service_task_start(void)
 {
     if (!_mdns_service_semaphore) {
-        _mdns_service_semaphore = xSemaphoreCreateMutex();
+        _mdns_service_semaphore = xSemaphoreCreateRecursiveMutex();
         if (!_mdns_service_semaphore) {
             return ESP_FAIL;
         }
