@@ -1,2 +1,5 @@
 # Override some defaults to enable SLIP
 CONFIG_LWIP_SLIP_SUPPORT=y
+# Workaround: Enable PPP to let esp_netif know that lwip's netif->state
+#             will be occupied (by SLIP netif info)
+CONFIG_LWIP_PPP_SUPPORT=y
