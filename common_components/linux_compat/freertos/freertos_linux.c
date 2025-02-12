@@ -64,7 +64,7 @@ static struct generic_queue_handle *create_generic_queue(queue_type_t type, uint
     return h;
 }
 
-QueueHandle_t xQueueCreate(uint32_t uxQueueLength, uint32_t uxItemSize )
+QueueHandle_t xQueueCreate(uint32_t uxQueueLength, uint32_t uxItemSize)
 {
     return (QueueHandle_t)create_generic_queue(QUEUE, uxQueueLength, uxItemSize);
 }
@@ -75,7 +75,7 @@ uint32_t xQueueSend(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t 
     return osal_queue_send(h->q, (uint8_t *)pvItemToQueue, h->item_size) ? pdTRUE : pdFAIL;
 }
 
-uint32_t xQueueSendToBack(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait )
+uint32_t xQueueSendToBack(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait)
 {
     return xQueueSend(xQueue, pvItemToQueue, xTicksToWait);
 }
@@ -86,7 +86,7 @@ uint32_t xQueueReceive(QueueHandle_t xQueue, void *pvBuffer, TickType_t xTicksTo
     return osal_queue_recv(h->q, (uint8_t *)pvBuffer, h->item_size, xTicksToWait) ? pdTRUE : pdFAIL;
 }
 
-BaseType_t xSemaphoreGive( QueueHandle_t xQueue)
+BaseType_t xSemaphoreGive(QueueHandle_t xQueue)
 {
     struct generic_queue_handle *h = xQueue;
     if (h->type == MUTEX) {
@@ -96,7 +96,7 @@ BaseType_t xSemaphoreGive( QueueHandle_t xQueue)
     return xQueueSend(xQueue, &s_semaphore_data, portMAX_DELAY);
 }
 
-BaseType_t xSemaphoreGiveRecursive( QueueHandle_t xQueue)
+BaseType_t xSemaphoreGiveRecursive(QueueHandle_t xQueue)
 {
     struct generic_queue_handle *h = xQueue;
     if (h->type == MUTEX_REC) {
@@ -106,7 +106,7 @@ BaseType_t xSemaphoreGiveRecursive( QueueHandle_t xQueue)
     return pdFALSE;
 }
 
-BaseType_t xSemaphoreTake( QueueHandle_t xQueue, TickType_t pvTask )
+BaseType_t xSemaphoreTake(QueueHandle_t xQueue, TickType_t pvTask)
 {
     struct generic_queue_handle *h = xQueue;
     if (h->type == MUTEX) {
@@ -116,7 +116,7 @@ BaseType_t xSemaphoreTake( QueueHandle_t xQueue, TickType_t pvTask )
     return xQueueReceive(xQueue, &s_semaphore_data, portMAX_DELAY);
 }
 
-BaseType_t xSemaphoreTakeRecursive( QueueHandle_t xQueue, TickType_t pvTask )
+BaseType_t xSemaphoreTakeRecursive(QueueHandle_t xQueue, TickType_t pvTask)
 {
     struct generic_queue_handle *h = xQueue;
     if (h->type == MUTEX_REC) {
@@ -126,7 +126,7 @@ BaseType_t xSemaphoreTakeRecursive( QueueHandle_t xQueue, TickType_t pvTask )
     return pdFALSE;
 }
 
-void vQueueDelete( QueueHandle_t xQueue )
+void vQueueDelete(QueueHandle_t xQueue)
 {
     struct generic_queue_handle *h = xQueue;
     if (h->q) {
@@ -176,14 +176,14 @@ void vTaskSuspend(void *task)
     vTaskDelete(task);
 }
 
-TickType_t xTaskGetTickCount( void )
+TickType_t xTaskGetTickCount(void)
 {
     struct timespec spec;
     clock_gettime(CLOCK_REALTIME, &spec);
     return spec.tv_nsec / 1000000 + spec.tv_sec * 1000;
 }
 
-void vTaskDelay( const TickType_t xTicksToDelay )
+void vTaskDelay(const TickType_t xTicksToDelay)
 {
     usleep(xTicksToDelay * 1000);
 }
@@ -212,27 +212,27 @@ void *pthread_task(void *params)
     return NULL;
 }
 
-TaskHandle_t xTaskCreateStaticPinnedToCore( TaskFunction_t pxTaskCode,
-        const char *const pcName,
-        const uint32_t ulStackDepth,
-        void *const pvParameters,
-        UBaseType_t uxPriority,
-        StackType_t *const puxStackBuffer,
-        StaticTask_t *const pxTaskBuffer,
-        const BaseType_t xCoreID )
+TaskHandle_t xTaskCreateStaticPinnedToCore(TaskFunction_t pxTaskCode,
+                                           const char *const pcName,
+                                           const uint32_t ulStackDepth,
+                                           void *const pvParameters,
+                                           UBaseType_t uxPriority,
+                                           StackType_t *const puxStackBuffer,
+                                           StaticTask_t *const pxTaskBuffer,
+                                           const BaseType_t xCoreID)
 {
     static TaskHandle_t pvCreatedTask;
     xTaskCreate(pxTaskCode, pcName, ulStackDepth, pvParameters, uxPriority, &pvCreatedTask);
     return pvCreatedTask;
 }
 
-BaseType_t xTaskCreatePinnedToCore( TaskFunction_t pvTaskCode,
-                                    const char *const pcName,
-                                    const uint32_t usStackDepth,
-                                    void *const pvParameters,
-                                    UBaseType_t uxPriority,
-                                    TaskHandle_t *const pvCreatedTask,
-                                    const BaseType_t xCoreID)
+BaseType_t xTaskCreatePinnedToCore(TaskFunction_t pvTaskCode,
+                                   const char *const pcName,
+                                   const uint32_t usStackDepth,
+                                   void *const pvParameters,
+                                   UBaseType_t uxPriority,
+                                   TaskHandle_t *const pvCreatedTask,
+                                   const BaseType_t xCoreID)
 {
     xTaskCreate(pvTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pvCreatedTask);
     return pdTRUE;
@@ -280,7 +280,7 @@ void xTaskNotifyGive(TaskHandle_t task)
     }
 }
 
-BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time )
+BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time)
 {
     return true;
 }
@@ -290,32 +290,32 @@ TaskHandle_t xTaskGetCurrentTaskHandle(void)
     return (TaskHandle_t)pthread_self();
 }
 
-EventGroupHandle_t xEventGroupCreate( void )
+EventGroupHandle_t xEventGroupCreate(void)
 {
     return osal_signal_create();
 }
 
-void vEventGroupDelete( EventGroupHandle_t xEventGroup )
+void vEventGroupDelete(EventGroupHandle_t xEventGroup)
 {
     osal_signal_delete(xEventGroup);
 }
 
-EventBits_t xEventGroupClearBits( EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToClear )
+EventBits_t xEventGroupClearBits(EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToClear)
 {
     return osal_signal_clear(xEventGroup, uxBitsToClear);
 }
 
-EventBits_t xEventGroupGetBits( EventGroupHandle_t xEventGroup)
+EventBits_t xEventGroupGetBits(EventGroupHandle_t xEventGroup)
 {
     return osal_signal_get(xEventGroup);
 }
 
-EventBits_t xEventGroupSetBits( EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToSet )
+EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToSet)
 {
     return osal_signal_set(xEventGroup, uxBitsToSet);
 }
 
-EventBits_t xEventGroupWaitBits( EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToWaitFor, const BaseType_t xClearOnExit, const BaseType_t xWaitForAllBits, TickType_t xTicksToWait )
+EventBits_t xEventGroupWaitBits(EventGroupHandle_t xEventGroup, const EventBits_t uxBitsToWaitFor, const BaseType_t xClearOnExit, const BaseType_t xWaitForAllBits, TickType_t xTicksToWait)
 {
     return osal_signal_wait(xEventGroup, uxBitsToWaitFor, xWaitForAllBits, xTicksToWait);
 }

@@ -59,7 +59,7 @@ uint32_t xTaskGetTickCount(void)
 }
 
 /// Queue mock
-QueueHandle_t xQueueCreate( uint32_t uxQueueLength, uint32_t uxItemSize )
+QueueHandle_t xQueueCreate(uint32_t uxQueueLength, uint32_t uxItemSize)
 {
     g_size = uxItemSize;
     g_queue = malloc((uxQueueLength) * (uxItemSize));
@@ -67,7 +67,7 @@ QueueHandle_t xQueueCreate( uint32_t uxQueueLength, uint32_t uxItemSize )
 }
 
 
-void vQueueDelete( QueueHandle_t xQueue )
+void vQueueDelete(QueueHandle_t xQueue)
 {
     free(xQueue);
 }
@@ -131,7 +131,7 @@ void *heap_caps_malloc(size_t size, uint32_t caps)
     return malloc(size);
 }
 
-void heap_caps_free( void *ptr)
+void heap_caps_free(void *ptr)
 {
     free(ptr);
 }
