@@ -117,10 +117,10 @@ uint32_t xTaskGetTickCount(void);
 typedef void (*esp_timer_cb_t)(void *arg);
 
 // Queue mock
-QueueHandle_t xQueueCreate( uint32_t uxQueueLength,
-                            uint32_t uxItemSize );
+QueueHandle_t xQueueCreate(uint32_t uxQueueLength,
+                           uint32_t uxItemSize);
 
-void vQueueDelete( QueueHandle_t xQueue );
+void vQueueDelete(QueueHandle_t xQueue);
 
 uint32_t xQueueSend(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait);
 
@@ -137,7 +137,7 @@ esp_err_t esp_event_handler_unregister(const char *event_base, int32_t event_id,
 
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t task);
-BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time );
+BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time);
 void *heap_caps_malloc(size_t size, uint32_t caps);
 void heap_caps_free(void *ptr);
 
