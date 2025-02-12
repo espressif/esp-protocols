@@ -227,6 +227,7 @@ static void websocket_app_start(void)
     xSemaphoreTake(shutdown_sema, portMAX_DELAY);
     esp_websocket_client_close(client, portMAX_DELAY);
     ESP_LOGI(TAG, "Websocket Stopped");
+    esp_websocket_unregister_events(client, WEBSOCKET_EVENT_ANY, websocket_event_handler);
     esp_websocket_client_destroy(client);
 }
 
