@@ -13,12 +13,15 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
         include:
           - idf_ver: "latest"
             warning: "Warning: The smallest app partition is nearly full"
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TARGET_TEST: examples/esp_netif/slip_custom_netif/
+      TARGET_TEST_DIR: build_esp32c3_target
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
@@ -31,6 +34,16 @@ jobs:
           python -m pip install idf-build-apps
           # Build default configs for all targets
           python ./ci/build_apps.py examples -m examples/.build-test-rules.yml -d -c
+          # Build target tests
+          python ./ci/build_apps.py ${TARGET_TEST} -r sdkconfig.ci=target
+          cd ${TARGET_TEST}
+          ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
+          zip -qur artifacts.zip ${TARGET_TEST_DIR}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slip_target_${{ matrix.idf_ver }}
+          path: ${{ env.TARGET_TEST }}/artifacts.zip
+          if-no-files-found: error
 
   build_and_run_on_host:
     if: contains(github.event.pull_request.labels.*.name, 'examples') || github.event_name == 'push'
@@ -51,3 +64,38 @@ jobs:
           python ./ci/build_apps.py examples/mqtt -l -t linux
           timeout 5 ./examples/mqtt/build_linux_default/esp_mqtt_demo.elf | tee test.log  || true
           grep 'MQTT_EVENT_DATA' test.log
+
+  run_on_target:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'examples') || github.event_name == 'push' )
+    name: Slip example target test
+    needs: build_all_examples
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.4", "latest"]
+    runs-on:
+      - self-hosted
+      - modem
+    env:
+      TARGET_TEST: examples/esp_netif/slip_custom_netif/
+      TARGET_TEST_DIR: build_esp32c3_target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: slip_target_${{ matrix.idf_ver }}
+          path: ${{ env.TARGET_TEST }}/ci/
+      - name: Run Test
+        working-directory: ${{ env.TARGET_TEST }}
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --prefer-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool netifaces
+          unzip ci/artifacts.zip -d ci
+          for dir in `ls -d ci/build_*`; do
+          rm -rf build sdkconfig.defaults
+          mv $dir build
+          python -m pytest --log-cli-level DEBUG --target=esp32c3
+          done
