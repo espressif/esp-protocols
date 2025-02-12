@@ -4,3 +4,6 @@
 [submodule "components/mosquitto/mosquitto"]
 	path = components/mosquitto/mosquitto
 	url = https://github.com/eclipse/mosquitto
+[submodule "components/avahi/avahi"]
+	path = components/avahi/avahi
+	url = https://github.com/avahi/avahi.git
