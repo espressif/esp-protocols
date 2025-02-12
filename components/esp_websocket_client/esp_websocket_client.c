@@ -99,7 +99,7 @@ typedef struct {
     bool                        use_global_ca_store;
     bool                        skip_cert_common_name_check;
     const char                  *cert_common_name;
-    esp_err_t                   (*crt_bundle_attach)(void *conf);
+    esp_err_t (*crt_bundle_attach)(void *conf);
     esp_transport_handle_t      ext_transport;
 } websocket_config_storage_t;
 
@@ -188,9 +188,9 @@ static void esp_websocket_free_buf(esp_websocket_client_handle_t client, bool is
 }
 
 static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle_t client,
-        esp_websocket_event_id_t event,
-        const char *data,
-        int data_len)
+                                                     esp_websocket_event_id_t event,
+                                                     const char *data,
+                                                     int data_len)
 {
     esp_err_t err;
     esp_websocket_event_data_t event_data;
@@ -206,8 +206,8 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
 
     if (client->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
         event_data.error_handle.esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(esp_transport_get_error_handle(client->transport),
-                &client->error_handle.esp_tls_stack_err,
-                &client->error_handle.esp_tls_cert_verify_flags);
+                                                                                        &client->error_handle.esp_tls_stack_err,
+                                                                                        &client->error_handle.esp_tls_cert_verify_flags);
         event_data.error_handle.esp_tls_stack_err = client->error_handle.esp_tls_stack_err;
         event_data.error_handle.esp_tls_cert_verify_flags = client->error_handle.esp_tls_cert_verify_flags;
         event_data.error_handle.esp_transport_sock_errno = esp_transport_get_errno(client->transport);
@@ -244,7 +244,7 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     return ESP_OK;
 }
 
-static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client, const char *format, ...) __attribute__ ((format (printf, 2, 3)));
+static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client, const char *format, ...) __attribute__((format(printf, 2, 3)));
 static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client, const char *format, ...)
 {
     va_list myargs;
@@ -675,7 +675,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
         client->keep_alive_cfg.keep_alive_enable = true;
         client->keep_alive_cfg.keep_alive_idle = (config->keep_alive_idle == 0) ? WEBSOCKET_KEEP_ALIVE_IDLE : config->keep_alive_idle;
         client->keep_alive_cfg.keep_alive_interval = (config->keep_alive_interval == 0) ? WEBSOCKET_KEEP_ALIVE_INTERVAL : config->keep_alive_interval;
-        client->keep_alive_cfg.keep_alive_count =  (config->keep_alive_count == 0) ? WEBSOCKET_KEEP_ALIVE_COUNT : config->keep_alive_count;
+        client->keep_alive_cfg.keep_alive_count = (config->keep_alive_count == 0) ? WEBSOCKET_KEEP_ALIVE_COUNT : config->keep_alive_count;
     }
 
     if (config->if_name) {
@@ -950,7 +950,7 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         client->last_fin = esp_transport_ws_get_fin_flag(client->transport);
         client->last_opcode = esp_transport_ws_get_read_opcode(client->transport);
 
-        if (rlen == 0 && client->last_opcode == WS_TRANSPORT_OPCODES_NONE ) {
+        if (rlen == 0 && client->last_opcode == WS_TRANSPORT_OPCODES_NONE) {
             ESP_LOGV(TAG, "esp_transport_read timeouts");
             esp_websocket_free_buf(client, false);
             return ESP_OK;
@@ -1056,7 +1056,7 @@ static void esp_websocket_client_task(void *pv)
                     }
                 }
 
-                if ( _tick_get_ms() - client->pingpong_tick_ms > client->config->pingpong_timeout_sec * 1000 ) {
+                if (_tick_get_ms() - client->pingpong_tick_ms > client->config->pingpong_timeout_sec * 1000) {
                     if (client->wait_for_pong_resp) {
                         esp_websocket_client_error(client, "Error, no PONG received for more than %d seconds after PING", client->config->pingpong_timeout_sec);
                         esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_PONG_TIMEOUT);
@@ -1372,4 +1372,14 @@ esp_err_t esp_websocket_register_events(esp_websocket_client_handle_t client,
         return ESP_ERR_INVALID_ARG;
     }
     return esp_event_handler_register_with(client->event_handle, WEBSOCKET_EVENTS, event, event_handler, event_handler_arg);
+}
+
+esp_err_t esp_websocket_unregister_events(esp_websocket_client_handle_t client,
+                                          esp_websocket_event_id_t event,
+                                          esp_event_handler_t event_handler)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return esp_event_handler_unregister_with(client->event_handle, WEBSOCKET_EVENTS, event, event_handler);
 }

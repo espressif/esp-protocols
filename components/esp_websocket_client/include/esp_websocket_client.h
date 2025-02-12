@@ -460,6 +460,18 @@ esp_err_t esp_websocket_register_events(esp_websocket_client_handle_t client,
                                         esp_event_handler_t event_handler,
                                         void *event_handler_arg);
 
+/**
+ * @brief Unegister the Websocket Events
+ *
+ * @param client            The client handle
+ * @param event             The event id
+ * @param event_handler     The callback function
+ * @return esp_err_t
+ */
+esp_err_t esp_websocket_unregister_events(esp_websocket_client_handle_t client,
+                                          esp_websocket_event_id_t event,
+                                          esp_event_handler_t event_handler);
+
 #ifdef __cplusplus
 }
 #endif
