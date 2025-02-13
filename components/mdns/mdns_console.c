@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,7 @@
 #include "mdns.h"
 #include "mdns_private.h"
 #include "inttypes.h"
+#include "mdns_mem_caps.h"
 
 static const char *ip_protocol_str[] = {"V4", "V6", "MAX"};
 
@@ -110,7 +111,7 @@ static void register_mdns_query_a(void)
         .argtable = &mdns_query_a_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 #endif /* CONFIG_LWIP_IPV4 */
 
@@ -169,7 +170,7 @@ static void register_mdns_query_aaaa(void)
         .argtable = &mdns_query_a_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 #endif /* CONFIG_LWIP_IPV6 */
 
@@ -231,7 +232,7 @@ static void register_mdns_query_srv(void)
         .argtable = &mdns_query_srv_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static struct {
@@ -293,7 +294,7 @@ static void register_mdns_query_txt(void)
         .argtable = &mdns_query_txt_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static struct {
@@ -359,7 +360,7 @@ static void register_mdns_query_ptr(void)
         .argtable = &mdns_query_ptr_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static struct {
@@ -427,7 +428,7 @@ static void register_mdns_query_ip(void)
         .argtable = &mdns_query_ip_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static struct {
@@ -496,7 +497,7 @@ static void register_mdns_query_svc(void)
         .argtable = &mdns_query_svc_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static struct {
@@ -513,15 +514,15 @@ static int cmd_mdns_init(int argc, char **argv)
         return 1;
     }
 
-    ESP_ERROR_CHECK( mdns_init() );
+    ESP_ERROR_CHECK(mdns_init());
 
     if (mdns_init_args.hostname->sval[0]) {
-        ESP_ERROR_CHECK( mdns_hostname_set(mdns_init_args.hostname->sval[0]) );
+        ESP_ERROR_CHECK(mdns_hostname_set(mdns_init_args.hostname->sval[0]));
         printf("MDNS: Hostname: %s\n", mdns_init_args.hostname->sval[0]);
     }
 
     if (mdns_init_args.instance->count) {
-        ESP_ERROR_CHECK( mdns_instance_name_set(mdns_init_args.instance->sval[0]) );
+        ESP_ERROR_CHECK(mdns_instance_name_set(mdns_init_args.instance->sval[0]));
         printf("MDNS: Instance: %s\n", mdns_init_args.instance->sval[0]);
     }
 
@@ -542,7 +543,7 @@ static void register_mdns_init(void)
         .argtable = &mdns_init_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_init) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
 }
 
 static int cmd_mdns_free(int argc, char **argv)
@@ -561,7 +562,7 @@ static void register_mdns_free(void)
         .argtable = NULL
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_free) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_free));
 }
 
 static struct {
@@ -582,7 +583,7 @@ static int cmd_mdns_set_hostname(int argc, char **argv)
         return 1;
     }
 
-    ESP_ERROR_CHECK( mdns_hostname_set(mdns_set_hostname_args.hostname->sval[0]) );
+    ESP_ERROR_CHECK(mdns_hostname_set(mdns_set_hostname_args.hostname->sval[0]));
     return 0;
 }
 
@@ -599,7 +600,7 @@ static void register_mdns_set_hostname(void)
         .argtable = &mdns_set_hostname_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_set_hostname) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_set_hostname));
 }
 
 static struct {
@@ -620,7 +621,7 @@ static int cmd_mdns_set_instance(int argc, char **argv)
         return 1;
     }
 
-    ESP_ERROR_CHECK( mdns_instance_name_set(mdns_set_instance_args.instance->sval[0]) );
+    ESP_ERROR_CHECK(mdns_instance_name_set(mdns_set_instance_args.instance->sval[0]));
     return 0;
 }
 
@@ -637,14 +638,14 @@ static void register_mdns_set_instance(void)
         .argtable = &mdns_set_instance_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_set_instance) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_set_instance));
 }
 
 static mdns_txt_item_t *_convert_items(const char **values, int count)
 {
     int i = 0, e;
     const char *value = NULL;
-    mdns_txt_item_t *items = (mdns_txt_item_t *) malloc(sizeof(mdns_txt_item_t) * count);
+    mdns_txt_item_t *items = (mdns_txt_item_t *) mdns_mem_malloc(sizeof(mdns_txt_item_t) * count);
     if (!items) {
         printf("ERROR: No Memory!\n");
         goto fail;
@@ -661,15 +662,15 @@ static mdns_txt_item_t *_convert_items(const char **values, int count)
         }
         int var_len = esign - value;
         int val_len = strlen(value) - var_len - 1;
-        char *var = (char *)malloc(var_len + 1);
+        char *var = (char *)mdns_mem_malloc(var_len + 1);
         if (var == NULL) {
             printf("ERROR: No Memory!\n");
             goto fail;
         }
-        char *val = (char *)malloc(val_len + 1);
+        char *val = (char *)mdns_mem_malloc(val_len + 1);
         if (val == NULL) {
             printf("ERROR: No Memory!\n");
-            free(var);
+            mdns_mem_free(var);
             goto fail;
         }
         memcpy(var, value, var_len);
@@ -685,10 +686,10 @@ static mdns_txt_item_t *_convert_items(const char **values, int count)
 
 fail:
     for (e = 0; e < i; e++) {
-        free((char *)items[e].key);
-        free((char *)items[e].value);
+        mdns_mem_free((char *)items[e].key);
+        mdns_mem_free((char *)items[e].value);
     }
-    free(items);
+    mdns_mem_free(items);
     return NULL;
 }
 
@@ -734,9 +735,9 @@ static int cmd_mdns_service_add(int argc, char **argv)
         }
     }
 
-    ESP_ERROR_CHECK( mdns_service_add_for_host(instance, mdns_add_args.service->sval[0], mdns_add_args.proto->sval[0],
-                     host, mdns_add_args.port->ival[0], items, mdns_add_args.txt->count) );
-    free(items);
+    ESP_ERROR_CHECK(mdns_service_add_for_host(instance, mdns_add_args.service->sval[0], mdns_add_args.proto->sval[0],
+                                              host, mdns_add_args.port->ival[0], items, mdns_add_args.txt->count));
+    mdns_mem_free(items);
     return 0;
 }
 
@@ -758,7 +759,7 @@ static void register_mdns_service_add(void)
         .argtable = &mdns_add_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_add) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_add));
 }
 
 static struct {
@@ -791,7 +792,7 @@ static int cmd_mdns_service_remove(int argc, char **argv)
         host = mdns_remove_args.host->sval[0];
     }
 
-    ESP_ERROR_CHECK( mdns_service_remove_for_host(instance, mdns_remove_args.service->sval[0], mdns_remove_args.proto->sval[0], host) );
+    ESP_ERROR_CHECK(mdns_service_remove_for_host(instance, mdns_remove_args.service->sval[0], mdns_remove_args.proto->sval[0], host));
     return 0;
 }
 
@@ -811,7 +812,7 @@ static void register_mdns_service_remove(void)
         .argtable = &mdns_remove_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_remove) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_remove));
 }
 
 static struct {
@@ -869,7 +870,7 @@ static void register_mdns_service_instance_set(void)
         .argtable = &mdns_service_instance_set_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_add) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_add));
 }
 
 static struct {
@@ -927,7 +928,7 @@ static void register_mdns_service_port_set(void)
         .argtable = &mdns_service_port_set_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_add) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_add));
 }
 
 static struct {
@@ -970,8 +971,8 @@ static int cmd_mdns_service_txt_replace(int argc, char **argv)
 
         }
     }
-    ESP_ERROR_CHECK( mdns_service_txt_set_for_host(instance, mdns_txt_replace_args.service->sval[0], mdns_txt_replace_args.proto->sval[0], host, items, mdns_txt_replace_args.txt->count) );
-    free(items);
+    ESP_ERROR_CHECK(mdns_service_txt_set_for_host(instance, mdns_txt_replace_args.service->sval[0], mdns_txt_replace_args.proto->sval[0], host, items, mdns_txt_replace_args.txt->count));
+    mdns_mem_free(items);
     return 0;
 }
 
@@ -992,7 +993,7 @@ static void register_mdns_service_txt_replace(void)
         .argtable = &mdns_txt_replace_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_txt_set) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_txt_set));
 }
 
 static struct {
@@ -1028,7 +1029,7 @@ static int cmd_mdns_service_txt_set(int argc, char **argv)
         printf("MDNS: Service for delegated host: %s\n", host);
     }
 
-    ESP_ERROR_CHECK( mdns_service_txt_item_set_for_host(instance, mdns_txt_set_args.service->sval[0], mdns_txt_set_args.proto->sval[0], host, mdns_txt_set_args.var->sval[0], mdns_txt_set_args.value->sval[0]) );
+    ESP_ERROR_CHECK(mdns_service_txt_item_set_for_host(instance, mdns_txt_set_args.service->sval[0], mdns_txt_set_args.proto->sval[0], host, mdns_txt_set_args.var->sval[0], mdns_txt_set_args.value->sval[0]));
     return 0;
 }
 
@@ -1050,7 +1051,7 @@ static void register_mdns_service_txt_set(void)
         .argtable = &mdns_txt_set_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_txt_set) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_txt_set));
 }
 
 static struct {
@@ -1082,7 +1083,7 @@ static int cmd_mdns_service_txt_remove(int argc, char **argv)
     if (mdns_txt_remove_args.host->count && mdns_txt_remove_args.host->sval[0]) {
         host = mdns_txt_remove_args.host->sval[0];
     }
-    ESP_ERROR_CHECK( mdns_service_txt_item_remove_for_host(instance, mdns_txt_remove_args.service->sval[0], mdns_txt_remove_args.proto->sval[0], host, mdns_txt_remove_args.var->sval[0]) );
+    ESP_ERROR_CHECK(mdns_service_txt_item_remove_for_host(instance, mdns_txt_remove_args.service->sval[0], mdns_txt_remove_args.proto->sval[0], host, mdns_txt_remove_args.var->sval[0]));
     return 0;
 }
 
@@ -1103,7 +1104,7 @@ static void register_mdns_service_txt_remove(void)
         .argtable = &mdns_txt_remove_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_txt_remove) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_txt_remove));
 }
 
 static int cmd_mdns_service_remove_all(int argc, char **argv)
@@ -1122,7 +1123,7 @@ static void register_mdns_service_remove_all(void)
         .argtable = NULL
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_free) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_free));
 }
 
 #define MDNS_MAX_LOOKUP_RESULTS CONFIG_MDNS_MAX_SERVICES
@@ -1189,7 +1190,7 @@ static void register_mdns_lookup_service(void)
         .argtable = &mdns_lookup_service_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_lookup_service) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_lookup_service));
 }
 
 static struct {
@@ -1237,7 +1238,7 @@ static void register_mdns_delegate_host(void)
         .argtable = &mdns_delegate_host_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_delegate_host) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_delegate_host));
 }
 
 static struct {
@@ -1278,7 +1279,7 @@ static void register_mdns_undelegate_host(void)
         .argtable = &mdns_undelegate_host_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_undelegate_host) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_undelegate_host));
 }
 
 static struct {
@@ -1310,7 +1311,7 @@ static int cmd_mdns_service_subtype(int argc, char **argv)
     if (mdns_service_subtype_args.host->count && mdns_service_subtype_args.host->sval[0]) {
         host = mdns_service_subtype_args.host->sval[0];
     }
-    ESP_ERROR_CHECK( mdns_service_subtype_add_for_host(instance, mdns_service_subtype_args.service->sval[0], mdns_service_subtype_args.proto->sval[0], host, mdns_service_subtype_args.sub->sval[0]) );
+    ESP_ERROR_CHECK(mdns_service_subtype_add_for_host(instance, mdns_service_subtype_args.service->sval[0], mdns_service_subtype_args.proto->sval[0], host, mdns_service_subtype_args.sub->sval[0]));
     return 0;
 }
 
@@ -1331,7 +1332,7 @@ static void register_mdns_service_subtype_set(void)
         .argtable = &mdns_service_subtype_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_service_sub) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_service_sub));
 }
 
 static struct {
@@ -1377,7 +1378,7 @@ static void register_mdns_browse(void)
         .argtable = &mdns_browse_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_browse) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_browse));
 }
 
 static int cmd_mdns_browse_del(int argc, char **argv)
@@ -1410,7 +1411,7 @@ static void register_mdns_browse_del(void)
         .argtable = &mdns_browse_args
     };
 
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_browse_del) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_browse_del));
 }
 
 void mdns_console_register(void)

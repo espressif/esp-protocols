@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <sys/param.h>
 #include "esp_log.h"
+#include "mdns_mem_caps.h"
 
 #if defined(CONFIG_IDF_TARGET_LINUX)
 #include <sys/ioctl.h>
@@ -87,9 +88,9 @@ size_t _mdns_get_packet_len(mdns_rx_packet_t *packet)
 
 void _mdns_packet_free(mdns_rx_packet_t *packet)
 {
-    free(packet->pb->payload);
-    free(packet->pb);
-    free(packet);
+    mdns_mem_free(packet->pb->payload);
+    mdns_mem_free(packet->pb);
+    mdns_mem_free(packet);
 }
 
 esp_err_t _mdns_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
@@ -297,13 +298,13 @@ void sock_recv_task(void *arg)
                     inet_to_espaddr(&raddr, &addr, &port);
 
                     // Allocate the packet structure and pass it to the mdns main engine
-                    mdns_rx_packet_t *packet = (mdns_rx_packet_t *) calloc(1, sizeof(mdns_rx_packet_t));
-                    struct pbuf *packet_pbuf = calloc(1, sizeof(struct pbuf));
-                    uint8_t *buf = malloc(len);
-                    if (packet == NULL || packet_pbuf == NULL || buf == NULL ) {
-                        free(buf);
-                        free(packet_pbuf);
-                        free(packet);
+                    mdns_rx_packet_t *packet = (mdns_rx_packet_t *) mdns_mem_calloc(1, sizeof(mdns_rx_packet_t));
+                    struct pbuf *packet_pbuf = mdns_mem_calloc(1, sizeof(struct pbuf));
+                    uint8_t *buf = mdns_mem_malloc(len);
+                    if (packet == NULL || packet_pbuf == NULL || buf == NULL) {
+                        mdns_mem_free(buf);
+                        mdns_mem_free(packet_pbuf);
+                        mdns_mem_free(packet);
                         HOOK_MALLOC_FAILED;
                         ESP_LOGE(TAG, "Failed to allocate the mdns packet");
                         continue;
@@ -326,9 +327,9 @@ void sock_recv_task(void *arg)
                         packet->src.type == ESP_IPADDR_TYPE_V4 ? MDNS_IP_PROTOCOL_V4 : MDNS_IP_PROTOCOL_V6;
                     if (_mdns_send_rx_action(packet) != ESP_OK) {
                         ESP_LOGE(TAG, "_mdns_send_rx_action failed!");
-                        free(packet->pb->payload);
-                        free(packet->pb);
-                        free(packet);
+                        mdns_mem_free(packet->pb->payload);
+                        mdns_mem_free(packet->pb);
+                        mdns_mem_free(packet);
                     }
                 }
             }
@@ -341,7 +342,7 @@ static void mdns_networking_init(void)
 {
     if (s_run_sock_recv_task == false) {
         s_run_sock_recv_task = true;
-        xTaskCreate( sock_recv_task, "mdns recv task", 3 * 1024, NULL, 5, NULL );
+        xTaskCreate(sock_recv_task, "mdns recv task", 3 * 1024, NULL, 5, NULL);
     }
 }
 
@@ -392,7 +393,7 @@ static int create_socket(esp_netif_t *netif)
     }
 
     int on = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on) ) < 0) {
+    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
         ESP_LOGE(TAG, "Failed setsockopt() to set SO_REUSEADDR. errno=%d: %s\n", errno, strerror(errno));
     }
     // Bind the socket to any address
@@ -419,7 +420,7 @@ static int create_socket(esp_netif_t *netif)
 #endif // CONFIG_LWIP_IPV6
     struct ifreq ifr;
     esp_netif_get_netif_impl_name(netif, ifr.ifr_name);
-    int ret = setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,  (void *)&ifr, sizeof(struct ifreq));
+    int ret = setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(struct ifreq));
     if (ret < 0) {
         ESP_LOGE(TAG, "\"%s\" Unable to bind socket to specified interface. errno=%d: %s", esp_netif_get_desc(netif), errno, strerror(errno));
         goto err;
