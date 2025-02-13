@@ -71,6 +71,18 @@ menu "mDNS"
             bool "mDNS task creates on the internal RAM"
     endchoice
 
+    choice MDNS_MEMORY_ALLOC_FROM
+        prompt "Select mDNS memory allocation type"
+        default MDNS_MEMORY_ALLOC_INTERNAL
+
+        config MDNS_MEMORY_ALLOC_SPIRAM
+            bool "Allocate mDNS memory from SPIRAM"
+            depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+
+        config MDNS_MEMORY_ALLOC_INTERNAL
+            bool "Allocate mDNS memory from internal RAM"
+    endchoice
+
     config MDNS_SERVICE_ADD_TIMEOUT_MS
         int "mDNS adding service timeout (ms)"
         range 10 30000
