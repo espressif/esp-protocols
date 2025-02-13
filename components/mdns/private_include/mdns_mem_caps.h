@@ -47,6 +47,19 @@ char *mdns_mem_strdup(const char *s);
  */
 char *mdns_mem_strndup(const char *s, size_t n);
 
+/**
+ * @brief Allocate memory for mDNS task.
+ * @param size Number of bytes to allocate.
+ * @return Pointer to allocated memory, or NULL on failure.
+ */
+void *mdns_mem_task_malloc(size_t size);
+
+/**
+ * @brief Free allocated memory for mDNS task.
+ * @param ptr Pointer to memory to free.
+ */
+void mdns_mem_task_free(void *ptr);
+
 #ifdef __cplusplus
 }
 #endif

@@ -138,7 +138,5 @@ esp_err_t esp_event_handler_unregister(const char *event_base, int32_t event_id,
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t task);
 BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time);
-void *heap_caps_malloc(size_t size, uint32_t caps);
-void heap_caps_free(void *ptr);
 
 #endif //_ESP32_COMPAT_H_

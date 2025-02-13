@@ -5466,12 +5466,10 @@ static esp_err_t _mdns_stop_timer(void)
 
 static esp_err_t _mdns_task_create_with_caps(void)
 {
-    ESP_LOGI(TAG, "mDNS task will be created from %s", MDNS_TASK_MEMORY_LOG);
     esp_err_t ret = ESP_OK;
     static StaticTask_t mdns_task_buffer;
 
-    // Allocate memory for the mDNS task's stack using the MDNS_TASK_MEMORY_CAPS
-    _mdns_stack_buffer = heap_caps_malloc(MDNS_SERVICE_STACK_DEPTH, MDNS_TASK_MEMORY_CAPS);
+    _mdns_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
     ESP_GOTO_ON_FALSE(_mdns_stack_buffer != NULL, ESP_FAIL, err, TAG, "failed to allocate memory for the mDNS task's stack");
 
     _mdns_service_task_handle = xTaskCreateStaticPinnedToCore(_mdns_service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, _mdns_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
@@ -5480,7 +5478,7 @@ static esp_err_t _mdns_task_create_with_caps(void)
     return ret;
 
 err:
-    heap_caps_free(_mdns_stack_buffer);
+    mdns_mem_task_free(_mdns_stack_buffer);
     return ret;
 }
 
@@ -5769,7 +5767,7 @@ void mdns_free(void)
     free_delegated_hostnames();
     _mdns_service_task_stop();
     // at this point, the service task is deleted, so we can destroy the stack size
-    heap_caps_free(_mdns_stack_buffer);
+    mdns_mem_task_free(_mdns_stack_buffer);
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
             mdns_pcb_deinit_local(i, j);
