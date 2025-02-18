@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,6 +20,7 @@
 #include "esp_event.h"
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
+#include "mdns_mem_caps.h"
 
 /*
  * MDNS Server Networking
@@ -143,7 +144,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         pb = pb->next;
         this_pb->next = NULL;
 
-        mdns_rx_packet_t *packet = (mdns_rx_packet_t *)malloc(sizeof(mdns_rx_packet_t));
+        mdns_rx_packet_t *packet = (mdns_rx_packet_t *)mdns_mem_malloc(sizeof(mdns_rx_packet_t));
         if (!packet) {
             HOOK_MALLOC_FAILED;
             //missed packet - no memory
@@ -188,7 +189,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         bool found = false;
         for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
             netif = esp_netif_get_netif_impl(_mdns_get_esp_netif(i));
-            if (s_interfaces[i].proto && netif && netif == ip_current_input_netif ()) {
+            if (s_interfaces[i].proto && netif && netif == ip_current_input_netif()) {
 #if LWIP_IPV4
                 if (packet->src.type == IPADDR_TYPE_V4) {
                     if ((packet->src.u_addr.ip4.addr & ip_2_ip4(&netif->netmask)->addr) != (ip_2_ip4(&netif->ip_addr)->addr & ip_2_ip4(&netif->netmask)->addr)) {
@@ -205,7 +206,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
 
         if (!found || _mdns_send_rx_action(packet) != ESP_OK) {
             pbuf_free(this_pb);
-            free(packet);
+            mdns_mem_free(packet);
         }
     }
 
@@ -338,7 +339,7 @@ static err_t _mdns_udp_pcb_write_api(struct tcpip_api_call_data *api_call_msg)
         msg->err = ERR_IF;
         return ERR_IF;
     }
-    esp_err_t err = udp_sendto_if (_pcb_main, msg->pbt, msg->ip, msg->port, (struct netif *)nif);
+    esp_err_t err = udp_sendto_if(_pcb_main, msg->pbt, msg->ip, msg->port, (struct netif *)nif);
     pbuf_free(msg->pbt);
     msg->err = err;
     return err;
@@ -393,5 +394,5 @@ size_t _mdns_get_packet_len(mdns_rx_packet_t *packet)
 void _mdns_packet_free(mdns_rx_packet_t *packet)
 {
     pbuf_free(packet->pb);
-    free(packet);
+    mdns_mem_free(packet);
 }

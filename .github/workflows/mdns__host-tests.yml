@@ -35,30 +35,36 @@ jobs:
           # Next we run the pytest (using the console app)
           pytest
 
-  build_afl_host_test_mdns:
+  host_compat_checks:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
-    name: Build AFL host test
+    name: Set of compatibility checks
     strategy:
       matrix:
         idf_ver: ["latest"]
-        idf_target: ["esp32"]
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
-        with:
-          path: esp-protocols
       - name: Install Necessary Libs
         run: |
           apt-get update -y
           apt-get install -y libbsd-dev
-      - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
+      - name: Test AFL compat build
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          cd $GITHUB_WORKSPACE/esp-protocols/components/mdns/tests/test_afl_fuzz_host/
+          cd components/mdns/tests/test_afl_fuzz_host/
           make INSTR=off
+      - name: Test no malloc functions
+        shell: bash
+        run: |
+          cd components/mdns
+          for file in $(ls *.c); do
+            cp $file /tmp
+            echo -n "Checking that $file does not call any std allocations directly..."
+            python mem_prefix_script.py $file
+            diff -q $file /tmp/$file || exit 1
+            echo "OK"
+          done

@@ -61,15 +61,47 @@ menu "mDNS"
         default 0x0 if MDNS_TASK_AFFINITY_CPU0
         default 0x1 if MDNS_TASK_AFFINITY_CPU1
 
-    choice MDNS_TASK_MEMORY_ALLOC_FROM
-        prompt "Select mDNS task create on which type of memory"
-        default MDNS_TASK_CREATE_FROM_INTERNAL
-        config MDNS_TASK_CREATE_FROM_SPIRAM
-            bool "mDNS task creates on the SPIRAM"
-            depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
-        config MDNS_TASK_CREATE_FROM_INTERNAL
-            bool "mDNS task creates on the internal RAM"
-    endchoice
+    menu "MDNS Memory Configuration"
+
+        choice MDNS_TASK_MEMORY_ALLOC_FROM
+            prompt "Select mDNS task create on which type of memory"
+            default MDNS_TASK_CREATE_FROM_INTERNAL
+            config MDNS_TASK_CREATE_FROM_SPIRAM
+                bool "mDNS task creates on the SPIRAM (READ HELP)"
+                depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+                help
+                    mDNS task creates on the SPIRAM.
+                    This option requires FreeRTOS component to allow creating
+                    tasks on the external memory.
+                    Please read the documentation about FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+
+            config MDNS_TASK_CREATE_FROM_INTERNAL
+                bool "mDNS task creates on the internal RAM"
+
+        endchoice
+
+        choice MDNS_MEMORY_ALLOC_FROM
+            prompt "Select mDNS memory allocation type"
+            default MDNS_MEMORY_ALLOC_INTERNAL
+
+            config MDNS_MEMORY_ALLOC_SPIRAM
+                bool "Allocate mDNS memory from SPIRAM"
+                depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+
+            config MDNS_MEMORY_ALLOC_INTERNAL
+                bool "Allocate mDNS memory from internal RAM"
+
+        endchoice
+
+        config MDNS_MEMORY_CUSTOM_IMPL
+            bool "Implement custom memory functions"
+            default n
+            help
+                Enable to implement custom memory functions for mDNS library.
+                This option is useful when the application wants to use custom
+                memory allocation functions for mDNS library.
+
+    endmenu # MDNS Memory Configuration
 
     config MDNS_SERVICE_ADD_TIMEOUT_MS
         int "mDNS adding service timeout (ms)"

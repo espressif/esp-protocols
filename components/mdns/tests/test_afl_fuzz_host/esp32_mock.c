@@ -126,12 +126,37 @@ uint32_t esp_log_timestamp(void)
     return 0;
 }
 
-void *heap_caps_malloc(size_t size, uint32_t caps)
+void *mdns_mem_malloc(size_t size)
 {
     return malloc(size);
 }
 
-void heap_caps_free(void *ptr)
+void *mdns_mem_calloc(size_t num, size_t size)
+{
+    return calloc(num, size);
+}
+
+void mdns_mem_free(void *ptr)
+{
+    free(ptr);
+}
+
+char *mdns_mem_strdup(const char *s)
+{
+    return strdup(s);
+}
+
+char *mdns_mem_strndup(const char *s, size_t n)
+{
+    return strndup(s, n);
+}
+
+void *mdns_mem_task_malloc(size_t size)
+{
+    return malloc(size);
+}
+
+void mdns_mem_task_free(void *ptr)
 {
     free(ptr);
 }
