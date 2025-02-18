@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.7.0)
+
+### Features
+
+- Support user defined allocators ([88162d1f](https://github.com/espressif/esp-protocols/commit/88162d1f))
+- Allow allocate memory with configured caps ([7d29b476](https://github.com/espressif/esp-protocols/commit/7d29b476))
+
+### Bug Fixes
+
+- Adjust some formatting per indent-cont=120 ([5b2077e3](https://github.com/espressif/esp-protocols/commit/5b2077e3))
+
 ## [1.6.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.6.0)
 
 ### Features
