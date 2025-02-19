@@ -1,0 +1,5 @@
+version: "4.3.3"
+url: https://github.com/espressif/esp-protocols/tree/master/components/libwebsockets
+description: The component provides a simple ESP-IDF port of libwebsockets client.
+dependencies:
+  idf: '>=5.3'
