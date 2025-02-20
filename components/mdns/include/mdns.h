@@ -14,9 +14,6 @@ extern "C" {
 #include <esp_netif.h>
 
 #define ESP_MDNS_VERSION_NUMBER "1.7.0"
-#define ESP_MDNS_VERSION_MAJOR 1
-#define ESP_MDNS_VERSION_MINOR 7
-#define ESP_MDNS_VERSION_PATCH 0
 
 #define MDNS_TYPE_A                 0x0001
 #define MDNS_TYPE_PTR               0x000C
