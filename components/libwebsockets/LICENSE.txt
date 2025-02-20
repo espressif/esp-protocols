@@ -1,0 +1,9 @@
+Libwebsockets and included programs are provided under the terms of the
+MIT license, with the exception that some sources are under
+a similar permissive license like BSD, or are explicitly CC0 / public
+domain to remove any obstacles from basing differently-licensed code on
+them.
+Please refer to the LWS LICENSE for more details.
+
+Espressif port files are licensed under Apache-2.0 license.
+Espressif examples and tests are distributed under Unlicense/CC0.
