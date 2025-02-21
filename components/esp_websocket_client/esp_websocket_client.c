@@ -586,6 +586,23 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
     return ESP_OK;
 }
 
+static void esp_websocket_client_prepare_transport(esp_websocket_client_handle_t client)
+{
+    //get transport by scheme
+    if (client->transport == NULL && client->config->ext_transport == NULL) {
+        client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
+    }
+
+    if (client->transport == NULL) {
+        ESP_LOGE(TAG, "There are no transports valid, stop websocket client");
+        client->run = false;
+    }
+    //default port
+    if (client->config->port == 0) {
+        client->config->port = esp_transport_get_default_port(client->transport);
+    }
+}
+
 static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_handle_t client, ws_transport_opcodes_t opcode, const uint8_t *data, int len, TickType_t timeout)
 {
     int ret = -1;
@@ -985,19 +1002,7 @@ static void esp_websocket_client_task(void *pv)
     esp_websocket_client_handle_t client = (esp_websocket_client_handle_t) pv;
     client->run = true;
 
-    //get transport by scheme
-    if (client->transport == NULL && client->config->ext_transport == NULL) {
-        client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
-    }
-
-    if (client->transport == NULL) {
-        ESP_LOGE(TAG, "There are no transports valid, stop websocket client");
-        client->run = false;
-    }
-    //default port
-    if (client->config->port == 0) {
-        client->config->port = esp_transport_get_default_port(client->transport);
-    }
+    esp_websocket_client_prepare_transport(client);
 
     client->state = WEBSOCKET_STATE_INIT;
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
@@ -1024,6 +1029,24 @@ static void esp_websocket_client_task(void *pv)
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
                 if (error_handle) {
+#ifdef ESP_TRANSPORT_WS_SUPPORTED_FEATURE_REDIRECT
+                    if (client->error_handle.esp_ws_handshake_status_code == WS_TRANSPORT_RESPONSE_REDIR) {
+                        client->config->port = 0;
+                        client->config->uri  = esp_transport_ws_get_redir_uri(client->transport);
+                        if (client->config->uri != NULL) {
+                            ESP_LOGI(TAG, "Redirecting to %s", client->config->uri);
+                            esp_websocket_client_set_uri(client, client->config->uri);
+                            esp_websocket_client_prepare_transport(client);
+
+                            // Rerun the connection with the redir uri.
+                            client->state = WEBSOCKET_STATE_INIT;
+                            break;
+                        } else {
+                            // No redir uri found, continue with error and abort.
+                            ESP_LOGE(TAG, "There are no redirect uri");
+                        }
+                    }
+#endif
                     esp_websocket_client_error(client, "esp_transport_connect() failed with %d, "
                                                "transport_error=%s, tls_error_code=%i, tls_flags=%i, esp_ws_handshake_status_code=%d, errno=%d",
                                                result, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
