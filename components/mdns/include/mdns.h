@@ -13,8 +13,6 @@ extern "C" {
 #include "sdkconfig.h"
 #include <esp_netif.h>
 
-#define ESP_MDNS_VERSION_NUMBER "1.7.0"
-
 #define MDNS_TYPE_A                 0x0001
 #define MDNS_TYPE_PTR               0x000C
 #define MDNS_TYPE_TXT               0x0010
