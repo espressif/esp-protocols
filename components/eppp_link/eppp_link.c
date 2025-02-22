@@ -12,7 +12,7 @@
 #include "esp_event.h"
 #include "esp_netif_ppp.h"
 #include "eppp_link.h"
-#include "esp_serial_slave_link/essl_sdio.h"
+#include "eppp_transport.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
 #include "driver/spi_master.h"
@@ -22,6 +22,12 @@
 #include "esp_rom_crc.h"
 #elif CONFIG_EPPP_LINK_DEVICE_UART
 #include "driver/uart.h"
+#endif
+
+#if CONFIG_EPPP_LINK_DEVICE_ETH
+#define EPPP_NEEDS_TASK 0
+#else
+#define EPPP_NEEDS_TASK 1
 #endif
 
 static const int GOT_IPV4 = BIT0;
@@ -98,6 +104,8 @@ esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *config);
 esp_err_t eppp_sdio_slave_init(void);
 void eppp_sdio_slave_deinit(void);
 void eppp_sdio_host_deinit(void);
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+
 #else
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
@@ -224,6 +232,8 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
         .handle = h,
 #if CONFIG_EPPP_LINK_DEVICE_SDIO
         .transmit = role == EPPP_CLIENT ? eppp_sdio_host_tx : eppp_sdio_slave_tx,
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+        .transmit = eppp_transport_tx,
 #else
         .transmit = transmit,
 #endif
@@ -691,6 +701,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
 
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
 
+#if EPPP_NEEDS_TASK
 static void ppp_task(void *args)
 {
     esp_netif_t *netif = args;
@@ -699,6 +710,7 @@ static void ppp_task(void *args)
     h->exited = true;
     vTaskDelete(NULL);
 }
+#endif
 
 static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
 {
@@ -738,6 +750,8 @@ void eppp_deinit(esp_netif_t *netif)
     } else {
         eppp_sdio_slave_deinit();
     }
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+    eppp_transport_deinit();
 #endif
     netif_deinit(netif);
 }
@@ -781,6 +795,13 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
         ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
         return NULL;
     }
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+    esp_err_t ret = eppp_transport_init(config, netif);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
+        return NULL;
+    }
+
 #endif
     return netif;
 }
@@ -834,12 +855,13 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
     }
 
     eppp_netif_start(netif);
-
+#if EPPP_NEEDS_TASK
     if (xTaskCreate(ppp_task, "ppp connect", config->task.stack_size, netif, config->task.priority, NULL) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to create a ppp connection task");
         eppp_deinit(netif);
         return NULL;
     }
+#endif
     int netif_cnt = get_netif_num(netif);
     if (netif_cnt < 0) {
         eppp_close(netif);

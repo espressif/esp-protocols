@@ -1,0 +1,28 @@
+menu "Example Configuration"
+
+    choice EXAMPLE_NODE_ROLE
+        prompt "Choose the device role"
+        default EXAMPLE_NODE_SERVER
+        help
+            Select whether this device acts as a server or a client
+
+        config EXAMPLE_NODE_SERVER
+            bool "Server"
+            help
+                Act as an EPPP server, source RMII clock
+
+        config EXAMPLE_NODE_CLIENT
+            bool "Client"
+            help
+                Act as an EPPP client, use server's clock
+
+    endchoice
+
+    config EXAMPLE_RMII_CLK_READY_GPIO
+        int "RMII CLK Sink Device is ready GPIO"
+        default 4
+        help
+            GPIO number at which the "RMII CLK Sink Device" is ready and so the "RMII
+            CLK Source Device" can continue in its Ethernet initialization.
+
+endmenu
