@@ -314,6 +314,8 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    ESP_LOGI(TAG, "mDNS Ver: %s", ESP_MDNS_VERSION_NUMBER);
+
     initialise_mdns();
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
