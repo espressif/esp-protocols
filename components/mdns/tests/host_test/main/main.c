@@ -111,7 +111,7 @@ static void mdns_test_app(esp_netif_t *interface)
         .func = exit_console,
         .argtable = NULL
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&cmd_exit) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_exit));
     mdns_console_register();
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
     xEventGroupWaitBits(s_exit_signal, 1, pdTRUE, pdFALSE, portMAX_DELAY);

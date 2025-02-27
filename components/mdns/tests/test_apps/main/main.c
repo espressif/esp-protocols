@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -55,17 +55,17 @@ static void initialise_mdns(void)
     char *hostname = generate_hostname();
 
     //initialize mDNS
-    ESP_ERROR_CHECK( mdns_init() );
+    ESP_ERROR_CHECK(mdns_init());
 
     //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
+    ESP_ERROR_CHECK(mdns_hostname_set(hostname));
 
     ESP_LOGI(TAG, "mdns hostname set to: [%s]", hostname);
     //set default mDNS instance name
-    ESP_ERROR_CHECK( mdns_instance_name_set(CONFIG_TEST_MDNS_INSTANCE) );
+    ESP_ERROR_CHECK(mdns_instance_name_set(CONFIG_TEST_MDNS_INSTANCE));
 
     //initialize service
-    ESP_ERROR_CHECK( mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0) );
+    ESP_ERROR_CHECK(mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, NULL, 0));
 
 #if CONFIG_TEST_MDNS_PUBLISH_DELEGATE_HOST
     char *delegated_hostname;
@@ -80,12 +80,12 @@ static void initialise_mdns(void)
     addr6.addr.type = ESP_IPADDR_TYPE_V6;
     addr4.next = &addr6;
     addr6.next = NULL;
-    ESP_ERROR_CHECK( mdns_delegate_hostname_add(delegated_hostname, &addr4) );
-    ESP_ERROR_CHECK( mdns_service_add_for_host("test0", "_http", "_tcp", delegated_hostname, 1234, NULL, 0) );
+    ESP_ERROR_CHECK(mdns_delegate_hostname_add(delegated_hostname, &addr4));
+    ESP_ERROR_CHECK(mdns_service_add_for_host("test0", "_http", "_tcp", delegated_hostname, 1234, NULL, 0));
     free(delegated_hostname);
 #endif // CONFIG_TEST_MDNS_PUBLISH_DELEGATE_HOST
 
-    ESP_ERROR_CHECK( mdns_service_subtype_add_for_host("ESP32-WebServer", "_http", "_tcp", NULL, "_server") );
+    ESP_ERROR_CHECK(mdns_service_subtype_add_for_host("ESP32-WebServer", "_http", "_tcp", NULL, "_server"));
 
     free(hostname);
 }
