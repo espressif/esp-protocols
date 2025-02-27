@@ -14,37 +14,52 @@ using namespace esp_modem;
 
 static const size_t dte_default_buffer_size = 1000;
 
-DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal):
-    buffer(config->dte_buffer_size),
-    cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
-    mode(modem_mode::UNDEF)
+DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> terminal)
+    : buffer(config->dte_buffer_size),
+      cmux_term(nullptr),
+      primary_term(std::move(terminal)),
+      secondary_term(primary_term),
+      mode(modem_mode::UNDEF)
 {
+    ESP_MODEM_THROW_IF_FALSE(primary_term != nullptr, "Invalid argument: terminal cannot be null");
     set_command_callbacks();
 }
 
-DTE::DTE(std::unique_ptr<Terminal> terminal):
-    buffer(dte_default_buffer_size),
-    cmux_term(nullptr), primary_term(std::move(terminal)), secondary_term(primary_term),
-    mode(modem_mode::UNDEF)
+DTE::DTE(std::unique_ptr<Terminal> terminal)
+    : buffer(dte_default_buffer_size),
+      cmux_term(nullptr),
+      primary_term(std::move(terminal)),
+      secondary_term(primary_term),
+      mode(modem_mode::UNDEF)
 {
+    ESP_MODEM_THROW_IF_FALSE(primary_term != nullptr, "Invalid argument: terminal cannot be null");
     set_command_callbacks();
 }
 
-DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
-    buffer(config->dte_buffer_size),
-    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
-    mode(modem_mode::DUAL_MODE)
+DTE::DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s)
+    : buffer(config->dte_buffer_size),
+      cmux_term(nullptr),
+      primary_term(std::move(t)),
+      secondary_term(std::move(s)),
+      mode(modem_mode::DUAL_MODE)
 {
+    ESP_MODEM_THROW_IF_FALSE(primary_term != nullptr, "Invalid argument: primary terminal cannot be null");
+    ESP_MODEM_THROW_IF_FALSE(secondary_term != nullptr, "Invalid argument: secondary terminal cannot be null");
     set_command_callbacks();
 }
 
-DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s):
-    buffer(dte_default_buffer_size),
-    cmux_term(nullptr), primary_term(std::move(t)), secondary_term(std::move(s)),
-    mode(modem_mode::DUAL_MODE)
+DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s)
+    : buffer(dte_default_buffer_size),
+      cmux_term(nullptr),
+      primary_term(std::move(t)),
+      secondary_term(std::move(s)),
+      mode(modem_mode::DUAL_MODE)
 {
+    ESP_MODEM_THROW_IF_FALSE(primary_term != nullptr, "Invalid argument: primary terminal cannot be null");
+    ESP_MODEM_THROW_IF_FALSE(secondary_term != nullptr, "Invalid argument: secondary terminal cannot be null");
     set_command_callbacks();
 }
+
 
 void DTE::set_command_callbacks()
 {
