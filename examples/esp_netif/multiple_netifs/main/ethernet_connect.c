@@ -95,7 +95,7 @@ static void eth_destroy(iface_info_t *info)
     free(eth_info);
 }
 
-iface_info_t *eth_init(int prio)
+iface_info_t *example_eth_init(int prio)
 {
     struct eth_info_t *eth_info = malloc(sizeof(struct eth_info_t));
     assert(eth_info);
