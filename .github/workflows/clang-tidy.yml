@@ -9,10 +9,10 @@ on:
 jobs:
   build:
     name: Run clang-tidy
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'true'
       - name: Install esp-clang
@@ -50,7 +50,7 @@ jobs:
             results.sarif
             results.sarif.raw
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
           category: clang-tidy
