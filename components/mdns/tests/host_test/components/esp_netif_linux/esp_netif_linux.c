@@ -51,7 +51,7 @@ esp_err_t esp_netif_get_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET) {
             char addr[20];
             struct sockaddr_in *pAddr = (struct sockaddr_in *) tmp->ifa_addr;
-            inet_ntop(AF_INET, &pAddr->sin_addr, addr, sizeof(addr) );
+            inet_ntop(AF_INET, &pAddr->sin_addr, addr, sizeof(addr));
             if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
                 ESP_LOGD(TAG, "AF_INET4: %s: %s\n", tmp->ifa_name, addr);
                 memcpy(&ip_info->ip.addr, &pAddr->sin_addr, 4);
@@ -105,7 +105,7 @@ esp_err_t esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if
         if (tmp->ifa_addr && tmp->ifa_addr->sa_family == AF_INET6) {
             char addr[64];
             struct sockaddr_in6 *pAddr = (struct sockaddr_in6 *)tmp->ifa_addr;
-            inet_ntop(AF_INET6, &pAddr->sin6_addr, addr, sizeof(addr) );
+            inet_ntop(AF_INET6, &pAddr->sin6_addr, addr, sizeof(addr));
             if (strcmp(esp_netif->if_desc, tmp->ifa_name) == 0) {
                 ESP_LOGD(TAG, "AF_INET6: %s: %s\n", tmp->ifa_name, addr);
                 memcpy(if_ip6->addr, &pAddr->sin6_addr, 4 * 4);

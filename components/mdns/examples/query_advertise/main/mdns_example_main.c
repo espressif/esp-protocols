@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -44,12 +44,12 @@ static void initialise_mdns(void)
     char *hostname = generate_hostname();
 
     //initialize mDNS
-    ESP_ERROR_CHECK( mdns_init() );
+    ESP_ERROR_CHECK(mdns_init());
     //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
+    ESP_ERROR_CHECK(mdns_hostname_set(hostname));
     ESP_LOGI(TAG, "mdns hostname set to: [%s]", hostname);
     //set default mDNS instance name
-    ESP_ERROR_CHECK( mdns_instance_name_set(EXAMPLE_MDNS_INSTANCE) );
+    ESP_ERROR_CHECK(mdns_instance_name_set(EXAMPLE_MDNS_INSTANCE));
 
     //structure with TXT records
     mdns_txt_item_t serviceTxtData[3] = {
@@ -59,10 +59,10 @@ static void initialise_mdns(void)
     };
 
     //initialize service
-    ESP_ERROR_CHECK( mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, serviceTxtData, 3) );
-    ESP_ERROR_CHECK( mdns_service_subtype_add_for_host("ESP32-WebServer", "_http", "_tcp", NULL, "_server") );
+    ESP_ERROR_CHECK(mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, serviceTxtData, 3));
+    ESP_ERROR_CHECK(mdns_service_subtype_add_for_host("ESP32-WebServer", "_http", "_tcp", NULL, "_server"));
 #if CONFIG_MDNS_MULTIPLE_INSTANCE
-    ESP_ERROR_CHECK( mdns_service_add("ESP32-WebServer1", "_http", "_tcp", 80, NULL, 0) );
+    ESP_ERROR_CHECK(mdns_service_add("ESP32-WebServer1", "_http", "_tcp", 80, NULL, 0));
 #endif
 
 #if CONFIG_MDNS_PUBLISH_DELEGATE_HOST
@@ -78,15 +78,15 @@ static void initialise_mdns(void)
     addr6.addr.type = ESP_IPADDR_TYPE_V6;
     addr4.next = &addr6;
     addr6.next = NULL;
-    ESP_ERROR_CHECK( mdns_delegate_hostname_add(delegated_hostname, &addr4) );
-    ESP_ERROR_CHECK( mdns_service_add_for_host("test0", "_http", "_tcp", delegated_hostname, 1234, serviceTxtData, 3) );
+    ESP_ERROR_CHECK(mdns_delegate_hostname_add(delegated_hostname, &addr4));
+    ESP_ERROR_CHECK(mdns_service_add_for_host("test0", "_http", "_tcp", delegated_hostname, 1234, serviceTxtData, 3));
     free(delegated_hostname);
 #endif // CONFIG_MDNS_PUBLISH_DELEGATE_HOST
 
     //add another TXT item
-    ESP_ERROR_CHECK( mdns_service_txt_item_set("_http", "_tcp", "path", "/foobar") );
+    ESP_ERROR_CHECK(mdns_service_txt_item_set("_http", "_tcp", "path", "/foobar"));
     //change TXT item value
-    ESP_ERROR_CHECK( mdns_service_txt_item_set_with_explicit_value_len("_http", "_tcp", "u", "admin", strlen("admin")) );
+    ESP_ERROR_CHECK(mdns_service_txt_item_set_with_explicit_value_len("_http", "_tcp", "u", "admin", strlen("admin")));
     free(hostname);
 }
 
@@ -314,6 +314,8 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    ESP_LOGI(TAG, "mDNS Ver: %s", ESP_MDNS_VERSION_NUMBER);
+
     initialise_mdns();
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
@@ -375,12 +377,12 @@ static void  query_mdns_host_with_gethostbyname(char *host)
         while (res->h_addr_list[i] != NULL) {
             ESP_LOGI(TAG, "gethostbyname: %s resolved to: %s", host,
 #if defined(CONFIG_LWIP_IPV6) && defined(CONFIG_LWIP_IPV4)
-                     res->h_addrtype == AF_INET ? inet_ntoa(*(struct in_addr *) (res->h_addr_list[i])) :
-                     inet6_ntoa(*(struct in6_addr *) (res->h_addr_list[i]))
+                     res->h_addrtype == AF_INET ? inet_ntoa(*(struct in_addr *)(res->h_addr_list[i])) :
+                     inet6_ntoa(*(struct in6_addr *)(res->h_addr_list[i]))
 #elif defined(CONFIG_LWIP_IPV6)
-                     inet6_ntoa(*(struct in6_addr *) (res->h_addr_list[i]))
+                     inet6_ntoa(*(struct in6_addr *)(res->h_addr_list[i]))
 #else
-                     inet_ntoa(*(struct in_addr *) (res->h_addr_list[i]))
+                     inet_ntoa(*(struct in_addr *)(res->h_addr_list[i]))
 #endif
                     );
             i++;

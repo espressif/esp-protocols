@@ -34,7 +34,9 @@ if(${target} STREQUAL "linux")
     target_link_libraries(${COMPONENT_LIB} PRIVATE "-lbsd")
 endif()
 
-
 if(CONFIG_ETH_ENABLED)
     idf_component_optional_requires(PRIVATE esp_eth)
 endif()
+
+idf_component_get_property(MDNS_VERSION ${COMPONENT_NAME} COMPONENT_VERSION)
+target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DESP_MDNS_VERSION_NUMBER=\"${MDNS_VERSION}\"")
