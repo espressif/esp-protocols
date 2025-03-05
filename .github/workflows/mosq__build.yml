@@ -112,7 +112,7 @@ jobs:
         idf_ver: ["latest"]
         idf_target: ["esp32"]
         test: [ { app: publish, path: "tools/test_apps/protocols/mqtt/publish_connect_test" }]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
       TARGET_TEST_DIR: build_esp32_local_broker
