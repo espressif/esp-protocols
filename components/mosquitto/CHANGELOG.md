@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.20~2](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_2)
+
+### Features
+
+- Allow user to enable SYS topic ([905b84fb](https://github.com/espressif/esp-protocols/commit/905b84fb))
+
+### Bug Fixes
+
+- Remove temp modification of IDF files ([9162de11](https://github.com/espressif/esp-protocols/commit/9162de11))
+- Add a note about stack size ([dbd164dd](https://github.com/espressif/esp-protocols/commit/dbd164dd))
+
 ## [2.0.20~1](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_1)
 
 ### Bug Fixes

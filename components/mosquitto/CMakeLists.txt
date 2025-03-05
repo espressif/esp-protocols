@@ -21,7 +21,6 @@ set(m_srcs
         ${m_lib_dir}/handle_pubrec.c
         ${m_lib_dir}/handle_pubrel.c
         ${m_lib_dir}/handle_ping.c
-        ${m_lib_dir}/time_mosq.c
         ${m_lib_dir}/utf8_mosq.c
 
         ${m_src_dir}/bridge.c
@@ -75,6 +74,7 @@ idf_component_register(SRCS ${m_srcs}
                             port/config.c
                             port/signals.c
                             port/broker.c
+                            port/mosq_time.c
                             port/files.c
                             port/net__esp_tls.c
                             port/sysconf.c
@@ -82,9 +82,12 @@ idf_component_register(SRCS ${m_srcs}
                                       ${m_incl_dir} ${m_lib_dir} ${m_deps_dir}
                     INCLUDE_DIRS ${m_incl_dir} port/include
                     REQUIRES esp-tls
-                    PRIV_REQUIRES newlib sock_utils)
+                    PRIV_REQUIRES newlib sock_utils esp_timer)
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_BROKER")
+if (CONFIG_MOSQ_ENABLE_SYS)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_SYS_TREE")
+endif()
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 
 # Some mosquitto source unconditionally define `_GNU_SOURCE` which collides with IDF build system

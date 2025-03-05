@@ -1,0 +1,15 @@
+menu "Mosquitto"
+
+    config MOSQ_ENABLE_SYS
+        bool "Enable $SYS topics"
+        default n
+        help
+            Enable the $SYS topics for the broker
+
+    config MOSQ_SYS_UPDATE_INTERVAL
+        int "Update interval for the SYS topic"
+        default 10
+        depends on MOSQ_ENABLE_SYS
+        help
+            Time in seconds for the update of the $SYS topics for the broker
+endmenu
