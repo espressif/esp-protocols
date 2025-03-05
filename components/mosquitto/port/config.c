@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *
- * SPDX-FileContributor: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2024-2025 Espressif Systems (Shanghai) CO LTD
  */
 #include "mosquitto_internal.h"
 #include "mosquitto_broker.h"
@@ -14,6 +14,7 @@
 #include "utlist.h"
 #include "lib_load.h"
 #include "syslog.h"
+#include "sdkconfig.h"
 
 
 void config__init(struct mosquitto__config *config)
@@ -66,7 +67,7 @@ void config__init(struct mosquitto__config *config)
     config->log_file = NULL;
 
     config->log_facility = LOG_DAEMON;
-    config->log_dest = MQTT3_LOG_STDERR | MQTT3_LOG_DLT;
+    config->log_dest = MQTT3_LOG_STDERR | MQTT3_LOG_TOPIC;
     if (db.verbose) {
         config->log_type = UINT_MAX;
     } else {
@@ -91,7 +92,9 @@ void config__init(struct mosquitto__config *config)
     config->queue_qos0_messages = false;
     config->retain_available = true;
     config->set_tcp_nodelay = false;
-    config->sys_interval = 10;
+#if defined(WITH_SYS_TREE)
+    config->sys_interval = CONFIG_MOSQ_SYS_UPDATE_INTERVAL;
+#endif
     config->upgrade_outgoing_qos = false;
 
     config->daemon = false;
@@ -236,7 +239,7 @@ char *misc__trimblanks(char *str)
 
 // Dummy definition of fork() to work around IDF warning: " warning: _fork is not implemented and will always fail"
 // fork() is used in mosquitto.c to deamonize the broker, which we do not call.
-pid_t fork (void)
+pid_t fork(void)
 {
     abort();
     return 0;
