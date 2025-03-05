@@ -12,4 +12,4 @@
 
 #include_next "config.h"
 
-#define VERSION "v2.0.20~1"
+#define VERSION "v2.0.20~2"
