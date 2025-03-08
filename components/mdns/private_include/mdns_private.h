@@ -16,11 +16,6 @@
 #include "esp_timer.h"
 #include "esp_system.h"
 
-#ifdef CONFIG_MDNS_ENABLE_DEBUG_PRINTS
-#define MDNS_ENABLE_DEBUG
-#define _mdns_dbg_printf(...) printf(__VA_ARGS__)
-#endif
-
 /** Number of predefined interfaces */
 #ifndef CONFIG_MDNS_PREDEF_NETIF_STA
 #define CONFIG_MDNS_PREDEF_NETIF_STA 0

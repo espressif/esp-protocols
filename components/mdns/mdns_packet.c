@@ -11,14 +11,9 @@
 #include "mdns_mem_caps.h"
 #include "esp_log.h"
 #include "mdns_utils.h"
+#include "mdns_debug.h"
 
 static const char *TAG = "mdns_packet";
-
-#ifdef MDNS_ENABLE_DEBUG
-void mdns_debug_packet(const uint8_t *data, size_t len);
-void debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t);
-void debug_printf_browse_result_all(mdns_result_t *r_t);
-#endif
 
 /**
  * @brief  Check if parsed name is discovery
@@ -1279,20 +1274,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
     char *browse_result_proto = NULL;
     mdns_browse_sync_t *out_sync_browse = NULL;
 
-#ifdef MDNS_ENABLE_DEBUG
-    _mdns_dbg_printf("\nRX[%lu][%lu]: ", (unsigned long)packet->tcpip_if, (unsigned long)packet->ip_protocol);
-#ifdef CONFIG_LWIP_IPV4
-    if (packet->src.type == ESP_IPADDR_TYPE_V4) {
-        _mdns_dbg_printf("From: " IPSTR ":%u, To: " IPSTR ", ", IP2STR(&packet->src.u_addr.ip4), packet->src_port, IP2STR(&packet->dest.u_addr.ip4));
-    }
-#endif
-#ifdef CONFIG_LWIP_IPV6
-    if (packet->src.type == ESP_IPADDR_TYPE_V6) {
-        _mdns_dbg_printf("From: " IPV6STR ":%u, To: " IPV6STR ", ", IPV62STR(packet->src.u_addr.ip6), packet->src_port, IPV62STR(packet->dest.u_addr.ip6));
-    }
-#endif
-    mdns_debug_packet(data, len);
-#endif
+    DBG_RX_PACKET(packet, data, len);
 
 #ifndef CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
     // Check if the packet wasn't sent by us
@@ -1888,15 +1870,11 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
         _mdns_create_answer_from_parsed_packet(parsed_packet);
     }
     if (out_sync_browse) {
-#ifdef MDNS_ENABLE_DEBUG
-        _mdns_dbg_printf("Browse %s%s total result:", out_sync_browse->browse->service, out_sync_browse->browse->proto);
-        debug_printf_browse_result_all(out_sync_browse->browse->result);
-#endif // MDNS_ENABLE_DEBUG
+        DBG_BROWSE_RESULTS_WITH_MSG(out_sync_browse->browse->result,
+                                    "Browse %s%s total result:", out_sync_browse->browse->service, out_sync_browse->browse->proto);
         if (out_sync_browse->sync_result) {
-#ifdef MDNS_ENABLE_DEBUG
-            _mdns_dbg_printf("Changed result:");
-            debug_printf_browse_result_all(out_sync_browse->sync_result->result);
-#endif // MDNS_ENABLE_DEBUG
+            DBG_BROWSE_RESULTS_WITH_MSG(out_sync_browse->sync_result->result,
+                                        "Changed result:");
             _mdns_sync_browse_action(ACTION_BROWSE_SYNC, out_sync_browse);
         } else {
             mdns_mem_free(out_sync_browse);

@@ -18,6 +18,7 @@
 #include "mdns_networking.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
+#include "mdns_debug.h"
 
 static void _mdns_browse_item_free(mdns_browse_t *browse);
 static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *browse);
@@ -41,10 +42,6 @@ static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface);
 #include "esp_wifi.h"
 #endif
 
-#ifdef MDNS_ENABLE_DEBUG
-void mdns_debug_packet(const uint8_t *data, size_t len);
-#endif
-
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif
@@ -66,30 +63,6 @@ static volatile TaskHandle_t _mdns_service_task_handle = NULL;
 static SemaphoreHandle_t _mdns_service_semaphore = NULL;
 static StackType_t *_mdns_stack_buffer;
 
-//static void _mdns_search_finish_done(void);
-//static mdns_search_once_t *_mdns_search_find_from(mdns_search_once_t *search, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-//static mdns_browse_t *_mdns_browse_find_from(mdns_browse_t *b, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-//static void _mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, const char *instance, const char *service, const char *proto,
-//                                        uint16_t port, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse);
-//static void _mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
-//                                       mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse);
-//static void _mdns_browse_result_add_txt(mdns_browse_t *browse,  const char *instance, const char *service, const char *proto,
-//                                        mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
-//                                        uint32_t ttl, mdns_browse_sync_t *out_sync_browse);
-#ifdef MDNS_ENABLE_DEBUG
-void debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t);
-void debug_printf_browse_result_all(mdns_result_t *r_t);
-#endif // MDNS_ENABLE_DEBUG
-//static void _mdns_search_result_add_ip(mdns_search_once_t *search, const char *hostname, esp_ip_addr_t *ip,
-//                                       mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl);
-//static void _mdns_search_result_add_srv(mdns_search_once_t *search, const char *hostname, uint16_t port,
-//                                        mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl);
-//static void _mdns_search_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t *txt, uint8_t *txt_value_len,
-//                                        size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
-//                                        uint32_t ttl);
-//static mdns_result_t *_mdns_search_result_add_ptr(mdns_search_once_t *search, const char *instance,
-//                                                  const char *service_type, const char *proto, mdns_if_t tcpip_if,
-//                                                  mdns_ip_protocol_t ip_protocol, uint32_t ttl);
 static bool _mdns_append_host_list_in_services(mdns_out_answer_t **destination, mdns_srv_item_t *services[], size_t services_len, bool flush, bool bye);
 static bool _mdns_append_host_list(mdns_out_answer_t **destination, bool flush, bool bye);
 
@@ -1228,20 +1201,7 @@ static void _mdns_dispatch_tx_packet(mdns_tx_packet_t *p)
     }
     _mdns_set_u16(packet, MDNS_HEAD_ADDITIONAL_OFFSET, count);
 
-#ifdef MDNS_ENABLE_DEBUG
-    _mdns_dbg_printf("\nTX[%lu][%lu]: ", (unsigned long)p->tcpip_if, (unsigned long)p->ip_protocol);
-#ifdef CONFIG_LWIP_IPV4
-    if (p->dst.type == ESP_IPADDR_TYPE_V4) {
-        _mdns_dbg_printf("To: " IPSTR ":%u, ", IP2STR(&p->dst.u_addr.ip4), p->port);
-    }
-#endif
-#ifdef CONFIG_LWIP_IPV6
-    if (p->dst.type == ESP_IPADDR_TYPE_V6) {
-        _mdns_dbg_printf("To: " IPV6STR ":%u, ", IPV62STR(p->dst.u_addr.ip6), p->port);
-    }
-#endif
-    mdns_debug_packet(packet, index);
-#endif
+    DBG_TX_PACKET(p, packet, index);
 
     _mdns_udp_pcb_write(p->tcpip_if, p->ip_protocol, &p->dst, p->port, packet, index);
 }
@@ -3575,14 +3535,12 @@ static esp_err_t _mdns_service_task_start(void)
 
     if (!_mdns_service_task_handle) {
         ESP_GOTO_ON_ERROR(_mdns_task_create_with_caps(), err_stop_timer, TAG, "Failed to start the mDNS service task");
-#ifdef MDNS_ENABLE_DEBUG
-#if !CONFIG_IDF_TARGET_LINUX
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0) && !CONFIG_IDF_TARGET_LINUX
         StackType_t *mdns_debug_stack_buffer;
         StaticTask_t *mdns_debug_task_buffer;
         xTaskGetStaticBuffers(_mdns_service_task_handle, &mdns_debug_stack_buffer, &mdns_debug_task_buffer);
-        _mdns_dbg_printf("mdns_debug_stack_buffer:%p mdns_debug_task_buffer:%p\n", mdns_debug_stack_buffer, mdns_debug_task_buffer);
+        ESP_LOGD(TAG, "mdns_debug_stack_buffer:%p mdns_debug_task_buffer:%p\n", mdns_debug_stack_buffer, mdns_debug_task_buffer);
 #endif // CONFIG_IDF_TARGET_LINUX
-#endif // MDNS_ENABLE_DEBUG
     }
     MDNS_SERVICE_UNLOCK();
     return ret;
@@ -5088,234 +5046,6 @@ esp_err_t mdns_query_aaaa(const char *name, uint32_t timeout, esp_ip6_addr_t *ad
 }
 #endif /* CONFIG_LWIP_IPV6 */
 
-#ifdef MDNS_ENABLE_DEBUG
-
-void mdns_debug_packet(const uint8_t *data, size_t len)
-{
-    static mdns_name_t n;
-    mdns_header_t header;
-    const uint8_t *content = data + MDNS_HEAD_LEN;
-    uint32_t t = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    mdns_name_t *name = &n;
-    memset(name, 0, sizeof(mdns_name_t));
-
-    _mdns_dbg_printf("Packet[%" PRIu32 "]: ", t);
-
-    header.id = mdns_utils_read_u16(data, MDNS_HEAD_ID_OFFSET);
-    header.flags = mdns_utils_read_u16(data, MDNS_HEAD_FLAGS_OFFSET);
-    header.questions = mdns_utils_read_u16(data, MDNS_HEAD_QUESTIONS_OFFSET);
-    header.answers = mdns_utils_read_u16(data, MDNS_HEAD_ANSWERS_OFFSET);
-    header.servers = mdns_utils_read_u16(data, MDNS_HEAD_SERVERS_OFFSET);
-    header.additional = mdns_utils_read_u16(data, MDNS_HEAD_ADDITIONAL_OFFSET);
-
-    _mdns_dbg_printf("%s",
-                     (header.flags == MDNS_FLAGS_QR_AUTHORITATIVE) ? "AUTHORITATIVE\n" :
-                     (header.flags == MDNS_FLAGS_DISTRIBUTED) ? "DISTRIBUTED\n" :
-                     (header.flags == 0) ? "\n" : " "
-                    );
-    if (header.flags && header.flags != MDNS_FLAGS_QR_AUTHORITATIVE) {
-        _mdns_dbg_printf("0x%04X\n", header.flags);
-    }
-
-    if (header.questions) {
-        uint8_t qs = header.questions;
-
-        while (qs--) {
-            content = _mdns_parse_fqdn(data, content, name, len);
-            if (!content || content + MDNS_CLASS_OFFSET + 1 >= data + len) {
-                header.answers = 0;
-                header.additional = 0;
-                header.servers = 0;
-                _mdns_dbg_printf("ERROR: parse header questions\n");
-                break;
-            }
-
-            uint16_t type = mdns_utils_read_u16(content, MDNS_TYPE_OFFSET);
-            uint16_t mdns_class = mdns_utils_read_u16(content, MDNS_CLASS_OFFSET);
-            bool unicast = !!(mdns_class & 0x8000);
-            mdns_class &= 0x7FFF;
-            content = content + 4;
-
-            _mdns_dbg_printf("    Q: ");
-            if (unicast) {
-                _mdns_dbg_printf("*U* ");
-            }
-            if (type == MDNS_TYPE_PTR) {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. PTR ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_SRV) {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. SRV ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_TXT) {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. TXT ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_A) {
-                _mdns_dbg_printf("%s.%s. A ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_AAAA) {
-                _mdns_dbg_printf("%s.%s. AAAA ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_NSEC) {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. NSEC ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_ANY) {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. ANY ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else {
-                _mdns_dbg_printf("%s.%s%s.%s.%s. %04X ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain, type);
-            }
-
-            if (mdns_class == 0x0001) {
-                _mdns_dbg_printf("IN");
-            } else {
-                _mdns_dbg_printf("%04X", mdns_class);
-            }
-            _mdns_dbg_printf("\n");
-        }
-    }
-
-    if (header.answers || header.servers || header.additional) {
-        uint16_t recordIndex = 0;
-
-        while (content < (data + len)) {
-
-            content = _mdns_parse_fqdn(data, content, name, len);
-            if (!content) {
-                _mdns_dbg_printf("ERROR: parse mdns records\n");
-                break;
-            }
-
-            uint16_t type = mdns_utils_read_u16(content, MDNS_TYPE_OFFSET);
-            uint16_t mdns_class = mdns_utils_read_u16(content, MDNS_CLASS_OFFSET);
-            uint32_t ttl = mdns_utils_read_u32(content, MDNS_TTL_OFFSET);
-            uint16_t data_len = mdns_utils_read_u16(content, MDNS_LEN_OFFSET);
-            const uint8_t *data_ptr = content + MDNS_DATA_OFFSET;
-            bool flush = !!(mdns_class & 0x8000);
-            mdns_class &= 0x7FFF;
-
-            content = data_ptr + data_len;
-            if (content > (data + len)) {
-                _mdns_dbg_printf("ERROR: content length overflow\n");
-                break;
-            }
-
-            mdns_parsed_record_type_t record_type = MDNS_ANSWER;
-
-            if (recordIndex >= (header.answers + header.servers)) {
-                record_type = MDNS_EXTRA;
-            } else if (recordIndex >= (header.answers)) {
-                record_type = MDNS_NS;
-            }
-            recordIndex++;
-
-            if (record_type == MDNS_EXTRA) {
-                _mdns_dbg_printf("    X");
-            } else if (record_type == MDNS_NS) {
-                _mdns_dbg_printf("    S");
-            } else {
-                _mdns_dbg_printf("    A");
-            }
-
-            if (type == MDNS_TYPE_PTR) {
-                _mdns_dbg_printf(": %s%s%s.%s.%s. PTR ", name->host, name->host[0] ? "." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_SRV) {
-                _mdns_dbg_printf(": %s.%s.%s.%s. SRV ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_TXT) {
-                _mdns_dbg_printf(": %s.%s.%s.%s. TXT ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_A) {
-                _mdns_dbg_printf(": %s.%s. A ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_AAAA) {
-                _mdns_dbg_printf(": %s.%s. AAAA ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_NSEC) {
-                _mdns_dbg_printf(": %s.%s.%s.%s. NSEC ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_ANY) {
-                _mdns_dbg_printf(": %s.%s.%s.%s. ANY ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_OPT) {
-                _mdns_dbg_printf(": . OPT ");
-            } else {
-                _mdns_dbg_printf(": %s.%s.%s.%s. %04X ", name->host, name->service, name->proto, name->domain, type);
-            }
-
-            if (mdns_class == 0x0001) {
-                _mdns_dbg_printf("IN ");
-            } else {
-                _mdns_dbg_printf("%04X ", mdns_class);
-            }
-            if (flush) {
-                _mdns_dbg_printf("FLUSH ");
-            }
-            _mdns_dbg_printf("%" PRIu32, ttl);
-            _mdns_dbg_printf("[%u] ", data_len);
-            if (type == MDNS_TYPE_PTR) {
-                if (!_mdns_parse_fqdn(data, data_ptr, name, len)) {
-                    _mdns_dbg_printf("ERROR: parse PTR\n");
-                    continue;
-                }
-                _mdns_dbg_printf("%s.%s.%s.%s.\n", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_SRV) {
-                if (!_mdns_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
-                    _mdns_dbg_printf("ERROR: parse SRV\n");
-                    continue;
-                }
-                uint16_t priority = mdns_utils_read_u16(data_ptr, MDNS_SRV_PRIORITY_OFFSET);
-                uint16_t weight = mdns_utils_read_u16(data_ptr, MDNS_SRV_WEIGHT_OFFSET);
-                uint16_t port = mdns_utils_read_u16(data_ptr, MDNS_SRV_PORT_OFFSET);
-                _mdns_dbg_printf("%u %u %u %s.%s.\n", priority, weight, port, name->host, name->domain);
-            } else if (type == MDNS_TYPE_TXT) {
-                uint16_t i = 0, y;
-                while (i < data_len) {
-                    uint8_t partLen = data_ptr[i++];
-                    if ((i + partLen) > data_len) {
-                        _mdns_dbg_printf("ERROR: parse TXT\n");
-                        break;
-                    }
-                    char txt[partLen + 1];
-                    for (y = 0; y < partLen; y++) {
-                        char d = data_ptr[i++];
-                        txt[y] = d;
-                    }
-                    txt[partLen] = 0;
-                    _mdns_dbg_printf("%s", txt);
-                    if (i < data_len) {
-                        _mdns_dbg_printf("; ");
-                    }
-                }
-                _mdns_dbg_printf("\n");
-            } else if (type == MDNS_TYPE_AAAA) {
-                esp_ip6_addr_t ip6;
-                memcpy(&ip6, data_ptr, sizeof(esp_ip6_addr_t));
-                _mdns_dbg_printf(IPV6STR "\n", IPV62STR(ip6));
-            } else if (type == MDNS_TYPE_A) {
-                esp_ip4_addr_t ip;
-                memcpy(&ip, data_ptr, sizeof(esp_ip4_addr_t));
-                _mdns_dbg_printf(IPSTR "\n", IP2STR(&ip));
-            } else if (type == MDNS_TYPE_NSEC) {
-                const uint8_t *old_ptr = data_ptr;
-                const uint8_t *new_ptr = _mdns_parse_fqdn(data, data_ptr, name, len);
-                if (new_ptr) {
-                    _mdns_dbg_printf("%s.%s.%s.%s. ", name->host, name->service, name->proto, name->domain);
-                    size_t diff = new_ptr - old_ptr;
-                    data_len -= diff;
-                    data_ptr = new_ptr;
-                }
-                size_t i;
-                for (i = 0; i < data_len; i++) {
-                    _mdns_dbg_printf(" %02x", data_ptr[i]);
-                }
-                _mdns_dbg_printf("\n");
-            } else if (type == MDNS_TYPE_OPT) {
-                uint16_t opCode = mdns_utils_read_u16(data_ptr, 0);
-                uint16_t opLen = mdns_utils_read_u16(data_ptr, 2);
-                _mdns_dbg_printf(" Code: %04x Data[%u]:", opCode, opLen);
-                size_t i;
-                for (i = 4; i < data_len; i++) {
-                    _mdns_dbg_printf(" %02x", data_ptr[i]);
-                }
-                _mdns_dbg_printf("\n");
-            } else {
-                size_t i;
-                for (i = 0; i < data_len; i++) {
-                    _mdns_dbg_printf(" %02x", data_ptr[i]);
-                }
-                _mdns_dbg_printf("\n");
-            }
-        }
-    }
-}
-#endif /* MDNS_ENABLE_DEBUG */
 
 /**
  * @brief  Browse sync result action
@@ -5528,9 +5258,7 @@ static void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
     mdns_browse_result_sync_t *sync_result = browse_sync->sync_result;
     while (sync_result) {
         mdns_result_t *result = sync_result->result;
-#ifdef MDNS_ENABLE_DEBUG
-        debug_printf_browse_result(result, browse_sync->browse);
-#endif
+        DBG_BROWSE_RESULTS(result, browse_sync->browse);
         browse->notifier(result);
         if (result->ttl == 0) {
             queueDetach(mdns_result_t, browse->result, result);
@@ -5541,53 +5269,3 @@ static void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
         sync_result = sync_result->next;
     }
 }
-
-#ifdef MDNS_ENABLE_DEBUG
-void _debug_printf_result(mdns_result_t *r_t)
-{
-    mdns_ip_addr_t *r_a = NULL;
-    int addr_count = 0;
-    _mdns_dbg_printf("result esp_netif: %p\n", r_t->esp_netif);
-    _mdns_dbg_printf("result ip_protocol: %d\n", r_t->ip_protocol);
-    _mdns_dbg_printf("result hostname: %s\n", _str_null_or_empty(r_t->hostname) ? "NULL" : r_t->hostname);
-    _mdns_dbg_printf("result instance_name: %s\n", _str_null_or_empty(r_t->instance_name) ? "NULL" : r_t->instance_name);
-    _mdns_dbg_printf("result service_type: %s\n", _str_null_or_empty(r_t->service_type) ? "NULL" : r_t->service_type);
-    _mdns_dbg_printf("result proto: %s\n", _str_null_or_empty(r_t->proto) ? "NULL" : r_t->proto);
-    _mdns_dbg_printf("result port: %d\n", r_t->port);
-    _mdns_dbg_printf("result ttl: %" PRIu32 "\n", r_t->ttl);
-    for (int i = 0; i < r_t->txt_count; i++) {
-        _mdns_dbg_printf("result txt item%d, key: %s, value: %s\n", i, r_t->txt[i].key, r_t->txt[i].value);
-    }
-    r_a = r_t->addr;
-    while (r_a) {
-#ifdef CONFIG_LWIP_IPV4
-        if (r_a->addr.type == ESP_IPADDR_TYPE_V4) {
-            _mdns_dbg_printf("Addr%d: " IPSTR "\n", addr_count++, IP2STR(&r_a->addr.u_addr.ip4));
-        }
-#endif
-#ifdef CONFIG_LWIP_IPV6
-        if (r_a->addr.type == ESP_IPADDR_TYPE_V6) {
-            _mdns_dbg_printf("Addr%d: " IPV6STR "\n", addr_count++, IPV62STR(r_a->addr.u_addr.ip6));
-        }
-#endif
-        r_a = r_a->next;
-    }
-}
-
-void debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t)
-{
-    _mdns_dbg_printf("----------------sync browse %s.%s result---------------\n", b_t->service, b_t->proto);
-    _mdns_dbg_printf("browse pointer: %p\n", b_t);
-    _debug_printf_result(r_t);
-}
-
-void debug_printf_browse_result_all(mdns_result_t *r_t)
-{
-    int count = 0;
-    while (r_t) {
-        _mdns_dbg_printf("----------------result %d---------------\n", count++);
-        _debug_printf_result(r_t);
-        r_t = r_t->next;
-    }
-}
-#endif // MDNS_ENABLE_DEBUG

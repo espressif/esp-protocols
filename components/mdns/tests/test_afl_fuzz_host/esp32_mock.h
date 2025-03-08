@@ -139,4 +139,8 @@ TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t task);
 BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time);
 
+static inline void xTaskGetStaticBuffers(void *pvTaskBuffer, void *pvStackBuffer, void *pvTaskTCB)
+{
+}
+
 #endif //_ESP32_COMPAT_H_
