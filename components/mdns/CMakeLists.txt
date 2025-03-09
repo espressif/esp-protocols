@@ -12,7 +12,8 @@ endif()
 
 set(MDNS_MEMORY "mdns_mem_caps.c")
 
-set(MDNS_CORE "mdns.c" "mdns_packet.c" "mdns_utils.c" "mdns_debug.c")
+set(MDNS_CORE "mdns.c" "mdns_packet.c" "mdns_utils.c" "mdns_debug.c" "mdns_browser.c" "mdns_send.c" "mdns_netif.c"
+                "mdns_querier.c")
 #set(MDNS_CORE "mdns.c" )
 
 idf_build_get_property(target IDF_TARGET)

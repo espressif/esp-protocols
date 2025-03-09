@@ -51,7 +51,7 @@ else
 endif
 CPP=$(CC)
 LD=$(CC)
-OBJECTS=esp32_mock.o mdns.o test.o esp_netif_mock.o mdns_utils.o mdns_packet.o
+OBJECTS=esp32_mock.o mdns.o test.o esp_netif_mock.o mdns_utils.o mdns_packet.o mdns_browser.o mdns_querier.o mdns_send.o
 
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
