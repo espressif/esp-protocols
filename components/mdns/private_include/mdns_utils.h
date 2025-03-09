@@ -48,6 +48,7 @@ const uint8_t *_mdns_parse_fqdn(const uint8_t *packet, const uint8_t *start, mdn
 const uint8_t *_mdns_read_fqdn(const uint8_t *packet, const uint8_t *start, mdns_name_t *name, char *buf, size_t packet_len);
 
 bool is_mdns_server(void);
+mdns_pcb_t *mdns_utils_get_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 const char *mdns_utils_get_global_hostname(void);
 mdns_srv_item_t *mdns_utils_get_services(void);
 mdns_host_item_t *mdns_utils_get_hosts(void);
@@ -263,7 +264,13 @@ static inline int append_one_txt_record_entry(uint8_t *packet, uint16_t *index, 
 
 
 ///
-mdns_if_t _mdns_get_other_if(mdns_if_t tcpip_if);
-void _mdns_dup_interface(mdns_if_t tcpip_if);
+//mdns_if_t _mdns_get_other_if(mdns_if_t tcpip_if);
+//void _mdns_dup_interface(mdns_if_t tcpip_if);
 
 esp_err_t _mdns_sync_browse_action(mdns_action_type_t type, mdns_browse_sync_t *browse_sync);
+
+esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action);
+
+
+void mdns_service_lock(void);
+void mdns_service_unlock(void);

@@ -12,6 +12,8 @@
 #include "esp_log.h"
 #include "mdns_utils.h"
 #include "mdns_debug.h"
+#include "mdns_netif.h"
+#include "mdns_send.h"
 
 static const char *TAG = "mdns_packet";
 
@@ -1006,39 +1008,7 @@ static bool _mdns_name_is_selfhosted(mdns_name_t *name)
 }
 
 
-/**
- * @brief  Find, remove and free answer from the scheduled packets
- */
-static void _mdns_remove_scheduled_answer(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint16_t type, mdns_srv_item_t *service)
-{
-    mdns_srv_item_t s = {NULL, NULL};
-    if (!service) {
-        service = &s;
-    }
-    mdns_tx_packet_t *q = mdns_utils_get_tx_packet();
-    while (q) {
-        if (q->tcpip_if == tcpip_if && q->ip_protocol == ip_protocol && q->distributed) {
-            mdns_out_answer_t *a = q->answers;
-            if (a) {
-                if (a->type == type && a->service == service->service) {
-                    q->answers = q->answers->next;
-                    mdns_mem_free(a);
-                } else {
-                    while (a->next) {
-                        if (a->next->type == type && a->next->service == service->service) {
-                            mdns_out_answer_t *b = a->next;
-                            a->next = b->next;
-                            mdns_mem_free(b);
-                            break;
-                        }
-                        a = a->next;
-                    }
-                }
-            }
-        }
-        q = q->next;
-    }
-}
+
 
 
 /**
