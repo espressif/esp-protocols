@@ -17,6 +17,8 @@
 static const char *TAG = "mdns_send";
 static const char *MDNS_SUB_STR = "_sub";
 
+static mdns_tx_packet_t *s_tx_queue_head;
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif
@@ -1564,5 +1566,359 @@ void _mdns_send_bye_subtype(mdns_srv_item_t *service, const char *instance_name,
                 _mdns_free_tx_packet(packet);
             }
         }
+    }
+}
+
+/**
+ * @brief  Find, remove and free answer from the scheduled packets
+ */
+void _mdns_remove_scheduled_answer(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint16_t type, mdns_srv_item_t *service)
+{
+    mdns_srv_item_t s = {NULL, NULL};
+    if (!service) {
+        service = &s;
+    }
+    mdns_tx_packet_t *q = s_tx_queue_head;
+    while (q) {
+        if (q->tcpip_if == tcpip_if && q->ip_protocol == ip_protocol && q->distributed) {
+            mdns_out_answer_t *a = q->answers;
+            if (a) {
+                if (a->type == type && a->service == service->service) {
+                    q->answers = q->answers->next;
+                    mdns_mem_free(a);
+                } else {
+                    while (a->next) {
+                        if (a->next->type == type && a->next->service == service->service) {
+                            mdns_out_answer_t *b = a->next;
+                            a->next = b->next;
+                            mdns_mem_free(b);
+                            break;
+                        }
+                        a = a->next;
+                    }
+                }
+            }
+        }
+        q = q->next;
+    }
+}
+
+
+/**
+ * @brief  schedules a packet to be sent after given milliseconds
+ *
+ * @param  packet       the packet
+ * @param  ms_after     number of milliseconds after which the packet should be dispatched
+ */
+void _mdns_schedule_tx_packet(mdns_tx_packet_t *packet, uint32_t ms_after)
+{
+    if (!packet) {
+        return;
+    }
+    packet->send_at = (xTaskGetTickCount() * portTICK_PERIOD_MS) + ms_after;
+    packet->next = NULL;
+    if (!s_tx_queue_head || s_tx_queue_head->send_at > packet->send_at) {
+        packet->next = s_tx_queue_head;
+        s_tx_queue_head = packet;
+        return;
+    }
+    mdns_tx_packet_t *q = s_tx_queue_head;
+    while (q->next && q->next->send_at <= packet->send_at) {
+        q = q->next;
+    }
+    packet->next = q->next;
+    q->next = packet;
+}
+
+/**
+ * @brief  free all packets scheduled for sending
+ */
+void _mdns_clear_tx_queue_head(void)
+{
+    mdns_tx_packet_t *q;
+    while (s_tx_queue_head) {
+        q = s_tx_queue_head;
+        s_tx_queue_head = s_tx_queue_head->next;
+        _mdns_free_tx_packet(q);
+    }
+}
+
+/**
+ * @brief  clear packets scheduled for sending on a specific interface
+ *
+ * @param  tcpip_if     the interface
+ * @param  ip_protocol     pcb type V4/V6
+ */
+void _mdns_clear_pcb_tx_queue_head(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    mdns_tx_packet_t *q, * p;
+    while (s_tx_queue_head && s_tx_queue_head->tcpip_if == tcpip_if && s_tx_queue_head->ip_protocol == ip_protocol) {
+        q = s_tx_queue_head;
+        s_tx_queue_head = s_tx_queue_head->next;
+        _mdns_free_tx_packet(q);
+    }
+    if (s_tx_queue_head) {
+        q = s_tx_queue_head;
+        while (q->next) {
+            if (q->next->tcpip_if == tcpip_if && q->next->ip_protocol == ip_protocol) {
+                p = q->next;
+                q->next = p->next;
+                _mdns_free_tx_packet(p);
+            } else {
+                q = q->next;
+            }
+        }
+    }
+}
+
+/**
+ * @brief  get the next packet scheduled for sending on a specific interface
+ *
+ * @param  tcpip_if     the interface
+ * @param  ip_protocol     pcb type V4/V6
+ */
+mdns_tx_packet_t *_mdns_get_next_pcb_packet(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    mdns_tx_packet_t *q = s_tx_queue_head;
+    while (q) {
+        if (q->tcpip_if == tcpip_if && q->ip_protocol == ip_protocol) {
+            return q;
+        }
+        q = q->next;
+    }
+    return NULL;
+}
+
+mdns_tx_packet_t *_mdns_get_next_tx_packet(void)
+{
+    return s_tx_queue_head;
+}
+
+
+/**
+ * @brief  Remove and free service answer from answer list (destination)
+ */
+static void _mdns_dealloc_scheduled_service_answers(mdns_out_answer_t **destination, mdns_service_t *service)
+{
+    mdns_out_answer_t *d = *destination;
+    if (!d) {
+        return;
+    }
+    while (d && d->service == service) {
+        *destination = d->next;
+        mdns_mem_free(d);
+        d = *destination;
+    }
+    while (d && d->next) {
+        mdns_out_answer_t *a = d->next;
+        if (a->service == service) {
+            d->next = a->next;
+            mdns_mem_free(a);
+        } else {
+            d = d->next;
+        }
+    }
+}
+
+/**
+ * @brief  Find, remove and free answers and scheduled packets for service
+ */
+void _mdns_remove_scheduled_service_packets(mdns_service_t *service)
+{
+    if (!service) {
+        return;
+    }
+    mdns_tx_packet_t *p = NULL;
+    mdns_tx_packet_t *q = s_tx_queue_head;
+    while (q) {
+        bool had_answers = (q->answers != NULL);
+
+        _mdns_dealloc_scheduled_service_answers(&(q->answers), service);
+        _mdns_dealloc_scheduled_service_answers(&(q->additional), service);
+        _mdns_dealloc_scheduled_service_answers(&(q->servers), service);
+
+
+        mdns_pcb_t *_pcb = mdns_utils_get_pcb(q->tcpip_if, q->ip_protocol);
+        if (mdns_is_netif_ready(q->tcpip_if, q->ip_protocol)) {
+            if (PCB_STATE_IS_PROBING(_pcb)) {
+                uint8_t i;
+                //check if we are probing this service
+                for (i = 0; i < _pcb->probe_services_len; i++) {
+                    mdns_srv_item_t *s = _pcb->probe_services[i];
+                    if (s->service == service) {
+                        break;
+                    }
+                }
+                if (i < _pcb->probe_services_len) {
+                    if (_pcb->probe_services_len > 1) {
+                        uint8_t n;
+                        for (n = (i + 1); n < _pcb->probe_services_len; n++) {
+                            _pcb->probe_services[n - 1] = _pcb->probe_services[n];
+                        }
+                        _pcb->probe_services_len--;
+                    } else {
+                        _pcb->probe_services_len = 0;
+                        mdns_mem_free(_pcb->probe_services);
+                        _pcb->probe_services = NULL;
+                        if (!_pcb->probe_ip) {
+                            _pcb->probe_running = false;
+                            _pcb->state = PCB_RUNNING;
+                        }
+                    }
+
+                    if (q->questions) {
+                        mdns_out_question_t *qsn = NULL;
+                        mdns_out_question_t *qs = q->questions;
+                        if (qs->type == MDNS_TYPE_ANY
+                                && qs->service && strcmp(qs->service, service->service) == 0
+                                && qs->proto && strcmp(qs->proto, service->proto) == 0) {
+                            q->questions = q->questions->next;
+                            mdns_mem_free(qs);
+                        } else while (qs->next) {
+                                qsn = qs->next;
+                                if (qsn->type == MDNS_TYPE_ANY
+                                        && qsn->service && strcmp(qsn->service, service->service) == 0
+                                        && qsn->proto && strcmp(qsn->proto, service->proto) == 0) {
+                                    qs->next = qsn->next;
+                                    mdns_mem_free(qsn);
+                                    break;
+                                }
+                                qs = qs->next;
+                            }
+                    }
+                }
+            } else if (PCB_STATE_IS_ANNOUNCING(_pcb)) {
+                //if answers were cleared, set to running
+                if (had_answers && q->answers == NULL) {
+                    _pcb->state = PCB_RUNNING;
+                }
+            }
+        }
+
+        p = q;
+        q = q->next;
+        if (!p->questions && !p->answers && !p->additional && !p->servers) {
+            queueDetach(mdns_tx_packet_t, s_tx_queue_head, p);
+            _mdns_free_tx_packet(p);
+        }
+    }
+}
+
+///**
+// * @brief  Send by for particular services
+// */
+//static void _mdns_send_bye(mdns_srv_item_t **services, size_t len, bool include_ip)
+//{
+//    uint8_t i, j;
+//    if (mdns_utils_str_null_or_empty(mdns_utils_get_global_hostname())) {
+//        return;
+//    }
+//
+//    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
+//        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
+//            mdns_pcb_t *pcb = mdns_utils_get_pcb((mdns_if_t)i, (mdns_ip_protocol_t)j);
+//            if (mdns_is_netif_ready(i, j) && pcb->state == PCB_RUNNING) {
+//                _mdns_pcb_send_bye((mdns_if_t)i, (mdns_ip_protocol_t)j, services, len, include_ip);
+//            }
+//        }
+//    }
+//}
+
+static void _mdns_tx_handle_packet(mdns_tx_packet_t *p)
+{
+    mdns_tx_packet_t *a = NULL;
+    mdns_out_question_t *q = NULL;
+    mdns_pcb_t *pcb = mdns_utils_get_pcb(p->tcpip_if, p->ip_protocol);
+    uint32_t send_after = 1000;
+
+    if (pcb->state == PCB_OFF) {
+        _mdns_free_tx_packet(p);
+        return;
+    }
+    _mdns_dispatch_tx_packet(p);
+
+    switch (pcb->state) {
+    case PCB_PROBE_1:
+        q = p->questions;
+        while (q) {
+            q->unicast = false;
+            q = q->next;
+        }
+    //fallthrough
+    case PCB_PROBE_2:
+        _mdns_schedule_tx_packet(p, 250);
+        pcb->state = (mdns_pcb_state_t)((uint8_t)(pcb->state) + 1);
+        break;
+    case PCB_PROBE_3:
+        a = _mdns_create_announce_from_probe(p);
+        if (!a) {
+            _mdns_schedule_tx_packet(p, 250);
+            break;
+        }
+        pcb->probe_running = false;
+        pcb->probe_ip = false;
+        pcb->probe_services_len = 0;
+        pcb->failed_probes = 0;
+        mdns_mem_free(pcb->probe_services);
+        pcb->probe_services = NULL;
+        _mdns_free_tx_packet(p);
+        p = a;
+        send_after = 250;
+    //fallthrough
+    case PCB_ANNOUNCE_1:
+    //fallthrough
+    case PCB_ANNOUNCE_2:
+        _mdns_schedule_tx_packet(p, send_after);
+        pcb->state = (mdns_pcb_state_t)((uint8_t)(pcb->state) + 1);
+        break;
+    case PCB_ANNOUNCE_3:
+        pcb->state = PCB_RUNNING;
+        _mdns_free_tx_packet(p);
+        break;
+    default:
+        _mdns_free_tx_packet(p);
+        break;
+    }
+}
+
+void mdns_send_handle_tx_packet(mdns_tx_packet_t *packet)
+{
+    mdns_tx_packet_t *p = s_tx_queue_head;
+    // packet to be handled should be at tx head, but must be consistent with the one pushed to action queue
+    if (p && p == packet && p->queued) {
+        p->queued = false; // clearing, as the packet might be reused (pushed and transmitted again)
+        s_tx_queue_head = p->next;
+        _mdns_tx_handle_packet(p);
+    } else {
+        ESP_LOGD(TAG, "Skipping transmit of an unexpected packet!");
+    }
+}
+
+/**
+ * @brief  Remove and free answer from answer list (destination)
+ */
+void _mdns_dealloc_answer(mdns_out_answer_t **destination, uint16_t type, mdns_srv_item_t *service)
+{
+    mdns_out_answer_t *d = *destination;
+    if (!d) {
+        return;
+    }
+    mdns_srv_item_t s = {NULL, NULL};
+    if (!service) {
+        service = &s;
+    }
+    if (d->type == type && d->service == service->service) {
+        *destination = d->next;
+        mdns_mem_free(d);
+        return;
+    }
+    while (d->next) {
+        mdns_out_answer_t *a = d->next;
+        if (a->type == type && a->service == service->service) {
+            d->next = a->next;
+            mdns_mem_free(a);
+            return;
+        }
+        d = d->next;
     }
 }
