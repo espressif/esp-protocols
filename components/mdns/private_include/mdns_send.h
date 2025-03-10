@@ -14,8 +14,6 @@ extern "C" {
 
 void _mdns_search_send_pcb(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
-void _mdns_search_send(mdns_search_once_t *search);
-
 void _mdns_free_tx_packet(mdns_tx_packet_t *packet);
 
 mdns_tx_packet_t *_mdns_create_probe_packet(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t *services[], size_t len, bool first, bool include_ip);
@@ -36,6 +34,7 @@ mdns_tx_packet_t *_mdns_get_next_pcb_packet(mdns_if_t tcpip_if, mdns_ip_protocol
 mdns_tx_packet_t *_mdns_get_next_tx_packet(void);
 void _mdns_dealloc_answer(mdns_out_answer_t **destination, uint16_t type, mdns_srv_item_t *service);
 void _mdns_remove_scheduled_answer(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint16_t type, mdns_srv_item_t *service);
+mdns_tx_packet_t *_mdns_alloc_packet_default(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
 #ifdef __cplusplus
 }

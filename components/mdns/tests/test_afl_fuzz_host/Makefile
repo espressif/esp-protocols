@@ -71,6 +71,11 @@ mdns.o: ../../mdns.c
 	@echo "[CC] $<"
 	@$(CC) $(CFLAGS) -include mdns_mock.h $(MDNS_C_DEPENDENCY_INJECTION) -c $< -o $@
 
+mdns_querier.o: ../../mdns_querier.c
+	@echo "[CC] $<"
+	@$(CC) $(CFLAGS) -include mdns_mock.h -include mdns_querier_di.h -c $< -o $@
+
+
 %.o: ../../%.c
 	@echo "[CC] $<"
 	@$(CC) $(CFLAGS) -include mdns_mock.h -c $< -o $@

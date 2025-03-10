@@ -48,7 +48,7 @@ const uint8_t *_mdns_parse_fqdn(const uint8_t *packet, const uint8_t *start, mdn
 const uint8_t *_mdns_read_fqdn(const uint8_t *packet, const uint8_t *start, mdns_name_t *name, char *buf, size_t packet_len);
 
 bool is_mdns_server(void);
-mdns_pcb_t *mdns_utils_get_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+//mdns_pcb_t *mdns_utils_get_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 const char *mdns_utils_get_global_hostname(void);
 mdns_srv_item_t *mdns_utils_get_services(void);
 mdns_host_item_t *mdns_utils_get_hosts(void);
@@ -56,14 +56,14 @@ mdns_host_item_t *mdns_utils_get_selfhost(void);
 void mdns_utils_set_global_hostname(const char *hostname);
 const char *mdns_utils_get_instance(void);
 void mdns_utils_set_instance(const char *instance);
-mdns_search_once_t *mdns_utils_get_search(void);
-mdns_browse_t *mdns_utils_get_browse(void);
-mdns_tx_packet_t *mdns_utils_get_tx_packet(void);
-bool mdns_utils_is_probing(mdns_rx_packet_t *packet);
-bool mdns_utils_is_pcb_after_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-bool mdns_utils_is_pcb_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-bool mdns_utils_after_probing(mdns_rx_packet_t *packet);
-void mdns_utils_probe_failed(mdns_rx_packet_t *packet);
+//mdns_search_once_t *mdns_utils_get_search(void);
+//mdns_browse_t *mdns_utils_get_browse(void);
+//mdns_tx_packet_t *mdns_utils_get_tx_packet(void);
+//bool mdns_utils_is_probing(mdns_rx_packet_t *packet);
+//bool mdns_utils_is_pcb_after_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+//bool mdns_utils_is_pcb_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+//bool mdns_utils_after_probing(mdns_rx_packet_t *packet);
+//void mdns_utils_probe_failed(mdns_rx_packet_t *packet);
 
 void _mdns_schedule_tx_packet(mdns_tx_packet_t *packet, uint32_t ms_after);
 void _mdns_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe);
@@ -274,3 +274,5 @@ esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions
 
 void mdns_service_lock(void);
 void mdns_service_unlock(void);
+
+esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);

@@ -14,6 +14,9 @@
 #include "mdns_debug.h"
 #include "mdns_netif.h"
 #include "mdns_send.h"
+#include "mdns_browse.h"
+#include "mdns_querier.h"
+#include "mdns_responder.h"
 
 static const char *TAG = "mdns_packet";
 
@@ -213,21 +216,7 @@ static int _mdns_txt_item_name_get_len(const uint8_t *data, size_t len)
     return len;
 }
 
-/**
- * @brief  Called from parser to finish any searches that have reached maximum results
- */
-static void _mdns_search_finish_done(void)
-{
-    mdns_search_once_t *search = mdns_utils_get_search();
-    mdns_search_once_t *s = NULL;
-    while (search) {
-        s = search;
-        search = search->next;
-        if (s->max_results && s->num_results >= s->max_results) {
-            _mdns_search_finish(s);
-        }
-    }
-}
+
 
 /**
  * @brief  Called from parser to add TXT data to search result
@@ -1122,106 +1111,6 @@ static mdns_result_t *_mdns_search_result_add_ptr(mdns_search_once_t *search, co
 }
 
 
-/**
- * @brief  Called from packet parser to find matching running search
- */
-static mdns_search_once_t *_mdns_search_find_from(mdns_search_once_t *s, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
-{
-    mdns_result_t *r = NULL;
-    while (s) {
-        if (s->state == SEARCH_OFF) {
-            s = s->next;
-            continue;
-        }
-
-        if (type == MDNS_TYPE_A || type == MDNS_TYPE_AAAA) {
-            if ((s->type == MDNS_TYPE_ANY && s->service != NULL)
-                    || (s->type != MDNS_TYPE_ANY && s->type != type && s->type != MDNS_TYPE_PTR && s->type != MDNS_TYPE_SRV)) {
-                s = s->next;
-                continue;
-            }
-            if (s->type != MDNS_TYPE_PTR && s->type != MDNS_TYPE_SRV) {
-                if (!strcasecmp(name->host, s->instance)) {
-                    return s;
-                }
-                s = s->next;
-                continue;
-            }
-            r = s->result;
-            while (r) {
-                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
-                    return s;
-                }
-                r = r->next;
-            }
-            s = s->next;
-            continue;
-        }
-
-        if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
-            if ((s->type == MDNS_TYPE_ANY && s->service == NULL)
-                    || (s->type != MDNS_TYPE_ANY && s->type != type && s->type != MDNS_TYPE_PTR)) {
-                s = s->next;
-                continue;
-            }
-            if (strcasecmp(name->service, s->service)
-                    || strcasecmp(name->proto, s->proto)) {
-                s = s->next;
-                continue;
-            }
-            if (s->type != MDNS_TYPE_PTR) {
-                if (s->instance && strcasecmp(name->host, s->instance) == 0) {
-                    return s;
-                }
-                s = s->next;
-                continue;
-            }
-            return s;
-        }
-
-        if (type == MDNS_TYPE_PTR && type == s->type && !strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
-            return s;
-        }
-
-        s = s->next;
-    }
-
-    return NULL;
-}
-
-
-/**
- * @brief  Called from packet parser to find matching running search
- */
-static mdns_browse_t *_mdns_browse_find_from(mdns_browse_t *b, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
-{
-    // For browse, we only care about the SRV, TXT, A and AAAA
-    if (type != MDNS_TYPE_SRV && type != MDNS_TYPE_A && type != MDNS_TYPE_AAAA && type != MDNS_TYPE_TXT) {
-        return NULL;
-    }
-    mdns_result_t *r = NULL;
-    while (b) {
-        if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
-            if (strcasecmp(name->service, b->service)
-                    || strcasecmp(name->proto, b->proto)) {
-                b = b->next;
-                continue;
-            }
-            return b;
-        } else if (type == MDNS_TYPE_A || type == MDNS_TYPE_AAAA) {
-            r = b->result;
-            while (r) {
-                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
-                    return b;
-                }
-                r = r->next;
-            }
-            b = b->next;
-            continue;
-        }
-    }
-    return b;
-}
 
 
 /**
@@ -1446,8 +1335,8 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                     //skip this record
                     continue;
                 }
-                search_result = _mdns_search_find_from(mdns_utils_get_search(), name, type, packet->tcpip_if, packet->ip_protocol);
-                browse_result = _mdns_browse_find_from(mdns_utils_get_browse(), name, type, packet->tcpip_if, packet->ip_protocol);
+                search_result = _mdns_search_find(name, type, packet->tcpip_if, packet->ip_protocol);
+                browse_result = _mdns_browse_find(name, type, packet->tcpip_if, packet->ip_protocol);
                 if (browse_result) {
                     if (!out_sync_browse) {
                         // will be freed in function `_mdns_browse_sync`
@@ -1618,8 +1507,8 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                     if (service && col && (parsed_packet->probe || parsed_packet->authoritative)) {
                         if (col > 0 || !port) {
                             do_not_reply = true;
-                            if (mdns_utils_is_probing(packet)) {
-                                mdns_utils_probe_failed(packet);
+                            if (mdns_responder_is_probing(packet)) {
+                                mdns_responder_probe_failed(packet);
                                 if (!mdns_utils_str_null_or_empty(service->service->instance)) {
                                     char *new_instance = _mdns_mangle_name((char *)service->service->instance);
                                     if (new_instance) {
@@ -1710,10 +1599,10 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                     } else if (service) { // only detect txt collision if service existed
                         col = _mdns_check_txt_collision(service->service, data_ptr, data_len);
                     }
-                    if (col && !mdns_utils_is_probing(packet) && service) {
+                    if (col && !mdns_responder_is_probing(packet) && service) {
                         do_not_reply = true;
                         _mdns_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, true);
-                    } else if (ttl > (MDNS_ANSWER_TXT_TTL / 2) && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_utils_is_probing(packet)) {
+                    } else if (ttl > (MDNS_ANSWER_TXT_TTL / 2) && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_responder_is_probing(packet)) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
                     }
                 }
@@ -1754,9 +1643,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         goto clear_rx_packet;
                     } else if (col == 1) {
                         do_not_reply = true;
-                        if (mdns_utils_is_probing(packet)) {
+                        if (mdns_responder_is_probing(packet)) {
                             if (col && (parsed_packet->probe || parsed_packet->authoritative)) {
-                                mdns_utils_probe_failed(packet);
+                                mdns_responder_probe_failed(packet);
                                 char *new_host = _mdns_mangle_name((char *)mdns_utils_get_global_hostname());
                                 if (new_host) {
                                     _mdns_remap_self_service_hostname(mdns_utils_get_global_hostname(), new_host);
@@ -1767,7 +1656,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         } else {
                             _mdns_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
                         }
-                    } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_utils_is_probing(packet)) {
+                    } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_responder_is_probing(packet)) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, NULL);
                     }
                 }
@@ -1809,9 +1698,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         goto clear_rx_packet;
                     } else if (col == 1) {
                         do_not_reply = true;
-                        if (mdns_utils_is_probing(packet)) {
+                        if (mdns_responder_is_probing(packet)) {
                             if (col && (parsed_packet->probe || parsed_packet->authoritative)) {
-                                mdns_utils_probe_failed(packet);
+                                mdns_responder_probe_failed(packet);
                                 char *new_host = _mdns_mangle_name((char *)mdns_utils_get_global_hostname());
                                 if (new_host) {
                                     _mdns_remap_self_service_hostname(mdns_utils_get_global_hostname(), new_host);
@@ -1822,7 +1711,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                         } else {
                             _mdns_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
                         }
-                    } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_utils_is_probing(packet)) {
+                    } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_responder_is_probing(packet)) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, NULL);
                     }
                 }
@@ -1836,7 +1725,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
         }
     }
 
-    if (!do_not_reply && mdns_utils_after_probing(packet) && (parsed_packet->questions || parsed_packet->discovery)) {
+    if (!do_not_reply && mdns_responder_after_probing(packet) && (parsed_packet->questions || parsed_packet->discovery)) {
         _mdns_create_answer_from_parsed_packet(parsed_packet);
     }
     if (out_sync_browse) {
