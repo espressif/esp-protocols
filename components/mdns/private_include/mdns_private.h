@@ -401,18 +401,18 @@ typedef struct mdns_browse_sync {
 } mdns_browse_sync_t;
 
 typedef struct mdns_server_s {
-    struct {
-        mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
-    } interfaces[MDNS_MAX_INTERFACES];
+//    struct {
+//        mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
+//    } interfaces[MDNS_MAX_INTERFACES];
     const char *hostname;
     const char *instance;
     mdns_srv_item_t *services;
     QueueHandle_t action_queue;
     SemaphoreHandle_t action_sema;
 //    mdns_tx_packet_t *tx_queue_head;
-    mdns_search_once_t *search_once;
+//    mdns_search_once_t *search_once;
     esp_timer_handle_t timer_handle;
-    mdns_browse_t *browse;
+//    mdns_browse_t *browse;
 } mdns_server_t;
 
 typedef struct {

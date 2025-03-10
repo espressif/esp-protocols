@@ -13,8 +13,49 @@
 #include "mdns_querier.h"
 #include "esp_log.h"
 
-static const char *TAG = "mdns_send";
+static const char *TAG = "mdns_browser";
 
+static mdns_browse_t *s_browse;
+
+void mdns_browse_send_all(mdns_if_t mdns_if)
+{
+    mdns_browse_t *browse = s_browse;
+    while (browse) {
+        _mdns_browse_send(browse, mdns_if);
+        browse = browse->next;
+    }
+}
+
+void mdns_browse_free(void)
+{
+    while (s_browse) {
+        mdns_browse_t *b = s_browse;
+        s_browse = s_browse->next;
+        _mdns_browse_item_free(b);
+    }
+}
+
+/**
+ * @brief  Mark browse as finished, remove and free it from browse chain
+ */
+void _mdns_browse_finish(mdns_browse_t *browse)
+{
+    browse->state = BROWSE_OFF;
+    mdns_browse_t *b = s_browse;
+    mdns_browse_t *target_free = NULL;
+    while (b) {
+        if (strlen(b->service) == strlen(browse->service) && memcmp(b->service, browse->service, strlen(b->service)) == 0 &&
+                strlen(b->proto) == strlen(browse->proto) && memcmp(b->proto, browse->proto, strlen(b->proto)) == 0) {
+            target_free = b;
+            b = b->next;
+            queueDetach(mdns_browse_t, s_browse, target_free);
+            _mdns_browse_item_free(target_free);
+        } else {
+            b = b->next;
+        }
+    }
+    _mdns_browse_item_free(browse);
+}
 
 /**
  * @brief  Send PTR query packet to all available interfaces for browsing.
@@ -124,4 +165,67 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto)
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
+}
+
+/**
+ * @brief  Add new browse to the browse chain
+ */
+void _mdns_browse_add(mdns_browse_t *browse)
+{
+    browse->state = BROWSE_RUNNING;
+    mdns_browse_t *queue = s_browse;
+    bool found = false;
+    // looking for this browse in active browses
+    while (queue) {
+        if (strlen(queue->service) == strlen(browse->service) && memcmp(queue->service, browse->service, strlen(queue->service)) == 0 &&
+                strlen(queue->proto) == strlen(browse->proto) && memcmp(queue->proto, browse->proto, strlen(queue->proto)) == 0) {
+            found = true;
+            break;
+        }
+        queue = queue->next;
+    }
+    if (!found) {
+        browse->next = s_browse;
+        s_browse = browse;
+    }
+    for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
+        _mdns_browse_send(browse, (mdns_if_t)interface_idx);
+    }
+    if (found) {
+        _mdns_browse_item_free(browse);
+    }
+}
+
+/**
+ * @brief  Called from packet parser to find matching running search
+ */
+mdns_browse_t *_mdns_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    mdns_browse_t *b = s_browse;
+    // For browse, we only care about the SRV, TXT, A and AAAA
+    if (type != MDNS_TYPE_SRV && type != MDNS_TYPE_A && type != MDNS_TYPE_AAAA && type != MDNS_TYPE_TXT) {
+        return NULL;
+    }
+    mdns_result_t *r = NULL;
+    while (b) {
+        if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
+            if (strcasecmp(name->service, b->service)
+                    || strcasecmp(name->proto, b->proto)) {
+                b = b->next;
+                continue;
+            }
+            return b;
+        } else if (type == MDNS_TYPE_A || type == MDNS_TYPE_AAAA) {
+            r = b->result;
+            while (r) {
+                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
+                    return b;
+                }
+                r = r->next;
+            }
+            b = b->next;
+            continue;
+        }
+    }
+    return b;
 }

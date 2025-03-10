@@ -10,7 +10,6 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_event.h"
 #include "esp_random.h"
 #include "esp_check.h"
 #include "mdns.h"
@@ -62,11 +61,6 @@ esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions
 
 
 
-mdns_pcb_t *mdns_utils_get_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
-{
-    return &_mdns_server->interfaces[tcpip_if].pcbs[ip_protocol];
-}
-
 const char *mdns_utils_get_global_hostname(void)
 {
     return _mdns_server ? _mdns_server->hostname : NULL;
@@ -114,15 +108,10 @@ void mdns_utils_set_instance(const char *instance)
     }
 }
 
-mdns_search_once_t *mdns_utils_get_search(void)
-{
-    return _mdns_server->search_once;
-}
-
-mdns_browse_t *mdns_utils_get_browse(void)
-{
-    return _mdns_server->browse;
-}
+//mdns_search_once_t *mdns_utils_get_search(void)
+//{
+//    return _mdns_server->search_once;
+//}
 
 bool is_mdns_server(void)
 {
@@ -139,30 +128,8 @@ static inline bool _str_null_or_empty(const char *str)
 //    return _mdns_server->tx_queue_head;
 //}
 
-bool mdns_utils_is_pcb_after_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
-{
-    return _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].state > PCB_INIT;
-}
 
-bool mdns_utils_is_pcb_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
-{
-    return _mdns_server->interfaces[tcpip_if].pcbs[ip_protocol].state == PCB_DUP;
-}
 
-bool mdns_utils_is_probing(mdns_rx_packet_t *packet)
-{
-    return _mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].probe_running;
-}
-
-bool mdns_utils_after_probing(mdns_rx_packet_t *packet)
-{
-    return _mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].state > PCB_PROBE_3;
-}
-
-void mdns_utils_probe_failed(mdns_rx_packet_t *packet)
-{
-    _mdns_server->interfaces[packet->tcpip_if].pcbs[packet->ip_protocol].failed_probes++;
-}
 
 
 
@@ -246,148 +213,6 @@ bool _ipv6_address_is_zero(esp_ip6_addr_t ip6)
 
 
 
-
-/**
- * @brief  Send probe for additional services on particular PCB
- */
-static void _mdns_init_pcb_probe_new_service(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip)
-{
-    mdns_pcb_t *pcb = &_mdns_server->interfaces[tcpip_if].pcbs[ip_protocol];
-    size_t services_final_len = len;
-
-    if (PCB_STATE_IS_PROBING(pcb)) {
-        services_final_len += pcb->probe_services_len;
-    }
-    mdns_srv_item_t **_services = NULL;
-    if (services_final_len) {
-        _services = (mdns_srv_item_t **)mdns_mem_malloc(sizeof(mdns_srv_item_t *) * services_final_len);
-        if (!_services) {
-            HOOK_MALLOC_FAILED;
-            return;
-        }
-
-        size_t i;
-        for (i = 0; i < len; i++) {
-            _services[i] = services[i];
-        }
-        if (pcb->probe_services) {
-            for (i = 0; i < pcb->probe_services_len; i++) {
-                _services[len + i] = pcb->probe_services[i];
-            }
-            mdns_mem_free(pcb->probe_services);
-        }
-    }
-
-    probe_ip = pcb->probe_ip || probe_ip;
-
-    pcb->probe_ip = false;
-    pcb->probe_services = NULL;
-    pcb->probe_services_len = 0;
-    pcb->probe_running = false;
-
-    mdns_tx_packet_t *packet = _mdns_create_probe_packet(tcpip_if, ip_protocol, _services, services_final_len, true, probe_ip);
-    if (!packet) {
-        mdns_mem_free(_services);
-        return;
-    }
-
-    pcb->probe_ip = probe_ip;
-    pcb->probe_services = _services;
-    pcb->probe_services_len = services_final_len;
-    pcb->probe_running = true;
-    _mdns_schedule_tx_packet(packet, ((pcb->failed_probes > 5) ? 1000 : 120) + (esp_random() & 0x7F));
-    pcb->state = PCB_PROBE_1;
-}
-
-/**
- * @brief  Send probe for particular services on particular PCB
- *
- * Tests possible duplication on probing service structure and probes only for new entries.
- * - If pcb probing then add only non-probing services and restarts probing
- * - If pcb not probing, run probing for all specified services
- */
-void _mdns_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip)
-{
-    mdns_pcb_t *pcb = &_mdns_server->interfaces[tcpip_if].pcbs[ip_protocol];
-
-    _mdns_clear_pcb_tx_queue_head(tcpip_if, ip_protocol);
-
-    if (_str_null_or_empty(_mdns_server->hostname)) {
-        pcb->state = PCB_RUNNING;
-        return;
-    }
-
-    if (PCB_STATE_IS_PROBING(pcb)) {
-        // Looking for already probing services to resolve duplications
-        mdns_srv_item_t *new_probe_services[len];
-        int new_probe_service_len = 0;
-        bool found;
-        for (size_t j = 0; j < len; ++j) {
-            found = false;
-            for (int i = 0; i < pcb->probe_services_len; ++i) {
-                if (pcb->probe_services[i] == services[j]) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                new_probe_services[new_probe_service_len++] = services[j];
-            }
-        }
-        // init probing for newly added services
-        _mdns_init_pcb_probe_new_service(tcpip_if, ip_protocol,
-                                         new_probe_service_len ? new_probe_services : NULL, new_probe_service_len, probe_ip);
-    } else {
-        // not probing, so init for all services
-        _mdns_init_pcb_probe_new_service(tcpip_if, ip_protocol, services, len, probe_ip);
-    }
-}
-
-
-
-/**
- * @brief  Send by for particular services
- */
-static void _mdns_send_bye(mdns_srv_item_t **services, size_t len, bool include_ip)
-{
-    uint8_t i, j;
-    if (_str_null_or_empty(_mdns_server->hostname)) {
-        return;
-    }
-
-    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            if (mdns_is_netif_ready(i, j) && _mdns_server->interfaces[i].pcbs[j].state == PCB_RUNNING) {
-                _mdns_pcb_send_bye((mdns_if_t)i, (mdns_ip_protocol_t)j, services, len, include_ip);
-            }
-        }
-    }
-}
-
-
-
-
-/**
- * @brief  Send probe on all active PCBs
- */
-void _mdns_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe)
-{
-    uint8_t i, j;
-    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            if (mdns_is_netif_ready(i, j)) {
-                mdns_pcb_t *_pcb = &_mdns_server->interfaces[i].pcbs[j];
-                if (clear_old_probe) {
-                    mdns_mem_free(_pcb->probe_services);
-                    _pcb->probe_services = NULL;
-                    _pcb->probe_services_len = 0;
-                    _pcb->probe_running = false;
-                }
-                _mdns_init_pcb_probe((mdns_if_t)i, (mdns_ip_protocol_t)j, services, len, probe_ip);
-            }
-        }
-    }
-}
 
 /**
  * @brief  Send announcement on all active PCBs
@@ -897,101 +722,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 }
 
 
-/*
- * MDNS Search
- * */
 
-/**
- * @brief  Free search structure (except the results)
- */
-static void _mdns_search_free(mdns_search_once_t *search)
-{
-    mdns_mem_free(search->instance);
-    mdns_mem_free(search->service);
-    mdns_mem_free(search->proto);
-    vSemaphoreDelete(search->done_semaphore);
-    mdns_mem_free(search);
-}
-
-/**
- * @brief  Allocate new search structure
- */
-static mdns_search_once_t *_mdns_search_init(const char *name, const char *service, const char *proto, uint16_t type, bool unicast,
-                                             uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier)
-{
-    mdns_search_once_t *search = (mdns_search_once_t *)mdns_mem_malloc(sizeof(mdns_search_once_t));
-    if (!search) {
-        HOOK_MALLOC_FAILED;
-        return NULL;
-    }
-    memset(search, 0, sizeof(mdns_search_once_t));
-
-    search->done_semaphore = xSemaphoreCreateBinary();
-    if (!search->done_semaphore) {
-        mdns_mem_free(search);
-        return NULL;
-    }
-
-    if (!_str_null_or_empty(name)) {
-        search->instance = mdns_mem_strndup(name, MDNS_NAME_BUF_LEN - 1);
-        if (!search->instance) {
-            _mdns_search_free(search);
-            return NULL;
-        }
-    }
-
-    if (!_str_null_or_empty(service)) {
-        search->service = mdns_mem_strndup(service, MDNS_NAME_BUF_LEN - 1);
-        if (!search->service) {
-            _mdns_search_free(search);
-            return NULL;
-        }
-    }
-
-    if (!_str_null_or_empty(proto)) {
-        search->proto = mdns_mem_strndup(proto, MDNS_NAME_BUF_LEN - 1);
-        if (!search->proto) {
-            _mdns_search_free(search);
-            return NULL;
-        }
-    }
-
-    search->type = type;
-    search->unicast = unicast;
-    search->timeout = timeout;
-    search->num_results = 0;
-    search->max_results = max_results;
-    search->result = NULL;
-    search->state = SEARCH_INIT;
-    search->sent_at = 0;
-    search->started_at = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    search->notifier = notifier;
-    search->next = NULL;
-
-    return search;
-}
-
-/**
- * @brief  Mark search as finished and remove it from search chain
- */
-void _mdns_search_finish(mdns_search_once_t *search)
-{
-    search->state = SEARCH_OFF;
-    queueDetach(mdns_search_once_t, _mdns_server->search_once, search);
-    if (search->notifier) {
-        search->notifier(search);
-    }
-    xSemaphoreGive(search->done_semaphore);
-}
-
-/**
- * @brief  Add new search to the search chain
- */
-static void _mdns_search_add(mdns_search_once_t *search)
-{
-    search->next = _mdns_server->search_once;
-    _mdns_server->search_once = search;
-}
 
 
 
@@ -1166,7 +897,7 @@ static void _mdns_execute_action(mdns_action_t *action)
 /**
  * @brief  Queue search action
  */
-static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search)
+esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search)
 {
     mdns_action_t *action = NULL;
 
@@ -1226,37 +957,7 @@ static void _mdns_scheduler_run(void)
     MDNS_SERVICE_UNLOCK();
 }
 
-/**
- * @brief  Called from timer task to run active searches
- */
-static void _mdns_search_run(void)
-{
-    MDNS_SERVICE_LOCK();
-    mdns_search_once_t *s = _mdns_server->search_once;
-    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    if (!s) {
-        MDNS_SERVICE_UNLOCK();
-        return;
-    }
-    while (s) {
-        if (s->state != SEARCH_OFF) {
-            if (now > (s->started_at + s->timeout)) {
-                s->state = SEARCH_OFF;
-                if (_mdns_send_search_action(ACTION_SEARCH_END, s) != ESP_OK) {
-                    s->state = SEARCH_RUNNING;
-                }
-            } else if (s->state == SEARCH_INIT || (now - s->sent_at) > 1000) {
-                s->state = SEARCH_RUNNING;
-                s->sent_at = now;
-                if (_mdns_send_search_action(ACTION_SEARCH_SEND, s) != ESP_OK) {
-                    s->sent_at -= 1000;
-                }
-            }
-        }
-        s = s->next;
-    }
-    MDNS_SERVICE_UNLOCK();
-}
+
 
 /**
  * @brief  the main MDNS service task. Packets are received and parsed here
@@ -1444,10 +1145,6 @@ esp_err_t mdns_init(void)
         return ESP_ERR_NO_MEM;
     }
     memset((uint8_t *)_mdns_server, 0, sizeof(mdns_server_t));
-//    // zero-out local copy of netifs to initiate a fresh search by interface key whenever a netif ptr is needed
-//    for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
-//        s_esp_netifs[i].netif = NULL;
-//    }
 
     _mdns_server->action_queue = xQueueCreate(MDNS_ACTION_QUEUE_LEN, sizeof(mdns_action_t *));
     if (!_mdns_server->action_queue) {
@@ -1477,15 +1174,7 @@ esp_err_t mdns_init(void)
 
 free_all_and_disable_pcbs:
     mdns_netif_deinit();
-//    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-//        _mdns_disable_pcb(i, MDNS_IP_PROTOCOL_V6);
-//        _mdns_disable_pcb(i, MDNS_IP_PROTOCOL_V4);
-//        s_esp_netifs[i].duplicate = MDNS_MAX_INTERFACES;
-//    }
-//#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
 free_action_sema:
-//    unregister_predefined_handlers();
-//#endif
     vSemaphoreDelete(_mdns_server->action_sema);
 free_queue:
     vQueueDelete(_mdns_server->action_queue);
@@ -1509,7 +1198,7 @@ void mdns_free(void)
     _mdns_service_task_stop();
     // at this point, the service task is deleted, so we can destroy the stack size
     mdns_mem_task_free(_mdns_stack_buffer);
-    mdns_netif_free();
+    mdns_responder_deinit();
     mdns_mem_free((char *)_mdns_server->hostname);
     mdns_mem_free((char *)_mdns_server->instance);
     if (_mdns_server->action_queue) {
@@ -1520,24 +1209,8 @@ void mdns_free(void)
         vQueueDelete(_mdns_server->action_queue);
     }
     _mdns_clear_tx_queue_head();
-    while (_mdns_server->search_once) {
-        mdns_search_once_t *h = _mdns_server->search_once;
-        _mdns_server->search_once = h->next;
-        mdns_mem_free(h->instance);
-        mdns_mem_free(h->service);
-        mdns_mem_free(h->proto);
-        vSemaphoreDelete(h->done_semaphore);
-        if (h->result) {
-            _mdns_query_results_free(h->result);
-        }
-        mdns_mem_free(h);
-    }
-    while (_mdns_server->browse) {
-        mdns_browse_t *b = _mdns_server->browse;
-        _mdns_server->browse = _mdns_server->browse->next;
-        _mdns_browse_item_free(b);
-
-    }
+    mdns_search_free();
+    mdns_browse_free();
     vSemaphoreDelete(_mdns_server->action_sema);
     mdns_mem_free(_mdns_server);
     _mdns_server = NULL;
@@ -2487,132 +2160,131 @@ done:
     return ret;
 }
 
-/*
- * MDNS QUERY
- * */
-void mdns_query_results_free(mdns_result_t *results)
-{
-    MDNS_SERVICE_LOCK();
-    _mdns_query_results_free(results);
-    MDNS_SERVICE_UNLOCK();
-}
-
-
-esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
-{
-    if (!search) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (search->state != SEARCH_OFF) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    MDNS_SERVICE_LOCK();
-    _mdns_search_free(search);
-    MDNS_SERVICE_UNLOCK();
-
-    return ESP_OK;
-}
-
-bool mdns_query_async_get_results(mdns_search_once_t *search, uint32_t timeout, mdns_result_t **results, uint8_t *num_results)
-{
-    if (xSemaphoreTake(search->done_semaphore, pdMS_TO_TICKS(timeout)) == pdTRUE) {
-        if (results) {
-            *results = search->result;
-        }
-        if (num_results) {
-            *num_results = search->num_results;
-        }
-        return true;
-    }
-    return false;
-}
-
-mdns_search_once_t *mdns_query_async_new(const char *name, const char *service, const char *proto, uint16_t type,
-                                         uint32_t timeout, size_t max_results, mdns_query_notify_t notifier)
-{
-    mdns_search_once_t *search = NULL;
-
-    if (!_mdns_server || !timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
-        return NULL;
-    }
-
-    search = _mdns_search_init(name, service, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, notifier);
-    if (!search) {
-        return NULL;
-    }
-
-    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
-        _mdns_search_free(search);
-        return NULL;
-    }
-
-    return search;
-}
-
-esp_err_t mdns_query_generic(const char *name, const char *service, const char *proto, uint16_t type, mdns_query_transmission_type_t transmission_type, uint32_t timeout, size_t max_results, mdns_result_t **results)
-{
-    mdns_search_once_t *search = NULL;
-
-    *results = NULL;
-
-    if (!_mdns_server) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    if (!timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    search = _mdns_search_init(name, service, proto, type, transmission_type == MDNS_QUERY_UNICAST, timeout, max_results, NULL);
-    if (!search) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
-        _mdns_search_free(search);
-        return ESP_ERR_NO_MEM;
-    }
-    xSemaphoreTake(search->done_semaphore, portMAX_DELAY);
-
-    *results = search->result;
-    _mdns_search_free(search);
-
-    return ESP_OK;
-}
-
-esp_err_t mdns_query(const char *name, const char *service_type, const char *proto, uint16_t type, uint32_t timeout, size_t max_results, mdns_result_t **results)
-{
-    return mdns_query_generic(name, service_type, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, results);
-}
-
-esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results)
-{
-    if (_str_null_or_empty(service) || _str_null_or_empty(proto)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    return mdns_query(NULL, service, proto, MDNS_TYPE_PTR, timeout, max_results, results);
-}
-
-esp_err_t mdns_query_srv(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
-{
-    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    return mdns_query(instance, service, proto, MDNS_TYPE_SRV, timeout, 1, result);
-}
-
-esp_err_t mdns_query_txt(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
-{
-    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    return mdns_query(instance, service, proto, MDNS_TYPE_TXT, timeout, 1, result);
-}
-
+///*
+// * MDNS QUERY
+// * */
+//void mdns_query_results_free(mdns_result_t *results)
+//{
+//    MDNS_SERVICE_LOCK();
+//    _mdns_query_results_free(results);
+//    MDNS_SERVICE_UNLOCK();
+//}
+//
+//esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
+//{
+//    if (!search) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+//    if (search->state != SEARCH_OFF) {
+//        return ESP_ERR_INVALID_STATE;
+//    }
+//
+//    MDNS_SERVICE_LOCK();
+//    _mdns_search_free(search);
+//    MDNS_SERVICE_UNLOCK();
+//
+//    return ESP_OK;
+//}
+//
+//bool mdns_query_async_get_results(mdns_search_once_t *search, uint32_t timeout, mdns_result_t **results, uint8_t *num_results)
+//{
+//    if (xSemaphoreTake(search->done_semaphore, pdMS_TO_TICKS(timeout)) == pdTRUE) {
+//        if (results) {
+//            *results = search->result;
+//        }
+//        if (num_results) {
+//            *num_results = search->num_results;
+//        }
+//        return true;
+//    }
+//    return false;
+//}
+//
+//mdns_search_once_t *mdns_query_async_new(const char *name, const char *service, const char *proto, uint16_t type,
+//                                         uint32_t timeout, size_t max_results, mdns_query_notify_t notifier)
+//{
+//    mdns_search_once_t *search = NULL;
+//
+//    if (!_mdns_server || !timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
+//        return NULL;
+//    }
+//
+//    search = _mdns_search_init(name, service, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, notifier);
+//    if (!search) {
+//        return NULL;
+//    }
+//
+//    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
+//        _mdns_search_free(search);
+//        return NULL;
+//    }
+//
+//    return search;
+//}
+//
+//esp_err_t mdns_query_generic(const char *name, const char *service, const char *proto, uint16_t type, mdns_query_transmission_type_t transmission_type, uint32_t timeout, size_t max_results, mdns_result_t **results)
+//{
+//    mdns_search_once_t *search = NULL;
+//
+//    *results = NULL;
+//
+//    if (!_mdns_server) {
+//        return ESP_ERR_INVALID_STATE;
+//    }
+//
+//    if (!timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+//
+//    search = _mdns_search_init(name, service, proto, type, transmission_type == MDNS_QUERY_UNICAST, timeout, max_results, NULL);
+//    if (!search) {
+//        return ESP_ERR_NO_MEM;
+//    }
+//
+//    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
+//        _mdns_search_free(search);
+//        return ESP_ERR_NO_MEM;
+//    }
+//    xSemaphoreTake(search->done_semaphore, portMAX_DELAY);
+//
+//    *results = search->result;
+//    _mdns_search_free(search);
+//
+//    return ESP_OK;
+//}
+//
+//esp_err_t mdns_query(const char *name, const char *service_type, const char *proto, uint16_t type, uint32_t timeout, size_t max_results, mdns_result_t **results)
+//{
+//    return mdns_query_generic(name, service_type, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, results);
+//}
+//
+//esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results)
+//{
+//    if (_str_null_or_empty(service) || _str_null_or_empty(proto)) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+//
+//    return mdns_query(NULL, service, proto, MDNS_TYPE_PTR, timeout, max_results, results);
+//}
+//
+//esp_err_t mdns_query_srv(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
+//{
+//    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+//
+//    return mdns_query(instance, service, proto, MDNS_TYPE_SRV, timeout, 1, result);
+//}
+//
+//esp_err_t mdns_query_txt(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
+//{
+//    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
+//        return ESP_ERR_INVALID_ARG;
+//    }
+//
+//    return mdns_query(instance, service, proto, MDNS_TYPE_TXT, timeout, 1, result);
+//}
+//
 esp_err_t mdns_lookup_delegated_service(const char *instance, const char *service, const char *proto, size_t max_results,
                                         mdns_result_t **result)
 {
@@ -2765,59 +2437,6 @@ esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *brows
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
-}
-
-
-
-/**
- * @brief  Mark browse as finished, remove and free it from browse chain
- */
-void _mdns_browse_finish(mdns_browse_t *browse)
-{
-    browse->state = BROWSE_OFF;
-    mdns_browse_t *b = _mdns_server->browse;
-    mdns_browse_t *target_free = NULL;
-    while (b) {
-        if (strlen(b->service) == strlen(browse->service) && memcmp(b->service, browse->service, strlen(b->service)) == 0 &&
-                strlen(b->proto) == strlen(browse->proto) && memcmp(b->proto, browse->proto, strlen(b->proto)) == 0) {
-            target_free = b;
-            b = b->next;
-            queueDetach(mdns_browse_t, _mdns_server->browse, target_free);
-            _mdns_browse_item_free(target_free);
-        } else {
-            b = b->next;
-        }
-    }
-    _mdns_browse_item_free(browse);
-}
-
-/**
- * @brief  Add new browse to the browse chain
- */
-void _mdns_browse_add(mdns_browse_t *browse)
-{
-    browse->state = BROWSE_RUNNING;
-    mdns_browse_t *queue = _mdns_server->browse;
-    bool found = false;
-    // looking for this browse in active browses
-    while (queue) {
-        if (strlen(queue->service) == strlen(browse->service) && memcmp(queue->service, browse->service, strlen(queue->service)) == 0 &&
-                strlen(queue->proto) == strlen(browse->proto) && memcmp(queue->proto, browse->proto, strlen(queue->proto)) == 0) {
-            found = true;
-            break;
-        }
-        queue = queue->next;
-    }
-    if (!found) {
-        browse->next = _mdns_server->browse;
-        _mdns_server->browse = browse;
-    }
-    for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
-        _mdns_browse_send(browse, (mdns_if_t)interface_idx);
-    }
-    if (found) {
-        _mdns_browse_item_free(browse);
-    }
 }
 
 void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
