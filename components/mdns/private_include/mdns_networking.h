@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,12 +13,9 @@
 #include "mdns.h"
 #include "mdns_private.h"
 
-
 /**
- * @brief  Queue RX packet action
+ * @brief  Check if the netif on the selected interfacce and protocol is ready
  */
-esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet);
-
 bool mdns_is_netif_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
 /**

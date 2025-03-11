@@ -191,6 +191,10 @@ typedef enum {
     ACTION_MAX
 } mdns_action_type_t;
 
+typedef enum {
+    ACTION_RUN,
+    ACTION_CLEANUP,
+} mdns_action_subtype_t;
 
 typedef struct {
     uint16_t id;

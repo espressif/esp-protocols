@@ -26,7 +26,11 @@ mdns_search_once_t *search = NULL;
 // Dependency injected test functions
 void mdns_test_execute_action(void *action);
 mdns_search_once_t *mdns_test_search_init(const char *name, const char *service, const char *proto, uint16_t type, uint32_t timeout, uint8_t max_results);
+esp_err_t mdns_test_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
+void mdns_test_search_free(mdns_search_once_t *search);
+
 void mdns_test_init_di(void);
+void mdns_querier_test_init_di(void);
 extern mdns_server_t *_mdns_server;
 
 //
@@ -115,8 +119,8 @@ static mdns_result_t *mdns_test_query(const char *name, const char *service, con
         abort();
     }
 
-    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
-        _mdns_search_free(search);
+    if (mdns_test_send_search_action(ACTION_SEARCH_ADD, search)) {
+        mdns_test_search_free(search);
         abort();
     }
 
@@ -128,7 +132,7 @@ static mdns_result_t *mdns_test_query(const char *name, const char *service, con
 
 static void mdns_test_query_free(void)
 {
-    _mdns_search_free(search);
+    mdns_test_search_free(search);
 }
 
 //
@@ -160,6 +164,7 @@ int main(int argc, char **argv)
 
     // Init depencency injected methods
     mdns_test_init_di();
+    mdns_querier_test_init_di();
 
     if (mdns_init()) {
         abort();

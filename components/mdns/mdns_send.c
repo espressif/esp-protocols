@@ -24,6 +24,172 @@ static mdns_tx_packet_t *s_tx_queue_head;
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif
 
+
+/**
+ * @brief  appends byte in a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  value        the value to set
+ *
+ * @return length of added data: 0 on error or 1 on success
+ */
+static inline uint8_t _mdns_append_u8(uint8_t *packet, uint16_t *index, uint8_t value)
+{
+    if (*index >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    packet[*index] = value;
+    *index += 1;
+    return 1;
+}
+
+/**
+ * @brief  appends uint16_t in a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  value        the value to set
+ *
+ * @return length of added data: 0 on error or 2 on success
+ */
+uint8_t _mdns_append_u16(uint8_t *packet, uint16_t *index, uint16_t value)
+{
+    if ((*index + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, (value >> 8) & 0xFF);
+    _mdns_append_u8(packet, index, value & 0xFF);
+    return 2;
+}
+
+/**
+ * @brief  appends uint32_t in a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  value        the value to set
+ *
+ * @return length of added data: 0 on error or 4 on success
+ */
+static inline uint8_t _mdns_append_u32(uint8_t *packet, uint16_t *index, uint32_t value)
+{
+    if ((*index + 3) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, (value >> 24) & 0xFF);
+    _mdns_append_u8(packet, index, (value >> 16) & 0xFF);
+    _mdns_append_u8(packet, index, (value >> 8) & 0xFF);
+    _mdns_append_u8(packet, index, value & 0xFF);
+    return 4;
+}
+
+/**
+ * @brief  appends answer type, class, ttl and data length to a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  type         answer type
+ * @param  ttl          answer ttl
+ *
+ * @return length of added data: 0 on error or 10 on success
+ */
+static inline uint8_t _mdns_append_type(uint8_t *packet, uint16_t *index, uint8_t type, bool flush, uint32_t ttl)
+{
+    if ((*index + 10) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    uint16_t mdns_class = MDNS_CLASS_IN;
+    if (flush) {
+        mdns_class = MDNS_CLASS_IN_FLUSH_CACHE;
+    }
+    if (type == MDNS_ANSWER_PTR) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_PTR);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_TXT) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_TXT);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_SRV) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_SRV);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_A) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_A);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else if (type == MDNS_ANSWER_AAAA) {
+        _mdns_append_u16(packet, index, MDNS_TYPE_AAAA);
+        _mdns_append_u16(packet, index, mdns_class);
+    } else {
+        return 0;
+    }
+    _mdns_append_u32(packet, index, ttl);
+    _mdns_append_u16(packet, index, 0);
+    return 10;
+}
+
+static inline uint8_t _mdns_append_string_with_len(uint8_t *packet, uint16_t *index, const char *string, uint8_t len)
+{
+    if ((*index + len + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, len);
+    memcpy(packet + *index, string, len);
+    *index += len;
+    return len + 1;
+}
+
+/**
+ * @brief  appends single string to a packet, incrementing the index
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  string       the string to append
+ *
+ * @return length of added data: 0 on error or length of the string + 1 on success
+ */
+static inline uint8_t _mdns_append_string(uint8_t *packet, uint16_t *index, const char *string)
+{
+    uint8_t len = strlen(string);
+    if ((*index + len + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, len);
+    memcpy(packet + *index, string, len);
+    *index += len;
+    return len + 1;
+}
+
+/**
+ * @brief  appends one TXT record ("key=value" or "key")
+ *
+ * @param  packet       MDNS packet
+ * @param  index        offset in the packet
+ * @param  txt          one txt record
+ *
+ * @return length of added data: length of the added txt value + 1 on success
+ *         0  if data won't fit the packet
+ *         -1 if invalid TXT entry
+ */
+int append_one_txt_record_entry(uint8_t *packet, uint16_t *index, mdns_txt_linked_item_t *txt)
+{
+    if (txt == NULL || txt->key == NULL) {
+        return -1;
+    }
+    size_t key_len = strlen(txt->key);
+    size_t len = key_len + txt->value_len + (txt->value ? 1 : 0);
+    if ((*index + len + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, len);
+    memcpy(packet + *index, txt->key, key_len);
+    if (txt->value) {
+        packet[*index + key_len] = '=';
+        memcpy(packet + *index + key_len + 1, txt->value, txt->value_len);
+    }
+    *index += len;
+    return len + 1;
+}
+
+
 static uint16_t _mdns_append_fqdn(uint8_t *packet, uint16_t *index, const char *strings[], uint8_t count, size_t packet_len);
 
 /**
@@ -1181,7 +1347,7 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
             count = esp_netif_get_all_ip6(_mdns_get_esp_netif(tcpip_if), if_ip6s);
             assert(count <= NETIF_IPV6_MAX_NUMS);
             for (int i = 0; i < count; i++) {
-                if (_ipv6_address_is_zero(if_ip6s[i])) {
+                if (mdns_utils_ipv6_address_is_zero(if_ip6s[i])) {
                     return 0;
                 }
                 if (_mdns_append_aaaa_record(packet, index, mdns_utils_get_global_hostname(), (uint8_t *)if_ip6s[i].addr,
@@ -1595,6 +1761,48 @@ mdns_tx_packet_t *_mdns_get_next_tx_packet(void)
     return s_tx_queue_head;
 }
 
+/**
+ * @brief  Called from timer task to run mDNS responder
+ *
+ * periodically checks first unqueued packet (from tx head).
+ * if it is scheduled to be transmitted, then pushes the packet to action queue to be handled.
+ *
+ */
+void mdns_send_packets(void)
+{
+    mdns_service_lock();
+    mdns_tx_packet_t *p = s_tx_queue_head;
+    mdns_action_t *action = NULL;
+
+    // find first unqueued packet
+    while (p && p->queued) {
+        p = p->next;
+    }
+    if (!p) {
+        mdns_service_unlock();
+        return;
+    }
+    while (p && (int32_t)(p->send_at - (xTaskGetTickCount() * portTICK_PERIOD_MS)) < 0) {
+        action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+        if (action) {
+            action->type = ACTION_TX_HANDLE;
+            action->data.tx_handle.packet = p;
+            p->queued = true;
+            if (!mdns_action_queue(action)) {
+                mdns_mem_free(action);
+                p->queued = false;
+            }
+        } else {
+            HOOK_MALLOC_FAILED;
+            break;
+        }
+        //Find the next unqued packet
+        p = p->next;
+    }
+    mdns_service_unlock();
+}
+
+
 
 /**
  * @brief  Remove and free service answer from answer list (destination)
@@ -1682,7 +1890,7 @@ static void _mdns_tx_handle_packet(mdns_tx_packet_t *p)
     mdns_responder_process_tx_packet(p);
 }
 
-void mdns_send_handle_tx_packet(mdns_tx_packet_t *packet)
+static void mdns_send_handle_tx_packet(mdns_tx_packet_t *packet)
 {
     mdns_tx_packet_t *p = s_tx_queue_head;
     // packet to be handled should be at tx head, but must be consistent with the one pushed to action queue
@@ -1721,5 +1929,17 @@ void _mdns_dealloc_answer(mdns_out_answer_t **destination, uint16_t type, mdns_s
             return;
         }
         d = d->next;
+    }
+}
+
+void mdns_send_action(mdns_action_t *action, mdns_action_subtype_t type)
+{
+    if (action->type != ACTION_TX_HANDLE) {
+        abort();
+    }
+    if (type == ACTION_RUN) {
+        mdns_send_handle_tx_packet(action->data.tx_handle.packet);
+    } else if (type == ACTION_CLEANUP) {
+        _mdns_free_tx_packet(action->data.tx_handle.packet);
     }
 }

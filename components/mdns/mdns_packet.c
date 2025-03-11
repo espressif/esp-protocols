@@ -20,6 +20,29 @@
 
 static const char *TAG = "mdns_packet";
 
+/**4
+ * @brief  Browse sync result action -> TODO: Move to the browser module
+ */
+static esp_err_t _mdns_sync_browse_action(mdns_action_type_t type, mdns_browse_sync_t *browse_sync)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = type;
+    action->data.browse_sync.browse_sync = browse_sync;
+    if (!mdns_action_queue(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+
 /**
  * @brief  Check if parsed name is discovery
  */
@@ -697,7 +720,7 @@ static int _mdns_check_aaaa_collision(esp_ip6_addr_t *ip, mdns_if_t tcpip_if)
 {
     struct esp_ip6_addr if_ip6;
     struct esp_ip6_addr other_ip6;
-    if (_ipv6_address_is_zero(*ip)) {
+    if (mdns_utils_ipv6_address_is_zero(*ip)) {
         return 1;//denial! they win
     }
     if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(tcpip_if), &if_ip6)) {
@@ -1110,8 +1133,9 @@ static mdns_result_t *_mdns_search_result_add_ptr(mdns_search_once_t *search, co
     return NULL;
 }
 
-
-
+/*
+ * Received Packet Handling
+ * */
 
 /**
  * @brief  main packet parser
@@ -1779,4 +1803,17 @@ clear_rx_packet:
     mdns_mem_free(browse_result_service);
     mdns_mem_free(browse_result_proto);
     mdns_mem_free(out_sync_browse);
+}
+
+void mdns_receive_action(mdns_action_t *action, mdns_action_subtype_t type)
+{
+    if (action->type != ACTION_RX_HANDLE) {
+        abort();
+    }
+    if (type == ACTION_RUN) {
+        mdns_parse_packet(action->data.rx_handle.packet);
+        _mdns_packet_free(action->data.rx_handle.packet);
+    } else if (type == ACTION_CLEANUP) {
+        _mdns_packet_free(action->data.rx_handle.packet);
+    }
 }

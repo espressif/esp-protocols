@@ -16,6 +16,9 @@ static const char *TAG = "mdns_querier";
 
 static mdns_search_once_t *s_search_once;
 
+static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
+static void _mdns_search_free(mdns_search_once_t *search);
+
 void _mdns_query_results_free(mdns_result_t *results)
 {
     mdns_result_t *r;
@@ -50,7 +53,7 @@ void _mdns_query_results_free(mdns_result_t *results)
 /**
  * @brief  Mark search as finished and remove it from search chain
  */
-void _mdns_search_finish(mdns_search_once_t *search)
+static void _mdns_search_finish(mdns_search_once_t *search)
 {
     search->state = SEARCH_OFF;
     queueDetach(mdns_search_once_t, s_search_once, search);
@@ -67,6 +70,58 @@ void _mdns_search_add(mdns_search_once_t *search)
 {
     search->next = s_search_once;
     s_search_once = search;
+}
+
+/**
+ * @brief  Send search packet to all available interfaces
+ */
+void _mdns_search_send(mdns_search_once_t *search)
+{
+    mdns_search_once_t *queue = s_search_once;
+    bool found = false;
+    // looking for this search in active searches
+    while (queue) {
+        if (queue == search) {
+            found = true;
+            break;
+        }
+        queue = queue->next;
+    }
+
+    if (!found) {
+        // no longer active -> skip sending this search
+        return;
+    }
+
+    uint8_t i, j;
+    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
+        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
+            _mdns_search_send_pcb(search, (mdns_if_t)i, (mdns_ip_protocol_t)j);
+        }
+    }
+}
+
+void mdns_query_action(mdns_action_t *action, mdns_action_subtype_t type)
+{
+    if (type == ACTION_RUN) {
+        switch (action->type) {
+        case ACTION_SEARCH_ADD:
+            _mdns_search_add(action->data.search_add.search);
+            break;
+        case ACTION_SEARCH_SEND:
+            _mdns_search_send(action->data.search_add.search);
+            break;
+        case ACTION_SEARCH_END:
+            _mdns_search_finish(action->data.search_add.search);
+            break;
+        default:
+            abort();
+        }
+        return;
+    }
+    if (type == ACTION_CLEANUP) {
+        _mdns_search_free(action->data.search_add.search);
+    }
 }
 
 /**
@@ -117,34 +172,7 @@ void mdns_search_free(void)
     }
 }
 
-/**
- * @brief  Send search packet to all available interfaces
- */
-void _mdns_search_send(mdns_search_once_t *search)
-{
-    mdns_search_once_t *queue = s_search_once;
-    bool found = false;
-    // looking for this search in active searches
-    while (queue) {
-        if (queue == search) {
-            found = true;
-            break;
-        }
-        queue = queue->next;
-    }
 
-    if (!found) {
-        // no longer active -> skip sending this search
-        return;
-    }
-
-    uint8_t i, j;
-    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            _mdns_search_send_pcb(search, (mdns_if_t)i, (mdns_ip_protocol_t)j);
-        }
-    }
-}
 
 /**
  * @brief  Called from parser to finish any searches that have reached maximum results
@@ -315,7 +343,7 @@ void _mdns_search_send_pcb(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_
 /**
  * @brief  Free search structure (except the results)
  */
-void _mdns_search_free(mdns_search_once_t *search)
+static void _mdns_search_free(mdns_search_once_t *search)
 {
     mdns_mem_free(search->instance);
     mdns_mem_free(search->service);
@@ -507,3 +535,104 @@ esp_err_t mdns_query_txt(const char *instance, const char *service, const char *
 
     return mdns_query(instance, service, proto, MDNS_TYPE_TXT, timeout, 1, result);
 }
+
+/**
+ * @brief  Queue search action
+ */
+static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = type;
+    action->data.search_add.search = search;
+    if (!mdns_action_queue(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+
+#ifdef CONFIG_LWIP_IPV4
+esp_err_t mdns_query_a(const char *name, uint32_t timeout, esp_ip4_addr_t *addr)
+{
+    mdns_result_t *result = NULL;
+    esp_err_t err;
+
+    if (mdns_utils_str_null_or_empty(name)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (strstr(name, ".local")) {
+        ESP_LOGW(TAG, "Please note that hostname must not contain domain name, as mDNS uses '.local' domain");
+    }
+
+    err = mdns_query(name, NULL, NULL, MDNS_TYPE_A, timeout, 1, &result);
+
+    if (err) {
+        return err;
+    }
+
+    if (!result) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    mdns_ip_addr_t *a = result->addr;
+    while (a) {
+        if (a->addr.type == ESP_IPADDR_TYPE_V4) {
+            addr->addr = a->addr.u_addr.ip4.addr;
+            mdns_query_results_free(result);
+            return ESP_OK;
+        }
+        a = a->next;
+    }
+
+    mdns_query_results_free(result);
+    return ESP_ERR_NOT_FOUND;
+}
+#endif /* CONFIG_LWIP_IPV4 */
+
+#ifdef CONFIG_LWIP_IPV6
+esp_err_t mdns_query_aaaa(const char *name, uint32_t timeout, esp_ip6_addr_t *addr)
+{
+    mdns_result_t *result = NULL;
+    esp_err_t err;
+
+    if (mdns_utils_str_null_or_empty(name)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (strstr(name, ".local")) {
+        ESP_LOGW(TAG, "Please note that hostname must not contain domain name, as mDNS uses '.local' domain");
+    }
+
+    err = mdns_query(name, NULL, NULL, MDNS_TYPE_AAAA, timeout, 1, &result);
+
+    if (err) {
+        return err;
+    }
+
+    if (!result) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    mdns_ip_addr_t *a = result->addr;
+    while (a) {
+        if (a->addr.type == ESP_IPADDR_TYPE_V6) {
+            memcpy(addr->addr, a->addr.u_addr.ip6.addr, 16);
+            mdns_query_results_free(result);
+            return ESP_OK;
+        }
+        a = a->next;
+    }
+
+    mdns_query_results_free(result);
+    return ESP_ERR_NOT_FOUND;
+}
+#endif /* CONFIG_LWIP_IPV6 */

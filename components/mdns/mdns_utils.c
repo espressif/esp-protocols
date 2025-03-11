@@ -146,7 +146,6 @@ bool _mdns_service_match(const mdns_service_t *srv, const char *service, const c
            (mdns_utils_str_null_or_empty(hostname) || !strcasecmp(srv->hostname, hostname));
 }
 
-
 /**
  * @brief  finds service from given service type
  * @param  server       the server
@@ -297,3 +296,20 @@ void free_address_list(mdns_ip_addr_t *address_list)
         address_list = next;
     }
 }
+
+#ifdef CONFIG_LWIP_IPV6
+/**
+ * @brief  Check if IPv6 address is NULL
+ */
+bool mdns_utils_ipv6_address_is_zero(esp_ip6_addr_t ip6)
+{
+    uint8_t i;
+    uint8_t *data = (uint8_t *)ip6.addr;
+    for (i = 0; i < _MDNS_SIZEOF_IP6_ADDR; i++) {
+        if (data[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+#endif /* CONFIG_LWIP_IPV6 */
