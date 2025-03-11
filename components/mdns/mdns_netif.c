@@ -18,6 +18,9 @@
 #include "mdns_netif.h"
 #include "mdns_send.h"
 #include "mdns_responder.h"
+
+static const char *TAG = "mdns_netif";
+
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
 #include "esp_eth.h"
 #endif
@@ -167,6 +170,27 @@ static mdns_if_t _mdns_get_if_from_esp_netif(esp_netif_t *esp_netif)
         }
     }
     return MDNS_MAX_INTERFACES;
+}
+
+static esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action)
+{
+    if (!is_mdns_server() || mdns_if >= MDNS_MAX_INTERFACES) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    mdns_action_t *action = (mdns_action_t *)mdns_mem_calloc(1, sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+    action->type = ACTION_SYSTEM_EVENT;
+    action->data.sys_event.event_action = event_action;
+    action->data.sys_event.interface = mdns_if;
+
+    if (!mdns_action_queue(action)) {
+        mdns_mem_free(action);
+    }
+    return ESP_OK;
 }
 
 
@@ -395,7 +419,7 @@ esp_err_t mdns_netif_init(void)
 
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
 #ifdef CONFIG_LWIP_IPV6
-        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(i), &tmp_addr6) && !_ipv6_address_is_zero(tmp_addr6)) {
+        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
             _mdns_enable_pcb(i, MDNS_IP_PROTOCOL_V6);
         }
 #endif

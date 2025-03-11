@@ -21,20 +21,9 @@
 #include "mdns_browse.h"
 #include "mdns_netif.h"
 #include "mdns_send.h"
+#include "mdns_receive.h"
 #include "mdns_querier.h"
 #include "mdns_responder.h"
-
-
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
-#endif
-
-// Internal size of IPv6 address is defined here as size of AAAA record in mdns packet
-// since the ip6_addr_t is defined in lwip and depends on using IPv6 zones
-#define _MDNS_SIZEOF_IP6_ADDR (MDNS_ANSWER_AAAA_SIZE)
-
-//static const char *MDNS_DEFAULT_DOMAIN = "local";
-//static const char *MDNS_SUB_STR = "_sub";
 
 mdns_server_t *_mdns_server = NULL;
 static mdns_host_item_t *_mdns_host_list = NULL;
@@ -46,20 +35,7 @@ static volatile TaskHandle_t _mdns_service_task_handle = NULL;
 static SemaphoreHandle_t _mdns_service_semaphore = NULL;
 static StackType_t *_mdns_stack_buffer;
 
-
-//static bool _mdns_append_host_list(mdns_out_answer_t **destination, bool flush, bool bye);
-
 esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action);
-
-//static void _mdns_query_results_free(mdns_result_t *results);
-
-
-
-
-
-
-
-
 
 const char *mdns_utils_get_global_hostname(void)
 {
@@ -80,7 +56,6 @@ mdns_host_item_t *mdns_utils_get_selfhost(void)
 {
     return &_mdns_self_host;
 }
-
 
 void mdns_utils_set_global_hostname(const char *hostname)
 {
@@ -108,11 +83,6 @@ void mdns_utils_set_instance(const char *instance)
     }
 }
 
-//mdns_search_once_t *mdns_utils_get_search(void)
-//{
-//    return _mdns_server->search_once;
-//}
-
 bool is_mdns_server(void)
 {
     return _mdns_server != NULL;
@@ -122,18 +92,6 @@ static inline bool _str_null_or_empty(const char *str)
 {
     return (str == NULL || *str == 0);
 }
-
-//mdns_tx_packet_t *mdns_utils_get_tx_packet(void)
-//{
-//    return _mdns_server->tx_queue_head;
-//}
-
-
-
-
-
-
-
 
 static bool _mdns_can_add_more_services(void)
 {
@@ -153,66 +111,13 @@ static bool _mdns_can_add_more_services(void)
 #endif
 }
 
-esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
+bool mdns_action_queue(mdns_action_t *action)
 {
-    mdns_action_t *action = NULL;
-
-    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-
-    action->type = ACTION_RX_HANDLE;
-    action->data.rx_handle.packet = packet;
     if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        mdns_mem_free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
-}
-
-
-
-#ifdef CONFIG_LWIP_IPV6
-/**
- * @brief  Check if IPv6 address is NULL
- */
-bool _ipv6_address_is_zero(esp_ip6_addr_t ip6)
-{
-    uint8_t i;
-    uint8_t *data = (uint8_t *)ip6.addr;
-    for (i = 0; i < _MDNS_SIZEOF_IP6_ADDR; i++) {
-        if (data[i]) {
-            return false;
-        }
+        return false;
     }
     return true;
 }
-#endif /* CONFIG_LWIP_IPV6 */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief  Send announcement on all active PCBs
@@ -455,9 +360,6 @@ fail:
     return NULL;
 }
 
-
-
-
 static void _mdns_free_subtype(mdns_subtype_t *subtype)
 {
     while (subtype) {
@@ -498,20 +400,6 @@ static void _mdns_free_service(mdns_service_t *service)
     _mdns_free_service_subtype(service);
     mdns_mem_free(service);
 }
-
-
-/*
- * Received Packet Handling
- * */
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Adds a delegated hostname to the linked list
@@ -619,30 +507,6 @@ static bool _mdns_delegate_hostname_remove(const char *hostname)
     return true;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void mdns_parse_packet(mdns_rx_packet_t *packet);
-
-
-
-
-
 #ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
 static inline char nibble_to_hex(int var)
 {
@@ -696,7 +560,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 #ifdef CONFIG_LWIP_IPV6
     if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
         esp_ip6_addr_t addr6;
-        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(mdns_if), &addr6) && !_ipv6_address_is_zero(addr6)) {
+        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(mdns_if), &addr6) && !mdns_utils_ipv6_address_is_zero(addr6)) {
             uint8_t *paddr = (uint8_t *)&addr6.addr;
             const char sub[] = "ip6";
             const size_t query_name_size = 4 * sizeof(addr6.addr) /* (2 nibbles + 2 dots)/per byte of IP address */ + sizeof(sub);
@@ -721,28 +585,6 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void _mdns_remap_self_service_hostname(const char *old_hostname, const char *new_hostname)
 {
     mdns_srv_item_t *service = _mdns_server->services;
@@ -755,18 +597,6 @@ void _mdns_remap_self_service_hostname(const char *old_hostname, const char *new
         }
         service = service->next;
     }
-}
-
-static void _mdns_sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
-{
-    mdns_browse_result_sync_t *current = browse_sync->sync_result;
-    mdns_browse_result_sync_t *need_free;
-    while (current) {
-        need_free = current;
-        current = current->next;
-        mdns_mem_free(need_free);
-    }
-    mdns_mem_free(browse_sync);
 }
 
 /**
@@ -782,25 +612,20 @@ static void _mdns_free_action(mdns_action_t *action)
         mdns_mem_free(action->data.instance);
         break;
     case ACTION_SEARCH_ADD:
-    //fallthrough
     case ACTION_SEARCH_SEND:
-    //fallthrough
     case ACTION_SEARCH_END:
-        _mdns_search_free(action->data.search_add.search);
+        mdns_query_action(action, ACTION_CLEANUP);
         break;
     case ACTION_BROWSE_ADD:
-    //fallthrough
     case ACTION_BROWSE_END:
-        _mdns_browse_item_free(action->data.browse_add.browse);
-        break;
     case ACTION_BROWSE_SYNC:
-        _mdns_sync_browse_result_link_free(action->data.browse_sync.browse_sync);
+        mdns_browse_action(action, ACTION_CLEANUP);
         break;
     case ACTION_TX_HANDLE:
-        _mdns_free_tx_packet(action->data.tx_handle.packet);
+        mdns_send_action(action, ACTION_CLEANUP);
         break;
     case ACTION_RX_HANDLE:
-        _mdns_packet_free(action->data.rx_handle.packet);
+        mdns_receive_action(action, ACTION_CLEANUP);
         break;
     case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
     case ACTION_DELEGATE_HOSTNAME_ADD:
@@ -842,32 +667,21 @@ static void _mdns_execute_action(mdns_action_t *action)
 
         break;
     case ACTION_SEARCH_ADD:
-        _mdns_search_add(action->data.search_add.search);
-        break;
     case ACTION_SEARCH_SEND:
-        _mdns_search_send(action->data.search_add.search);
-        break;
     case ACTION_SEARCH_END:
-        _mdns_search_finish(action->data.search_add.search);
+        mdns_query_action(action, ACTION_RUN);
         break;
-
     case ACTION_BROWSE_ADD:
-        _mdns_browse_add(action->data.browse_add.browse);
-        break;
     case ACTION_BROWSE_SYNC:
-        _mdns_browse_sync(action->data.browse_sync.browse_sync);
-        _mdns_sync_browse_result_link_free(action->data.browse_sync.browse_sync);
-        break;
     case ACTION_BROWSE_END:
-        _mdns_browse_finish(action->data.browse_add.browse);
+        mdns_browse_action(action, ACTION_RUN);
         break;
 
     case ACTION_TX_HANDLE:
-        mdns_send_handle_tx_packet(action->data.tx_handle.packet);
+        mdns_send_action(action, ACTION_RUN);
         break;
     case ACTION_RX_HANDLE:
-        mdns_parse_packet(action->data.rx_handle.packet);
-        _mdns_packet_free(action->data.rx_handle.packet);
+        mdns_receive_action(action, ACTION_RUN);
         break;
     case ACTION_DELEGATE_HOSTNAME_ADD:
         if (!_mdns_delegate_hostname_add(action->data.delegate_hostname.hostname,
@@ -893,71 +707,6 @@ static void _mdns_execute_action(mdns_action_t *action)
     }
     mdns_mem_free(action);
 }
-
-/**
- * @brief  Queue search action
- */
-esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search)
-{
-    mdns_action_t *action = NULL;
-
-    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-
-    action->type = type;
-    action->data.search_add.search = search;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        mdns_mem_free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
-}
-
-/**
- * @brief  Called from timer task to run mDNS responder
- *
- * periodically checks first unqueued packet (from tx head).
- * if it is scheduled to be transmitted, then pushes the packet to action queue to be handled.
- *
- */
-static void _mdns_scheduler_run(void)
-{
-    MDNS_SERVICE_LOCK();
-    mdns_tx_packet_t *p = _mdns_get_next_tx_packet();
-    mdns_action_t *action = NULL;
-
-    // find first unqueued packet
-    while (p && p->queued) {
-        p = p->next;
-    }
-    if (!p) {
-        MDNS_SERVICE_UNLOCK();
-        return;
-    }
-    while (p && (int32_t)(p->send_at - (xTaskGetTickCount() * portTICK_PERIOD_MS)) < 0) {
-        action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-        if (action) {
-            action->type = ACTION_TX_HANDLE;
-            action->data.tx_handle.packet = p;
-            p->queued = true;
-            if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-                mdns_mem_free(action);
-                p->queued = false;
-            }
-        } else {
-            HOOK_MALLOC_FAILED;
-            break;
-        }
-        //Find the next unqued packet
-        p = p->next;
-    }
-    MDNS_SERVICE_UNLOCK();
-}
-
-
 
 /**
  * @brief  the main MDNS service task. Packets are received and parsed here
@@ -986,7 +735,7 @@ static void _mdns_service_task(void *pvParameters)
 
 static void _mdns_timer_cb(void *arg)
 {
-    _mdns_scheduler_run();
+    mdns_send_packets();
     _mdns_search_run();
 }
 
@@ -1098,27 +847,6 @@ static esp_err_t _mdns_service_task_stop(void)
     }
     vSemaphoreDelete(_mdns_service_semaphore);
     _mdns_service_semaphore = NULL;
-    return ESP_OK;
-}
-
-esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action)
-{
-    if (!_mdns_server || mdns_if >= MDNS_MAX_INTERFACES) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    mdns_action_t *action = (mdns_action_t *)mdns_mem_calloc(1, sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-    action->type = ACTION_SYSTEM_EVENT;
-    action->data.sys_event.event_action = event_action;
-    action->data.sys_event.interface = mdns_if;
-
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        mdns_mem_free(action);
-    }
     return ESP_OK;
 }
 
@@ -2161,131 +1889,6 @@ done:
     return ret;
 }
 
-///*
-// * MDNS QUERY
-// * */
-//void mdns_query_results_free(mdns_result_t *results)
-//{
-//    MDNS_SERVICE_LOCK();
-//    _mdns_query_results_free(results);
-//    MDNS_SERVICE_UNLOCK();
-//}
-//
-//esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
-//{
-//    if (!search) {
-//        return ESP_ERR_INVALID_ARG;
-//    }
-//    if (search->state != SEARCH_OFF) {
-//        return ESP_ERR_INVALID_STATE;
-//    }
-//
-//    MDNS_SERVICE_LOCK();
-//    _mdns_search_free(search);
-//    MDNS_SERVICE_UNLOCK();
-//
-//    return ESP_OK;
-//}
-//
-//bool mdns_query_async_get_results(mdns_search_once_t *search, uint32_t timeout, mdns_result_t **results, uint8_t *num_results)
-//{
-//    if (xSemaphoreTake(search->done_semaphore, pdMS_TO_TICKS(timeout)) == pdTRUE) {
-//        if (results) {
-//            *results = search->result;
-//        }
-//        if (num_results) {
-//            *num_results = search->num_results;
-//        }
-//        return true;
-//    }
-//    return false;
-//}
-//
-//mdns_search_once_t *mdns_query_async_new(const char *name, const char *service, const char *proto, uint16_t type,
-//                                         uint32_t timeout, size_t max_results, mdns_query_notify_t notifier)
-//{
-//    mdns_search_once_t *search = NULL;
-//
-//    if (!_mdns_server || !timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
-//        return NULL;
-//    }
-//
-//    search = _mdns_search_init(name, service, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, notifier);
-//    if (!search) {
-//        return NULL;
-//    }
-//
-//    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
-//        _mdns_search_free(search);
-//        return NULL;
-//    }
-//
-//    return search;
-//}
-//
-//esp_err_t mdns_query_generic(const char *name, const char *service, const char *proto, uint16_t type, mdns_query_transmission_type_t transmission_type, uint32_t timeout, size_t max_results, mdns_result_t **results)
-//{
-//    mdns_search_once_t *search = NULL;
-//
-//    *results = NULL;
-//
-//    if (!_mdns_server) {
-//        return ESP_ERR_INVALID_STATE;
-//    }
-//
-//    if (!timeout || _str_null_or_empty(service) != _str_null_or_empty(proto)) {
-//        return ESP_ERR_INVALID_ARG;
-//    }
-//
-//    search = _mdns_search_init(name, service, proto, type, transmission_type == MDNS_QUERY_UNICAST, timeout, max_results, NULL);
-//    if (!search) {
-//        return ESP_ERR_NO_MEM;
-//    }
-//
-//    if (_mdns_send_search_action(ACTION_SEARCH_ADD, search)) {
-//        _mdns_search_free(search);
-//        return ESP_ERR_NO_MEM;
-//    }
-//    xSemaphoreTake(search->done_semaphore, portMAX_DELAY);
-//
-//    *results = search->result;
-//    _mdns_search_free(search);
-//
-//    return ESP_OK;
-//}
-//
-//esp_err_t mdns_query(const char *name, const char *service_type, const char *proto, uint16_t type, uint32_t timeout, size_t max_results, mdns_result_t **results)
-//{
-//    return mdns_query_generic(name, service_type, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, results);
-//}
-//
-//esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results)
-//{
-//    if (_str_null_or_empty(service) || _str_null_or_empty(proto)) {
-//        return ESP_ERR_INVALID_ARG;
-//    }
-//
-//    return mdns_query(NULL, service, proto, MDNS_TYPE_PTR, timeout, max_results, results);
-//}
-//
-//esp_err_t mdns_query_srv(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
-//{
-//    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
-//        return ESP_ERR_INVALID_ARG;
-//    }
-//
-//    return mdns_query(instance, service, proto, MDNS_TYPE_SRV, timeout, 1, result);
-//}
-//
-//esp_err_t mdns_query_txt(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
-//{
-//    if (_str_null_or_empty(instance) || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
-//        return ESP_ERR_INVALID_ARG;
-//    }
-//
-//    return mdns_query(instance, service, proto, MDNS_TYPE_TXT, timeout, 1, result);
-//}
-//
 esp_err_t mdns_lookup_delegated_service(const char *instance, const char *service, const char *proto, size_t max_results,
                                         mdns_result_t **result)
 {
@@ -2314,146 +1917,4 @@ esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *servi
     *result = _mdns_lookup_service(instance, service, proto, max_results, true);
     MDNS_SERVICE_UNLOCK();
     return ESP_OK;
-}
-
-#ifdef CONFIG_LWIP_IPV4
-esp_err_t mdns_query_a(const char *name, uint32_t timeout, esp_ip4_addr_t *addr)
-{
-    mdns_result_t *result = NULL;
-    esp_err_t err;
-
-    if (_str_null_or_empty(name)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (strstr(name, ".local")) {
-        ESP_LOGW(TAG, "Please note that hostname must not contain domain name, as mDNS uses '.local' domain");
-    }
-
-    err = mdns_query(name, NULL, NULL, MDNS_TYPE_A, timeout, 1, &result);
-
-    if (err) {
-        return err;
-    }
-
-    if (!result) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
-    mdns_ip_addr_t *a = result->addr;
-    while (a) {
-        if (a->addr.type == ESP_IPADDR_TYPE_V4) {
-            addr->addr = a->addr.u_addr.ip4.addr;
-            mdns_query_results_free(result);
-            return ESP_OK;
-        }
-        a = a->next;
-    }
-
-    mdns_query_results_free(result);
-    return ESP_ERR_NOT_FOUND;
-}
-#endif /* CONFIG_LWIP_IPV4 */
-
-#ifdef CONFIG_LWIP_IPV6
-esp_err_t mdns_query_aaaa(const char *name, uint32_t timeout, esp_ip6_addr_t *addr)
-{
-    mdns_result_t *result = NULL;
-    esp_err_t err;
-
-    if (_str_null_or_empty(name)) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    if (strstr(name, ".local")) {
-        ESP_LOGW(TAG, "Please note that hostname must not contain domain name, as mDNS uses '.local' domain");
-    }
-
-    err = mdns_query(name, NULL, NULL, MDNS_TYPE_AAAA, timeout, 1, &result);
-
-    if (err) {
-        return err;
-    }
-
-    if (!result) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
-    mdns_ip_addr_t *a = result->addr;
-    while (a) {
-        if (a->addr.type == ESP_IPADDR_TYPE_V6) {
-            memcpy(addr->addr, a->addr.u_addr.ip6.addr, 16);
-            mdns_query_results_free(result);
-            return ESP_OK;
-        }
-        a = a->next;
-    }
-
-    mdns_query_results_free(result);
-    return ESP_ERR_NOT_FOUND;
-}
-#endif /* CONFIG_LWIP_IPV6 */
-
-
-/**
- * @brief  Browse sync result action
- */
-esp_err_t _mdns_sync_browse_action(mdns_action_type_t type, mdns_browse_sync_t *browse_sync)
-{
-    mdns_action_t *action = NULL;
-
-    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-
-    action->type = type;
-    action->data.browse_sync.browse_sync = browse_sync;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        mdns_mem_free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
-}
-
-/**
- * @brief  Browse action
- */
-esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *browse)
-{
-    mdns_action_t *action = NULL;
-
-    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-
-    action->type = type;
-    action->data.browse_add.browse = browse;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        mdns_mem_free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
-}
-
-void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
-{
-    mdns_browse_t *browse = browse_sync->browse;
-    mdns_browse_result_sync_t *sync_result = browse_sync->sync_result;
-    while (sync_result) {
-        mdns_result_t *result = sync_result->result;
-        DBG_BROWSE_RESULTS(result, browse_sync->browse);
-        browse->notifier(result);
-        if (result->ttl == 0) {
-            queueDetach(mdns_result_t, browse->result, result);
-            // Just free current result
-            result->next = NULL;
-            mdns_query_results_free(result);
-        }
-        sync_result = sync_result->next;
-    }
 }
