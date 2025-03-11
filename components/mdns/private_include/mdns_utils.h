@@ -92,7 +92,7 @@ bool _mdns_instance_name_match(const char *lhs, const char *rhs);
 
 const char *_mdns_get_default_instance_name(void);
 const char *_mdns_get_service_instance_name(const mdns_service_t *service);
-esp_err_t _mdns_add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r);
+
 mdns_ip_addr_t *copy_address_list(const mdns_ip_addr_t *address_list);
 void free_address_list(mdns_ip_addr_t *address_list);
 int append_one_txt_record_entry(uint8_t *packet, uint16_t *index, mdns_txt_linked_item_t *txt);

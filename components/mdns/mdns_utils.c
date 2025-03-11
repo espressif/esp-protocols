@@ -11,7 +11,7 @@
 
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";
-static const char *TAG = "mdns_utils";
+//static const char *TAG = "mdns_utils";
 
 /**
  * @brief  reads MDNS FQDN into mdns_name_t structure
@@ -237,32 +237,6 @@ bool _mdns_instance_name_match(const char *lhs, const char *rhs)
     return !strcasecmp(lhs, rhs);
 }
 
-/**
- * @brief  Add result to browse, only add when the result is a new one.
- */
-esp_err_t _mdns_add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r)
-{
-    mdns_browse_result_sync_t *sync_r = sync_browse->sync_result;
-    while (sync_r) {
-        if (sync_r->result == r) {
-            break;
-        }
-        sync_r = sync_r->next;
-    }
-    if (!sync_r) {
-        // Do not find, need to add the result to the list
-        mdns_browse_result_sync_t *new = (mdns_browse_result_sync_t *)mdns_mem_malloc(sizeof(mdns_browse_result_sync_t));
-
-        if (!new) {
-            HOOK_MALLOC_FAILED;
-            return ESP_ERR_NO_MEM;
-        }
-        new->result = r;
-        new->next = sync_browse->sync_result;
-        sync_browse->sync_result = new;
-    }
-    return ESP_OK;
-}
 
 mdns_ip_addr_t *copy_address_list(const mdns_ip_addr_t *address_list)
 {

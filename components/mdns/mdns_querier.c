@@ -636,3 +636,244 @@ esp_err_t mdns_query_aaaa(const char *name, uint32_t timeout, esp_ip6_addr_t *ad
     return ESP_ERR_NOT_FOUND;
 }
 #endif /* CONFIG_LWIP_IPV6 */
+
+/**
+ * @brief  Create linked IP (copy) from parsed one
+ */
+mdns_ip_addr_t *_mdns_result_addr_create_ip(esp_ip_addr_t *ip)
+{
+    mdns_ip_addr_t *a = (mdns_ip_addr_t *)mdns_mem_malloc(sizeof(mdns_ip_addr_t));
+    if (!a) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+    memset(a, 0, sizeof(mdns_ip_addr_t));
+    a->addr.type = ip->type;
+    if (ip->type == ESP_IPADDR_TYPE_V6) {
+        memcpy(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16);
+    } else {
+        a->addr.u_addr.ip4.addr = ip->u_addr.ip4.addr;
+    }
+    return a;
+}
+
+/**
+ * @brief  Called from parser to add TXT data to search result
+ */
+void _mdns_search_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t *txt, uint8_t *txt_value_len,
+                                 size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
+                                 uint32_t ttl)
+{
+    mdns_result_t *r = search->result;
+    while (r) {
+        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
+            if (r->txt) {
+                goto free_txt;
+            }
+            r->txt = txt;
+            r->txt_value_len = txt_value_len;
+            r->txt_count = txt_count;
+            _mdns_result_update_ttl(r, ttl);
+            return;
+        }
+        r = r->next;
+    }
+    if (!search->max_results || search->num_results < search->max_results) {
+        r = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
+        if (!r) {
+            HOOK_MALLOC_FAILED;
+            goto free_txt;
+        }
+
+        memset(r, 0, sizeof(mdns_result_t));
+        r->txt = txt;
+        r->txt_value_len = txt_value_len;
+        r->txt_count = txt_count;
+        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->ip_protocol = ip_protocol;
+        r->ttl = ttl;
+        r->next = search->result;
+        search->result = r;
+        search->num_results++;
+    }
+    return;
+
+free_txt:
+    for (size_t i = 0; i < txt_count; i++) {
+        mdns_mem_free((char *)(txt[i].key));
+        mdns_mem_free((char *)(txt[i].value));
+    }
+    mdns_mem_free(txt);
+    mdns_mem_free(txt_value_len);
+}
+
+/**
+ * @brief  Chain new IP to search result
+ */
+static void _mdns_result_add_ip(mdns_result_t *r, esp_ip_addr_t *ip)
+{
+    mdns_ip_addr_t *a = r->addr;
+    while (a) {
+        if (a->addr.type == ip->type) {
+#ifdef CONFIG_LWIP_IPV4
+            if (a->addr.type == ESP_IPADDR_TYPE_V4 && a->addr.u_addr.ip4.addr == ip->u_addr.ip4.addr) {
+                return;
+            }
+#endif
+#ifdef CONFIG_LWIP_IPV6
+            if (a->addr.type == ESP_IPADDR_TYPE_V6 && !memcmp(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16)) {
+                return;
+            }
+#endif
+        }
+        a = a->next;
+    }
+    a = _mdns_result_addr_create_ip(ip);
+    if (!a) {
+        return;
+    }
+    a->next = r->addr;
+    r->addr = a;
+}
+
+/**
+ * @brief  Called from parser to add A/AAAA data to search result
+ */
+void _mdns_search_result_add_ip(mdns_search_once_t *search, const char *hostname, esp_ip_addr_t *ip,
+                                mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+{
+    mdns_result_t *r = NULL;
+    mdns_ip_addr_t *a = NULL;
+
+    if ((search->type == MDNS_TYPE_A && ip->type == ESP_IPADDR_TYPE_V4)
+            || (search->type == MDNS_TYPE_AAAA && ip->type == ESP_IPADDR_TYPE_V6)
+            || search->type == MDNS_TYPE_ANY) {
+        r = search->result;
+        while (r) {
+            if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
+                _mdns_result_add_ip(r, ip);
+                _mdns_result_update_ttl(r, ttl);
+                return;
+            }
+            r = r->next;
+        }
+        if (!search->max_results || search->num_results < search->max_results) {
+            r = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
+            if (!r) {
+                HOOK_MALLOC_FAILED;
+                return;
+            }
+
+            memset(r, 0, sizeof(mdns_result_t));
+
+            a = _mdns_result_addr_create_ip(ip);
+            if (!a) {
+                mdns_mem_free(r);
+                return;
+            }
+            a->next = r->addr;
+            r->hostname = mdns_mem_strdup(hostname);
+            r->addr = a;
+            r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+            r->ip_protocol = ip_protocol;
+            r->next = search->result;
+            r->ttl = ttl;
+            search->result = r;
+            search->num_results++;
+        }
+    } else if (search->type == MDNS_TYPE_PTR || search->type == MDNS_TYPE_SRV) {
+        r = search->result;
+        while (r) {
+            if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+                _mdns_result_add_ip(r, ip);
+                _mdns_result_update_ttl(r, ttl);
+                break;
+            }
+            r = r->next;
+        }
+    }
+}
+
+/**
+ * @brief  Called from parser to add SRV data to search result
+ */
+void _mdns_search_result_add_srv(mdns_search_once_t *search, const char *hostname, uint16_t port,
+                                 mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+{
+    mdns_result_t *r = search->result;
+    while (r) {
+        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+            _mdns_result_update_ttl(r, ttl);
+            return;
+        }
+        r = r->next;
+    }
+    if (!search->max_results || search->num_results < search->max_results) {
+        r = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
+        if (!r) {
+            HOOK_MALLOC_FAILED;
+            return;
+        }
+
+        memset(r, 0, sizeof(mdns_result_t));
+        r->hostname = mdns_mem_strdup(hostname);
+        if (!r->hostname) {
+            mdns_mem_free(r);
+            return;
+        }
+        if (search->instance) {
+            r->instance_name = mdns_mem_strdup(search->instance);
+        }
+        r->service_type = mdns_mem_strdup(search->service);
+        r->proto = mdns_mem_strdup(search->proto);
+        r->port = port;
+        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->ip_protocol = ip_protocol;
+        r->ttl = ttl;
+        r->next = search->result;
+        search->result = r;
+        search->num_results++;
+    }
+}
+
+/**
+ * @brief  Called from parser to add PTR data to search result
+ */
+mdns_result_t *_mdns_search_result_add_ptr(mdns_search_once_t *search, const char *instance,
+                                           const char *service_type, const char *proto, mdns_if_t tcpip_if,
+                                           mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+{
+    mdns_result_t *r = search->result;
+    while (r) {
+        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name)) {
+            _mdns_result_update_ttl(r, ttl);
+            return r;
+        }
+        r = r->next;
+    }
+    if (!search->max_results || search->num_results < search->max_results) {
+        r = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
+        if (!r) {
+            HOOK_MALLOC_FAILED;
+            return NULL;
+        }
+
+        memset(r, 0, sizeof(mdns_result_t));
+        r->instance_name = mdns_mem_strdup(instance);
+        r->service_type = mdns_mem_strdup(service_type);
+        r->proto = mdns_mem_strdup(proto);
+        if (!r->instance_name) {
+            mdns_mem_free(r);
+            return NULL;
+        }
+
+        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->ip_protocol = ip_protocol;
+        r->ttl = ttl;
+        r->next = search->result;
+        search->result = r;
+        search->num_results++;
+        return r;
+    }
+    return NULL;
+}
