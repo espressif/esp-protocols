@@ -108,3 +108,4 @@ void mdns_service_lock(void);
 void mdns_service_unlock(void);
 
 bool mdns_action_queue(mdns_action_t *action);
+mdns_ip_addr_t *_mdns_result_addr_create_ip(esp_ip_addr_t *ip);

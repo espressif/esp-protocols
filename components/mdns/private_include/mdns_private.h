@@ -341,15 +341,6 @@ typedef struct mdns_tx_packet_s {
     uint16_t id;
 } mdns_tx_packet_t;
 
-typedef struct {
-    mdns_pcb_state_t state;
-    mdns_srv_item_t **probe_services;
-    uint8_t probe_services_len;
-    uint8_t probe_ip;
-    uint8_t probe_running;
-    uint16_t failed_probes;
-} mdns_pcb_t;
-
 typedef enum {
     SEARCH_OFF,
     SEARCH_INIT,

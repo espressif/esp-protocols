@@ -1311,7 +1311,8 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
     else if (answer->type == MDNS_TYPE_A) {
         if (answer->host == mdns_utils_get_selfhost()) {
             esp_netif_ip_info_t if_ip_info;
-            if (!mdns_is_netif_ready(tcpip_if, MDNS_IP_PROTOCOL_V4) && !mdns_responder_is_duplicate(tcpip_if, MDNS_IP_PROTOCOL_V4)) {
+            if (!mdns_is_netif_ready(tcpip_if, MDNS_IP_PROTOCOL_V4) && !mdns_priv_pcb_is_duplicate(tcpip_if,
+                                                                                                   MDNS_IP_PROTOCOL_V4)) {
                 return 0;
             }
             if (esp_netif_get_ip_info(_mdns_get_esp_netif(tcpip_if), &if_ip_info)) {
@@ -1320,10 +1321,10 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
             if (_mdns_append_a_record(packet, index, mdns_utils_get_global_hostname(), if_ip_info.ip.addr, answer->flush, answer->bye) <= 0) {
                 return 0;
             }
-            if (!_mdns_if_is_dup(tcpip_if)) {
+            if (!mdns_priv_pcb_check_for_duplicates(tcpip_if)) {
                 return 1;
             }
-            mdns_if_t other_if = _mdns_get_other_if(tcpip_if);
+            mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
             if (esp_netif_get_ip_info(_mdns_get_esp_netif(other_if), &if_ip_info)) {
                 return 1;
             }
@@ -1341,7 +1342,8 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
         if (answer->host == mdns_utils_get_selfhost()) {
             struct esp_ip6_addr if_ip6s[NETIF_IPV6_MAX_NUMS];
             uint8_t count = 0;
-            if (!mdns_is_netif_ready(tcpip_if, MDNS_IP_PROTOCOL_V6) && !mdns_responder_is_duplicate(tcpip_if, MDNS_IP_PROTOCOL_V6)) {
+            if (!mdns_is_netif_ready(tcpip_if, MDNS_IP_PROTOCOL_V6) && !mdns_priv_pcb_is_duplicate(tcpip_if,
+                                                                                                   MDNS_IP_PROTOCOL_V6)) {
                 return 0;
             }
             count = esp_netif_get_all_ip6(_mdns_get_esp_netif(tcpip_if), if_ip6s);
@@ -1355,11 +1357,11 @@ static uint8_t _mdns_append_answer(uint8_t *packet, uint16_t *index, mdns_out_an
                     return 0;
                 }
             }
-            if (!_mdns_if_is_dup(tcpip_if)) {
+            if (!mdns_priv_pcb_check_for_duplicates(tcpip_if)) {
                 return count;
             }
 
-            mdns_if_t other_if = _mdns_get_other_if(tcpip_if);
+            mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
             struct esp_ip6_addr other_ip6;
             if (esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(other_if), &other_ip6)) {
                 return count;
@@ -1848,7 +1850,8 @@ void _mdns_remove_scheduled_service_packets(mdns_service_t *service)
 
         if (mdns_is_netif_ready(q->tcpip_if, q->ip_protocol)) {
             bool should_remove_questions = false;
-            mdns_responder_check_pcb(q->tcpip_if, q->ip_protocol, service, had_answers && q->answers == NULL, &should_remove_questions);
+            mdns_priv_pcb_check_probing_services(q->tcpip_if, q->ip_protocol, service,
+                                                 had_answers && q->answers == NULL, &should_remove_questions);
             if (should_remove_questions && q->questions) {
                 mdns_out_question_t *qsn = NULL;
                 mdns_out_question_t *qs = q->questions;
@@ -1882,12 +1885,12 @@ void _mdns_remove_scheduled_service_packets(mdns_service_t *service)
 
 static void _mdns_tx_handle_packet(mdns_tx_packet_t *p)
 {
-    if (mdns_responder_is_off(p->tcpip_if, p->ip_protocol)) {
+    if (mdns_priv_pcb_is_off(p->tcpip_if, p->ip_protocol)) {
         _mdns_free_tx_packet(p);
         return;
     }
     _mdns_dispatch_tx_packet(p);
-    mdns_responder_process_tx_packet(p);
+    mdns_priv_pcb_schedule_tx_packet(p);
 }
 
 static void mdns_send_handle_tx_packet(mdns_tx_packet_t *packet)

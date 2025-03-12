@@ -12,15 +12,41 @@
 extern "C" {
 #endif
 
-bool _mdns_if_is_dup(mdns_if_t tcpip_if);
-void _mdns_disable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-void _mdns_enable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-mdns_if_t _mdns_get_other_if(mdns_if_t tcpip_if);
+/**
+ * @brief Initialize the mDNS network interfaces
+ *
+ * @note Called from mdns_init() in mdns.c
+ */
 esp_err_t mdns_netif_init(void);
+
+/**
+ * @brief Deinitialize the mDNS network interfaces
+ *
+ * @note Called from mdns_init() in mdns.c
+ */
 esp_err_t mdns_netif_deinit(void);
-void unregister_predefined_handlers(void);
-void _mdns_dup_interface(mdns_if_t tcpip_if);
-void _mdns_clean_netif_ptr(mdns_if_t tcpip_if);
+
+/**
+ * @brief Unregister predefined (default) network interfaces
+ *
+ * @note Called from mdns_free() in mdns.c
+ *
+ */
+void mdns_netif_unregister_predefined_handlers(void);
+
+/**
+ * @brief Clean the internal netif for the particular interface
+ *
+ * @note Called from mdns_responder on disabling pcbs
+ */
+void mdns_netif_disable(mdns_if_t tcpip_if);
+
+/**
+ * @brief Returns potentially duplicated interface
+ *
+ * @note Called from multiple places where Rx and Tx packets are processed
+ */
+mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if);
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ static mdns_search_once_t *s_search_once;
 static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 static void _mdns_search_free(mdns_search_once_t *search);
 
-void _mdns_query_results_free(mdns_result_t *results)
+void mdns_priv_query_results_free(mdns_result_t *results)
 {
     mdns_result_t *r;
     mdns_ip_addr_t *a;
@@ -101,7 +101,7 @@ void _mdns_search_send(mdns_search_once_t *search)
     }
 }
 
-void mdns_query_action(mdns_action_t *action, mdns_action_subtype_t type)
+void mdns_priv_query_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
         switch (action->type) {
@@ -127,7 +127,7 @@ void mdns_query_action(mdns_action_t *action, mdns_action_subtype_t type)
 /**
  * @brief  Called from timer task to run active searches
  */
-void _mdns_search_run(void)
+void mdns_priv_query_start_stop(void)
 {
     mdns_service_lock();
     mdns_search_once_t *s = s_search_once;
@@ -156,7 +156,7 @@ void _mdns_search_run(void)
     mdns_service_unlock();
 }
 
-void mdns_search_free(void)
+void mdns_priv_query_free(void)
 {
     while (s_search_once) {
         mdns_search_once_t *h = s_search_once;
@@ -166,18 +166,16 @@ void mdns_search_free(void)
         mdns_mem_free(h->proto);
         vSemaphoreDelete(h->done_semaphore);
         if (h->result) {
-            _mdns_query_results_free(h->result);
+            mdns_priv_query_results_free(h->result);
         }
         mdns_mem_free(h);
     }
 }
 
-
-
 /**
  * @brief  Called from parser to finish any searches that have reached maximum results
  */
-void _mdns_search_finish_done(void)
+void mdns_priv_query_done(void)
 {
     mdns_search_once_t *search = s_search_once;
     mdns_search_once_t *s = NULL;
@@ -193,7 +191,7 @@ void _mdns_search_finish_done(void)
 /**
  * @brief  Called from packet parser to find matching running search
  */
-mdns_search_once_t *_mdns_search_find_from(mdns_search_once_t *s, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+mdns_search_once_t *mdns_priv_query_find_from(mdns_search_once_t *s, mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     mdns_result_t *r = NULL;
     while (s) {
@@ -257,9 +255,9 @@ mdns_search_once_t *_mdns_search_find_from(mdns_search_once_t *s, mdns_name_t *n
     return NULL;
 }
 
-mdns_search_once_t *_mdns_search_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+mdns_search_once_t *mdns_priv_query_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    return _mdns_search_find_from(s_search_once, name, type, tcpip_if, ip_protocol);
+    return mdns_priv_query_find_from(s_search_once, name, type, tcpip_if, ip_protocol);
 }
 
 /**
@@ -326,7 +324,7 @@ static mdns_tx_packet_t *_mdns_create_search_packet(mdns_search_once_t *search, 
 void _mdns_search_send_pcb(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     mdns_tx_packet_t *packet = NULL;
-    if (mdsn_responder_iface_init(tcpip_if, ip_protocol)) {
+    if (mdsn_priv_pcb_is_inited(tcpip_if, ip_protocol)) {
         packet = _mdns_create_search_packet(search, tcpip_if, ip_protocol);
         if (!packet) {
             return;
@@ -417,7 +415,7 @@ static mdns_search_once_t *_mdns_search_init(const char *name, const char *servi
 void mdns_query_results_free(mdns_result_t *results)
 {
     mdns_service_lock();
-    _mdns_query_results_free(results);
+    mdns_priv_query_results_free(results);
     mdns_service_unlock();
 }
 
@@ -638,31 +636,11 @@ esp_err_t mdns_query_aaaa(const char *name, uint32_t timeout, esp_ip6_addr_t *ad
 #endif /* CONFIG_LWIP_IPV6 */
 
 /**
- * @brief  Create linked IP (copy) from parsed one
- */
-mdns_ip_addr_t *_mdns_result_addr_create_ip(esp_ip_addr_t *ip)
-{
-    mdns_ip_addr_t *a = (mdns_ip_addr_t *)mdns_mem_malloc(sizeof(mdns_ip_addr_t));
-    if (!a) {
-        HOOK_MALLOC_FAILED;
-        return NULL;
-    }
-    memset(a, 0, sizeof(mdns_ip_addr_t));
-    a->addr.type = ip->type;
-    if (ip->type == ESP_IPADDR_TYPE_V6) {
-        memcpy(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16);
-    } else {
-        a->addr.u_addr.ip4.addr = ip->u_addr.ip4.addr;
-    }
-    return a;
-}
-
-/**
  * @brief  Called from parser to add TXT data to search result
  */
-void _mdns_search_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t *txt, uint8_t *txt_value_len,
-                                 size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
-                                 uint32_t ttl)
+void mdns_priv_query_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t *txt, uint8_t *txt_value_len,
+                                    size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
+                                    uint32_t ttl)
 {
     mdns_result_t *r = search->result;
     while (r) {
@@ -739,8 +717,8 @@ static void _mdns_result_add_ip(mdns_result_t *r, esp_ip_addr_t *ip)
 /**
  * @brief  Called from parser to add A/AAAA data to search result
  */
-void _mdns_search_result_add_ip(mdns_search_once_t *search, const char *hostname, esp_ip_addr_t *ip,
-                                mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+void mdns_priv_query_result_add_ip(mdns_search_once_t *search, const char *hostname, esp_ip_addr_t *ip,
+                                   mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
 {
     mdns_result_t *r = NULL;
     mdns_ip_addr_t *a = NULL;
@@ -797,8 +775,8 @@ void _mdns_search_result_add_ip(mdns_search_once_t *search, const char *hostname
 /**
  * @brief  Called from parser to add SRV data to search result
  */
-void _mdns_search_result_add_srv(mdns_search_once_t *search, const char *hostname, uint16_t port,
-                                 mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+void mdns_priv_query_result_add_srv(mdns_search_once_t *search, const char *hostname, uint16_t port,
+                                    mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl)
 {
     mdns_result_t *r = search->result;
     while (r) {
@@ -839,9 +817,9 @@ void _mdns_search_result_add_srv(mdns_search_once_t *search, const char *hostnam
 /**
  * @brief  Called from parser to add PTR data to search result
  */
-mdns_result_t *_mdns_search_result_add_ptr(mdns_search_once_t *search, const char *instance,
-                                           const char *service_type, const char *proto, mdns_if_t tcpip_if,
-                                           mdns_ip_protocol_t ip_protocol, uint32_t ttl)
+mdns_result_t *mdns_priv_query_result_add_ptr(mdns_search_once_t *search, const char *instance,
+                                              const char *service_type, const char *proto, mdns_if_t tcpip_if,
+                                              mdns_ip_protocol_t ip_protocol, uint32_t ttl)
 {
     mdns_result_t *r = search->result;
     while (r) {

@@ -48,7 +48,7 @@ static void _mdns_browse_item_free(mdns_browse_t *browse)
     mdns_mem_free(browse->service);
     mdns_mem_free(browse->proto);
     if (browse->result) {
-        _mdns_query_results_free(browse->result);
+        mdns_priv_query_results_free(browse->result);
     }
     mdns_mem_free(browse);
 }
@@ -349,8 +349,8 @@ static esp_err_t _mdns_add_browse_result(mdns_browse_sync_t *sync_browse, mdns_r
 /**
  * @brief  Called from parser to add A/AAAA data to search result
  */
-void _mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
-                                mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
+                               mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;
@@ -428,9 +428,9 @@ static bool is_txt_item_in_list(mdns_txt_item_t txt, uint8_t txt_value_len, mdns
 /**
  * @brief  Called from parser to add TXT data to search result
  */
-void _mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, const char *service, const char *proto,
-                                 mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
-                                 uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, const char *service, const char *proto,
+                                mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
+                                uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;
@@ -547,8 +547,8 @@ static esp_err_t _mdns_copy_address_in_previous_result(mdns_result_t *result_lis
 /**
  * @brief  Called from parser to add SRV data to search result
  */
-void _mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, const char *instance, const char *service, const char *proto,
-                                 uint16_t port, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, const char *instance, const char *service, const char *proto,
+                                uint16_t port, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;

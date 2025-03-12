@@ -16,12 +16,21 @@
 
 static const char *TAG = "mdns_responder";
 
+typedef struct {
+    mdns_pcb_state_t state;
+    mdns_srv_item_t **probe_services;
+    uint8_t probe_services_len;
+    uint8_t probe_ip;
+    uint8_t probe_running;
+    uint16_t failed_probes;
+} mdns_pcb_t;
+
 static mdns_pcb_t s_pcbs[MDNS_MAX_INTERFACES][MDNS_IP_PROTOCOL_MAX];
 
 /**
  * @brief  Send announcement on particular PCB
  */
-void _mdns_announce_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool include_ip)
+void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool include_ip)
 {
     mdns_pcb_t *_pcb = &s_pcbs[tcpip_if][ip_protocol];
     size_t i;
@@ -64,9 +73,9 @@ void _mdns_announce_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns
 /**
  * @brief  Check if interface is duplicate (two interfaces on the same subnet)
  */
-bool _mdns_if_is_dup(mdns_if_t tcpip_if)
+bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if)
 {
-    mdns_if_t ifaces[MDNS_MAX_INTERFACES] = {tcpip_if, _mdns_get_other_if(tcpip_if) };
+    mdns_if_t ifaces[MDNS_MAX_INTERFACES] = {tcpip_if, mdns_netif_get_other_interface(tcpip_if) };
     if (ifaces[1] == MDNS_MAX_INTERFACES) {
         return false;
     }
@@ -128,17 +137,17 @@ static void _mdns_restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
 /**
  * @brief  Disable mDNS interface
  */
-void _mdns_disable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+void mdns_priv_pcb_disable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    _mdns_clean_netif_ptr(tcpip_if);
+    mdns_netif_disable(tcpip_if);
 
     if (mdns_is_netif_ready(tcpip_if, ip_protocol)) {
         _mdns_clear_pcb_tx_queue_head(tcpip_if, ip_protocol);
         mdns_pcb_deinit_local(tcpip_if, ip_protocol);
-        mdns_if_t other_if = _mdns_get_other_if(tcpip_if);
+        mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
         if (other_if != MDNS_MAX_INTERFACES && s_pcbs[other_if][ip_protocol].state == PCB_DUP) {
             s_pcbs[other_if][ip_protocol].state = PCB_OFF;
-            _mdns_enable_pcb(other_if, ip_protocol);
+            mdns_priv_pcb_enable(other_if, ip_protocol);
         }
     }
     s_pcbs[tcpip_if][ip_protocol].state = PCB_OFF;
@@ -147,7 +156,7 @@ void _mdns_disable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 /**
  * @brief  Enable mDNS interface
  */
-void _mdns_enable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+void mdns_priv_pcb_enable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     if (!mdns_is_netif_ready(tcpip_if, ip_protocol)) {
         if (_mdns_pcb_init(tcpip_if, ip_protocol)) {
@@ -161,10 +170,10 @@ void _mdns_enable_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 /**
  * @brief  Set interface as duplicate if another is found on the same subnet
  */
-void _mdns_dup_interface(mdns_if_t tcpip_if)
+void mdns_priv_pcb_set_duplicate(mdns_if_t tcpip_if)
 {
     uint8_t i;
-    mdns_if_t other_if = _mdns_get_other_if(tcpip_if);
+    mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
     if (other_if == MDNS_MAX_INTERFACES) {
         return; // no other interface found
     }
@@ -177,17 +186,17 @@ void _mdns_dup_interface(mdns_if_t tcpip_if)
             }
             s_pcbs[tcpip_if][i].state = PCB_DUP;
 //            _mdns_server->interfaces[tcpip_if].pcbs[i].state = PCB_DUP;
-            _mdns_announce_pcb(other_if, i, NULL, 0, true);
+            mdns_priv_pcb_announce(other_if, i, NULL, 0, true);
         }
     }
 }
 
-bool mdns_responder_is_off(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+bool mdns_priv_pcb_is_off(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return s_pcbs[tcpip_if][ip_protocol].state == PCB_OFF;
 }
 
-void mdns_responder_process_tx_packet(mdns_tx_packet_t *p)
+void mdns_priv_pcb_schedule_tx_packet(mdns_tx_packet_t *p)
 {
     mdns_pcb_t *pcb = &s_pcbs[p->tcpip_if][p->ip_protocol];
     mdns_out_question_t *q = NULL;
@@ -237,7 +246,7 @@ void mdns_responder_process_tx_packet(mdns_tx_packet_t *p)
     }
 }
 
-void mdns_responder_check_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_service_t *service, bool removed_answers, bool *should_remove_questions)
+void mdns_priv_pcb_check_probing_services(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_service_t *service, bool removed_answers, bool *should_remove_questions)
 {
     mdns_pcb_t *_pcb = &s_pcbs[tcpip_if][ip_protocol];
 
@@ -278,7 +287,7 @@ void mdns_responder_check_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
     *should_remove_questions = false;
 }
 
-void mdns_responder_deinit(void)
+void mdns_priv_pcb_deinit(void)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (int j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
@@ -287,27 +296,27 @@ void mdns_responder_deinit(void)
     }
 }
 
-bool mdsn_responder_iface_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+bool mdsn_priv_pcb_is_inited(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return mdns_is_netif_ready(tcpip_if, ip_protocol) && s_pcbs[tcpip_if][ip_protocol].state > PCB_INIT;
 }
 
-bool mdns_responder_is_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+bool mdns_priv_pcb_is_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return s_pcbs[tcpip_if][ip_protocol].state == PCB_DUP;
 }
 
-bool mdns_responder_is_probing(mdns_rx_packet_t *packet)
+bool mdns_priv_pcb_is_probing(mdns_rx_packet_t *packet)
 {
     return s_pcbs[packet->tcpip_if][packet->ip_protocol].probe_running;
 }
 
-bool mdns_responder_after_probing(mdns_rx_packet_t *packet)
+bool mdns_priv_pcb_is_after_probing(mdns_rx_packet_t *packet)
 {
     return s_pcbs[packet->tcpip_if][packet->ip_protocol].state > PCB_PROBE_3;
 }
 
-void mdns_responder_probe_failed(mdns_rx_packet_t *packet)
+void mdns_priv_pcb_set_probe_failed(mdns_rx_packet_t *packet)
 {
     s_pcbs[packet->tcpip_if][packet->ip_protocol].failed_probes++;
 }
@@ -414,7 +423,7 @@ void _mdns_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, md
 /**
  * @brief  Send by for particular services
  */
-void _mdns_send_bye(mdns_srv_item_t **services, size_t len, bool include_ip)
+void mdns_responder_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip)
 {
     uint8_t i, j;
     if (mdns_utils_str_null_or_empty(mdns_utils_get_global_hostname())) {
