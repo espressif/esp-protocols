@@ -12,7 +12,12 @@
 extern "C" {
 #endif
 
-void mdns_receive_action(mdns_action_t *action, mdns_action_subtype_t type);
+/**
+* @brief Perform action from mdns service queue
+*
+* @note Called from the _mdns_service_task() in mdns.c
+*/
+void mdns_priv_receive_action(mdns_action_t *action, mdns_action_subtype_t type);
 
 #ifdef __cplusplus
 }

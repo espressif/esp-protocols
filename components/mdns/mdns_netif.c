@@ -72,7 +72,7 @@ static mdns_interfaces_t s_esp_netifs[MDNS_MAX_INTERFACES] = {
  * @brief  Helper to get either ETH or STA if the other is provided
  *          Used when two interfaces are on the same subnet
  */
-mdns_if_t _mdns_get_other_if(mdns_if_t tcpip_if)
+mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         return s_esp_netifs[tcpip_if].duplicate;
@@ -146,7 +146,7 @@ esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if)
 /*
  * @brief Clean internal mdns interface's pointer
  */
-void _mdns_clean_netif_ptr(mdns_if_t tcpip_if)
+void mdns_netif_disable(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         s_esp_netifs[tcpip_if].netif = NULL;
@@ -315,7 +315,7 @@ static inline void set_default_duplicated_interfaces(void)
     }
 }
 
-void unregister_predefined_handlers(void)
+void mdns_netif_unregister_predefined_handlers(void)
 {
 #if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
@@ -420,19 +420,19 @@ esp_err_t mdns_netif_init(void)
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
 #ifdef CONFIG_LWIP_IPV6
         if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
-            _mdns_enable_pcb(i, MDNS_IP_PROTOCOL_V6);
+            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V6);
         }
 #endif
 #ifdef CONFIG_LWIP_IPV4
         if (!esp_netif_get_ip_info(_mdns_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
-            _mdns_enable_pcb(i, MDNS_IP_PROTOCOL_V4);
+            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V4);
         }
 #endif
     }
     return ESP_OK;
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
 free_event_handlers:
-    unregister_predefined_handlers();
+    mdns_netif_unregister_predefined_handlers();
 #endif
     return err;
 }
@@ -440,8 +440,8 @@ free_event_handlers:
 esp_err_t mdns_netif_deinit(void)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        _mdns_disable_pcb(i, MDNS_IP_PROTOCOL_V6);
-        _mdns_disable_pcb(i, MDNS_IP_PROTOCOL_V4);
+        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V6);
+        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V4);
         s_esp_netifs[i].duplicate = MDNS_MAX_INTERFACES;
     }
     return ESP_OK;

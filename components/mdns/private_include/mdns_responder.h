@@ -12,18 +12,96 @@
 extern "C" {
 #endif
 
-void _mdns_announce_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool include_ip);
-bool mdns_responder_is_off(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-void mdns_responder_process_tx_packet(mdns_tx_packet_t *p);
-void mdns_responder_check_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_service_t *service, bool removed_answers, bool *should_remove_questions);
-void mdns_responder_deinit(void);
-bool mdsn_responder_iface_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-bool mdns_responder_is_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-bool mdns_responder_is_probing(mdns_rx_packet_t *packet);
-void mdns_responder_probe_failed(mdns_rx_packet_t *packet);
-bool mdns_responder_after_probing(mdns_rx_packet_t *packet);
+/**
+ * @brief Disable the PCB for the selected interface and protocol
+ * @note Called from the main module (deinit and event handler)
+ */
+void mdns_priv_pcb_disable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
-void _mdns_send_bye(mdns_srv_item_t **services, size_t len, bool include_ip);
+/**
+ * @brief Enable the PCB for the selected interface and protocol
+ * @note Called from the main module (deinit and event handler)
+ */
+void mdns_priv_pcb_enable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+
+/**
+ * @brief Set the interface as duplicate
+ * @note Called from the packet parser when checking for collisions
+ */
+void mdns_priv_pcb_set_duplicate(mdns_if_t tcpip_if);
+
+/**
+ * @brief Send announcement on particular PCB
+ * @note Called mainly from mdns.c to send announcements on all interfaces
+ */
+void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool include_ip);
+
+/**
+ * @brief Checks if the PCB is OFF
+ * @note Called from mdns_send.c
+ */
+bool mdns_priv_pcb_is_off(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+
+/**
+ * @brief Schedules TX packets for various PCB states of probing and announcing
+ * @note Called from mdns_send.c
+ */
+void mdns_priv_pcb_schedule_tx_packet(mdns_tx_packet_t *p);
+
+/**
+ * @brief Update probing services on certain service removal
+ * @note Called from mdns_send.c upon removing scheduled packets for a service
+ */
+void mdns_priv_pcb_check_probing_services(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_service_t *service, bool removed_answers, bool *should_remove_questions);
+
+/**
+ * @brief Deinit pcbs
+ * @note Called from mdns_free()
+ */
+void mdns_priv_pcb_deinit(void);
+
+/**
+ * @brief Checks if the netif and PCB is initialized
+ * @note Called from mdns_send.c
+ */
+bool mdsn_priv_pcb_is_inited(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+
+/**
+ * @brief Checks if PCB is duplicated
+ * @note Called from mdns_send.c
+ */
+bool mdns_priv_pcb_is_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
+
+/**
+ * @brief Checks if PCB is probing
+ * @note Called from mdns_receive.c
+ */
+bool mdns_priv_pcb_is_probing(mdns_rx_packet_t *packet);
+
+/**
+ * @brief Set probe failed to PCB
+ * @note Called from mdns_receive.c
+ */
+void mdns_priv_pcb_set_probe_failed(mdns_rx_packet_t *packet);
+
+/**
+ * @brief Checks if PCB completed probing
+ * @note Called from mdns_receive.c
+ */
+bool mdns_priv_pcb_is_after_probing(mdns_rx_packet_t *packet);
+
+/**
+ * @brief Checks if the selected interface has a duplicate
+ * @note Called from mdns_send.c
+ */
+bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if);
+
+/**
+ * @brief Sends bye for particular services on particular PCB
+ * @note Called from mdns.c
+ */
+void mdns_responder_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip);
+
 #ifdef __cplusplus
 }
 #endif

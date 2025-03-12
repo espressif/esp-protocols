@@ -11,7 +11,7 @@
 
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";
-//static const char *TAG = "mdns_utils";
+static const char *TAG = "mdns_utils";
 
 /**
  * @brief  reads MDNS FQDN into mdns_name_t structure
@@ -287,3 +287,24 @@ bool mdns_utils_ipv6_address_is_zero(esp_ip6_addr_t ip6)
     return true;
 }
 #endif /* CONFIG_LWIP_IPV6 */
+
+
+/**
+ * @brief  Create linked IP (copy) from parsed one
+ */
+mdns_ip_addr_t *_mdns_result_addr_create_ip(esp_ip_addr_t *ip)
+{
+    mdns_ip_addr_t *a = (mdns_ip_addr_t *)mdns_mem_malloc(sizeof(mdns_ip_addr_t));
+    if (!a) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+    memset(a, 0, sizeof(mdns_ip_addr_t));
+    a->addr.type = ip->type;
+    if (ip->type == ESP_IPADDR_TYPE_V6) {
+        memcpy(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16);
+    } else {
+        a->addr.u_addr.ip4.addr = ip->u_addr.ip4.addr;
+    }
+    return a;
+}
