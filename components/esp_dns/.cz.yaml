@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(dns): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py esp_dns
+  tag_format: esp_dns-v$version
+  version: 0.0.1
+  version_files:
+  - idf_component.yml

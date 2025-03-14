@@ -70,3 +70,11 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### libwebsockets
 
 * Brief introduction [README](components/libwebsockets/README.md)
+
+### console_cmd_mqtt
+
+* Brief introduction [README](components/console_cmd_mqtt/README.md)
+
+### esp_dns
+
+* Brief introduction [README](components/esp_dns/README.md)

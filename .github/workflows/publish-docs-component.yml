@@ -103,5 +103,6 @@ jobs:
             components/mosquitto;
             components/sock_utils;
             components/libwebsockets;
+            components/esp_dns;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
