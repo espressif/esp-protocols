@@ -327,7 +327,7 @@ bool CMux::on_cmux_data(uint8_t *data, size_t actual_len)
             auto data_end = buffer.get() + buffer.size;
             data_to_read = payload_len + 2; // 2 -- CMUX protocol footer
             if (data + data_to_read >= data_end) {
-                ESP_LOGW("CUMX", "Failed to defragment longer payload (payload=%" PRIsize_t ")", payload_len);
+                ESP_LOGW("CMUX", "Failed to defragment longer payload (payload=%" PRIsize_t ")", payload_len);
                 // If you experience this error, your device uses longer payloads while
                 // the configured buffer is too small to defragment the payload properly.
                 // To resolve this issue you can:
