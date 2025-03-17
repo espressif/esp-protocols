@@ -5427,7 +5427,7 @@ static void _mdns_service_task(void *pvParameters)
         }
     }
     _mdns_service_task_handle = NULL;
-    vTaskDelete(NULL);
+    vTaskDelay(portMAX_DELAY);
 }
 
 static void _mdns_timer_cb(void *arg)
@@ -5532,16 +5532,17 @@ static esp_err_t _mdns_service_task_stop(void)
 {
     _mdns_stop_timer();
     if (_mdns_service_task_handle) {
+        TaskHandle_t task_handle = _mdns_service_task_handle;
         mdns_action_t action;
         mdns_action_t *a = &action;
         action.type = ACTION_TASK_STOP;
         if (xQueueSend(_mdns_server->action_queue, &a, (TickType_t)0) != pdPASS) {
-            vTaskDelete(_mdns_service_task_handle);
             _mdns_service_task_handle = NULL;
         }
         while (_mdns_service_task_handle) {
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
+        vTaskDelete(task_handle);
     }
     vSemaphoreDelete(_mdns_service_semaphore);
     _mdns_service_semaphore = NULL;

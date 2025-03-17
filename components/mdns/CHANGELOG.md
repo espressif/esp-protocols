@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.1)
+
+### Bug Fixes
+
+- Fix potential task delete race ([8ca45f34](https://github.com/espressif/esp-protocols/commit/8ca45f34))
+
 ## [1.8.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.0)
 
 ### Features
