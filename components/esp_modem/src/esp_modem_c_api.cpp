@@ -459,21 +459,19 @@ extern "C" esp_err_t esp_modem_config_network_registration_urc(esp_modem_dce_t *
         return ESP_ERR_INVALID_ARG;
     }
 
-    return command_response_to_esp_err(dce_wrap->dce->configure_network_registration_urc(value));
+    return command_response_to_esp_err(dce_wrap->dce->config_network_registration_urc(value));
 }
 
 extern "C" esp_err_t esp_modem_get_network_registration_state(esp_modem_dce_t *dce_wrap, int *p_state)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_state == nullptr)
-    {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_state == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
 
     int state;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_network_registration_state(state));
 
-    if (ret == ESP_OK)
-    {
+    if (ret == ESP_OK) {
         *p_state = state;
     }
     return ret;
@@ -481,22 +479,29 @@ extern "C" esp_err_t esp_modem_get_network_registration_state(esp_modem_dce_t *d
 
 extern "C" esp_err_t esp_modem_config_mobile_termination_error(esp_modem_dce_t *dce_wrap, int mode)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 2)
-    {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 2) {
         return ESP_ERR_INVALID_ARG;
     }
 
     return command_response_to_esp_err(dce_wrap->dce->config_mobile_termination_error(mode));
 }
 
-extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce, int value, const char *access_technology)
+extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce, int mode, int access_technology, const char *edrx_value, const char *ptw_value)
 {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 3 || access_technology > 5) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
+    if ((mode == 1 || mode == 2 ) && (strlen(edrx_value) != 4 || strlen(ptw_value) != 4)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return command_response_to_esp_err(dce_wrap->dce->config_edrx(mode,access_technology,std::string(edrx_value),std::string(ptw_value)));
 }
 
-extern "C" esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context)
+extern "C" esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce_wrap, const esp_modem_PdpContext_t *pdp_context)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->modem_type != ESP_MODEM_DCE_SQNGM02S)
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr)
     {
         return ESP_ERR_INVALID_ARG;
     }
