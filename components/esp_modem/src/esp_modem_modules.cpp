@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,6 +7,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
+#include "cxx17_include/esp_modem_command_library_17.hpp"
 
 namespace esp_modem {
 
@@ -35,7 +36,7 @@ GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config)
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
      return_type GenericModule::name(__VA_ARGS__) { return esp_modem::dce_commands::name(dte.get() ARGS(arg_nr) ); }
 
-DECLARE_ALL_COMMAND_APIS(return_type name(...) )
+DECLARE_ALL_COMMAND_APIS(return_type name(...))
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -87,59 +88,41 @@ command_result BG96::set_pdp_context(esp_modem::PdpContext &pdp)
     return dce_commands::set_pdp_context(dte.get(), pdp, 300);
 }
 
-command_result urc_callback(uint8_t *line, size_t len)
+bool SQNGM02S::setup_data_mode()
 {
-    ESP_LOGI("WalterModem", "Received: %s", line);
-    if (strstr((const char *)line, "+CEREG: 1"))
-    {
-        return command_result::OK; // Succesfully registered
-    }
-    else if (strstr((const char *)line, "+CEREG: 5"))
-    {
-        return command_result::OK; // Succesfully registered
-    }
-    else if (strstr((const char *)line, "+CEREG: 3"))
-    {
-        return command_result::FAIL; // Permission denied
-    }
-    return command_result::TIMEOUT;
+    return true;
 }
 
 command_result SQNGM02S::connect(PdpContext &pdp)
 {
     command_result res;
-    res = set_pdp_context(pdp);
-    if (res != command_result::OK)
-        return res;
+    configure_pdp_context(std::make_unique<PdpContext>(pdp));
+    set_pdp_context(*this->pdp);
     res = config_network_registration_urc(1);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     res = set_radio_state(1);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     //wait for +CEREG: 5 or +CEREG: 1.
+    const auto pass = std::list<std::string_view>({"+CEREG: 1", "+CEREG: 5"});
+    const auto fail = std::list<std::string_view>({"ERROR"});
+    res = esp_modem::dce_commands::generic_command(dte.get(), "", pass, fail, 1200000);
 
-    do
-    {
-        res = dte->command("", urc_callback, 20000, '\r');
-    } while (res == command_result::TIMEOUT);
-
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
+        config_network_registration_urc(0);
         return res;
+    }
 
     res = config_network_registration_urc(0);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     return command_result::OK;
-}
-
-bool SQNGM02S::setup_data_mode()
-{
-    ESP_LOGI("SQNGM02S", "setyp data mode");
-    return set_echo(false) == command_result::OK;
-    // PDP context has already been set before hand because SEQUANS modem must have already been connected/registered before setting up cmux
 }
 }

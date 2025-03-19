@@ -352,7 +352,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(config_mobile_termination_error, command_result, 1
  * @param[in] edrx_value nible string containing encoded eDRX time
  * @param[in] ptw_value nible string containing encoded Paging Time Window
  */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(config_edrx, command_result, 3, INT_IN(p1, mode), INT_IN(p2, access_technology), STRING_IN(p3, edrx_value), STRING_IN(p4, ptw_value)) \
+ESP_MODEM_DECLARE_DCE_COMMAND(config_edrx, command_result, 3, INT_IN(p1, mode), INT_IN(p2, access_technology), STRING_IN(p3, edrx_value)) \
 
 #ifdef GENERATE_DOCS
 // cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'

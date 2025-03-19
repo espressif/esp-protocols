@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -115,7 +115,7 @@ public:
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
     virtual return_type name(__VA_ARGS__);
 
-    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...); )
+    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...);)
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -177,8 +177,7 @@ public:
     command_result set_pdp_context(PdpContext &pdp) override;
 };
 
-class SQNGM02S : public GenericModule
-{
+class SQNGM02S : public GenericModule {
     using GenericModule::GenericModule;
 
 public:

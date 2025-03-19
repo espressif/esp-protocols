@@ -486,7 +486,7 @@ extern "C" esp_err_t esp_modem_config_mobile_termination_error(esp_modem_dce_t *
     return command_response_to_esp_err(dce_wrap->dce->config_mobile_termination_error(mode));
 }
 
-extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce, int mode, int access_technology, const char *edrx_value, const char *ptw_value)
+extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce_wrap, int mode, int access_technology, const char *edrx_value, const char *ptw_value)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 3 || access_technology > 5) {
         return ESP_ERR_INVALID_ARG;
