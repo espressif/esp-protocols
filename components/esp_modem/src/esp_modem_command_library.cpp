@@ -620,7 +620,7 @@ command_result config_psm(CommandableIf *t, int enabled, const std::string &TAU,
 command_result config_network_registration_urc(CommandableIf *t, int value)
 {
     ESP_LOGV(TAG, "%s", __func__);
-    return generic_command_common(t,"AT+CEREG=" + std::to_string(state) + "\r", 500);
+    return generic_command_common(t,"AT+CEREG=" + std::to_string(value) + "\r", 500);
 }
 
 command_result get_network_registration_state(CommandableIf *t, int& state) 
@@ -656,11 +656,11 @@ command_result config_mobile_termination_error(CommandableIf *t, int value)
     ESP_LOGV(TAG, "%s", __func__);
     return generic_command_common(t, "AT+CMEE=" + std::to_string(value) + "\r");
 }
-command_result config_edrx(int mode, int access_technology, const std::string &edrx_value, const std::string &ptw_value)
+command_result config_edrx(CommandableIf *t, int mode, int access_technology, const std::string &edrx_value, const std::string &ptw_value)
 {
-    if (mode == 1 || enabled == 2)
+    if (mode == 1 || mode == 2)
     {
-        return dce_commands::generic_command_common(dte.get(),
+        return dce_commands::generic_command_common(t,
             "AT+SQNEDRX=" +
             std::to_string(mode) +
             "," +
@@ -670,7 +670,7 @@ command_result config_edrx(int mode, int access_technology, const std::string &e
             "\",\"" +
             ptw_value + "\"\r");
     }
-    return dce_commands::generic_command_common(dte.get(), "AT+SQNEDRX=" + std::to_string(mode), 500);
+    return dce_commands::generic_command_common(t, "AT+SQNEDRX=" + std::to_string(mode), 500);
 }
 command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
 {

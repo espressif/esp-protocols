@@ -7,6 +7,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
+#include <string.h>
 
 namespace esp_modem {
 
@@ -138,7 +139,6 @@ command_result SQNGM02S::connect(PdpContext &pdp)
 
 bool SQNGM02S::setup_data_mode()
 {
-    ESP_LOGI("SQNGM02S", "setyp data mode");
     return set_echo(false) == command_result::OK;
     // PDP context has already been set before hand because SEQUANS modem must have already been connected/registered before setting up cmux
 }
