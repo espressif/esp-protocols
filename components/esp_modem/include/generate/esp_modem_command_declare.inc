@@ -290,7 +290,69 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_gnss_power_mode, command_result, 1, INT_IN(p1,
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_gnss_power_mode, command_result, 1, INT_OUT(p1, mode)) \
     \
-
+/**
+ * @brief Configure PSM
+ * @param[in] mode psm mode (0 - off, 1 - on, 2 - off & discard stored params)
+ * @return OK, FAIL or TIMEOUT
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(config_psm, command_result, 3, INT_IN(p1, mode), STRING_IN(p2, tau), STRING_IN(p3, active_time)) \
+    \
+/**
+ * @brief Configure CEREG urc
+ * @param[in] value
+ * value = 0 - Disable network URC
+ * value = 1 - Enable network URC
+ * value = 2 - Enable network URC with location information
+ * value = 3 - Enable network URC with location information and EMM cause
+ * value = 4 - Enable network URC with location information and PSM value
+ * value = 5 - Enable network URC with location information and PSM value, EMM cause
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(config_network_registration_urc, command_result, 1, INT_IN(p1, value)) \
+    \
+/**
+ *  @brief Gets the current network registration state
+ *  @param[out] state The current network registration state
+ *  state = 0 - Not registered, MT is not currently searching an operator to register to
+ *  state = 1 - Registered, home network
+ *  state = 2 - Not registered, but MT is currently trying to attach or searching an operator to register to
+ *  state = 3 - Registration denied
+ *  state = 4 - Unknown
+ *  state = 5 - Registered, Roaming
+ *  state = 6 - Registered, for SMS only, home network (NB-IoT only)
+ *  state = 7 - Registered, for SMS only, roaming (NB-IoT only)
+ *  state = 8 - Attached for emergency bearer services only
+ *  state = 9 - Registered for CSFB not preferred, home network
+ *  state = 10 - Registered for CSFB not preferred, roaming
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(get_network_registration_state, command_result, 1, INT_OUT(p1,state)) \
+    \
+/**
+ *  @brief Configures the mobile termination error (+CME ERROR)
+ *  @param[in] mode The form of the final result code
+ *  mode = 0 - Disable, use and send ERROR instead
+ *  mode = 1 - Enable, use numeric error values
+ *  mode = 2 - Enable, result code and use verbose error values
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(config_mobile_termination_error, command_result, 1, INT_IN(p1, mode)) \
+    \
+/**
+ * @brief Configure eDRX
+ * @param[in] mode
+ * mode = 0 - Disable
+ * mode = 1 - Enable
+ * mode = 2 - Enable + URC
+ * mode = 3 - Disable + Reset parameter.
+ * @param[in] access_technology
+ * act = 0 - ACT is not using eDRX (used in URC)
+ * act = 1 - EC-GSM-IoT (A/Gb mode)
+ * act = 2 - GSM (A/Gb mode)
+ * act = 3 - UTRAN (Iu mode)
+ * act = 4 - E-UTRAN (WB-S1 mode)
+ * act = 5 - E-UTRAN (NB-S1 mode)
+ * @param[in] edrx_value nible string containing encoded eDRX time
+ * @param[in] ptw_value nible string containing encoded Paging Time Window
+ */ \
+ESP_MODEM_DECLARE_DCE_COMMAND(config_edrx, command_result, 3, INT_IN(p1, mode), INT_IN(p2, access_technology), STRING_IN(p3, edrx_value), STRING_IN(p4, ptw_value)) \
 
 #ifdef GENERATE_DOCS
 // cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'

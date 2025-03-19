@@ -87,4 +87,59 @@ command_result BG96::set_pdp_context(esp_modem::PdpContext &pdp)
     return dce_commands::set_pdp_context(dte.get(), pdp, 300);
 }
 
+command_result urc_callback(uint8_t *line, size_t len)
+{
+    ESP_LOGI("WalterModem", "Received: %s", line);
+    if (strstr((const char *)line, "+CEREG: 1"))
+    {
+        return command_result::OK; // Succesfully registered
+    }
+    else if (strstr((const char *)line, "+CEREG: 5"))
+    {
+        return command_result::OK; // Succesfully registered
+    }
+    else if (strstr((const char *)line, "+CEREG: 3"))
+    {
+        return command_result::FAIL; // Permission denied
+    }
+    return command_result::TIMEOUT;
+}
+
+command_result SQNGM02S::connect(PdpContext &pdp)
+{
+    command_result res;
+    res = set_pdp_context(pdp);
+    if (res != command_result::OK)
+        return res;
+    res = config_network_registration_urc(1);
+    if (res != command_result::OK)
+        return res;
+
+    res = set_radio_state(1);
+    if (res != command_result::OK)
+        return res;
+
+    //wait for +CEREG: 5 or +CEREG: 1.
+
+    do
+    {
+        res = dte->command("", urc_callback, 20000, '\r');
+    } while (res == command_result::TIMEOUT);
+
+    if (res != command_result::OK)
+        return res;
+
+    res = config_network_registration_urc(0);
+    if (res != command_result::OK)
+        return res;
+
+    return command_result::OK;
+}
+
+bool SQNGM02S::setup_data_mode()
+{
+    ESP_LOGI("SQNGM02S", "setyp data mode");
+    return set_echo(false) == command_result::OK;
+    // PDP context has already been set before hand because SEQUANS modem must have already been connected/registered before setting up cmux
+}
 }

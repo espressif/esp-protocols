@@ -66,6 +66,11 @@ std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<D
     return create_modem_dce(dce_factory::ModemType::BG96, config, std::move(dte), netif);
 }
 
+std::unique_ptr<DCE> create_SQNGM02S_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
+{
+    return create_modem_dce(dce_factory::ModemType::SQNGM02S, config, std::move(dte), netif);
+}
+
 std::unique_ptr<DCE> create_generic_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif)
 {
     return create_modem_dce(dce_factory::ModemType::GenericModule, config, std::move(dte), netif);

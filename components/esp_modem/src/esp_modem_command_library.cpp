@@ -607,6 +607,71 @@ command_result get_gnss_power_mode(CommandableIf *t, int &mode)
     return command_result::OK;
 }
 
+command_result config_psm(CommandableIf *t, int enabled, const std::string &TAU, const std::string &activeTime)
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    if (enabled == true)
+    {
+        return generic_command_common(t, "AT+CPSMS=1,,,\"" + TAU + "\"" + ",\"" + activeTime + "\"\r", 500);
+    }
+    return generic_command_common(t, "AT+CPSMS=" + std::to_string(enabled), 500);
+}
+
+command_result config_network_registration_urc(CommandableIf *t, int value)
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    return generic_command_common(t,"AT+CEREG=" + std::to_string(state) + "\r", 500);
+}
+
+command_result get_network_registration_state(CommandableIf *t, int& state) 
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    std::string out;
+
+    auto ret = generic_get_string(t, "AT+CEREG?\r", out, 500);
+    if (ret != command_result::OK) {
+        return ret;
+    }
+
+    constexpr std::string_view pattern = "+CEREG: ";
+    int state_pos_start;
+    int state_pos_end;
+    if (out.find(pattern) == std::string::npos || (state_pos_start = out.find(',')) == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    if (out.find(pattern) == std::string::npos || (state_pos_end = out.find(',',state_pos_start)) == std::string::npos){
+        if (std::from_chars(out.data() + state_pos_start, out.data() + out.size(), state).ec == std::errc::invalid_argument) {
+            return command_result::FAIL;
+        }
+    } else if (std::from_chars(out.data() + state_pos_start, out.data() + state_pos_end, state).ec == std::errc::invalid_argument) {
+        return command_result::FAIL;
+    }
+
+    return command_result::OK;
+}
+
+command_result config_mobile_termination_error(CommandableIf *t, int value)
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    return generic_command_common(t, "AT+CMEE=" + std::to_string(value) + "\r");
+}
+command_result config_edrx(int mode, int access_technology, const std::string &edrx_value, const std::string &ptw_value)
+{
+    if (mode == 1 || enabled == 2)
+    {
+        return dce_commands::generic_command_common(dte.get(),
+            "AT+SQNEDRX=" +
+            std::to_string(mode) +
+            "," +
+            std::to_string(access_technology) +
+            ",\"" +
+            edrx_value +
+            "\",\"" +
+            ptw_value + "\"\r");
+    }
+    return dce_commands::generic_command_common(dte.get(), "AT+SQNEDRX=" + std::to_string(mode), 500);
+}
 command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode)
 {
     ESP_LOGV(TAG, "%s", __func__ );

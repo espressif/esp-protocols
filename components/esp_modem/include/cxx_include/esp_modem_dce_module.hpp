@@ -177,6 +177,15 @@ public:
     command_result set_pdp_context(PdpContext &pdp) override;
 };
 
+class SQNGM02S : public GenericModule
+{
+    using GenericModule::GenericModule;
+
+public:
+    command_result connect(PdpContext &pdp);
+    bool setup_data_mode() override;
+};
+
 /**
  * @}
  */

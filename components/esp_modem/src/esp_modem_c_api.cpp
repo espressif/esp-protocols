@@ -439,6 +439,74 @@ extern "C" esp_err_t esp_modem_get_gnss_power_mode(esp_modem_dce_t *dce_wrap, in
     return ret;
 }
 
+extern "C" esp_err_t esp_modem_config_psm(esp_modem_dce_t *dce_wrap, int mode, const char *tau, const char *active_time)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 3) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (mode == 1 && (strlen(tau) != 8 || strlen(active_time) != 8)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return command_response_to_esp_err(dce_wrap->dce->config_psm(mode, std::string(tau), std::string(active_time)));
+}
+
+extern "C" esp_err_t esp_modem_config_network_registration_urc(esp_modem_dce_t *dce_wrap, int value)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || value > 5)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return command_response_to_esp_err(dce_wrap->dce->configure_network_registration_urc(value));
+}
+
+extern "C" esp_err_t esp_modem_get_network_registration_state(esp_modem_dce_t *dce_wrap, int *p_state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_state == nullptr)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    int state;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_network_registration_state(state));
+
+    if (ret == ESP_OK)
+    {
+        *p_state = state;
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_config_mobile_termination_error(esp_modem_dce_t *dce_wrap, int mode)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || mode > 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return command_response_to_esp_err(dce_wrap->dce->config_mobile_termination_error(mode));
+}
+
+extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce, int value, const char *access_technology)
+{
+
+}
+
+extern "C" esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->modem_type != ESP_MODEM_DCE_SQNGM02S)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    esp_modem::PdpContext pdp{pdp_context->apn};
+    pdp.context_id = pdp_context->context_id;
+    pdp.protocol_type = pdp_context->protocol_type;
+    return command_response_to_esp_err(static_cast<SQNGM02S *>(dce_wrap->dce->get_module())->connect(pdp));
+}
+
 extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
 {
     return command_response_to_esp_err(dce_wrap->dce->reset());
