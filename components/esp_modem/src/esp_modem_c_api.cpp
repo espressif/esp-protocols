@@ -459,7 +459,7 @@ extern "C" esp_err_t esp_modem_config_network_registration_urc(esp_modem_dce_t *
         return ESP_ERR_INVALID_ARG;
     }
 
-    return command_response_to_esp_err(dce_wrap->dce->configure_network_registration_urc(value));
+    return command_response_to_esp_err(dce_wrap->dce->config_network_registration_urc(value));
 }
 
 extern "C" esp_err_t esp_modem_get_network_registration_state(esp_modem_dce_t *dce_wrap, int *p_state)
@@ -496,7 +496,7 @@ extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce, int value, cons
 
 extern "C" esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || dce_wrap->modem_type != ESP_MODEM_DCE_SQNGM02S)
+    if (dce == nullptr || dce->dce == nullptr)
     {
         return ESP_ERR_INVALID_ARG;
     }
@@ -504,7 +504,7 @@ extern "C" esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce, const es
     esp_modem::PdpContext pdp{pdp_context->apn};
     pdp.context_id = pdp_context->context_id;
     pdp.protocol_type = pdp_context->protocol_type;
-    return command_response_to_esp_err(static_cast<SQNGM02S *>(dce_wrap->dce->get_module())->connect(pdp));
+    return command_response_to_esp_err(static_cast<SQNGM02S *>(dce->dce->get_module())->connect(pdp));
 }
 
 extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
