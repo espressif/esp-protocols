@@ -16,7 +16,7 @@ namespace esp_modem::dce_commands {
 
 static const char *TAG = "command_lib";
 
-static command_result generic_command(CommandableIf *t, const std::string &command,
+command_result generic_command(CommandableIf *t, const std::string &command,
                                       const std::list<std::string_view> &pass_phrase,
                                       const std::list<std::string_view> &fail_phrase,
                                       uint32_t timeout_ms)
@@ -612,9 +612,9 @@ command_result config_psm(CommandableIf *t, int enabled, const std::string &TAU,
     ESP_LOGV(TAG, "%s", __func__);
     if (enabled == true)
     {
-        return generic_command_common(t, "AT+CPSMS=1,,,\"" + TAU + "\"" + ",\"" + activeTime + "\"\r", 500);
+        return generic_command_common(t, "AT+CPSMS=1,,,\"" + TAU + "\"" + ",\"" + activeTime + "\"\r", 5000);
     }
-    return generic_command_common(t, "AT+CPSMS=" + std::to_string(enabled), 500);
+    return generic_command_common(t, "AT+CPSMS=" + std::to_string(enabled) + "\r", 5000);
 }
 
 command_result config_network_registration_urc(CommandableIf *t, int value)

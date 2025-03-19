@@ -48,7 +48,7 @@ public:
      * communication parameters and setting the PDP (defining logical access point
      * to cellular network)
      */
-    bool setup_data_mode() override
+    virtual bool setup_data_mode() override
     {
         if (set_echo(false) != command_result::OK) {
             return false;
@@ -63,7 +63,7 @@ public:
      * @brief This is a mandatory method of ModuleIf class, which defines
      * basic commands for switching between DATA, COMMAND and CMUX modes
      */
-    bool set_mode(modem_mode mode) override
+    virtual bool set_mode(modem_mode mode) override
     {
         if (mode == modem_mode::DATA_MODE) {
             if (set_data_mode() != command_result::OK) {
@@ -183,7 +183,11 @@ class SQNGM02S : public GenericModule
 
 public:
     command_result connect(PdpContext &pdp);
-    bool setup_data_mode() override;
+    bool setup_data_mode() override 
+    {
+        return true;
+    };
+    bool set_mode(modem_mode mode) override;
 };
 
 /**

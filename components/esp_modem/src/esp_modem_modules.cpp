@@ -8,7 +8,8 @@
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
 #include <string.h>
-
+#include <charconv>
+#include <list>
 namespace esp_modem {
 
 GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config) :
@@ -88,30 +89,11 @@ command_result BG96::set_pdp_context(esp_modem::PdpContext &pdp)
     return dce_commands::set_pdp_context(dte.get(), pdp, 300);
 }
 
-command_result urc_callback(uint8_t *line, size_t len)
-{
-    ESP_LOGI("WalterModem", "Received: %s", line);
-    if (strstr((const char *)line, "+CEREG: 1"))
-    {
-        return command_result::OK; // Succesfully registered
-    }
-    else if (strstr((const char *)line, "+CEREG: 5"))
-    {
-        return command_result::OK; // Succesfully registered
-    }
-    else if (strstr((const char *)line, "+CEREG: 3"))
-    {
-        return command_result::FAIL; // Permission denied
-    }
-    return command_result::TIMEOUT;
-}
-
 command_result SQNGM02S::connect(PdpContext &pdp)
 {
     command_result res;
-    res = set_pdp_context(pdp);
-    if (res != command_result::OK)
-        return res;
+    configure_pdp_context(std::make_unique<PdpContext>(pdp));
+    set_pdp_context(*this->pdp);
     res = config_network_registration_urc(1);
     if (res != command_result::OK)
         return res;
@@ -121,14 +103,14 @@ command_result SQNGM02S::connect(PdpContext &pdp)
         return res;
 
     //wait for +CEREG: 5 or +CEREG: 1.
+    const auto pass = std::list<std::string_view>({"+CEREG: 1", "+CEREG: 5"});
+    const auto fail = std::list<std::string_view>({"ERROR"});
+    res = esp_modem::dce_commands::generic_command(dte.get(), "", pass, fail, 1200000);
 
-    do
-    {
-        res = dte->command("", urc_callback, 20000, '\r');
-    } while (res == command_result::TIMEOUT);
-
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
+        config_network_registration_urc(0);
         return res;
+    }
 
     res = config_network_registration_urc(0);
     if (res != command_result::OK)
@@ -137,9 +119,39 @@ command_result SQNGM02S::connect(PdpContext &pdp)
     return command_result::OK;
 }
 
-bool SQNGM02S::setup_data_mode()
+
+bool SQNGM02S::set_mode(modem_mode mode)
 {
-    return set_echo(false) == command_result::OK;
-    // PDP context has already been set before hand because SEQUANS modem must have already been connected/registered before setting up cmux
+    if (mode == modem_mode::DATA_MODE)
+    {
+        return resume_data_mode() == command_result::OK;
+    }
+    else if (mode == modem_mode::COMMAND_MODE)
+    {
+        Task::Delay(1000); // Mandatory 1s pause before
+        int retry = 0;
+        while (retry++ < 3)
+        {
+            if (set_command_mode() == command_result::OK)
+            {
+                return true;
+            }
+            // send a newline to delimit the escape from the upcoming sync command
+            uint8_t delim = '\n';
+            dte->write(&delim, 1);
+            if (sync() == command_result::OK)
+            {
+                return true;
+            }
+            Task::Delay(1000); // Mandatory 1s pause before escape
+        }
+        return false;
+    }
+    else if (mode == modem_mode::CMUX_MODE)
+    {
+        return set_cmux() == command_result::OK;
+    }
+    return true;
 }
+
 }
