@@ -284,11 +284,11 @@ static void _mdns_result_txt_create(const uint8_t *data, size_t len, mdns_txt_it
         }
 
         int name_len = _mdns_txt_item_name_get_len(data + i, partLen);
-        if (name_len < 0) {//invalid item (no name)
+        if (name_len < 0 || txt_num >= num_items) {  //invalid item (no name or more items than expected)
             i += partLen;
             continue;
         }
-        char *key = (char *)mdns_mem_malloc(name_len + 1);
+        char *key = (char *) mdns_mem_malloc(name_len + 1);
         if (!key) {
             HOOK_MALLOC_FAILED;
             goto handle_error;//error
@@ -305,7 +305,7 @@ static void _mdns_result_txt_create(const uint8_t *data, size_t len, mdns_txt_it
 
         int new_value_len = partLen - name_len - 1;
         if (new_value_len > 0) {
-            char *value = (char *)mdns_mem_malloc(new_value_len + 1);
+            char *value = (char *) mdns_mem_malloc(new_value_len + 1);
             if (!value) {
                 HOOK_MALLOC_FAILED;
                 goto handle_error;//error
@@ -315,6 +315,8 @@ static void _mdns_result_txt_create(const uint8_t *data, size_t len, mdns_txt_it
             *value_len = new_value_len;
             i += new_value_len;
             t->value = value;
+        } else {
+            t->value = NULL;
         }
     }
 
