@@ -55,8 +55,7 @@
 
 #define pdMS_TO_TICKS(a) a
 #define xSemaphoreTake(s,d)        true
-#define xTaskDelete(a)
-#define vTaskDelete(a)             free(a)
+#define vTaskDelete(a)             free(NULL)
 #define xSemaphoreGive(s)
 #define xQueueCreateMutex(s)
 #define _mdns_pcb_init(a,b)         true
@@ -66,7 +65,7 @@
 #define vSemaphoreDelete(s)         free(s)
 #define queueQUEUE_TYPE_MUTEX       ( ( uint8_t ) 1U
 #define xTaskCreatePinnedToCore(a,b,c,d,e,f,g)     *(f) = malloc(1)
-#define xTaskCreateStaticPinnedToCore(a,b,c,d,e,f,g,h)     true
+#define xTaskCreateStaticPinnedToCore(a,b,c,d,e,f,g,h)     ((void*)1)
 #define vTaskDelay(m)               usleep((m)*0)
 #define esp_random()                (rand()%UINT32_MAX)
 

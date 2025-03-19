@@ -202,12 +202,12 @@ bool _mdns_service_match_instance(const mdns_service_t *srv, const char *instanc
 const char *_mdns_get_default_instance_name(void)
 {
     const char* instance = mdns_utils_get_instance();
-    if (mdns_utils_str_null_or_empty(instance)) {
+    if (!mdns_utils_str_null_or_empty(instance)) {
         return instance;
     }
 
     const char* host = mdns_utils_get_global_hostname();
-    if (mdns_utils_str_null_or_empty(host)) {
+    if (!mdns_utils_str_null_or_empty(host)) {
         return host;
     }
     return NULL;
