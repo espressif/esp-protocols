@@ -169,7 +169,7 @@ jobs:
       - name: Run Test
         working-directory: ${{ env.TEST_DIR }}
         run: |
-          python -m pip install pytest-embedded-serial-esp pytest-embedded-idf pytest-rerunfailures pytest-timeout pytest-ignore-test-results "paho-mqtt<2"
+          python -m pip install pytest-embedded-serial-esp pytest-embedded-idf pytest-rerunfailures pytest-timeout pytest-ignore-test-results "paho-mqtt<2"  --upgrade
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
           rm -rf build sdkconfig.defaults
