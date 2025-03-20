@@ -12,9 +12,10 @@
 #include "cxx_include/esp_modem_command_library.hpp"
 #include "cxx_include/esp_modem_command_library_utils.hpp"
 
+#include "cxx17_include/esp_modem_command_library_17.hpp"
+
 namespace esp_modem::dce_commands {
 
-static const char *TAG = "command_lib";
 
 command_result generic_command(CommandableIf *t, const std::string &command,
                                       const std::list<std::string_view> &pass_phrase,

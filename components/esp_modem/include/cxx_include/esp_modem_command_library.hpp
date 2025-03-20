@@ -10,7 +10,6 @@
 #include "esp_modem_dce_module.hpp"
 #include "esp_modem_types.hpp"
 #include "generate/esp_modem_command_declare.inc"
-#include <list>
 
 namespace esp_modem {
 namespace dce_commands {
@@ -22,10 +21,7 @@ namespace dce_commands {
 /** @addtogroup ESP_MODEM_DCE_COMMAND
  * @{
  */
-command_result generic_command(CommandableIf *t, const std::string &command,
-                                      const std::list<std::string_view> &pass_phrase,
-                                      const std::list<std::string_view> &fail_phrase,
-                                      uint32_t timeout_ms);
+
 /**
  * @brief Generic AT command to be send with pass and fail phrases
  *

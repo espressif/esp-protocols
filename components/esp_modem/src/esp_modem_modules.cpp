@@ -7,9 +7,8 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 #include "generate/esp_modem_command_declare.inc"
-#include <string.h>
-#include <charconv>
-#include <list>
+#include "cxx17_include/esp_modem_command_library_17.hpp"
+
 namespace esp_modem {
 
 GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config) :
