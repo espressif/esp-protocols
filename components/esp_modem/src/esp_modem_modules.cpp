@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -36,7 +36,7 @@ GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config)
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, arg_nr, ...) \
      return_type GenericModule::name(__VA_ARGS__) { return esp_modem::dce_commands::name(dte.get() ARGS(arg_nr) ); }
 
-DECLARE_ALL_COMMAND_APIS(return_type name(...) )
+DECLARE_ALL_COMMAND_APIS(return_type name(...))
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -88,18 +88,25 @@ command_result BG96::set_pdp_context(esp_modem::PdpContext &pdp)
     return dce_commands::set_pdp_context(dte.get(), pdp, 300);
 }
 
+bool SQNGM02S::setup_data_mode()
+{
+    return true;
+}
+
 command_result SQNGM02S::connect(PdpContext &pdp)
 {
     command_result res;
     configure_pdp_context(std::make_unique<PdpContext>(pdp));
     set_pdp_context(*this->pdp);
     res = config_network_registration_urc(1);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     res = set_radio_state(1);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     //wait for +CEREG: 5 or +CEREG: 1.
     const auto pass = std::list<std::string_view>({"+CEREG: 1", "+CEREG: 5"});
@@ -112,45 +119,10 @@ command_result SQNGM02S::connect(PdpContext &pdp)
     }
 
     res = config_network_registration_urc(0);
-    if (res != command_result::OK)
+    if (res != command_result::OK) {
         return res;
+    }
 
     return command_result::OK;
 }
-
-
-bool SQNGM02S::set_mode(modem_mode mode)
-{
-    if (mode == modem_mode::DATA_MODE)
-    {
-        return resume_data_mode() == command_result::OK;
-    }
-    else if (mode == modem_mode::COMMAND_MODE)
-    {
-        Task::Delay(1000); // Mandatory 1s pause before
-        int retry = 0;
-        while (retry++ < 3)
-        {
-            if (set_command_mode() == command_result::OK)
-            {
-                return true;
-            }
-            // send a newline to delimit the escape from the upcoming sync command
-            uint8_t delim = '\n';
-            dte->write(&delim, 1);
-            if (sync() == command_result::OK)
-            {
-                return true;
-            }
-            Task::Delay(1000); // Mandatory 1s pause before escape
-        }
-        return false;
-    }
-    else if (mode == modem_mode::CMUX_MODE)
-    {
-        return set_cmux() == command_result::OK;
-    }
-    return true;
-}
-
 }

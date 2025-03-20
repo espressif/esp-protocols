@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -48,7 +48,7 @@ public:
      * communication parameters and setting the PDP (defining logical access point
      * to cellular network)
      */
-    virtual bool setup_data_mode() override
+    bool setup_data_mode() override
     {
         if (set_echo(false) != command_result::OK) {
             return false;
@@ -63,7 +63,7 @@ public:
      * @brief This is a mandatory method of ModuleIf class, which defines
      * basic commands for switching between DATA, COMMAND and CMUX modes
      */
-    virtual bool set_mode(modem_mode mode) override
+    bool set_mode(modem_mode mode) override
     {
         if (mode == modem_mode::DATA_MODE) {
             if (set_data_mode() != command_result::OK) {
@@ -115,7 +115,7 @@ public:
 #define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
     virtual return_type name(__VA_ARGS__);
 
-    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...); )
+    DECLARE_ALL_COMMAND_APIS(virtual return_type name(...);)
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
@@ -177,17 +177,12 @@ public:
     command_result set_pdp_context(PdpContext &pdp) override;
 };
 
-class SQNGM02S : public GenericModule
-{
+class SQNGM02S : public GenericModule {
     using GenericModule::GenericModule;
 
 public:
     command_result connect(PdpContext &pdp);
-    bool setup_data_mode() override 
-    {
-        return true;
-    };
-    bool set_mode(modem_mode mode) override;
+    bool setup_data_mode() override;
 };
 
 /**
