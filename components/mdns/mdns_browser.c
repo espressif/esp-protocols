@@ -11,6 +11,7 @@
 #include "mdns_debug.h"
 #include "mdns_utils.h"
 #include "mdns_querier.h"
+#include "mdns_netif.h"
 #include "esp_log.h"
 
 static const char *TAG = "mdns_browser";
@@ -33,7 +34,7 @@ static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t
 
     action->type = type;
     action->data.browse_add.browse = browse;
-    if (!mdns_action_queue(action)) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
     }
@@ -170,7 +171,7 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
 {
     mdns_browse_t *browse = NULL;
 
-    if (is_mdns_server() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+    if (mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
 
@@ -191,7 +192,7 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto)
 {
     mdns_browse_t *browse = NULL;
 
-    if (!is_mdns_server() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+    if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return ESP_FAIL;
     }
 
@@ -258,7 +259,7 @@ mdns_browse_t *_mdns_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcp
         } else if (type == MDNS_TYPE_A || type == MDNS_TYPE_AAAA) {
             r = b->result;
             while (r) {
-                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
+                if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
                     return b;
                 }
                 r = r->next;
@@ -366,7 +367,7 @@ void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_
         while (r) {
             if (r->ip_protocol == ip_protocol) {
                 // Find the target result in browse result.
-                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+                if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
                     r_a = r->addr;
                     // Check if the address has already added in result.
                     while (r_a) {
@@ -385,7 +386,7 @@ void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_
                     if (!r_a) {
                         // The current IP is a new one, add it to the link list.
                         mdns_ip_addr_t *a = NULL;
-                        a = _mdns_result_addr_create_ip(ip);
+                        a = mdns_priv_result_addr_create_ip(ip);
                         if (!a) {
                             return;
                         }
@@ -395,7 +396,7 @@ void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_
                             if (r->ttl == 0) {
                                 r->ttl = ttl;
                             } else {
-                                _mdns_result_update_ttl(r, ttl);
+                                mdns_priv_query_update_result_ttl(r, ttl);
                             }
                         }
                         if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
@@ -441,7 +442,7 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
     }
     mdns_result_t *r = browse->result;
     while (r) {
-        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
+        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
                 !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
@@ -474,7 +475,7 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
                 if (r->ttl == 0) {
                     r->ttl = ttl;
                 } else {
-                    _mdns_result_update_ttl(r, ttl);
+                    mdns_priv_query_update_result_ttl(r, ttl);
                 }
                 if (previous_ttl != r->ttl) {
                     should_update = true;
@@ -508,7 +509,7 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
     r->txt = txt;
     r->txt_value_len = txt_value_len;
     r->txt_count = txt_count;
-    r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+    r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
     r->ip_protocol = ip_protocol;
     r->ttl = ttl;
     r->next = browse->result;
@@ -532,7 +533,7 @@ static esp_err_t _mdns_copy_address_in_previous_result(mdns_result_t *result_lis
         if (!mdns_utils_str_null_or_empty(result_list->hostname) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(result_list->hostname, r->hostname) &&
                 result_list->ip_protocol == r->ip_protocol && result_list->addr && !r->addr) {
             // If there is a same hostname in previous result, we need to copy the address here.
-            r->addr = copy_address_list(result_list->addr);
+            r->addr = mdns_utils_copy_address_list(result_list->addr);
             if (!r->addr) {
                 return ESP_ERR_NO_MEM;
             }
@@ -559,7 +560,7 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
     }
     mdns_result_t *r = browse->result;
     while (r) {
-        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
+        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
                 !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
@@ -585,7 +586,7 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
                 if (r->ttl == 0) {
                     r->ttl = ttl;
                 } else {
-                    _mdns_result_update_ttl(r, ttl);
+                    mdns_priv_query_update_result_ttl(r, ttl);
                 }
                 if (previous_ttl != r->ttl) {
                     if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
@@ -618,7 +619,7 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
         return;
     }
     r->port = port;
-    r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+    r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
     r->ip_protocol = ip_protocol;
     r->ttl = ttl;
     r->next = browse->result;

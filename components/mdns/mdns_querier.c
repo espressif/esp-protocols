@@ -11,6 +11,7 @@
 #include "mdns_send.h"
 #include "esp_log.h"
 #include "mdns_responder.h"
+#include "mdns_netif.h"
 
 static const char *TAG = "mdns_querier";
 
@@ -129,11 +130,11 @@ void mdns_priv_query_action(mdns_action_t *action, mdns_action_subtype_t type)
  */
 void mdns_priv_query_start_stop(void)
 {
-    mdns_service_lock();
+    mdns_priv_service_lock();
     mdns_search_once_t *s = s_search_once;
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
     if (!s) {
-        mdns_service_unlock();
+        mdns_priv_service_unlock();
         return;
     }
     while (s) {
@@ -153,7 +154,7 @@ void mdns_priv_query_start_stop(void)
         }
         s = s->next;
     }
-    mdns_service_unlock();
+    mdns_priv_service_unlock();
 }
 
 void mdns_priv_query_free(void)
@@ -215,7 +216,7 @@ mdns_search_once_t *mdns_priv_query_find_from(mdns_search_once_t *s, mdns_name_t
             }
             r = s->result;
             while (r) {
-                if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
+                if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
                     return s;
                 }
                 r = r->next;
@@ -291,7 +292,7 @@ static mdns_tx_packet_t *_mdns_create_search_packet(mdns_search_once_t *search, 
         r = search->result;
         while (r) {
             //full record on the same interface is available
-            if (r->esp_netif != _mdns_get_esp_netif(tcpip_if) || r->ip_protocol != ip_protocol || r->instance_name == NULL || r->hostname == NULL || r->addr == NULL) {
+            if (r->esp_netif != mdns_netif_get_esp_netif(tcpip_if) || r->ip_protocol != ip_protocol || r->instance_name == NULL || r->hostname == NULL || r->addr == NULL) {
                 r = r->next;
                 continue;
             }
@@ -414,9 +415,9 @@ static mdns_search_once_t *_mdns_search_init(const char *name, const char *servi
  * */
 void mdns_query_results_free(mdns_result_t *results)
 {
-    mdns_service_lock();
+    mdns_priv_service_lock();
     mdns_priv_query_results_free(results);
-    mdns_service_unlock();
+    mdns_priv_service_unlock();
 }
 
 esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
@@ -428,9 +429,9 @@ esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
         return ESP_ERR_INVALID_STATE;
     }
 
-    mdns_service_lock();
+    mdns_priv_service_lock();
     _mdns_search_free(search);
-    mdns_service_unlock();
+    mdns_priv_service_unlock();
 
     return ESP_OK;
 }
@@ -454,7 +455,7 @@ mdns_search_once_t *mdns_query_async_new(const char *name, const char *service, 
 {
     mdns_search_once_t *search = NULL;
 
-    if (!is_mdns_server() || !timeout || mdns_utils_str_null_or_empty(service) != mdns_utils_str_null_or_empty(proto)) {
+    if (!mdns_priv_is_server_init() || !timeout || mdns_utils_str_null_or_empty(service) != mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
 
@@ -477,7 +478,7 @@ esp_err_t mdns_query_generic(const char *name, const char *service, const char *
 
     *results = NULL;
 
-    if (!is_mdns_server()) {
+    if (!mdns_priv_is_server_init()) {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -549,7 +550,7 @@ static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_o
 
     action->type = type;
     action->data.search_add.search = search;
-    if (!mdns_action_queue(action)) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
     }
@@ -644,14 +645,14 @@ void mdns_priv_query_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t 
 {
     mdns_result_t *r = search->result;
     while (r) {
-        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
+        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
             if (r->txt) {
                 goto free_txt;
             }
             r->txt = txt;
             r->txt_value_len = txt_value_len;
             r->txt_count = txt_count;
-            _mdns_result_update_ttl(r, ttl);
+            mdns_priv_query_update_result_ttl(r, ttl);
             return;
         }
         r = r->next;
@@ -667,7 +668,7 @@ void mdns_priv_query_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t 
         r->txt = txt;
         r->txt_value_len = txt_value_len;
         r->txt_count = txt_count;
-        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
         r->ip_protocol = ip_protocol;
         r->ttl = ttl;
         r->next = search->result;
@@ -706,7 +707,7 @@ static void _mdns_result_add_ip(mdns_result_t *r, esp_ip_addr_t *ip)
         }
         a = a->next;
     }
-    a = _mdns_result_addr_create_ip(ip);
+    a = mdns_priv_result_addr_create_ip(ip);
     if (!a) {
         return;
     }
@@ -728,9 +729,9 @@ void mdns_priv_query_result_add_ip(mdns_search_once_t *search, const char *hostn
             || search->type == MDNS_TYPE_ANY) {
         r = search->result;
         while (r) {
-            if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
+            if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol) {
                 _mdns_result_add_ip(r, ip);
-                _mdns_result_update_ttl(r, ttl);
+                mdns_priv_query_update_result_ttl(r, ttl);
                 return;
             }
             r = r->next;
@@ -744,7 +745,7 @@ void mdns_priv_query_result_add_ip(mdns_search_once_t *search, const char *hostn
 
             memset(r, 0, sizeof(mdns_result_t));
 
-            a = _mdns_result_addr_create_ip(ip);
+            a = mdns_priv_result_addr_create_ip(ip);
             if (!a) {
                 mdns_mem_free(r);
                 return;
@@ -752,7 +753,7 @@ void mdns_priv_query_result_add_ip(mdns_search_once_t *search, const char *hostn
             a->next = r->addr;
             r->hostname = mdns_mem_strdup(hostname);
             r->addr = a;
-            r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+            r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
             r->ip_protocol = ip_protocol;
             r->next = search->result;
             r->ttl = ttl;
@@ -762,9 +763,9 @@ void mdns_priv_query_result_add_ip(mdns_search_once_t *search, const char *hostn
     } else if (search->type == MDNS_TYPE_PTR || search->type == MDNS_TYPE_SRV) {
         r = search->result;
         while (r) {
-            if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+            if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
                 _mdns_result_add_ip(r, ip);
-                _mdns_result_update_ttl(r, ttl);
+                mdns_priv_query_update_result_ttl(r, ttl);
                 break;
             }
             r = r->next;
@@ -780,8 +781,8 @@ void mdns_priv_query_result_add_srv(mdns_search_once_t *search, const char *host
 {
     mdns_result_t *r = search->result;
     while (r) {
-        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
-            _mdns_result_update_ttl(r, ttl);
+        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+            mdns_priv_query_update_result_ttl(r, ttl);
             return;
         }
         r = r->next;
@@ -805,7 +806,7 @@ void mdns_priv_query_result_add_srv(mdns_search_once_t *search, const char *host
         r->service_type = mdns_mem_strdup(search->service);
         r->proto = mdns_mem_strdup(search->proto);
         r->port = port;
-        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
         r->ip_protocol = ip_protocol;
         r->ttl = ttl;
         r->next = search->result;
@@ -823,8 +824,8 @@ mdns_result_t *mdns_priv_query_result_add_ptr(mdns_search_once_t *search, const 
 {
     mdns_result_t *r = search->result;
     while (r) {
-        if (r->esp_netif == _mdns_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name)) {
-            _mdns_result_update_ttl(r, ttl);
+        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name)) {
+            mdns_priv_query_update_result_ttl(r, ttl);
             return r;
         }
         r = r->next;
@@ -845,7 +846,7 @@ mdns_result_t *mdns_priv_query_result_add_ptr(mdns_search_once_t *search, const 
             return NULL;
         }
 
-        r->esp_netif = _mdns_get_esp_netif(tcpip_if);
+        r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
         r->ip_protocol = ip_protocol;
         r->ttl = ttl;
         r->next = search->result;
@@ -854,4 +855,21 @@ mdns_result_t *mdns_priv_query_result_add_ptr(mdns_search_once_t *search, const 
         return r;
     }
     return NULL;
+}
+
+mdns_ip_addr_t *mdns_priv_result_addr_create_ip(esp_ip_addr_t *ip)
+{
+    mdns_ip_addr_t *a = (mdns_ip_addr_t *)mdns_mem_malloc(sizeof(mdns_ip_addr_t));
+    if (!a) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+    memset(a, 0, sizeof(mdns_ip_addr_t));
+    a->addr.type = ip->type;
+    if (ip->type == ESP_IPADDR_TYPE_V6) {
+        memcpy(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16);
+    } else {
+        a->addr.u_addr.ip4.addr = ip->u_addr.ip4.addr;
+    }
+    return a;
 }

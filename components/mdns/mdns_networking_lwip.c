@@ -107,7 +107,7 @@ static void _udp_pcb_main_deinit(void)
 static esp_err_t _udp_join_group(mdns_if_t if_inx, mdns_ip_protocol_t ip_protocol, bool join)
 {
     struct netif *netif = NULL;
-    esp_netif_t *tcpip_if = _mdns_get_esp_netif(if_inx);
+    esp_netif_t *tcpip_if = mdns_netif_get_esp_netif(if_inx);
 
     if (!esp_netif_is_netif_up(tcpip_if)) {
         // Network interface went down before event propagated, skipping IGMP config
@@ -208,7 +208,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         struct netif *netif = NULL;
         bool found = false;
         for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-            netif = esp_netif_get_netif_impl(_mdns_get_esp_netif(i));
+            netif = esp_netif_get_netif_impl(mdns_netif_get_esp_netif(i));
             if (s_interfaces[i].proto && netif && netif == ip_current_input_netif()) {
 #if LWIP_IPV4
                 if (packet->src.type == IPADDR_TYPE_V4) {
@@ -353,7 +353,7 @@ static err_t _mdns_udp_pcb_write_api(struct tcpip_api_call_data *api_call_msg)
 {
     void *nif = NULL;
     mdns_api_call_t *msg = (mdns_api_call_t *)api_call_msg;
-    nif = esp_netif_get_netif_impl(_mdns_get_esp_netif(msg->tcpip_if));
+    nif = esp_netif_get_netif_impl(mdns_netif_get_esp_netif(msg->tcpip_if));
     if (!nif || !mdns_is_netif_ready(msg->tcpip_if, msg->ip_protocol) || _pcb_main == NULL) {
         pbuf_free(msg->pbt);
         msg->err = ERR_IF;
