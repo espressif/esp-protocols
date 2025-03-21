@@ -18,7 +18,7 @@ repos:
       - id: flake8
         args: ['--config=.flake8', '--tee', '--benchmark']
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.14.1
     hooks:
       - id: mypy
         exclude: >
