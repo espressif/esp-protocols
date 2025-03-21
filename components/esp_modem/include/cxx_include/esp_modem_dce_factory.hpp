@@ -118,6 +118,7 @@ enum class ModemType {
     SIM7000,            /*!< Derived from the GenericModule, specifics applied to SIM7000 model */
     BG96,               /*!< Derived from the GenericModule, specifics applied to BG69 model */
     SIM800,             /*!< Derived from the GenericModule with specifics applied to SIM800 model */
+    SQNGM02S,           /*!< Derived from the GenericModule, specifics applied to GM02S model */
 };
 
 /**
@@ -178,6 +179,8 @@ public:
             return build_shared_module<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build_shared_module<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::SQNGM02S:
+            return build_shared_module<SQNGM02S>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:
             return build_shared_module<GenericModule>(cfg, std::forward<Args>(args)...);
         default:
@@ -207,6 +210,8 @@ public:
             return build_unique<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build_unique<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::SQNGM02S:
+            return build_unique<SQNGM02S>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:
             return build_unique<GenericModule>(cfg, std::forward<Args>(args)...);
         default:
@@ -229,6 +234,8 @@ public:
             return build<SIM7000>(cfg, std::forward<Args>(args)...);
         case ModemType::BG96:
             return build<BG96>(cfg, std::forward<Args>(args)...);
+        case ModemType::SQNGM02S:
+            return build<SQNGM02S>(cfg, std::forward<Args>(args)...);
         case ModemType::GenericModule:
             return build<GenericModule>(cfg, std::forward<Args>(args)...);
         default:

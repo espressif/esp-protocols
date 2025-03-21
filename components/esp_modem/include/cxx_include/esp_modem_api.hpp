@@ -84,7 +84,6 @@ std::unique_ptr<DCE> create_SIM7070_dce(const dce_config *config, std::shared_pt
  */
 std::unique_ptr<DCE> create_SIM7000_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
-
 /**
  * @brief Create DCE based on SIM800 module
  */
@@ -94,6 +93,11 @@ std::unique_ptr<DCE> create_SIM800_dce(const dce_config *config, std::shared_ptr
  * @brief Create DCE based on BG96 module
  */
 std::unique_ptr<DCE> create_BG96_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
+
+/**
+ * @brief Create DCE based on Sequans GM02S module
+ */
+std::unique_ptr<DCE> create_SQNGM02S_dce(const dce_config *config, std::shared_ptr<DTE> dte, esp_netif_t *netif);
 
 /**
  * @brief Create generic DCE
