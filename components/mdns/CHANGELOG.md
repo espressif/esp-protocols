@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.2)
+
+### Bug Fixes
+
+- Fix parsing incorrect txt records ([8fd2c99f](https://github.com/espressif/esp-protocols/commit/8fd2c99f))
+
 ## [1.8.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.1)
 
 ### Bug Fixes
