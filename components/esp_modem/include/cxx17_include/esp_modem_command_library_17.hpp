@@ -9,8 +9,6 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
 
-static const char *TAG = "command_lib";
-
 namespace esp_modem::dce_commands {
 command_result generic_command(CommandableIf *t, const std::string &command,
                                const std::list<std::string_view> &pass_phrase,

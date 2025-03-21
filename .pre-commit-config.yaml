@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v4.3.0
     hooks:
       - id: check-yaml
       - id: check-added-large-files
@@ -13,12 +13,12 @@ repos:
       - id: mixed-line-ending
       - id: debug-statements
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.2
+    rev: 5.0.4
     hooks:
       - id: flake8
         args: ['--config=.flake8', '--tee', '--benchmark']
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
+    rev: v0.981
     hooks:
       - id: mypy
         exclude: >
@@ -39,25 +39,25 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/myint/eradicate/
-    rev: 2.3.0
+    rev: v2.1.0
     hooks:
       - id: eradicate
   - repo: https://github.com/espressif/check-copyright/
-    rev: v1.1.0
+    rev: v1.0.3
     hooks:
       - id: check-copyright
         args: ['--ignore', 'ci/check_copyright_ignore.txt', '--config', 'ci/check_copyright_config.yaml']
   - repo: https://github.com/igrr/astyle_py.git
-    rev: v1.1.0
+    rev: v1.0.5
     hooks:
     -   id: astyle_py
         args: ['--style=otbs', '--attach-namespaces', '--attach-classes', '--indent=spaces=4', '--convert-tabs', '--align-reference=name', '--keep-one-line-statements', '--pad-header', '--pad-oper', '--unpad-paren', '--max-continuation-indent=120', '--exclude-list=ci/ignore_astyle.txt']
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.4.1
+    rev: v2.42.1
     hooks:
       - id: commitizen
       - id: commitizen-branch
-        stages: [pre-push, manual]
+        stages: [push, manual]
   - repo: local
     hooks:
       - id: commit message scopes

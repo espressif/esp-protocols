@@ -163,7 +163,7 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
 #endif
 
-esp_err_t esp_modem_sqns_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context);
+esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context);
 
 /**
  * @brief This API provides support for temporarily pausing networking in order

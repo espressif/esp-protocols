@@ -16,6 +16,7 @@
 
 namespace esp_modem::dce_commands {
 
+static const char *TAG = "command_lib";
 
 command_result generic_command(CommandableIf *t, const std::string &command,
                                const std::list<std::string_view> &pass_phrase,
