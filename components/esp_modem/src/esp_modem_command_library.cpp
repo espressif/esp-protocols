@@ -656,18 +656,16 @@ command_result config_mobile_termination_error(CommandableIf *t, int value)
     ESP_LOGV(TAG, "%s", __func__);
     return generic_command_common(t, "AT+CMEE=" + std::to_string(value) + "\r");
 }
-command_result config_edrx(CommandableIf *t, int mode, int access_technology, const std::string &edrx_value, const std::string &ptw_value)
+command_result config_edrx(CommandableIf *t, int mode, int access_technology, const std::string &edrx_value)
 {
     if (mode == 1 || mode == 2) {
         return dce_commands::generic_command_common(t,
-                                                    "AT+SQNEDRX=" +
+                                                    "AT+CEDRXS=" +
                                                     std::to_string(mode) +
                                                     "," +
                                                     std::to_string(access_technology) +
                                                     ",\"" +
-                                                    edrx_value +
-                                                    "\",\"" +
-                                                    ptw_value + "\"\r");
+                                                    edrx_value + "\"\r");
     }
     return dce_commands::generic_command_common(t, "AT+SQNEDRX=" + std::to_string(mode), 500);
 }
