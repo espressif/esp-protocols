@@ -48,6 +48,19 @@ void mdns_netif_disable(mdns_if_t tcpip_if);
  */
 mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if);
 
+/**
+ * @brief Gets the actual esp_netif pointer from the internal network interface list
+ *
+ * The supplied ordinal number could
+ * - point to a predef netif -> "STA", "AP", "ETH"
+ *      - if no entry in the list (NULL) -> check if the system added this netif
+ * - point to a custom netif -> just return the entry in the list
+ *      - users is responsible for the lifetime of this netif (to be valid between mdns-init -> deinit)
+ *
+ * @param tcpip_if Ordinal number of the interface
+ * @return Pointer ot the esp_netif object if the interface is available, NULL otherwise
+ */
+esp_netif_t *mdns_netif_get_esp_netif(mdns_if_t tcpip_if);
 #ifdef __cplusplus
 }
 #endif

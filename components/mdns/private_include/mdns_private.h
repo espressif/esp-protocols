@@ -443,16 +443,74 @@ typedef struct {
     } data;
 } mdns_action_t;
 
-/*
- * @brief  Convert mnds if to esp-netif handle
- *
- * @param  tcpip_if     mdns supported interface as internal enum
- *
- * @return
- *     - ptr to esp-netif on success
- *     - NULL if no available netif for current interface index
+/**
+ * @brief  Returns true if the mdns server is initialized
  */
-esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if);
+bool mdns_priv_is_server_init(void);
 
+/**
+ * @brief  get global (mdns_server->hostname) hostname
+ */
+const char *mdns_priv_get_global_hostname(void);
+
+/**
+ * @brief  get service list
+ */
+mdns_srv_item_t *mdns_priv_get_services(void);
+
+/**
+ * @brief  get host list
+ */
+mdns_host_item_t *mdns_priv_get_hosts(void);
+
+/**
+ * @brief  get self host
+ */
+mdns_host_item_t *priv_get_self_host(void);
+
+/**
+ * @brief  set global hostname
+ */
+void mdns_priv_set_global_hostname(const char *hostname);
+
+/**
+ * @brief  set mdns_server->instance
+ */
+const char *mdns_priv_get_instance(void);
+
+/**
+ * @brief  set mdns_server->instance
+ */
+void mdns_priv_set_instance(const char *instance);
+
+/**
+ * @brief  Restart the responder on all services without instance
+ */
+void mdns_priv_restart_all_pcbs_no_instance(void);
+
+/**
+ * @brief  Remaps hostname of self service
+ */
+void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname);
+
+/**
+ * @brief  Restart the responder on all active PCBs
+ */
+void mdns_priv_restart_all_pcbs(void);
+
+/**
+ * @brief  Lock mdns service
+ */
+void mdns_priv_service_lock(void);
+
+/**
+ * @brief  Unlock mdns service
+ */
+void mdns_priv_service_unlock(void);
+
+/**
+ * @brief  Send the given action to the service queue
+ */
+bool mdns_priv_queue_action(mdns_action_t *action);
 
 #endif /* MDNS_PRIVATE_H_ */

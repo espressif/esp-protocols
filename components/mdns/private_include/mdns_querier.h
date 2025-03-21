@@ -88,6 +88,20 @@ mdns_result_t *mdns_priv_query_result_add_ptr(mdns_search_once_t *search, const 
  */
 void mdns_priv_query_action(mdns_action_t *action, mdns_action_subtype_t type);
 
+/**
+ * @brief  Create linked IP (copy) from parsed one
+ */
+mdns_ip_addr_t *mdns_priv_result_addr_create_ip(esp_ip_addr_t *ip);
+
+/**
+ * @brief Update TTL results to whichever is smaller
+ */
+static inline void mdns_priv_query_update_result_ttl(mdns_result_t *r, uint32_t ttl)
+{
+    r->ttl = r->ttl < ttl ? r->ttl : ttl;
+}
+
+
 #ifdef __cplusplus
 }
 #endif

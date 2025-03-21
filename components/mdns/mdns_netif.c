@@ -117,19 +117,7 @@ static inline esp_netif_t *esp_netif_from_preset_if(mdns_predef_if_t predef_if)
     }
 }
 
-/**
- * @brief Gets the actual esp_netif pointer from the internal network interface list
- *
- * The supplied ordinal number could
- * - point to a predef netif -> "STA", "AP", "ETH"
- *      - if no entry in the list (NULL) -> check if the system added this netif
- * - point to a custom netif -> just return the entry in the list
- *      - users is responsible for the lifetime of this netif (to be valid between mdns-init -> deinit)
- *
- * @param tcpip_if Ordinal number of the interface
- * @return Pointer ot the esp_netif object if the interface is available, NULL otherwise
- */
-esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if)
+esp_netif_t *mdns_netif_get_esp_netif(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         if (s_esp_netifs[tcpip_if].netif == NULL && s_esp_netifs[tcpip_if].predefined) {
@@ -174,7 +162,7 @@ static mdns_if_t _mdns_get_if_from_esp_netif(esp_netif_t *esp_netif)
 
 static esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action)
 {
-    if (!is_mdns_server() || mdns_if >= MDNS_MAX_INTERFACES) {
+    if (!mdns_priv_is_server_init() || mdns_if >= MDNS_MAX_INTERFACES) {
         return ESP_ERR_INVALID_STATE;
     }
 
@@ -187,7 +175,7 @@ static esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_
     action->data.sys_event.event_action = event_action;
     action->data.sys_event.interface = mdns_if;
 
-    if (!mdns_action_queue(action)) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
     }
     return ESP_OK;
@@ -216,7 +204,7 @@ static inline void post_mdns_announce_pcb(mdns_predef_if_t preset_if, mdns_ip_pr
 void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
                                         int32_t event_id, void *event_data)
 {
-    if (!is_mdns_server()) {
+    if (!mdns_priv_is_server_init()) {
         return;
     }
 
@@ -339,15 +327,15 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
 
 esp_err_t mdns_register_netif(esp_netif_t *esp_netif)
 {
-    if (!is_mdns_server()) {
+    if (!mdns_priv_is_server_init()) {
         return ESP_ERR_INVALID_STATE;
     }
 
     esp_err_t err = ESP_ERR_NO_MEM;
-    mdns_service_lock();
+    mdns_priv_service_lock();
     for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
         if (s_esp_netifs[i].netif == esp_netif) {
-            mdns_service_unlock();
+            mdns_priv_service_unlock();
             return ESP_ERR_INVALID_STATE;
         }
     }
@@ -359,18 +347,18 @@ esp_err_t mdns_register_netif(esp_netif_t *esp_netif)
             break;
         }
     }
-    mdns_service_unlock();
+    mdns_priv_service_unlock();
     return err;
 }
 
 esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif)
 {
-    if (!is_mdns_server()) {
+    if (!mdns_priv_is_server_init()) {
         return ESP_ERR_INVALID_STATE;
     }
 
     esp_err_t err = ESP_ERR_NOT_FOUND;
-    mdns_service_lock();
+    mdns_priv_service_lock();
     for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
         if (!s_esp_netifs[i].predefined && s_esp_netifs[i].netif == esp_netif) {
             s_esp_netifs[i].netif = NULL;
@@ -378,7 +366,7 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif)
             break;
         }
     }
-    mdns_service_lock();
+    mdns_priv_service_lock();
     return err;
 }
 
@@ -419,12 +407,12 @@ esp_err_t mdns_netif_init(void)
 
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
 #ifdef CONFIG_LWIP_IPV6
-        if (!esp_netif_get_ip6_linklocal(_mdns_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
+        if (!esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
             mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V6);
         }
 #endif
 #ifdef CONFIG_LWIP_IPV4
-        if (!esp_netif_get_ip_info(_mdns_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
+        if (!esp_netif_get_ip_info(mdns_netif_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
             mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V4);
         }
 #endif

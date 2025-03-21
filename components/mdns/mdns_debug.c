@@ -45,7 +45,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
         uint8_t qs = header.questions;
 
         while (qs--) {
-            content = _mdns_parse_fqdn(data, content, name, len);
+            content = mdns_utils_parse_fqdn(data, content, name, len);
             if (!content || content + MDNS_CLASS_OFFSET + 1 >= data + len) {
                 header.answers = 0;
                 header.additional = 0;
@@ -96,7 +96,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
 
         while (content < (data + len)) {
 
-            content = _mdns_parse_fqdn(data, content, name, len);
+            content = mdns_utils_parse_fqdn(data, content, name, len);
             if (!content) {
                 dbg_printf("ERROR: parse mdns records\n");
                 break;
@@ -164,13 +164,13 @@ void static dbg_packet(const uint8_t *data, size_t len)
             dbg_printf("%" PRIu32, ttl);
             dbg_printf("[%u] ", data_len);
             if (type == MDNS_TYPE_PTR) {
-                if (!_mdns_parse_fqdn(data, data_ptr, name, len)) {
+                if (!mdns_utils_parse_fqdn(data, data_ptr, name, len)) {
                     dbg_printf("ERROR: parse PTR\n");
                     continue;
                 }
                 dbg_printf("%s.%s.%s.%s.\n", name->host, name->service, name->proto, name->domain);
             } else if (type == MDNS_TYPE_SRV) {
-                if (!_mdns_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
+                if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
                     dbg_printf("ERROR: parse SRV\n");
                     continue;
                 }
@@ -208,7 +208,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 dbg_printf(IPSTR "\n", IP2STR(&ip));
             } else if (type == MDNS_TYPE_NSEC) {
                 const uint8_t *old_ptr = data_ptr;
-                const uint8_t *new_ptr = _mdns_parse_fqdn(data, data_ptr, name, len);
+                const uint8_t *new_ptr = mdns_utils_parse_fqdn(data, data_ptr, name, len);
                 if (new_ptr) {
                     dbg_printf("%s.%s.%s.%s. ", name->host, name->service, name->proto, name->domain);
                     size_t diff = new_ptr - old_ptr;
