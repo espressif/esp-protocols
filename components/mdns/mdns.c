@@ -5,12 +5,7 @@
  */
 
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
-#include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_random.h"
 #include "esp_check.h"
 #include "mdns.h"
 #include "mdns_private.h"
@@ -23,19 +18,35 @@
 #include "mdns_send.h"
 #include "mdns_receive.h"
 #include "mdns_querier.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 
 mdns_server_t *_mdns_server = NULL;
 static mdns_host_item_t *_mdns_host_list = NULL;
 static mdns_host_item_t _mdns_self_host;
 
-static const char *TAG = "mdns";
+static const char *TAG = "mdns_responder";
 
-static volatile TaskHandle_t _mdns_service_task_handle = NULL;
-static SemaphoreHandle_t _mdns_service_semaphore = NULL;
-static StackType_t *_mdns_stack_buffer;
+esp_err_t mdns_responder_init(void)
+{
+    _mdns_server = (mdns_server_t *)mdns_mem_malloc(sizeof(mdns_server_t));
+    if (!_mdns_server) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+    memset((uint8_t *)_mdns_server, 0, sizeof(mdns_server_t));
+    return ESP_OK;
+}
 
-esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action);
+void mdns_responder_free(void)
+{
+    if (_mdns_server == NULL) {
+        return;
+    }
+    mdns_mem_free((char *)_mdns_server->hostname);
+    mdns_mem_free((char *)_mdns_server->instance);
+    mdns_mem_free(_mdns_server);
+    _mdns_server = NULL;
+}
 
 const char *mdns_priv_get_global_hostname(void)
 {
@@ -109,14 +120,6 @@ static bool _mdns_can_add_more_services(void)
     }
     return true;
 #endif
-}
-
-bool mdns_priv_queue_action(mdns_action_t *action)
-{
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
-        return false;
-    }
-    return true;
 }
 
 /**
@@ -395,14 +398,7 @@ static void _mdns_free_service(mdns_service_t *service)
     mdns_mem_free(service);
 }
 
-/**
- * @brief Adds a delegated hostname to the linked list
- * @param hostname Host name pointer
- * @param address_list Address list
- * @return  true on success
- *          false if the host wasn't attached (this is our hostname, or alloc failure) so we have to free the structs
- */
-static bool _mdns_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *address_list)
+bool mdns_priv_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *address_list)
 {
     if (mdns_utils_hostname_is_ours(hostname)) {
         return false;
@@ -442,9 +438,7 @@ static bool _mdns_delegate_hostname_set_address(const char *hostname, mdns_ip_ad
     return false;
 }
 
-
-
-static void free_delegated_hostnames(void)
+void mdns_responder_free_delegated_hostnames(void)
 {
     mdns_host_item_t *host = _mdns_host_list;
     while (host != NULL) {
@@ -501,443 +495,8 @@ static bool _mdns_delegate_hostname_remove(const char *hostname)
     return true;
 }
 
-#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
-static inline char nibble_to_hex(int var)
-{
-    return var > 9 ?  var - 10 + 'a' : var + '0';
-}
-#endif
 
-/**
- * @brief  Performs interface changes based on system events or custom commands
- */
-static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
-{
-    if (!_mdns_server || mdns_if >= MDNS_MAX_INTERFACES) {
-        return;
-    }
-    if (action & MDNS_EVENT_ENABLE_IP4) {
-        mdns_priv_pcb_enable(mdns_if, MDNS_IP_PROTOCOL_V4);
-    }
-    if (action & MDNS_EVENT_ENABLE_IP6) {
-        mdns_priv_pcb_enable(mdns_if, MDNS_IP_PROTOCOL_V6);
-    }
-    if (action & MDNS_EVENT_DISABLE_IP4) {
-        mdns_priv_pcb_disable(mdns_if, MDNS_IP_PROTOCOL_V4);
-    }
-    if (action & MDNS_EVENT_DISABLE_IP6) {
-        mdns_priv_pcb_disable(mdns_if, MDNS_IP_PROTOCOL_V6);
-    }
-    if (action & MDNS_EVENT_ANNOUNCE_IP4) {
-        mdns_priv_pcb_announce(mdns_if, MDNS_IP_PROTOCOL_V4, NULL, 0, true);
-    }
-    if (action & MDNS_EVENT_ANNOUNCE_IP6) {
-        mdns_priv_pcb_announce(mdns_if, MDNS_IP_PROTOCOL_V6, NULL, 0, true);
-    }
-
-#ifdef CONFIG_MDNS_RESPOND_REVERSE_QUERIES
-#ifdef CONFIG_LWIP_IPV4
-    if (action & MDNS_EVENT_IP4_REVERSE_LOOKUP) {
-        esp_netif_ip_info_t if_ip_info;
-        if (esp_netif_get_ip_info(mdns_netif_get_esp_netif(mdns_if), &if_ip_info) == ESP_OK) {
-            esp_ip4_addr_t *ip = &if_ip_info.ip;
-            char *reverse_query_name = NULL;
-            if (asprintf(&reverse_query_name, "%d.%d.%d.%d.in-addr",
-                         esp_ip4_addr4_16(ip), esp_ip4_addr3_16(ip),
-                         esp_ip4_addr2_16(ip), esp_ip4_addr1_16(ip)) > 0 && reverse_query_name) {
-                ESP_LOGD(TAG, "Registered reverse query: %s.arpa", reverse_query_name);
-                _mdns_delegate_hostname_add(reverse_query_name, NULL);
-            }
-        }
-    }
-#endif /* CONFIG_LWIP_IPV4 */
-#ifdef CONFIG_LWIP_IPV6
-    if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
-        esp_ip6_addr_t addr6;
-        if (!esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(mdns_if), &addr6) && !mdns_utils_ipv6_address_is_zero(addr6)) {
-            uint8_t *paddr = (uint8_t *)&addr6.addr;
-            const char sub[] = "ip6";
-            const size_t query_name_size = 4 * sizeof(addr6.addr) /* (2 nibbles + 2 dots)/per byte of IP address */ + sizeof(sub);
-            char *reverse_query_name = mdns_mem_malloc(query_name_size);
-            if (reverse_query_name) {
-                char *ptr = &reverse_query_name[query_name_size];   // point to the end
-                memcpy(ptr - sizeof(sub), sub, sizeof(sub));        // copy the IP sub-domain
-                ptr -= sizeof(sub) + 1;                             // move before the sub-domain
-                while (reverse_query_name < ptr) {                  // continue populating reverse query from the end
-                    *ptr-- = '.';                                   // nibble by nibble, until we reach the beginning
-                    *ptr-- = nibble_to_hex(((*paddr) >> 4) & 0x0F);
-                    *ptr-- = '.';
-                    *ptr-- = nibble_to_hex((*paddr) & 0x0F);
-                    paddr++;
-                }
-                ESP_LOGD(TAG, "Registered reverse query: %s.arpa", reverse_query_name);
-                _mdns_delegate_hostname_add(reverse_query_name, NULL);
-            }
-        }
-    }
-#endif /* CONFIG_LWIP_IPV6 */
-#endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
-}
-
-void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname)
-{
-    mdns_srv_item_t *service = _mdns_server->services;
-
-    while (service) {
-        if (service->service->hostname &&
-                strcmp(service->service->hostname, old_hostname) == 0) {
-            mdns_mem_free((char *)service->service->hostname);
-            service->service->hostname = mdns_mem_strdup(new_hostname);
-        }
-        service = service->next;
-    }
-}
-
-/**
- * @brief  Free action data
- */
-static void _mdns_free_action(mdns_action_t *action)
-{
-    switch (action->type) {
-    case ACTION_HOSTNAME_SET:
-        mdns_mem_free(action->data.hostname_set.hostname);
-        break;
-    case ACTION_INSTANCE_SET:
-        mdns_mem_free(action->data.instance);
-        break;
-    case ACTION_SEARCH_ADD:
-    case ACTION_SEARCH_SEND:
-    case ACTION_SEARCH_END:
-        mdns_priv_query_action(action, ACTION_CLEANUP);
-        break;
-    case ACTION_BROWSE_ADD:
-    case ACTION_BROWSE_END:
-    case ACTION_BROWSE_SYNC:
-        mdns_browse_action(action, ACTION_CLEANUP);
-        break;
-    case ACTION_TX_HANDLE:
-        mdns_send_action(action, ACTION_CLEANUP);
-        break;
-    case ACTION_RX_HANDLE:
-        mdns_priv_receive_action(action, ACTION_CLEANUP);
-        break;
-    case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
-    case ACTION_DELEGATE_HOSTNAME_ADD:
-        mdns_mem_free((char *)action->data.delegate_hostname.hostname);
-        mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
-        break;
-    case ACTION_DELEGATE_HOSTNAME_REMOVE:
-        mdns_mem_free((char *)action->data.delegate_hostname.hostname);
-        break;
-    default:
-        break;
-    }
-    mdns_mem_free(action);
-}
-
-/**
- * @brief  Called from service thread to execute given action
- */
-static void _mdns_execute_action(mdns_action_t *action)
-{
-    switch (action->type) {
-    case ACTION_SYSTEM_EVENT:
-        perform_event_action(action->data.sys_event.interface, action->data.sys_event.event_action);
-        break;
-    case ACTION_HOSTNAME_SET:
-        _mdns_send_bye_all_pcbs_no_instance(true);
-        mdns_priv_remap_self_service_hostname(_mdns_server->hostname, action->data.hostname_set.hostname);
-        mdns_mem_free((char *)_mdns_server->hostname);
-        _mdns_server->hostname = action->data.hostname_set.hostname;
-        _mdns_self_host.hostname = action->data.hostname_set.hostname;
-        mdns_priv_restart_all_pcbs();
-        xSemaphoreGive(_mdns_server->action_sema);
-        break;
-    case ACTION_INSTANCE_SET:
-        _mdns_send_bye_all_pcbs_no_instance(false);
-        mdns_mem_free((char *)_mdns_server->instance);
-        _mdns_server->instance = action->data.instance;
-        mdns_priv_restart_all_pcbs_no_instance();
-
-        break;
-    case ACTION_SEARCH_ADD:
-    case ACTION_SEARCH_SEND:
-    case ACTION_SEARCH_END:
-        mdns_priv_query_action(action, ACTION_RUN);
-        break;
-    case ACTION_BROWSE_ADD:
-    case ACTION_BROWSE_SYNC:
-    case ACTION_BROWSE_END:
-        mdns_browse_action(action, ACTION_RUN);
-        break;
-
-    case ACTION_TX_HANDLE:
-        mdns_send_action(action, ACTION_RUN);
-        break;
-    case ACTION_RX_HANDLE:
-        mdns_priv_receive_action(action, ACTION_RUN);
-        break;
-    case ACTION_DELEGATE_HOSTNAME_ADD:
-        if (!_mdns_delegate_hostname_add(action->data.delegate_hostname.hostname,
-                                         action->data.delegate_hostname.address_list)) {
-            mdns_mem_free((char *)action->data.delegate_hostname.hostname);
-            mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
-        }
-        xSemaphoreGive(_mdns_server->action_sema);
-        break;
-    case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
-        if (!_mdns_delegate_hostname_set_address(action->data.delegate_hostname.hostname,
-                                                 action->data.delegate_hostname.address_list)) {
-            mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
-        }
-        mdns_mem_free((char *)action->data.delegate_hostname.hostname);
-        break;
-    case ACTION_DELEGATE_HOSTNAME_REMOVE:
-        _mdns_delegate_hostname_remove(action->data.delegate_hostname.hostname);
-        mdns_mem_free((char *)action->data.delegate_hostname.hostname);
-        break;
-    default:
-        break;
-    }
-    mdns_mem_free(action);
-}
-
-/**
- * @brief  the main MDNS service task. Packets are received and parsed here
- */
-static void _mdns_service_task(void *pvParameters)
-{
-    mdns_action_t *a = NULL;
-    for (;;) {
-        if (_mdns_server && _mdns_server->action_queue) {
-            if (xQueueReceive(_mdns_server->action_queue, &a, portMAX_DELAY) == pdTRUE) {
-                assert(a);
-                if (a->type == ACTION_TASK_STOP) {
-                    break;
-                }
-                MDNS_SERVICE_LOCK();
-                _mdns_execute_action(a);
-                MDNS_SERVICE_UNLOCK();
-            }
-        } else {
-            vTaskDelay(500 * portTICK_PERIOD_MS);
-        }
-    }
-    _mdns_service_task_handle = NULL;
-    vTaskDelay(portMAX_DELAY);
-}
-
-static void _mdns_timer_cb(void *arg)
-{
-    mdns_send_packets();
-    mdns_priv_query_start_stop();
-}
-
-static esp_err_t _mdns_start_timer(void)
-{
-    esp_timer_create_args_t timer_conf = {
-        .callback = _mdns_timer_cb,
-        .arg = NULL,
-        .dispatch_method = ESP_TIMER_TASK,
-        .name = "mdns_timer"
-    };
-    esp_err_t err = esp_timer_create(&timer_conf, &(_mdns_server->timer_handle));
-    if (err) {
-        return err;
-    }
-    return esp_timer_start_periodic(_mdns_server->timer_handle, MDNS_TIMER_PERIOD_US);
-}
-
-static esp_err_t _mdns_stop_timer(void)
-{
-    esp_err_t err = ESP_OK;
-    if (_mdns_server->timer_handle) {
-        err = esp_timer_stop(_mdns_server->timer_handle);
-        if (err) {
-            return err;
-        }
-        err = esp_timer_delete(_mdns_server->timer_handle);
-    }
-    return err;
-}
-
-static esp_err_t _mdns_task_create_with_caps(void)
-{
-    esp_err_t ret = ESP_OK;
-    static StaticTask_t mdns_task_buffer;
-
-    _mdns_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
-    ESP_GOTO_ON_FALSE(_mdns_stack_buffer != NULL, ESP_FAIL, err, TAG, "failed to allocate memory for the mDNS task's stack");
-
-    _mdns_service_task_handle = xTaskCreateStaticPinnedToCore(_mdns_service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, _mdns_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
-    ESP_GOTO_ON_FALSE(_mdns_service_task_handle != NULL, ESP_FAIL, err, TAG, "failed to create task for the mDNS");
-
-    return ret;
-
-err:
-    mdns_mem_task_free(_mdns_stack_buffer);
-    return ret;
-}
-
-/**
- * @brief  Start the service thread if not running
- *
- * @return
- *      - ESP_OK on success
- *      - ESP_FAIL on error
- */
-static esp_err_t _mdns_service_task_start(void)
-{
-    esp_err_t ret = ESP_OK;
-    if (!_mdns_service_semaphore) {
-        _mdns_service_semaphore = xSemaphoreCreateMutex();
-        ESP_RETURN_ON_FALSE(_mdns_service_semaphore != NULL, ESP_FAIL, TAG, "Failed to create the mDNS service lock");
-    }
-    MDNS_SERVICE_LOCK();
-    ESP_GOTO_ON_ERROR(_mdns_start_timer(), err, TAG, "Failed to start the mDNS service timer");
-
-    if (!_mdns_service_task_handle) {
-        ESP_GOTO_ON_ERROR(_mdns_task_create_with_caps(), err_stop_timer, TAG, "Failed to start the mDNS service task");
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0) && !CONFIG_IDF_TARGET_LINUX
-        StackType_t *mdns_debug_stack_buffer;
-        StaticTask_t *mdns_debug_task_buffer;
-        xTaskGetStaticBuffers(_mdns_service_task_handle, &mdns_debug_stack_buffer, &mdns_debug_task_buffer);
-        ESP_LOGD(TAG, "mdns_debug_stack_buffer:%p mdns_debug_task_buffer:%p\n", mdns_debug_stack_buffer, mdns_debug_task_buffer);
-#endif // CONFIG_IDF_TARGET_LINUX
-    }
-    MDNS_SERVICE_UNLOCK();
-    return ret;
-
-err_stop_timer:
-    _mdns_stop_timer();
-err:
-    MDNS_SERVICE_UNLOCK();
-    vSemaphoreDelete(_mdns_service_semaphore);
-    _mdns_service_semaphore = NULL;
-    return ret;
-}
-
-/**
- * @brief  Stop the service thread
- *
- * @return
- *      - ESP_OK
- */
-static esp_err_t _mdns_service_task_stop(void)
-{
-    _mdns_stop_timer();
-    if (_mdns_service_task_handle) {
-        TaskHandle_t task_handle = _mdns_service_task_handle;
-        mdns_action_t action;
-        mdns_action_t *a = &action;
-        action.type = ACTION_TASK_STOP;
-        if (xQueueSend(_mdns_server->action_queue, &a, (TickType_t)0) != pdPASS) {
-            _mdns_service_task_handle = NULL;
-        }
-        while (_mdns_service_task_handle) {
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        vTaskDelete(task_handle);
-    }
-    vSemaphoreDelete(_mdns_service_semaphore);
-    _mdns_service_semaphore = NULL;
-    return ESP_OK;
-}
-
-void mdns_priv_service_lock(void)
-{
-    MDNS_SERVICE_LOCK();
-}
-
-void mdns_priv_service_unlock(void)
-{
-    MDNS_SERVICE_UNLOCK();
-}
-
-esp_err_t mdns_init(void)
-{
-    esp_err_t err = ESP_OK;
-
-    if (_mdns_server) {
-        return err;
-    }
-
-    _mdns_server = (mdns_server_t *)mdns_mem_malloc(sizeof(mdns_server_t));
-    if (!_mdns_server) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-    memset((uint8_t *)_mdns_server, 0, sizeof(mdns_server_t));
-
-    _mdns_server->action_queue = xQueueCreate(MDNS_ACTION_QUEUE_LEN, sizeof(mdns_action_t *));
-    if (!_mdns_server->action_queue) {
-        err = ESP_ERR_NO_MEM;
-        goto free_server;
-    }
-
-    _mdns_server->action_sema = xSemaphoreCreateBinary();
-    if (!_mdns_server->action_sema) {
-        err = ESP_ERR_NO_MEM;
-        goto free_queue;
-    }
-
-
-    if (mdns_netif_init() != ESP_OK) {
-        err = ESP_FAIL;
-        goto free_action_sema;
-    }
-
-    if (_mdns_service_task_start()) {
-        //service start failed!
-        err = ESP_FAIL;
-        goto free_all_and_disable_pcbs;
-    }
-
-    return ESP_OK;
-
-free_all_and_disable_pcbs:
-    mdns_netif_deinit();
-free_action_sema:
-    vSemaphoreDelete(_mdns_server->action_sema);
-free_queue:
-    vQueueDelete(_mdns_server->action_queue);
-free_server:
-    mdns_mem_free(_mdns_server);
-    _mdns_server = NULL;
-    return err;
-}
-
-void mdns_free(void)
-{
-    if (!_mdns_server) {
-        return;
-    }
-
-    // Unregister handlers before destroying the mdns internals to avoid receiving async events while deinit
-    mdns_netif_unregister_predefined_handlers();
-
-    mdns_service_remove_all();
-    free_delegated_hostnames();
-    _mdns_service_task_stop();
-    // at this point, the service task is deleted, so we can destroy the stack size
-    mdns_mem_task_free(_mdns_stack_buffer);
-    mdns_priv_pcb_deinit();
-    mdns_mem_free((char *)_mdns_server->hostname);
-    mdns_mem_free((char *)_mdns_server->instance);
-    if (_mdns_server->action_queue) {
-        mdns_action_t *c;
-        while (xQueueReceive(_mdns_server->action_queue, &c, 0) == pdTRUE) {
-            _mdns_free_action(c);
-        }
-        vQueueDelete(_mdns_server->action_queue);
-    }
-    _mdns_clear_tx_queue_head();
-    mdns_priv_query_free();
-    mdns_browse_free();
-    vSemaphoreDelete(_mdns_server->action_sema);
-    mdns_mem_free(_mdns_server);
-    _mdns_server = NULL;
-}
+/*** SPLIT POINT ***/
 
 esp_err_t mdns_hostname_set(const char *hostname)
 {
@@ -960,12 +519,12 @@ esp_err_t mdns_hostname_set(const char *hostname)
     }
     action->type = ACTION_HOSTNAME_SET;
     action->data.hostname_set.hostname = new_hostname;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(new_hostname);
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
     }
-    xSemaphoreTake(_mdns_server->action_sema, portMAX_DELAY);
+    mdns_priv_wait_action_complete();
     return ESP_OK;
 }
 
@@ -979,11 +538,11 @@ esp_err_t mdns_hostname_get(char *hostname)
         return ESP_ERR_INVALID_STATE;
     }
 
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     size_t len = strnlen(_mdns_server->hostname, MDNS_NAME_BUF_LEN - 1);
     strncpy(hostname, _mdns_server->hostname, len);
     hostname[len] = 0;
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ESP_OK;
 }
 
@@ -1009,12 +568,12 @@ esp_err_t mdns_delegate_hostname_add(const char *hostname, const mdns_ip_addr_t 
     action->type = ACTION_DELEGATE_HOSTNAME_ADD;
     action->data.delegate_hostname.hostname = new_hostname;
     action->data.delegate_hostname.address_list = mdns_utils_copy_address_list(address_list);
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(new_hostname);
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
     }
-    xSemaphoreTake(_mdns_server->action_sema, portMAX_DELAY);
+    mdns_priv_wait_action_complete();
     return ESP_OK;
 }
 
@@ -1039,7 +598,7 @@ esp_err_t mdns_delegate_hostname_remove(const char *hostname)
     }
     action->type = ACTION_DELEGATE_HOSTNAME_REMOVE;
     action->data.delegate_hostname.hostname = new_hostname;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(new_hostname);
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
@@ -1069,7 +628,7 @@ esp_err_t mdns_delegate_hostname_set_address(const char *hostname, const mdns_ip
     action->type = ACTION_DELEGATE_HOSTNAME_SET_ADDR;
     action->data.delegate_hostname.hostname = new_hostname;
     action->data.delegate_hostname.address_list = mdns_utils_copy_address_list(address_list);
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(new_hostname);
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
@@ -1080,9 +639,9 @@ esp_err_t mdns_delegate_hostname_set_address(const char *hostname, const mdns_ip
 bool mdns_hostname_exists(const char *hostname)
 {
     bool ret = false;
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     ret = mdns_utils_hostname_is_ours(hostname);
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1107,7 +666,7 @@ esp_err_t mdns_instance_name_set(const char *instance)
     }
     action->type = ACTION_INSTANCE_SET;
     action->data.instance = new_instance;
-    if (xQueueSend(_mdns_server->action_queue, &action, (TickType_t)0) != pdPASS) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(new_instance);
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
@@ -1126,7 +685,7 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
         return ESP_ERR_INVALID_ARG;
     }
 
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
     mdns_service_t *s = NULL;
@@ -1149,11 +708,11 @@ esp_err_t mdns_service_add_for_host(const char *instance, const char *service, c
     item->next = _mdns_server->services;
     _mdns_server->services = item;
     mdns_responder_probe_all_pcbs(&item, 1, false, false);
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ESP_OK;
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     _mdns_free_service(s);
     if (ret == ESP_ERR_NO_MEM) {
         HOOK_MALLOC_FAILED;
@@ -1173,9 +732,9 @@ esp_err_t mdns_service_add(const char *instance, const char *service, const char
 bool mdns_service_exists(const char *service_type, const char *proto, const char *hostname)
 {
     bool ret = false;
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     ret = mdns_utils_get_service_item(service_type, proto, hostname) != NULL;
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1183,9 +742,9 @@ bool mdns_service_exists_with_instance(const char *instance, const char *service
                                        const char *hostname)
 {
     bool ret = false;
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     ret = mdns_utils_get_service_item_instance(instance, service_type, proto, hostname) != NULL;
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1336,7 +895,7 @@ handle_error:
 
 esp_err_t mdns_service_port_set_for_host(const char *instance, const char *service, const char *proto, const char *host, uint16_t port)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) && port,
@@ -1348,7 +907,7 @@ esp_err_t mdns_service_port_set_for_host(const char *instance, const char *servi
     _mdns_announce_all_pcbs(&s, 1, true);
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1363,7 +922,7 @@ esp_err_t mdns_service_port_set(const char *service, const char *proto, uint16_t
 esp_err_t mdns_service_txt_set_for_host(const char *instance, const char *service, const char *proto, const char *host,
                                         mdns_txt_item_t txt_items[], uint8_t num_items)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) && !(num_items && txt_items == NULL),
@@ -1386,7 +945,7 @@ esp_err_t mdns_service_txt_set_for_host(const char *instance, const char *servic
     _mdns_announce_all_pcbs(&s, 1, false);
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1401,7 +960,7 @@ esp_err_t mdns_service_txt_set(const char *service, const char *proto, mdns_txt_
 esp_err_t mdns_service_txt_item_set_for_host_with_explicit_value_len(const char *instance, const char *service, const char *proto,
                                                                      const char *host, const char *key, const char *value_arg, uint8_t value_len)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     char *value = NULL;
     mdns_txt_linked_item_t *new_txt = NULL;
@@ -1444,10 +1003,10 @@ esp_err_t mdns_service_txt_item_set_for_host_with_explicit_value_len(const char 
     _mdns_announce_all_pcbs(&s, 1, false);
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 out_of_mem:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     HOOK_MALLOC_FAILED;
     mdns_mem_free(value);
     mdns_mem_free(new_txt);
@@ -1483,7 +1042,7 @@ esp_err_t mdns_service_txt_item_set_with_explicit_value_len(const char *service,
 esp_err_t mdns_service_txt_item_remove_for_host(const char *instance, const char *service, const char *proto, const char *host,
                                                 const char *key)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) && !_str_null_or_empty(key),
@@ -1520,7 +1079,7 @@ esp_err_t mdns_service_txt_item_remove_for_host(const char *instance, const char
     _mdns_announce_all_pcbs(&s, 1, false);
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     if (ret == ESP_ERR_NO_MEM) {
         HOOK_MALLOC_FAILED;
     }
@@ -1567,7 +1126,7 @@ static esp_err_t _mdns_service_subtype_remove_for_host(mdns_srv_item_t *service,
 esp_err_t mdns_service_subtype_remove_for_host(const char *instance_name, const char *service, const char *proto,
                                                const char *hostname, const char *subtype)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) &&
                       !_str_null_or_empty(subtype), ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
@@ -1588,12 +1147,12 @@ esp_err_t mdns_service_subtype_remove_for_host(const char *instance_name, const 
     _mdns_send_bye_subtype(s, instance_name, remove_subtypes);
     _mdns_free_subtype(remove_subtypes);
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 out_of_mem:
     HOOK_MALLOC_FAILED;
     mdns_mem_free(remove_subtypes);
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1624,7 +1183,7 @@ out_of_mem:
 esp_err_t mdns_service_subtype_add_multiple_items_for_host(const char *instance_name, const char *service, const char *proto,
                                                            const char *hostname, mdns_subtype_item_t subtype[], uint8_t num_items)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     int cur_index = 0;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto) &&
@@ -1654,7 +1213,7 @@ err:
         }
     }
 exit:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1719,7 +1278,7 @@ static mdns_subtype_t *_mdns_service_find_subtype_needed_sendbye(mdns_service_t 
 esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instance_name, const char *service_type, const char *proto,
                                                               const char *hostname, mdns_subtype_item_t subtype[], uint8_t num_items)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     int cur_index = 0;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service_type) && !_str_null_or_empty(proto),
@@ -1759,14 +1318,14 @@ err:
         }
     }
 exit:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
 esp_err_t mdns_service_instance_name_set_for_host(const char *instance_old, const char *service, const char *proto, const char *host,
                                                   const char *instance)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
 
@@ -1785,7 +1344,7 @@ esp_err_t mdns_service_instance_name_set_for_host(const char *instance_old, cons
     mdns_responder_probe_all_pcbs(&s, 1, false, false);
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1799,7 +1358,7 @@ esp_err_t mdns_service_instance_name_set(const char *service, const char *proto,
 
 esp_err_t mdns_service_remove_for_host(const char *instance, const char *service, const char *proto, const char *host)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     const char *hostname = host ? host : _mdns_server->hostname;
     ESP_GOTO_ON_FALSE(_mdns_server && _mdns_server->services && !_str_null_or_empty(service) && !_str_null_or_empty(proto),
@@ -1846,7 +1405,7 @@ esp_err_t mdns_service_remove_for_host(const char *instance, const char *service
     }
 
 err:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1860,7 +1419,7 @@ esp_err_t mdns_service_remove(const char *service_type, const char *proto)
 
 esp_err_t mdns_service_remove_all(void)
 {
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     esp_err_t ret = ESP_OK;
     ESP_GOTO_ON_FALSE(_mdns_server, ESP_ERR_INVALID_ARG, done, TAG, "Invalid state");
     if (!_mdns_server->services) {
@@ -1879,7 +1438,7 @@ esp_err_t mdns_service_remove_all(void)
     }
 
 done:
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ret;
 }
 
@@ -1892,9 +1451,9 @@ esp_err_t mdns_lookup_delegated_service(const char *instance, const char *servic
     if (!result || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
         return ESP_ERR_INVALID_ARG;
     }
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     *result = _mdns_lookup_service(instance, service, proto, max_results, false);
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ESP_OK;
 }
 
@@ -1907,8 +1466,87 @@ esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *servi
     if (!result || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
         return ESP_ERR_INVALID_ARG;
     }
-    MDNS_SERVICE_LOCK();
+    mdns_priv_service_lock();
     *result = _mdns_lookup_service(instance, service, proto, max_results, true);
-    MDNS_SERVICE_UNLOCK();
+    mdns_priv_service_unlock();
     return ESP_OK;
+}
+
+void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname)
+{
+    mdns_srv_item_t *service = _mdns_server->services;
+
+    while (service) {
+        if (service->service->hostname &&
+                strcmp(service->service->hostname, old_hostname) == 0) {
+            mdns_mem_free((char *)service->service->hostname);
+            service->service->hostname = mdns_mem_strdup(new_hostname);
+        }
+        service = service->next;
+    }
+}
+
+void mdns_priv_responder_action(mdns_action_t *action, mdns_action_subtype_t type)
+{
+    if (type == ACTION_RUN) {
+        switch (action->type) {
+        case ACTION_HOSTNAME_SET:
+            _mdns_send_bye_all_pcbs_no_instance(true);
+            mdns_priv_remap_self_service_hostname(_mdns_server->hostname, action->data.hostname_set.hostname);
+            mdns_mem_free((char *)_mdns_server->hostname);
+            _mdns_server->hostname = action->data.hostname_set.hostname;
+            _mdns_self_host.hostname = action->data.hostname_set.hostname;
+            mdns_priv_restart_all_pcbs();
+            break;
+        case ACTION_INSTANCE_SET:
+            _mdns_send_bye_all_pcbs_no_instance(false);
+            mdns_mem_free((char *)_mdns_server->instance);
+            _mdns_server->instance = action->data.instance;
+            mdns_priv_restart_all_pcbs_no_instance();
+            break;
+        case ACTION_DELEGATE_HOSTNAME_ADD:
+            if (!mdns_priv_delegate_hostname_add(action->data.delegate_hostname.hostname,
+                                                 action->data.delegate_hostname.address_list)) {
+                mdns_mem_free((char *)action->data.delegate_hostname.hostname);
+                mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
+            }
+            break;
+        case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
+            if (!_mdns_delegate_hostname_set_address(action->data.delegate_hostname.hostname,
+                                                     action->data.delegate_hostname.address_list)) {
+                mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
+            }
+            mdns_mem_free((char *)action->data.delegate_hostname.hostname);
+            break;
+        case ACTION_DELEGATE_HOSTNAME_REMOVE:
+            _mdns_delegate_hostname_remove(action->data.delegate_hostname.hostname);
+            mdns_mem_free((char *)action->data.delegate_hostname.hostname);
+            break;
+        default:
+            abort();
+        }
+        return;
+    }
+    if (type == ACTION_CLEANUP) {
+        switch (action->type) {
+        case ACTION_HOSTNAME_SET:
+            mdns_mem_free(action->data.hostname_set.hostname);
+            break;
+        case ACTION_INSTANCE_SET:
+            mdns_mem_free(action->data.instance);
+            break;
+        case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
+        case ACTION_DELEGATE_HOSTNAME_ADD:
+            mdns_mem_free((char *)action->data.delegate_hostname.hostname);
+            mdns_utils_free_address_list(action->data.delegate_hostname.address_list);
+            break;
+        case ACTION_DELEGATE_HOSTNAME_REMOVE:
+            mdns_mem_free((char *)action->data.delegate_hostname.hostname);
+            break;
+        default:
+            abort();
+        }
+        return;
+    }
+
 }

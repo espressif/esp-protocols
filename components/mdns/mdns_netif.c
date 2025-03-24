@@ -17,7 +17,7 @@
 #include "mdns_browser.h"
 #include "mdns_netif.h"
 #include "mdns_send.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 
 static const char *TAG = "mdns_netif";
 

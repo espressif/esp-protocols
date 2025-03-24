@@ -13,7 +13,7 @@
 #include "esp_log.h"
 #include "mdns_debug.h"
 #include "mdns_netif.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 
 static const char *TAG = "mdns_send";
 static const char *MDNS_SUB_STR = "_sub";
@@ -1730,11 +1730,6 @@ mdns_tx_packet_t *_mdns_get_next_pcb_packet(mdns_if_t tcpip_if, mdns_ip_protocol
         q = q->next;
     }
     return NULL;
-}
-
-mdns_tx_packet_t *_mdns_get_next_tx_packet(void)
-{
-    return s_tx_queue_head;
 }
 
 /**

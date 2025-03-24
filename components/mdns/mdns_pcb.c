@@ -6,7 +6,7 @@
 #include <string.h>
 #include "mdns_private.h"
 #include "mdns_networking.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 #include "mdns_netif.h"
 #include "mdns_utils.h"
 #include "mdns_send.h"

@@ -16,7 +16,7 @@
 #include "mdns_send.h"
 #include "mdns_browser.h"
 #include "mdns_querier.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 
 static const char *TAG = "mdns_packet";
 

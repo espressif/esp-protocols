@@ -402,11 +402,11 @@ typedef struct mdns_server_s {
     const char *hostname;
     const char *instance;
     mdns_srv_item_t *services;
-    QueueHandle_t action_queue;
-    SemaphoreHandle_t action_sema;
+//    QueueHandle_t action_queue;
+//    SemaphoreHandle_t action_sema;
 //    mdns_tx_packet_t *tx_queue_head;
 //    mdns_search_once_t *search_once;
-    esp_timer_handle_t timer_handle;
+//    esp_timer_handle_t timer_handle;
 //    mdns_browse_t *browse;
 } mdns_server_t;
 
@@ -512,5 +512,22 @@ void mdns_priv_service_unlock(void);
  * @brief  Send the given action to the service queue
  */
 bool mdns_priv_queue_action(mdns_action_t *action);
+
+esp_err_t mdns_responder_init(void);
+
+void mdns_responder_free(void);
+
+void mdns_priv_wait_action_complete(void);
+
+/**
+ * @brief Adds a delegated hostname to the linked list
+ * @param hostname Host name pointer
+ * @param address_list Address list
+ * @return  true on success
+ *          false if the host wasn't attached (this is our hostname, or alloc failure) so we have to free the structs
+ */
+bool mdns_priv_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *address_list);
+
+void mdns_responder_free_delegated_hostnames(void);
 
 #endif /* MDNS_PRIVATE_H_ */

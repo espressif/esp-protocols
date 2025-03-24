@@ -10,7 +10,7 @@
 #include "mdns_utils.h"
 #include "mdns_send.h"
 #include "esp_log.h"
-#include "mdns_responder.h"
+#include "mdns_pcb.h"
 #include "mdns_netif.h"
 
 static const char *TAG = "mdns_querier";
