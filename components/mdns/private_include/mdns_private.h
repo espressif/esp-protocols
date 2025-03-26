@@ -395,21 +395,6 @@ typedef struct mdns_browse_sync {
     mdns_browse_result_sync_t *sync_result;
 } mdns_browse_sync_t;
 
-typedef struct mdns_server_s {
-//    struct {
-//        mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
-//    } interfaces[MDNS_MAX_INTERFACES];
-    const char *hostname;
-    const char *instance;
-    mdns_srv_item_t *services;
-//    QueueHandle_t action_queue;
-//    SemaphoreHandle_t action_sema;
-//    mdns_tx_packet_t *tx_queue_head;
-//    mdns_search_once_t *search_once;
-//    esp_timer_handle_t timer_handle;
-//    mdns_browse_t *browse;
-} mdns_server_t;
-
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -443,60 +428,6 @@ typedef struct {
     } data;
 } mdns_action_t;
 
-/**
- * @brief  Returns true if the mdns server is initialized
- */
-bool mdns_priv_is_server_init(void);
-
-/**
- * @brief  get global (mdns_server->hostname) hostname
- */
-const char *mdns_priv_get_global_hostname(void);
-
-/**
- * @brief  get service list
- */
-mdns_srv_item_t *mdns_priv_get_services(void);
-
-/**
- * @brief  get host list
- */
-mdns_host_item_t *mdns_priv_get_hosts(void);
-
-/**
- * @brief  get self host
- */
-mdns_host_item_t *priv_get_self_host(void);
-
-/**
- * @brief  set global hostname
- */
-void mdns_priv_set_global_hostname(const char *hostname);
-
-/**
- * @brief  set mdns_server->instance
- */
-const char *mdns_priv_get_instance(void);
-
-/**
- * @brief  set mdns_server->instance
- */
-void mdns_priv_set_instance(const char *instance);
-
-/**
- * @brief  Restart the responder on all services without instance
- */
-void mdns_priv_restart_all_pcbs_no_instance(void);
-
-/**
- * @brief  Remaps hostname of self service
- */
-void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname);
-
-/**
- * @brief  Restart the responder on all active PCBs
- */
-void mdns_priv_restart_all_pcbs(void);
 
 /**
  * @brief  Lock mdns service
@@ -513,21 +444,6 @@ void mdns_priv_service_unlock(void);
  */
 bool mdns_priv_queue_action(mdns_action_t *action);
 
-esp_err_t mdns_responder_init(void);
 
-void mdns_responder_free(void);
-
-void mdns_priv_wait_action_complete(void);
-
-/**
- * @brief Adds a delegated hostname to the linked list
- * @param hostname Host name pointer
- * @param address_list Address list
- * @return  true on success
- *          false if the host wasn't attached (this is our hostname, or alloc failure) so we have to free the structs
- */
-bool mdns_priv_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *address_list);
-
-void mdns_responder_free_delegated_hostnames(void);
 
 #endif /* MDNS_PRIVATE_H_ */

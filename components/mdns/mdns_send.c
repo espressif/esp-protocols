@@ -14,6 +14,7 @@
 #include "mdns_debug.h"
 #include "mdns_netif.h"
 #include "mdns_pcb.h"
+#include "mdns_responder.h"
 
 static const char *TAG = "mdns_send";
 static const char *MDNS_SUB_STR = "_sub";

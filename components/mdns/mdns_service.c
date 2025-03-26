@@ -30,7 +30,6 @@ static volatile TaskHandle_t _mdns_service_task_handle = NULL;
 static SemaphoreHandle_t _mdns_service_semaphore = NULL;
 static StackType_t *_mdns_stack_buffer;
 static QueueHandle_t s_action_queue;
-static SemaphoreHandle_t s_action_sema;
 static esp_timer_handle_t s_timer_handle;
 
 static const char *TAG = "mdns_service";
@@ -159,13 +158,6 @@ static void _mdns_execute_action(mdns_action_t *action)
     case ACTION_SYSTEM_EVENT:
         perform_event_action(action->data.sys_event.interface, action->data.sys_event.event_action);
         break;
-    case ACTION_HOSTNAME_SET:
-        mdns_priv_responder_action(action, ACTION_RUN);
-        xSemaphoreGive(s_action_sema);
-        break;
-    case ACTION_INSTANCE_SET:
-        mdns_priv_responder_action(action, ACTION_RUN);
-        break;
     case ACTION_SEARCH_ADD:
     case ACTION_SEARCH_SEND:
     case ACTION_SEARCH_END:
@@ -183,13 +175,10 @@ static void _mdns_execute_action(mdns_action_t *action)
     case ACTION_RX_HANDLE:
         mdns_priv_receive_action(action, ACTION_RUN);
         break;
+    case ACTION_HOSTNAME_SET:
+    case ACTION_INSTANCE_SET:
     case ACTION_DELEGATE_HOSTNAME_ADD:
-        mdns_priv_responder_action(action, ACTION_RUN);
-        xSemaphoreGive(s_action_sema);
-        break;
     case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
-        mdns_priv_responder_action(action, ACTION_RUN);
-        break;
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
         break;
@@ -359,26 +348,19 @@ esp_err_t mdns_init(void)
         return err;
     }
 
-    if (mdns_responder_init() != ESP_OK) {
+    if (mdns_priv_responder_init() != ESP_OK) {
         return ESP_ERR_NO_MEM;
     }
 
     s_action_queue = xQueueCreate(MDNS_ACTION_QUEUE_LEN, sizeof(mdns_action_t *));
     if (!s_action_queue) {
         err = ESP_ERR_NO_MEM;
-        goto free_server;
+        goto free_responder;
     }
-
-    s_action_sema = xSemaphoreCreateBinary();
-    if (!s_action_sema) {
-        err = ESP_ERR_NO_MEM;
-        goto free_queue;
-    }
-
 
     if (mdns_netif_init() != ESP_OK) {
         err = ESP_FAIL;
-        goto free_action_sema;
+        goto free_queue;
     }
 
     if (_mdns_service_task_start()) {
@@ -391,12 +373,10 @@ esp_err_t mdns_init(void)
 
 free_all_and_disable_pcbs:
     mdns_netif_deinit();
-free_action_sema:
-    vSemaphoreDelete(s_action_sema);
 free_queue:
     vQueueDelete(s_action_queue);
-free_server:
-    mdns_responder_free();
+free_responder:
+    mdns_priv_responder_free();
     return err;
 }
 
@@ -410,7 +390,7 @@ void mdns_free(void)
     mdns_netif_unregister_predefined_handlers();
 
     mdns_service_remove_all();
-    mdns_responder_free_delegated_hostnames();
+    mdns_priv_free_delegated_hostnames();
     _mdns_service_task_stop();
     // at this point, the service task is deleted, so we can destroy the stack size
     mdns_mem_task_free(_mdns_stack_buffer);
@@ -425,8 +405,7 @@ void mdns_free(void)
     _mdns_clear_tx_queue_head();
     mdns_priv_query_free();
     mdns_browse_free();
-    vSemaphoreDelete(s_action_sema);
-    mdns_responder_free();
+    mdns_priv_responder_free();
 }
 
 bool mdns_priv_queue_action(mdns_action_t *action)
@@ -435,9 +414,4 @@ bool mdns_priv_queue_action(mdns_action_t *action)
         return false;
     }
     return true;
-}
-
-void mdns_priv_wait_action_complete(void)
-{
-    xSemaphoreTake(s_action_sema, portMAX_DELAY);
 }

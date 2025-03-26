@@ -100,12 +100,12 @@ bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if);
  * @brief Sends bye for particular services on particular PCB
  * @note Called from mdns.c
  */
-void mdns_responder_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip);
+void mdns_priv_pcb_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip);
 
 /**
  * @brief  Send probe on all active PCBs
  */
-void mdns_responder_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe);
+void mdns_priv_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe);
 
 /**
  * @brief  Send probe for particular services on particular PCB
@@ -114,7 +114,7 @@ void mdns_responder_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool 
  * - If pcb probing then add only non-probing services and restarts probing
  * - If pcb not probing, run probing for all specified services
  */
-void mdns_responder_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip);
+void mdns_priv_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip);
 
 
 #ifdef __cplusplus

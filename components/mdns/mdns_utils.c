@@ -8,6 +8,7 @@
 #include "mdns_mem_caps.h"
 #include "esp_log.h"
 #include "mdns_utils.h"
+#include "mdns_responder.h"
 
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";

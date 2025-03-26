@@ -11,6 +11,7 @@
 #include "mdns_debug.h"
 #include "mdns_utils.h"
 #include "mdns_querier.h"
+#include "mdns_responder.h"
 #include "mdns_netif.h"
 #include "esp_log.h"
 

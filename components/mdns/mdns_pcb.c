@@ -13,6 +13,7 @@
 #include "mdns_mem_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "mdns_responder.h"
 
 static const char *TAG = "mdns_responder";
 
@@ -36,7 +37,7 @@ void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, 
     size_t i;
     if (mdns_is_netif_ready(tcpip_if, ip_protocol)) {
         if (PCB_STATE_IS_PROBING(_pcb)) {
-            mdns_responder_init_pcb_probe(tcpip_if, ip_protocol, services, len, include_ip);
+            mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, services, len, include_ip);
         } else if (PCB_STATE_IS_ANNOUNCING(_pcb)) {
             mdns_tx_packet_t   *p = _mdns_get_next_pcb_packet(tcpip_if, ip_protocol);
             if (p) {
@@ -121,7 +122,7 @@ static void _mdns_restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
     }
     if (srv_count == 0) {
         // proble only IP
-        mdns_responder_init_pcb_probe(tcpip_if, ip_protocol, NULL, 0, true);
+        mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, NULL, 0, true);
         return;
     }
     mdns_srv_item_t *services[srv_count];
@@ -131,7 +132,7 @@ static void _mdns_restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
         services[i++] = a;
         a = a->next;
     }
-    mdns_responder_init_pcb_probe(tcpip_if, ip_protocol, services, srv_count, true);
+    mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, services, srv_count, true);
 }
 
 /**
@@ -376,7 +377,7 @@ static void _mdns_init_pcb_probe_new_service(mdns_if_t tcpip_if, mdns_ip_protoco
     pcb->state = PCB_PROBE_1;
 }
 
-void mdns_responder_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip)
+void mdns_priv_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip)
 {
     mdns_pcb_t *pcb = &s_pcbs[tcpip_if][ip_protocol];
 
@@ -416,7 +417,7 @@ void mdns_responder_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_pro
 /**
  * @brief  Send by for particular services
  */
-void mdns_responder_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip)
+void mdns_priv_pcb_send_bye_service(mdns_srv_item_t **services, size_t len, bool include_ip)
 {
     uint8_t i, j;
     if (mdns_utils_str_null_or_empty(mdns_priv_get_global_hostname())) {
@@ -432,7 +433,7 @@ void mdns_responder_send_bye_service(mdns_srv_item_t **services, size_t len, boo
     }
 }
 
-void mdns_responder_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe)
+void mdns_priv_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe_ip, bool clear_old_probe)
 {
     uint8_t i, j;
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
@@ -445,7 +446,7 @@ void mdns_responder_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool 
                     _pcb->probe_services_len = 0;
                     _pcb->probe_running = false;
                 }
-                mdns_responder_init_pcb_probe((mdns_if_t) i, (mdns_ip_protocol_t) j, services, len, probe_ip);
+                mdns_priv_init_pcb_probe((mdns_if_t) i, (mdns_ip_protocol_t) j, services, len, probe_ip);
             }
         }
     }

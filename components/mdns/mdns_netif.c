@@ -10,14 +10,13 @@
 #include "esp_event.h"
 #include "mdns.h"
 #include "mdns_private.h"
-#include "mdns_networking.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
 #include "mdns_debug.h"
 #include "mdns_browser.h"
 #include "mdns_netif.h"
-#include "mdns_send.h"
 #include "mdns_pcb.h"
+#include "mdns_responder.h"
 
 static const char *TAG = "mdns_netif";
 

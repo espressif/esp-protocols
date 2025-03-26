@@ -16,12 +16,11 @@
 #include "lwip/udp.h"
 #include "lwip/mld6.h"
 #include "lwip/priv/tcpip_priv.h"
-#include "esp_system.h"
-#include "esp_event.h"
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
+#include "mdns_netif.h"
 
 /*
  * MDNS Server Networking
@@ -57,7 +56,7 @@ static esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
 
     action->type = ACTION_RX_HANDLE;
     action->data.rx_handle.packet = packet;
-    if (!mdns_action_queue(action)) {
+    if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
     }

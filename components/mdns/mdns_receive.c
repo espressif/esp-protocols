@@ -17,6 +17,7 @@
 #include "mdns_browser.h"
 #include "mdns_querier.h"
 #include "mdns_pcb.h"
+#include "mdns_responder.h"
 
 static const char *TAG = "mdns_packet";
 
@@ -1003,7 +1004,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                                         mdns_mem_free((char *)service->service->instance);
                                         service->service->instance = new_instance;
                                     }
-                                    mdns_responder_probe_all_pcbs(&service, 1, false, false);
+                                    mdns_priv_probe_all_pcbs(&service, 1, false, false);
                                 } else if (!mdns_utils_str_null_or_empty(mdns_priv_get_instance())) {
                                     char *new_instance = _mdns_mangle_name((char *) mdns_priv_get_instance());
                                     if (new_instance) {
@@ -1020,7 +1021,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                                 }
                             } else if (service) {
                                 mdns_send_bye_pcb(packet->tcpip_if, packet->ip_protocol, &service, 1, false);
-                                mdns_responder_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, false);
+                                mdns_priv_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, false);
                             }
                         }
                     } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions) {
@@ -1093,7 +1094,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                     }
                     if (col && !mdns_priv_pcb_is_probing(packet) && service) {
                         do_not_reply = true;
-                        mdns_responder_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, true);
+                        mdns_priv_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, &service, 1, true);
                     } else if (ttl > (MDNS_ANSWER_TXT_TTL / 2) && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_priv_pcb_is_probing(
                                    packet)) {
                         _mdns_remove_scheduled_answer(packet->tcpip_if, packet->ip_protocol, type, service);
@@ -1150,7 +1151,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                                 mdns_priv_restart_all_pcbs();
                             }
                         } else {
-                            mdns_responder_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
+                            mdns_priv_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
                         }
                     } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_priv_pcb_is_probing(
                                    packet)) {
@@ -1209,7 +1210,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                                 mdns_priv_restart_all_pcbs();
                             }
                         } else {
-                            mdns_responder_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
+                            mdns_priv_init_pcb_probe(packet->tcpip_if, packet->ip_protocol, NULL, 0, true);
                         }
                     } else if (ttl > 60 && !col && !parsed_packet->authoritative && !parsed_packet->probe && !parsed_packet->questions && !mdns_priv_pcb_is_probing(
                                    packet)) {
