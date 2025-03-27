@@ -98,7 +98,6 @@ void mdns_priv_free_delegated_hostnames(void);
  */
 void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname);
 
-
 #ifdef __cplusplus
 }
 #endif

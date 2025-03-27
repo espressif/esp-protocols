@@ -68,7 +68,7 @@ const char *mdns_priv_get_global_hostname(void)
 
 mdns_srv_item_t *mdns_priv_get_services(void)
 {
-    return s_mdns_server->services;
+    return s_mdns_server ? s_mdns_server->services : NULL;
 }
 
 mdns_host_item_t *mdns_priv_get_hosts(void)
