@@ -16,11 +16,6 @@
 #include "esp_timer.h"
 #include "esp_system.h"
 
-#ifdef CONFIG_MDNS_ENABLE_DEBUG_PRINTS
-#define MDNS_ENABLE_DEBUG
-#define _mdns_dbg_printf(...) printf(__VA_ARGS__)
-#endif
-
 /** Number of predefined interfaces */
 #ifndef CONFIG_MDNS_PREDEF_NETIF_STA
 #define CONFIG_MDNS_PREDEF_NETIF_STA 0
@@ -196,6 +191,10 @@ typedef enum {
     ACTION_MAX
 } mdns_action_type_t;
 
+typedef enum {
+    ACTION_RUN,
+    ACTION_CLEANUP,
+} mdns_action_subtype_t;
 
 typedef struct {
     uint16_t id;
@@ -342,15 +341,6 @@ typedef struct mdns_tx_packet_s {
     uint16_t id;
 } mdns_tx_packet_t;
 
-typedef struct {
-    mdns_pcb_state_t state;
-    mdns_srv_item_t **probe_services;
-    uint8_t probe_services_len;
-    uint8_t probe_ip;
-    uint8_t probe_running;
-    uint16_t failed_probes;
-} mdns_pcb_t;
-
 typedef enum {
     SEARCH_OFF,
     SEARCH_INIT,
@@ -405,21 +395,6 @@ typedef struct mdns_browse_sync {
     mdns_browse_result_sync_t *sync_result;
 } mdns_browse_sync_t;
 
-typedef struct mdns_server_s {
-    struct {
-        mdns_pcb_t pcbs[MDNS_IP_PROTOCOL_MAX];
-    } interfaces[MDNS_MAX_INTERFACES];
-    const char *hostname;
-    const char *instance;
-    mdns_srv_item_t *services;
-    QueueHandle_t action_queue;
-    SemaphoreHandle_t action_sema;
-    mdns_tx_packet_t *tx_queue_head;
-    mdns_search_once_t *search_once;
-    esp_timer_handle_t timer_handle;
-    mdns_browse_t *browse;
-} mdns_server_t;
-
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -453,16 +428,22 @@ typedef struct {
     } data;
 } mdns_action_t;
 
-/*
- * @brief  Convert mnds if to esp-netif handle
- *
- * @param  tcpip_if     mdns supported interface as internal enum
- *
- * @return
- *     - ptr to esp-netif on success
- *     - NULL if no available netif for current interface index
+
+/**
+ * @brief  Lock mdns service
  */
-esp_netif_t *_mdns_get_esp_netif(mdns_if_t tcpip_if);
+void mdns_priv_service_lock(void);
+
+/**
+ * @brief  Unlock mdns service
+ */
+void mdns_priv_service_unlock(void);
+
+/**
+ * @brief  Send the given action to the service queue
+ */
+bool mdns_priv_queue_action(mdns_action_t *action);
+
 
 
 #endif /* MDNS_PRIVATE_H_ */

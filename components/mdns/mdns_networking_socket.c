@@ -22,6 +22,8 @@
 #include <sys/param.h>
 #include "esp_log.h"
 #include "mdns_mem_caps.h"
+#include "mdns_utils.h"
+#include "mdns_netif.h"
 
 #if defined(CONFIG_IDF_TARGET_LINUX)
 #include <sys/ioctl.h>
@@ -57,6 +59,26 @@ struct pbuf  {
 // Compatibility define to access sock-addr struct the same way for lwip and linux
 #define s6_addr32 un.u32_addr
 #endif // CONFIG_IDF_TARGET_LINUX
+
+static esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = ACTION_RX_HANDLE;
+    action->data.rx_handle.packet = packet;
+    if (!mdns_priv_queue_action(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
 
 static void __attribute__((constructor)) ctor_networking_socket(void)
 {
@@ -352,7 +374,7 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
         return true;
     }
     int sock = s_interfaces[tcpip_if].sock;
-    esp_netif_t *netif = _mdns_get_esp_netif(tcpip_if);
+    esp_netif_t *netif = mdns_netif_get_esp_netif(tcpip_if);
     if (sock < 0) {
         sock = create_socket(netif);
     }

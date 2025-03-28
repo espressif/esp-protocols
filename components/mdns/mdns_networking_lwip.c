@@ -16,11 +16,11 @@
 #include "lwip/udp.h"
 #include "lwip/mld6.h"
 #include "lwip/priv/tcpip_priv.h"
-#include "esp_system.h"
-#include "esp_event.h"
 #include "mdns_networking.h"
 #include "esp_netif_net_stack.h"
 #include "mdns_mem_caps.h"
+#include "mdns_utils.h"
+#include "mdns_netif.h"
 
 /*
  * MDNS Server Networking
@@ -43,6 +43,25 @@ static struct udp_pcb *_pcb_main = NULL;
 static const char *TAG = "mdns_networking";
 
 static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip_addr_t *raddr, uint16_t rport);
+
+static esp_err_t _mdns_send_rx_action(mdns_rx_packet_t *packet)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = ACTION_RX_HANDLE;
+    action->data.rx_handle.packet = packet;
+    if (!mdns_priv_queue_action(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
 
 /**
  * @brief  Low level UDP PCB Initialize
@@ -87,7 +106,7 @@ static void _udp_pcb_main_deinit(void)
 static esp_err_t _udp_join_group(mdns_if_t if_inx, mdns_ip_protocol_t ip_protocol, bool join)
 {
     struct netif *netif = NULL;
-    esp_netif_t *tcpip_if = _mdns_get_esp_netif(if_inx);
+    esp_netif_t *tcpip_if = mdns_netif_get_esp_netif(if_inx);
 
     if (!esp_netif_is_netif_up(tcpip_if)) {
         // Network interface went down before event propagated, skipping IGMP config
@@ -188,7 +207,7 @@ static void _udp_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb, const ip
         struct netif *netif = NULL;
         bool found = false;
         for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-            netif = esp_netif_get_netif_impl(_mdns_get_esp_netif(i));
+            netif = esp_netif_get_netif_impl(mdns_netif_get_esp_netif(i));
             if (s_interfaces[i].proto && netif && netif == ip_current_input_netif()) {
 #if LWIP_IPV4
                 if (packet->src.type == IPADDR_TYPE_V4) {
@@ -333,7 +352,7 @@ static err_t _mdns_udp_pcb_write_api(struct tcpip_api_call_data *api_call_msg)
 {
     void *nif = NULL;
     mdns_api_call_t *msg = (mdns_api_call_t *)api_call_msg;
-    nif = esp_netif_get_netif_impl(_mdns_get_esp_netif(msg->tcpip_if));
+    nif = esp_netif_get_netif_impl(mdns_netif_get_esp_netif(msg->tcpip_if));
     if (!nif || !mdns_is_netif_ready(msg->tcpip_if, msg->ip_protocol) || _pcb_main == NULL) {
         pbuf_free(msg->pbt);
         msg->err = ERR_IF;

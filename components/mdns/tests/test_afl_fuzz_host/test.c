@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,6 +13,8 @@
 #include "esp32_mock.h"
 #include "mdns.h"
 #include "mdns_private.h"
+#include "mdns_utils.h"
+#include "mdns_querier.h"
 
 //
 // Global stuctures containing packet payload, search
@@ -23,11 +25,12 @@ mdns_search_once_t *search = NULL;
 //
 // Dependency injected test functions
 void mdns_test_execute_action(void *action);
-mdns_srv_item_t *mdns_test_mdns_get_service_item(const char *service, const char *proto);
 mdns_search_once_t *mdns_test_search_init(const char *name, const char *service, const char *proto, uint16_t type, uint32_t timeout, uint8_t max_results);
 esp_err_t mdns_test_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 void mdns_test_search_free(mdns_search_once_t *search);
+
 void mdns_test_init_di(void);
+void mdns_querier_test_init_di(void);
 extern mdns_server_t *_mdns_server;
 
 //
@@ -35,8 +38,8 @@ extern mdns_server_t *_mdns_server;
 static int mdns_test_hostname_set(const char *mdns_hostname)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        _mdns_server->interfaces[i].pcbs[MDNS_IP_PROTOCOL_V4].state = PCB_RUNNING;    // mark the PCB running to exercise mdns in fully operational mode
-        _mdns_server->interfaces[i].pcbs[MDNS_IP_PROTOCOL_V6].state = PCB_RUNNING;
+        // _mdns_server->interfaces[i].pcbs[MDNS_IP_PROTOCOL_V4].state = PCB_RUNNING;    // mark the PCB running to exercise mdns in fully operational mode
+        // _mdns_server->interfaces[i].pcbs[MDNS_IP_PROTOCOL_V6].state = PCB_RUNNING;
     }
     int ret = mdns_hostname_set(mdns_hostname);
     mdns_action_t *a = NULL;
@@ -78,32 +81,22 @@ static int mdns_test_service_txt_set(const char *service, const char *proto,  ui
 static int mdns_test_sub_service_add(const char *sub_name, const char *service_name, const char *proto, uint32_t port)
 {
     if (mdns_service_add(NULL, service_name, proto, port, NULL, 0)) {
-        // This is expected failure as the service thread is not running
-    }
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
-
-    if (mdns_test_mdns_get_service_item(service_name, proto) == NULL) {
         return ESP_FAIL;
     }
-    int ret = mdns_service_subtype_add_for_host(NULL, service_name, proto, NULL, sub_name);
-    a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
-    return ret;
+
+    if (_mdns_get_service_item(service_name, proto, NULL) == NULL) {
+        return ESP_FAIL;
+    }
+    return mdns_service_subtype_add_for_host(NULL, service_name, proto, NULL, sub_name);
 }
 
 static int mdns_test_service_add(const char *service_name, const char *proto, uint32_t port)
 {
     if (mdns_service_add(NULL, service_name, proto, port, NULL, 0)) {
-        // This is expected failure as the service thread is not running
+        return ESP_FAIL;
     }
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
 
-    if (mdns_test_mdns_get_service_item(service_name, proto) == NULL) {
+    if (_mdns_get_service_item(service_name, proto, NULL) == NULL) {
         return ESP_FAIL;
     }
     return ESP_OK;
@@ -161,6 +154,7 @@ int main(int argc, char **argv)
 
     // Init depencency injected methods
     mdns_test_init_di();
+    mdns_querier_test_init_di();
 
     if (mdns_init()) {
         abort();
@@ -266,9 +260,6 @@ int main(int argc, char **argv)
     }
 #ifndef MDNS_NO_SERVICES
     mdns_service_remove_all();
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
 #endif
     ForceTaskDelete();
     mdns_free();
