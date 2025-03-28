@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/espressif/esp-protocols/commits/modem-v1.4.0)
+
+### Features
+
+- added config_edrx api function ([74b7d85d](https://github.com/espressif/esp-protocols/commit/74b7d85d))
+- added sqn_gm02s connect function ([b97dfc08](https://github.com/espressif/esp-protocols/commit/b97dfc08))
+- add support for sequans GM02S modem ([8560f021](https://github.com/espressif/esp-protocols/commit/8560f021))
+
+### Bug Fixes
+
+- Fix cmux log message ([6ed672da](https://github.com/espressif/esp-protocols/commit/6ed672da))
+- fixed minor code mistakes. ([317faf89](https://github.com/espressif/esp-protocols/commit/317faf89))
+- handle nullptr in DTE constructors to prevent invalid access ([95b56600](https://github.com/espressif/esp-protocols/commit/95b56600))
+
 ## [1.3.0](https://github.com/espressif/esp-protocols/commits/modem-v1.3.0)
 
 ### Features
