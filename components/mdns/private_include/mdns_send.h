@@ -13,11 +13,6 @@ extern "C" {
 #endif
 
 /**
- * @brief Send a search query packet on the specified interface and protocol
- */
-void _mdns_search_send_pcb(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
-
-/**
  * @brief Free a transmit packet and its associated resources
  */
 void _mdns_free_tx_packet(mdns_tx_packet_t *packet);

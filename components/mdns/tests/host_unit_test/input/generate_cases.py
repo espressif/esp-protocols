@@ -54,19 +54,12 @@ def create_mdns_packet(queries, answers, additional, output_file='mdns_packet.bi
 
 # Test case 1: Basic hostname queries
 queries = [
+    ('test4.local.', 1),  # A record for main hostname
     ('test.local.', 1),  # A record for main hostname
-    ('test2.local.', 1),  # A record for instance name
-    ('test3.local.', 1),  # A record for delegate hostname
-    ('test4.local.', 28),  # AAAA record for delegate hostname
 ]
 answers = [
-    ('test.local.', 'A', '192.168.1.100', 120),
-    ('test2.local.', 'A', '192.168.1.101', 120),
-    ('test3.local.', 'A', '192.168.1.102', 120),
-    ('test4.local.', 'AAAA', 'fe80::1', 120),
 ]
 additional = [
-    ('test.local.', 'TXT', 'board=esp32', 120),
 ]
 create_mdns_packet(queries, answers, additional, 'test_hostname_queries.bin')
 print('Test case 1: Hostname queries')

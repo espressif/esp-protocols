@@ -25,36 +25,6 @@ static mdns_tx_packet_t *s_tx_queue_head;
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #endif
 
-
-/**
- * @brief  appends byte in a packet, incrementing the index
- *
- * @param  packet       MDNS packet
- * @param  index        offset in the packet
- * @param  value        the value to set
- *
- * @return length of added data: 0 on error or 1 on success
- */
-static inline uint8_t _mdns_append_u8(uint8_t *packet, uint16_t *index, uint8_t value)
-{
-    if (*index >= MDNS_MAX_PACKET_SIZE) {
-        return 0;
-    }
-    packet[*index] = value;
-    *index += 1;
-    return 1;
-}
-
-uint8_t mdns_utils_append_u16(uint8_t *packet, uint16_t *index, uint16_t value)
-{
-    if ((*index + 1) >= MDNS_MAX_PACKET_SIZE) {
-        return 0;
-    }
-    _mdns_append_u8(packet, index, (value >> 8) & 0xFF);
-    _mdns_append_u8(packet, index, value & 0xFF);
-    return 2;
-}
-
 /**
  * @brief  appends uint32_t in a packet, incrementing the index
  *

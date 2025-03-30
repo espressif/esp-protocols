@@ -255,3 +255,13 @@ bool mdns_utils_ipv6_address_is_zero(esp_ip6_addr_t ip6)
     return true;
 }
 #endif /* CONFIG_LWIP_IPV6 */
+
+uint8_t mdns_utils_append_u16(uint8_t *packet, uint16_t *index, uint16_t value)
+{
+    if ((*index + 1) >= MDNS_MAX_PACKET_SIZE) {
+        return 0;
+    }
+    _mdns_append_u8(packet, index, (value >> 8) & 0xFF);
+    _mdns_append_u8(packet, index, value & 0xFF);
+    return 2;
+}

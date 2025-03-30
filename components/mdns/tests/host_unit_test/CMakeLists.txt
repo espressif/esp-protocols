@@ -44,6 +44,92 @@ include_directories(
 set(UNITY_DIR "$ENV{IDF_PATH}/components/unity")
 include_directories(${UNITY_DIR}/unity/src)
 
+# Add option to enable unit testing
+option(ENABLE_UNIT_TESTS "Enable Unity-based unit tests" OFF)
+
+# Add preprocessor definition based on the option
+if(ENABLE_UNIT_TESTS)
+    add_definitions(-DENABLE_UNIT_TESTS)
+endif()
+
+# Add CMock options
+if(ENABLE_UNIT_TESTS)
+    # CMock paths
+    set(CMOCK_DIR "$ENV{IDF_PATH}/components/cmock")
+
+    # Use ruby command directly instead of looking for ruby.exe
+    find_program(RUBY_EXECUTABLE ruby)
+    if(NOT RUBY_EXECUTABLE)
+        message(FATAL_ERROR "Ruby is required for CMock but was not found!")
+    endif()
+
+    # Define list of files to mock
+    set(MOCK_FILES
+        "mdns_pcb"
+        "mdns_send"
+        # Add more files here as needed, without .h extension
+    )
+
+    # Verify headers exist and create mock commands for each
+    foreach(mock_file ${MOCK_FILES})
+        set(header_path "${COMPONENT_DIR}/private_include/${mock_file}.h")
+        if(NOT EXISTS ${header_path})
+            message(FATAL_ERROR "Cannot find ${mock_file}.h at ${header_path}")
+        endif()
+
+        list(APPEND MOCK_OUTPUTS
+            ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.c
+            ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.h
+        )
+
+        add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.c
+                   ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.h
+            COMMAND ${RUBY_EXECUTABLE}
+                    ${CMOCK_DIR}/CMock/lib/cmock.rb
+                    -o${CMAKE_CURRENT_SOURCE_DIR}/cmock_config.yml
+                    ${header_path}
+            DEPENDS ${header_path}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating mock for ${mock_file}.h"
+        )
+    endforeach()
+
+    # Include CMock headers
+    include_directories(
+        ${CMOCK_DIR}/CMock/src
+        ${CMAKE_CURRENT_BINARY_DIR}/mocks
+        ${UNITY_DIR}/unity/src
+        ${UNITY_DIR}/include
+    )
+
+    # Create directory for generated mocks
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/mocks)
+
+    # Create CMock config file if it doesn't exist
+    if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmock_config.yml)
+        file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/cmock_config.yml
+"---
+:cmock:
+  :mock_prefix: mock_
+  :plugins:
+    - :callback
+    - :ignore
+    - :expect_any_args
+    - :array
+    - :return_thru_ptr
+  :strippables:
+    - '(?:extern|static)\\s+'
+  :treat_as:
+    uint8_t: HEX8
+    uint16_t: HEX16
+    uint32_t: UINT32
+    int8_t: INT8
+    bool: UINT8"
+        )
+    endif()
+endif()
+
 # Source files
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
@@ -59,8 +145,25 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../mdns_send.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../mdns_pcb.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../mdns_netif.c
-    ${UNITY_DIR}/unity/src/unity.c
 )
+
+if(ENABLE_UNIT_TESTS)
+    # Remove real implementations of mocked files
+    foreach(mock_file ${MOCK_FILES})
+        list(REMOVE_ITEM SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../../${mock_file}.c)
+    endforeach()
+
+    # Add test-related sources
+    list(APPEND SOURCES
+        ${UNITY_DIR}/unity/src/unity.c
+        ${CMOCK_DIR}/CMock/src/cmock.c
+    )
+
+    # Add all generated mock files
+    foreach(mock_file ${MOCK_FILES})
+        list(APPEND SOURCES ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.c)
+    endforeach()
+endif()
 
 # Enable sanitizers
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -84,12 +187,11 @@ endif()
 #    COMPILE_FLAGS "-Wall -Werror"
 #)
 
-# Test command with ASAN options
-#enable_testing()
-#add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-#set_tests_properties(${PROJECT_NAME} PROPERTIES
-#    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:verbosity=1:log_path=asan.log:print_stats=1:malloc_context_size=20"
-#)
+# Enable testing if unit tests are enabled
+if(ENABLE_UNIT_TESTS)
+    enable_testing()
+    add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME} --test)
+endif()
 
 # Add libbsd dependency
 #find_package(PkgConfig REQUIRED)
@@ -102,3 +204,11 @@ endif()
 
 # Add include directories if needed
 #target_include_directories(${PROJECT_NAME} PRIVATE ${LIBBSD_INCLUDE_DIRS})
+
+# Add mock generation as dependency
+if(ENABLE_UNIT_TESTS)
+    add_custom_target(generate_mocks
+        DEPENDS ${MOCK_OUTPUTS}
+    )
+    add_dependencies(${PROJECT_NAME} generate_mocks)
+endif()

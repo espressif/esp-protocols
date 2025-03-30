@@ -101,6 +101,10 @@ static inline void mdns_priv_query_update_result_ttl(mdns_result_t *r, uint32_t 
     r->ttl = r->ttl < ttl ? r->ttl : ttl;
 }
 
+/**
+ * @brief Send a search query packet on the specified interface and protocol
+ */
+void _mdns_search_send_pcb(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
 #ifdef __cplusplus
 }
