@@ -12,9 +12,6 @@
 #include "mdns_receive.h"
 #include "mdns_responder.h"
 #include "mdns_mem_caps.h"
-#include "mock_mdns_pcb.h"
-#include "mock_mdns_send.h"
-#include "create_test_packet.h"
 
 void setUp(void)
 {
@@ -132,24 +129,12 @@ void test_mdns_receive_from_file(const char* filename)
 
 
 void run_unity_tests(void);
-
-void mdns_priv_create_answer_from_parsed_packet_Callback(mdns_parsed_packet_t* parsed_packet, int cmock_num_calls)
-{
-    printf("callback\n");
-}
+void setup_cmock(void);
 
 int main(int argc, char **argv)
 {
     if (argc >= 2 && strcmp(argv[1], "--test") == 0) {
-        mdns_priv_probe_all_pcbs_CMockIgnore();
-        mdns_priv_pcb_announce_CMockIgnore();
-        mdns_priv_pcb_send_bye_service_CMockIgnore();
-        mdns_priv_pcb_check_probing_services_CMockIgnore();
-        mdns_priv_pcb_is_after_probing_IgnoreAndReturn(true);
-
-        _mdns_clear_tx_queue_head_CMockIgnore();
-        _mdns_remove_scheduled_service_packets_CMockIgnore();
-        mdns_priv_create_answer_from_parsed_packet_Stub(mdns_priv_create_answer_from_parsed_packet_Callback);
+        setup_cmock();
 
         init_responder();
         run_unity_tests();

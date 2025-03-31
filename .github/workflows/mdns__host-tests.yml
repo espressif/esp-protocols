@@ -98,6 +98,11 @@ jobs:
           cmake -DUNIT_TESTS=test_receiver ..
           cmake --build .
           ctest --extra-verbose
+          cd ..
+          mkdir build3 && cd build3
+          cmake -DUNIT_TESTS=test_sender ..
+          cmake --build .
+          ctest --extra-verbose
 
 
   fuzz_test:
