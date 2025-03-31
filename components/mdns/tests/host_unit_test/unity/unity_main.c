@@ -8,9 +8,28 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "esp_err.h"
+#include "unity.h"
 #include "mdns_receive.h"
 #include "mdns_responder.h"
 #include "mdns_mem_caps.h"
+#include "mock_mdns_pcb.h"
+#include "mock_mdns_send.h"
+#include "create_test_packet.h"
+
+void setUp(void)
+{
+}
+
+void tearDown(void)
+{
+}
+
+// Sample test case - update based on the actual functionality in mdns_receive.c
+void test_init(void)
+{
+
+
+}
 
 esp_err_t mdns_packet_push(esp_ip_addr_t *addr, int port, mdns_if_t tcpip_if, uint8_t*data, size_t len);
 
@@ -48,6 +67,7 @@ void init_responder(void)
     s_ptr = mdns_query_async_new("minifritz", "_http", "_tcp", MDNS_TYPE_PTR, 1000, 1, NULL);
     s_srv = mdns_query_async_new("fritz", "_http", "_tcp", MDNS_TYPE_SRV, 1000, 1, NULL);
     s_txt = mdns_query_async_new("fritz", "_http", "_tcp", MDNS_TYPE_TXT, 1000, 1, NULL);
+
 }
 
 void deinit_responder(void)
@@ -61,7 +81,7 @@ void deinit_responder(void)
     mdns_priv_responder_free();
 }
 
-static void send_packet(bool ip4, bool mdns_port, uint8_t*data, size_t len)
+void send_packet(bool ip4, bool mdns_port, uint8_t*data, size_t len)
 {
     esp_ip_addr_t addr4 = ESP_IP4ADDR_INIT(192, 168, 1, 1);
     esp_ip_addr_t addr6 = ESP_IP6ADDR_INIT(0x000002ff, 0, 0, 0xfe800000);
@@ -73,38 +93,69 @@ static void send_packet(bool ip4, bool mdns_port, uint8_t*data, size_t len)
     }
 }
 
+// Helper function to send a test packet with different configurations and clean up
+void send_test_packet_multiple(uint8_t* packet, size_t packet_len)
+{
+    if (packet) {
+        // Test with different packet configurations
+        send_packet(true, true, packet, packet_len);
+        send_packet(true, false, packet, packet_len);
+        send_packet(false, true, packet, packet_len);
+        send_packet(false, false, packet, packet_len);
+
+        // Free the packet
+        free(packet);
+    } else {
+        printf("Failed to create test packet\n");
+    }
+}
+
+void test_mdns_receive_from_file(const char* filename)
+{
+    uint8_t buf[1460];
+    FILE *file = fopen(filename, "r");
+    TEST_ASSERT_NOT_NULL_MESSAGE(file, "Failed to open test packet file");
+
+    size_t len = fread(buf, 1, 1460, file);
+    fclose(file);
+
+    // Test with different packet configurations
+    send_packet(true, true, buf, len);
+    send_packet(true, false, buf, len);
+    send_packet(false, true, buf, len);
+    send_packet(false, false, buf, len);
+
+    // Add assertions here based on expected behavior
+    // For example:
+    // TEST_ASSERT_EQUAL(expected_result, actual_result);
+}
+
+
+void run_unity_tests(void);
+
+void mdns_priv_create_answer_from_parsed_packet_Callback(mdns_parsed_packet_t* parsed_packet, int cmock_num_calls)
+{
+    printf("callback\n");
+}
+
 int main(int argc, char **argv)
 {
-    init_responder();
+    if (argc >= 2 && strcmp(argv[1], "--test") == 0) {
+        mdns_priv_probe_all_pcbs_CMockIgnore();
+        mdns_priv_pcb_announce_CMockIgnore();
+        mdns_priv_pcb_send_bye_service_CMockIgnore();
+        mdns_priv_pcb_check_probing_services_CMockIgnore();
+        mdns_priv_pcb_is_after_probing_IgnoreAndReturn(true);
 
-    // Original fuzzing code
-    uint8_t buf[1460];
-    FILE *file;
-    size_t len = 1460;
-    memset(buf, 0, len);
-#ifndef __AFL_LOOP
-    //
-    // Note: parameter1 is a file (mangled packet) which caused the crash
-    if (argc != 2) {
-        printf("Non-instrumentation mode: please supply a file name created by AFL to reproduce crash\n");
-        return 1;
-    }
-    file = fopen(argv[1], "r");
-    assert(file >= 0);
-    len = fread(buf, 1, 1460, file);
-    fclose(file);
-    {
-#else
-    while (__AFL_LOOP(1000)) {
-        memset(buf, 0, 1460);
-        size_t len = read(0, buf, 1460);
-#endif
-        send_packet(true, true, buf, len);
-        send_packet(true, false, buf, len);
-        send_packet(false, true, buf, len);
-        send_packet(false, false, buf, len);
-    }
-    deinit_responder();
+        _mdns_clear_tx_queue_head_CMockIgnore();
+        _mdns_remove_scheduled_service_packets_CMockIgnore();
+        mdns_priv_create_answer_from_parsed_packet_Stub(mdns_priv_create_answer_from_parsed_packet_Callback);
 
-    return 0;
+        init_responder();
+        run_unity_tests();
+        deinit_responder();
+        return 0;
+    }
+    printf("Unit test configuration: run with --test argument\n");
+    return 1;
 }

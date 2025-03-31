@@ -72,6 +72,33 @@ jobs:
             echo "OK"
           done
 
+  host_unit_test:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+    name: Unit tests on host
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+      - name: Install bsdlib and ruby
+        run: |
+          apt-get update -y
+          apt-get install -y libbsd-dev ruby
+      - name: Build and run unit tests
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd components/mdns/tests/host_unit_test/
+          idf.py reconfigure
+          mkdir build2 && cd build2
+          cmake -DUNIT_TESTS=test_receiver ..
+          cmake --build .
+          ctest --extra-verbose
+
 
   fuzz_test:
     if: contains(github.event.pull_request.labels.*.name, 'mdns-fuzz') || github.event_name == 'push'
