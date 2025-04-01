@@ -37,6 +37,14 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
 void mdns_priv_browse_send_all(mdns_if_t mdns_if);
 
 /**
+ * @brief Sync browse results
+ *
+ * @note Called from the packet parser
+ * @note Calls mdns_priv_queue_action() from mdns_engine
+ */
+esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync);
+
+/**
  * @brief Perform action from mdns service queue
  *
  * @note Called from the _mdns_service_task() in mdns.c

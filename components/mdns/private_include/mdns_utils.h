@@ -144,7 +144,7 @@ uint8_t mdns_utils_append_u16(uint8_t *packet, uint16_t *index, uint16_t value);
  *
  * @return length of added data: 0 on error or 1 on success
  */
-static inline uint8_t _mdns_append_u8(uint8_t *packet, uint16_t *index, uint8_t value)
+static inline uint8_t mdns_utils_append_u8(uint8_t *packet, uint16_t *index, uint8_t value)
 {
     if (*index >= MDNS_MAX_PACKET_SIZE) {
         return 0;

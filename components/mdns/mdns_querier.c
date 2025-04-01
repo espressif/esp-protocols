@@ -267,7 +267,7 @@ mdns_search_once_t *mdns_priv_query_find(mdns_name_t *name, uint16_t type, mdns_
 static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     mdns_result_t *r = NULL;
-    mdns_tx_packet_t *packet = _mdns_alloc_packet_default(tcpip_if, ip_protocol);
+    mdns_tx_packet_t *packet = mdns_priv_alloc_packet(tcpip_if, ip_protocol);
     if (!packet) {
         return NULL;
     }
@@ -275,7 +275,7 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     mdns_out_question_t *q = (mdns_out_question_t *)mdns_mem_malloc(sizeof(mdns_out_question_t));
     if (!q) {
         HOOK_MALLOC_FAILED;
-        _mdns_free_tx_packet(packet);
+        mdns_priv_free_tx_packet(packet);
         return NULL;
     }
     q->next = NULL;
@@ -299,7 +299,7 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
             mdns_out_answer_t *a = (mdns_out_answer_t *)mdns_mem_malloc(sizeof(mdns_out_answer_t));
             if (!a) {
                 HOOK_MALLOC_FAILED;
-                _mdns_free_tx_packet(packet);
+                mdns_priv_free_tx_packet(packet);
                 return NULL;
             }
             a->type = MDNS_TYPE_PTR;
@@ -330,8 +330,8 @@ void mdns_priv_query_send(mdns_search_once_t *search, mdns_if_t tcpip_if, mdns_i
         if (!packet) {
             return;
         }
-        _mdns_dispatch_tx_packet(packet);
-        _mdns_free_tx_packet(packet);
+        mdns_priv_dispatch_tx_packet(packet);
+        mdns_priv_free_tx_packet(packet);
     }
 }
 

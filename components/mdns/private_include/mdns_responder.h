@@ -47,7 +47,7 @@ mdns_host_item_t *mdns_priv_get_hosts(void);
 /**
  * @brief  get self host
  */
-mdns_host_item_t *priv_get_self_host(void);
+mdns_host_item_t *mdns_priv_get_self_host(void);
 
 /**
  * @brief  set global hostname

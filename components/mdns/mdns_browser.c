@@ -585,7 +585,28 @@ void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname
     r->next = browse->result;
     browse->result = r;
     add_browse_result(out_sync_browse, r);
-    return;
+}
+
+/**4
+ * @brief  Browse sync result
+ */
+esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync)
+{
+    mdns_action_t *action = NULL;
+
+    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = ACTION_BROWSE_SYNC;
+    action->data.browse_sync.browse_sync = browse_sync;
+    if (!mdns_priv_queue_action(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
 }
 
 /**

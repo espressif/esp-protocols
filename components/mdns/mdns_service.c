@@ -131,7 +131,7 @@ static void _mdns_free_action(mdns_action_t *action)
         mdns_priv_browse_action(action, ACTION_CLEANUP);
         break;
     case ACTION_TX_HANDLE:
-        mdns_send_action(action, ACTION_CLEANUP);
+        mdns_priv_send_action(action, ACTION_CLEANUP);
         break;
     case ACTION_RX_HANDLE:
         mdns_priv_receive_action(action, ACTION_CLEANUP);
@@ -170,7 +170,7 @@ static void _mdns_execute_action(mdns_action_t *action)
         break;
 
     case ACTION_TX_HANDLE:
-        mdns_send_action(action, ACTION_RUN);
+        mdns_priv_send_action(action, ACTION_RUN);
         break;
     case ACTION_RX_HANDLE:
         mdns_priv_receive_action(action, ACTION_RUN);
@@ -215,7 +215,7 @@ static void _mdns_service_task(void *pvParameters)
 
 static void _mdns_timer_cb(void *arg)
 {
-    mdns_send_packets();
+    mdns_priv_send_packets();
     mdns_priv_query_start_stop();
 }
 
@@ -402,7 +402,7 @@ void mdns_free(void)
         }
         vQueueDelete(s_action_queue);
     }
-    _mdns_clear_tx_queue_head();
+    mdns_priv_clear_tx_queue();
     mdns_priv_query_free();
     mdns_priv_browse_free();
     mdns_priv_responder_free();
