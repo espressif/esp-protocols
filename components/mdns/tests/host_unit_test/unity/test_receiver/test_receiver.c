@@ -74,8 +74,8 @@ void setup_cmock(void)
     mdns_priv_pcb_check_probing_services_CMockIgnore();
     mdns_priv_pcb_is_after_probing_IgnoreAndReturn(true);
 
-    _mdns_clear_tx_queue_head_CMockIgnore();
-    _mdns_remove_scheduled_service_packets_CMockIgnore();
+    mdns_priv_clear_tx_queue_CMockIgnore();
+    mdns_priv_remove_scheduled_service_packets_CMockIgnore();
     mdns_priv_create_answer_from_parsed_packet_Stub(mdns_priv_create_answer_from_parsed_packet_Callback);
 }
 

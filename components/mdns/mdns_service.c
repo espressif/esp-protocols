@@ -390,7 +390,6 @@ void mdns_free(void)
     mdns_priv_netif_unregister_predefined_handlers();
 
     mdns_service_remove_all();
-    mdns_priv_free_delegated_hostnames();
     _mdns_service_task_stop();
     // at this point, the service task is deleted, so we can destroy the stack size
     mdns_mem_task_free(_mdns_stack_buffer);

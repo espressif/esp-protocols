@@ -736,9 +736,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
             question->type = type;
             question->sub = name->sub;
             if (strdup_check(&(question->host), name->host)
-                || strdup_check(&(question->service), name->service)
-                || strdup_check(&(question->proto), name->proto)
-                || strdup_check(&(question->domain), name->domain)) {
+                    || strdup_check(&(question->service), name->service)
+                    || strdup_check(&(question->proto), name->proto)
+                    || strdup_check(&(question->domain), name->domain)) {
                 goto clear_rx_packet;
             }
         }

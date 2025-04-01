@@ -18,15 +18,11 @@ void setup_cmock(void)
     mdns_priv_pcb_is_after_probing_IgnoreAndReturn(true);
 }
 
-
-
-// Example of a more complex test with answers and additional records
 static void test_dispatch_tx_packet(void)
 {
     mdns_tx_packet_t p = {};
-    _mdns_dispatch_tx_packet(&p);
+    mdns_priv_dispatch_tx_packet(&p);
 }
-
 
 void run_unity_tests(void)
 {

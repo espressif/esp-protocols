@@ -29,7 +29,7 @@ static void execute_action(mdns_action_t *action)
         break;
 
     case ACTION_TX_HANDLE:
-        mdns_send_action(action, ACTION_RUN);
+        mdns_priv_send_action(action, ACTION_RUN);
         break;
     case ACTION_RX_HANDLE:
         mdns_priv_receive_action(action, ACTION_RUN);

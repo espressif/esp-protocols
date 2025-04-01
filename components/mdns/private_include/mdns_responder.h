@@ -89,11 +89,6 @@ void mdns_priv_restart_all_pcbs(void);
 bool mdns_priv_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *address_list);
 
 /**
- * Fee delegated hostnames
- */
-void mdns_priv_free_delegated_hostnames(void);
-
-/**
  * @brief  Remaps hostname of self service
  */
 void mdns_priv_remap_self_service_hostname(const char *old_hostname, const char *new_hostname);

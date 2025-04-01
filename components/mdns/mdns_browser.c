@@ -587,7 +587,7 @@ void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname
     add_browse_result(out_sync_browse, r);
 }
 
-/**4
+/**
  * @brief  Browse sync result
  */
 esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync)

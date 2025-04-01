@@ -45,6 +45,19 @@ esp_err_t mdns_priv_responder_init(void)
     return ESP_OK;
 }
 
+static void free_delegated_hostnames(void)
+{
+    mdns_host_item_t *host = s_server->host_list;
+    while (host != NULL) {
+        mdns_utils_free_address_list(host->address_list);
+        mdns_mem_free((char *)host->hostname);
+        mdns_host_item_t *item = host;
+        host = host->next;
+        mdns_mem_free(item);
+    }
+    s_server->host_list = NULL;
+}
+
 void mdns_priv_responder_free(void)
 {
     if (s_server->action_sema != NULL) {
@@ -56,6 +69,7 @@ void mdns_priv_responder_free(void)
     }
     mdns_mem_free((char *)s_server->hostname);
     mdns_mem_free((char *)s_server->instance);
+    free_delegated_hostnames();
     mdns_mem_free(s_server);
     s_server = NULL;
 }
@@ -424,7 +438,7 @@ bool mdns_priv_delegate_hostname_add(const char *hostname, mdns_ip_addr_t *addre
 static bool delegate_hostname_set_address(const char *hostname, mdns_ip_addr_t *address_list)
 {
     if (!mdns_utils_str_null_or_empty(s_server->hostname) &&
-        strcasecmp(hostname, s_server->hostname) == 0) {
+            strcasecmp(hostname, s_server->hostname) == 0) {
         return false;
     }
     mdns_host_item_t *host = s_server->host_list;
@@ -439,19 +453,6 @@ static bool delegate_hostname_set_address(const char *hostname, mdns_ip_addr_t *
         host = host->next;
     }
     return false;
-}
-
-void mdns_priv_free_delegated_hostnames(void)
-{
-    mdns_host_item_t *host = s_server->host_list;
-    while (host != NULL) {
-        mdns_utils_free_address_list(host->address_list);
-        mdns_mem_free((char *)host->hostname);
-        mdns_host_item_t *item = host;
-        host = host->next;
-        mdns_mem_free(item);
-    }
-    s_server->host_list = NULL;
 }
 
 static bool delegate_hostname_remove(const char *hostname)
@@ -520,7 +521,7 @@ void mdns_priv_responder_action(mdns_action_t *action, mdns_action_subtype_t typ
             send_bye_all_pcbs_no_instance(true);
             mdns_priv_remap_self_service_hostname(s_server->hostname, action->data.hostname_set.hostname);
             mdns_mem_free((char *)s_server->hostname);
-                s_server->hostname = action->data.hostname_set.hostname;
+            s_server->hostname = action->data.hostname_set.hostname;
             s_server->self_host.hostname = action->data.hostname_set.hostname;
             mdns_priv_restart_all_pcbs();
             xSemaphoreGive(s_server->action_sema);
@@ -528,7 +529,7 @@ void mdns_priv_responder_action(mdns_action_t *action, mdns_action_subtype_t typ
         case ACTION_INSTANCE_SET:
             send_bye_all_pcbs_no_instance(false);
             mdns_mem_free((char *)s_server->instance);
-                s_server->instance = action->data.instance;
+            s_server->instance = action->data.instance;
             mdns_priv_restart_all_pcbs_no_instance();
             break;
         case ACTION_DELEGATE_HOSTNAME_ADD:
