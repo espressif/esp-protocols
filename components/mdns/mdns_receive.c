@@ -347,7 +347,7 @@ static int _mdns_check_a_collision(esp_ip4_addr_t *ip, mdns_if_t tcpip_if)
     if (!ip->addr) {
         return 1;//denial! they win
     }
-    if (esp_netif_get_ip_info(mdns_netif_get_esp_netif(tcpip_if), &if_ip_info)) {
+    if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(tcpip_if), &if_ip_info)) {
         return 1;//they win
     }
     int ret = memcmp((uint8_t *)&if_ip_info.ip.addr, (uint8_t *)&ip->addr, sizeof(esp_ip4_addr_t));
@@ -355,11 +355,11 @@ static int _mdns_check_a_collision(esp_ip4_addr_t *ip, mdns_if_t tcpip_if)
         return -1;//we win
     } else if (ret < 0) {
         //is it the other interface?
-        mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
+        mdns_if_t other_if = mdns_priv_netif_get_other_interface(tcpip_if);
         if (other_if == MDNS_MAX_INTERFACES) {
             return 1;//AP interface! They win
         }
-        if (esp_netif_get_ip_info(mdns_netif_get_esp_netif(other_if), &other_ip_info)) {
+        if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(other_if), &other_ip_info)) {
             return 1;//IPv4 not active! They win
         }
         if (ip->addr != other_ip_info.ip.addr) {
@@ -383,7 +383,7 @@ static int _mdns_check_aaaa_collision(esp_ip6_addr_t *ip, mdns_if_t tcpip_if)
     if (mdns_utils_ipv6_address_is_zero(*ip)) {
         return 1;//denial! they win
     }
-    if (esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(tcpip_if), &if_ip6)) {
+    if (esp_netif_get_ip6_linklocal(mdns_priv_get_esp_netif(tcpip_if), &if_ip6)) {
         return 1;//they win
     }
     int ret = memcmp((uint8_t *)&if_ip6.addr, (uint8_t *)ip->addr, MDNS_UTILS_SIZEOF_IP6_ADDR);
@@ -391,11 +391,11 @@ static int _mdns_check_aaaa_collision(esp_ip6_addr_t *ip, mdns_if_t tcpip_if)
         return -1;//we win
     } else if (ret < 0) {
         //is it the other interface?
-        mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
+        mdns_if_t other_if = mdns_priv_netif_get_other_interface(tcpip_if);
         if (other_if == MDNS_MAX_INTERFACES) {
             return 1;//AP interface! They win
         }
-        if (esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(other_if), &other_ip6)) {
+        if (esp_netif_get_ip6_linklocal(mdns_priv_get_esp_netif(other_if), &other_ip6)) {
             return 1;//IPv6 not active! They win
         }
         if (memcmp((uint8_t *)&other_ip6.addr, (uint8_t *)ip->addr, MDNS_UTILS_SIZEOF_IP6_ADDR)) {
@@ -609,8 +609,8 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
 {
     static mdns_name_t n;
     mdns_header_t header;
-    const uint8_t *data = _mdns_get_packet_data(packet);
-    size_t len = _mdns_get_packet_len(packet);
+    const uint8_t *data = mdns_priv_get_packet_data(packet);
+    size_t len = mdns_priv_get_packet_len(packet);
     const uint8_t *content = data + MDNS_HEAD_LEN;
     bool do_not_reply = false;
     mdns_search_once_t *search_result = NULL;
@@ -627,7 +627,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
 #ifdef CONFIG_LWIP_IPV4
     if (packet->ip_protocol == MDNS_IP_PROTOCOL_V4) {
         esp_netif_ip_info_t if_ip_info;
-        if (esp_netif_get_ip_info(mdns_netif_get_esp_netif(packet->tcpip_if), &if_ip_info) == ESP_OK &&
+        if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(packet->tcpip_if), &if_ip_info) == ESP_OK &&
                 memcmp(&if_ip_info.ip.addr, &packet->src.u_addr.ip4.addr, sizeof(esp_ip4_addr_t)) == 0) {
             return;
         }
@@ -636,7 +636,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
 #ifdef CONFIG_LWIP_IPV6
     if (packet->ip_protocol == MDNS_IP_PROTOCOL_V6) {
         struct esp_ip6_addr if_ip6;
-        if (esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(packet->tcpip_if), &if_ip6) == ESP_OK &&
+        if (esp_netif_get_ip6_linklocal(mdns_priv_get_esp_netif(packet->tcpip_if), &if_ip6) == ESP_OK &&
                 memcmp(&if_ip6, &packet->src.u_addr.ip6, sizeof(esp_ip6_addr_t)) == 0) {
             return;
         }
@@ -823,10 +823,10 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                     continue;
                 }
                 search_result = mdns_priv_query_find(name, type, packet->tcpip_if, packet->ip_protocol);
-                browse_result = _mdns_browse_find(name, type, packet->tcpip_if, packet->ip_protocol);
+                browse_result = mdns_priv_browse_find(name, type, packet->tcpip_if, packet->ip_protocol);
                 if (browse_result) {
                     if (!out_sync_browse) {
-                        // will be freed in function `_mdns_browse_sync`
+                        // will be freed in function `browse_sync`
                         out_sync_browse = (mdns_browse_sync_t *)mdns_mem_malloc(sizeof(mdns_browse_sync_t));
                         if (!out_sync_browse) {
                             HOOK_MALLOC_FAILED;
@@ -932,7 +932,7 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 if (search_result && search_result->type == MDNS_TYPE_PTR) {
                     result = search_result->result;
                     while (result) {
-                        if (mdns_netif_get_esp_netif(packet->tcpip_if) == result->esp_netif
+                        if (mdns_priv_get_esp_netif(packet->tcpip_if) == result->esp_netif
                                 && packet->ip_protocol == result->ip_protocol
                                 && result->instance_name && !strcmp(name->host, result->instance_name)) {
                             break;
@@ -959,9 +959,11 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 uint16_t port = mdns_utils_read_u16(data_ptr, MDNS_SRV_PORT_OFFSET);
 
                 if (browse_result) {
-                    mdns_browse_result_add_srv(browse_result, name->host, browse_result_instance, browse_result_service,
-                                               browse_result_proto, port, packet->tcpip_if, packet->ip_protocol, ttl,
-                                               out_sync_browse);
+                    mdns_priv_browse_result_add_srv(browse_result, name->host, browse_result_instance,
+                                                    browse_result_service,
+                                                    browse_result_proto, port, packet->tcpip_if, packet->ip_protocol,
+                                                    ttl,
+                                                    out_sync_browse);
                 }
                 if (search_result) {
                     if (search_result->type == MDNS_TYPE_PTR) {
@@ -1036,16 +1038,17 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 mdns_result_t *result = NULL;
                 if (browse_result) {
                     _mdns_result_txt_create(data_ptr, data_len, &txt, &txt_value_len, &txt_count);
-                    mdns_browse_result_add_txt(browse_result, browse_result_instance, browse_result_service,
-                                               browse_result_proto,
-                                               txt, txt_value_len, txt_count, packet->tcpip_if, packet->ip_protocol,
-                                               ttl, out_sync_browse);
+                    mdns_priv_browse_result_add_txt(browse_result, browse_result_instance, browse_result_service,
+                                                    browse_result_proto,
+                                                    txt, txt_value_len, txt_count, packet->tcpip_if,
+                                                    packet->ip_protocol,
+                                                    ttl, out_sync_browse);
                 }
                 if (search_result) {
                     if (search_result->type == MDNS_TYPE_PTR) {
                         result = search_result->result;
                         while (result) {
-                            if (mdns_netif_get_esp_netif(packet->tcpip_if) == result->esp_netif
+                            if (mdns_priv_get_esp_netif(packet->tcpip_if) == result->esp_netif
                                     && packet->ip_protocol == result->ip_protocol
                                     && result->instance_name && !strcmp(name->host, result->instance_name)) {
                                 break;
@@ -1108,8 +1111,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 ip6.type = ESP_IPADDR_TYPE_V6;
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
                 if (browse_result) {
-                    mdns_browse_result_add_ip(browse_result, name->host, &ip6, packet->tcpip_if, packet->ip_protocol,
-                                              ttl, out_sync_browse);
+                    mdns_priv_browse_result_add_ip(browse_result, name->host, &ip6, packet->tcpip_if,
+                                                   packet->ip_protocol,
+                                                   ttl, out_sync_browse);
                 }
                 if (search_result) {
                     //check for more applicable searches (PTR & A/AAAA at the same time)
@@ -1167,8 +1171,9 @@ void mdns_parse_packet(mdns_rx_packet_t *packet)
                 ip.type = ESP_IPADDR_TYPE_V4;
                 memcpy(&(ip.u_addr.ip4.addr), data_ptr, 4);
                 if (browse_result) {
-                    mdns_browse_result_add_ip(browse_result, name->host, &ip, packet->tcpip_if, packet->ip_protocol,
-                                              ttl, out_sync_browse);
+                    mdns_priv_browse_result_add_ip(browse_result, name->host, &ip, packet->tcpip_if,
+                                                   packet->ip_protocol,
+                                                   ttl, out_sync_browse);
                 }
                 if (search_result) {
                     //check for more applicable searches (PTR & A/AAAA at the same time)
@@ -1290,8 +1295,8 @@ void mdns_priv_receive_action(mdns_action_t *action, mdns_action_subtype_t type)
     }
     if (type == ACTION_RUN) {
         mdns_parse_packet(action->data.rx_handle.packet);
-        _mdns_packet_free(action->data.rx_handle.packet);
+        mdns_priv_packet_free(action->data.rx_handle.packet);
     } else if (type == ACTION_CLEANUP) {
-        _mdns_packet_free(action->data.rx_handle.packet);
+        mdns_priv_packet_free(action->data.rx_handle.packet);
     }
 }

@@ -22,7 +22,7 @@ static mdns_browse_t *s_browse;
 /**
  * @brief  Browse action
  */
-static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t *browse)
+static esp_err_t send_browse_action(mdns_action_type_t type, mdns_browse_t *browse)
 {
     mdns_action_t *action = NULL;
 
@@ -45,7 +45,7 @@ static esp_err_t _mdns_send_browse_action(mdns_action_type_t type, mdns_browse_t
 /**
  * @brief  Free a browse item (Not free the list).
  */
-static void _mdns_browse_item_free(mdns_browse_t *browse)
+static void browse_item_free(mdns_browse_t *browse)
 {
     mdns_mem_free(browse->service);
     mdns_mem_free(browse->proto);
@@ -55,7 +55,7 @@ static void _mdns_browse_item_free(mdns_browse_t *browse)
     mdns_mem_free(browse);
 }
 
-static void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
+static void browse_sync(mdns_browse_sync_t *browse_sync)
 {
     mdns_browse_t *browse = browse_sync->browse;
     mdns_browse_result_sync_t *sync_result = browse_sync->sync_result;
@@ -76,7 +76,7 @@ static void _mdns_browse_sync(mdns_browse_sync_t *browse_sync)
 /**
  * @brief  Send PTR query packet to all available interfaces for browsing.
  */
-static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface)
+static void browse_send(mdns_browse_t *browse, mdns_if_t interface)
 {
     // Using search once for sending the PTR query
     mdns_search_once_t search = {0};
@@ -94,28 +94,28 @@ static void _mdns_browse_send(mdns_browse_t *browse, mdns_if_t interface)
     }
 }
 
-void mdns_browse_send_all(mdns_if_t mdns_if)
+void mdns_priv_browse_send_all(mdns_if_t mdns_if)
 {
     mdns_browse_t *browse = s_browse;
     while (browse) {
-        _mdns_browse_send(browse, mdns_if);
+        browse_send(browse, mdns_if);
         browse = browse->next;
     }
 }
 
-void mdns_browse_free(void)
+void mdns_priv_browse_free(void)
 {
     while (s_browse) {
         mdns_browse_t *b = s_browse;
         s_browse = s_browse->next;
-        _mdns_browse_item_free(b);
+        browse_item_free(b);
     }
 }
 
 /**
  * @brief  Mark browse as finished, remove and free it from browse chain
  */
-static void _mdns_browse_finish(mdns_browse_t *browse)
+static void browse_finish(mdns_browse_t *browse)
 {
     browse->state = BROWSE_OFF;
     mdns_browse_t *b = s_browse;
@@ -126,18 +126,18 @@ static void _mdns_browse_finish(mdns_browse_t *browse)
             target_free = b;
             b = b->next;
             queueDetach(mdns_browse_t, s_browse, target_free);
-            _mdns_browse_item_free(target_free);
+            browse_item_free(target_free);
         } else {
             b = b->next;
         }
     }
-    _mdns_browse_item_free(browse);
+    browse_item_free(browse);
 }
 
 /**
  * @brief  Allocate new browse structure
  */
-static mdns_browse_t *_mdns_browse_init(const char *service, const char *proto, mdns_browse_notify_t notifier)
+static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_browse_notify_t notifier)
 {
     mdns_browse_t *browse = (mdns_browse_t *)mdns_mem_malloc(sizeof(mdns_browse_t));
 
@@ -151,7 +151,7 @@ static mdns_browse_t *_mdns_browse_init(const char *service, const char *proto, 
     if (!mdns_utils_str_null_or_empty(service)) {
         browse->service = mdns_mem_strndup(service, MDNS_NAME_BUF_LEN - 1);
         if (!browse->service) {
-            _mdns_browse_item_free(browse);
+            browse_item_free(browse);
             return NULL;
         }
     }
@@ -159,7 +159,7 @@ static mdns_browse_t *_mdns_browse_init(const char *service, const char *proto, 
     if (!mdns_utils_str_null_or_empty(proto)) {
         browse->proto = mdns_mem_strndup(proto, MDNS_NAME_BUF_LEN - 1);
         if (!browse->proto) {
-            _mdns_browse_item_free(browse);
+            browse_item_free(browse);
             return NULL;
         }
     }
@@ -168,51 +168,10 @@ static mdns_browse_t *_mdns_browse_init(const char *service, const char *proto, 
     return browse;
 }
 
-mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier)
-{
-    mdns_browse_t *browse = NULL;
-
-    if (mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
-        return NULL;
-    }
-
-    browse = _mdns_browse_init(service, proto, notifier);
-    if (!browse) {
-        return NULL;
-    }
-
-    if (_mdns_send_browse_action(ACTION_BROWSE_ADD, browse)) {
-        _mdns_browse_item_free(browse);
-        return NULL;
-    }
-
-    return browse;
-}
-
-esp_err_t mdns_browse_delete(const char *service, const char *proto)
-{
-    mdns_browse_t *browse = NULL;
-
-    if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
-        return ESP_FAIL;
-    }
-
-    browse = _mdns_browse_init(service, proto, NULL);
-    if (!browse) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    if (_mdns_send_browse_action(ACTION_BROWSE_END, browse)) {
-        _mdns_browse_item_free(browse);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
-}
-
 /**
  * @brief  Add new browse to the browse chain
  */
-static void _mdns_browse_add(mdns_browse_t *browse)
+static void browse_add(mdns_browse_t *browse)
 {
     browse->state = BROWSE_RUNNING;
     mdns_browse_t *queue = s_browse;
@@ -231,17 +190,17 @@ static void _mdns_browse_add(mdns_browse_t *browse)
         s_browse = browse;
     }
     for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
-        _mdns_browse_send(browse, (mdns_if_t)interface_idx);
+        browse_send(browse, (mdns_if_t) interface_idx);
     }
     if (found) {
-        _mdns_browse_item_free(browse);
+        browse_item_free(browse);
     }
 }
 
 /**
  * @brief  Called from packet parser to find matching running search
  */
-mdns_browse_t *_mdns_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     mdns_browse_t *b = s_browse;
     // For browse, we only care about the SRV, TXT, A and AAAA
@@ -260,7 +219,7 @@ mdns_browse_t *_mdns_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcp
         } else if (type == MDNS_TYPE_A || type == MDNS_TYPE_AAAA) {
             r = b->result;
             while (r) {
-                if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
+                if (r->esp_netif == mdns_priv_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(name->host, r->hostname)) {
                     return b;
                 }
                 r = r->next;
@@ -272,7 +231,7 @@ mdns_browse_t *_mdns_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcp
     return b;
 }
 
-static void _mdns_sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
+static void sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
 {
     mdns_browse_result_sync_t *current = browse_sync->sync_result;
     mdns_browse_result_sync_t *need_free;
@@ -284,19 +243,19 @@ static void _mdns_sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
     mdns_mem_free(browse_sync);
 }
 
-void mdns_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
+void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
         switch (action->type) {
         case ACTION_BROWSE_ADD:
-            _mdns_browse_add(action->data.browse_add.browse);
+            browse_add(action->data.browse_add.browse);
             break;
         case ACTION_BROWSE_SYNC:
-            _mdns_browse_sync(action->data.browse_sync.browse_sync);
-            _mdns_sync_browse_result_link_free(action->data.browse_sync.browse_sync);
+            browse_sync(action->data.browse_sync.browse_sync);
+            sync_browse_result_link_free(action->data.browse_sync.browse_sync);
             break;
         case ACTION_BROWSE_END:
-            _mdns_browse_finish(action->data.browse_add.browse);
+            browse_finish(action->data.browse_add.browse);
             break;
         default:
             abort();
@@ -308,10 +267,10 @@ void mdns_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
         case ACTION_BROWSE_ADD:
         //fallthrough
         case ACTION_BROWSE_END:
-            _mdns_browse_item_free(action->data.browse_add.browse);
+            browse_item_free(action->data.browse_add.browse);
             break;
         case ACTION_BROWSE_SYNC:
-            _mdns_sync_browse_result_link_free(action->data.browse_sync.browse_sync);
+            sync_browse_result_link_free(action->data.browse_sync.browse_sync);
             break;
         default:
             abort();
@@ -324,7 +283,7 @@ void mdns_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 /**
  * @brief  Add result to browse, only add when the result is a new one.
  */
-static esp_err_t _mdns_add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r)
+static esp_err_t add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r)
 {
     mdns_browse_result_sync_t *sync_r = sync_browse->sync_result;
     while (sync_r) {
@@ -351,8 +310,8 @@ static esp_err_t _mdns_add_browse_result(mdns_browse_sync_t *sync_browse, mdns_r
 /**
  * @brief  Called from parser to add A/AAAA data to search result
  */
-void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
-                               mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_priv_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
+                                    mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;
@@ -368,7 +327,7 @@ void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_
         while (r) {
             if (r->ip_protocol == ip_protocol) {
                 // Find the target result in browse result.
-                if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
+                if (r->esp_netif == mdns_priv_get_esp_netif(tcpip_if) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(hostname, r->hostname)) {
                     r_a = r->addr;
                     // Check if the address has already added in result.
                     while (r_a) {
@@ -400,7 +359,7 @@ void mdns_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_
                                 mdns_priv_query_update_result_ttl(r, ttl);
                             }
                         }
-                        if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
+                        if (add_browse_result(out_sync_browse, r) != ESP_OK) {
                             return;
                         }
                         break;
@@ -430,9 +389,9 @@ static bool is_txt_item_in_list(mdns_txt_item_t txt, uint8_t txt_value_len, mdns
 /**
  * @brief  Called from parser to add TXT data to search result
  */
-void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, const char *service, const char *proto,
-                                mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
-                                uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_priv_browse_result_add_txt(mdns_browse_t *browse, const char *instance, const char *service, const char *proto,
+                                     mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
+                                     uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;
@@ -443,7 +402,7 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
     }
     mdns_result_t *r = browse->result;
     while (r) {
-        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
+        if (r->esp_netif == mdns_priv_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
                 !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
@@ -483,7 +442,7 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
                 }
             }
             if (should_update) {
-                if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
+                if (add_browse_result(out_sync_browse, r) != ESP_OK) {
                     return;
                 }
             }
@@ -510,12 +469,12 @@ void mdns_browse_result_add_txt(mdns_browse_t *browse, const char *instance, con
     r->txt = txt;
     r->txt_value_len = txt_value_len;
     r->txt_count = txt_count;
-    r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
+    r->esp_netif = mdns_priv_get_esp_netif(tcpip_if);
     r->ip_protocol = ip_protocol;
     r->ttl = ttl;
     r->next = browse->result;
     browse->result = r;
-    _mdns_add_browse_result(out_sync_browse, r);
+    add_browse_result(out_sync_browse, r);
     return;
 
 free_txt:
@@ -528,7 +487,7 @@ free_txt:
     return;
 }
 
-static esp_err_t _mdns_copy_address_in_previous_result(mdns_result_t *result_list, mdns_result_t *r)
+static esp_err_t copy_address_in_previous_result(mdns_result_t *result_list, mdns_result_t *r)
 {
     while (result_list) {
         if (!mdns_utils_str_null_or_empty(result_list->hostname) && !mdns_utils_str_null_or_empty(r->hostname) && !strcasecmp(result_list->hostname, r->hostname) &&
@@ -549,8 +508,8 @@ static esp_err_t _mdns_copy_address_in_previous_result(mdns_result_t *result_lis
 /**
  * @brief  Called from parser to add SRV data to search result
  */
-void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, const char *instance, const char *service, const char *proto,
-                                uint16_t port, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
+void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, const char *instance, const char *service, const char *proto,
+                                     uint16_t port, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
     if (out_sync_browse->browse == NULL) {
         return;
@@ -561,7 +520,7 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
     }
     mdns_result_t *r = browse->result;
     while (r) {
-        if (r->esp_netif == mdns_netif_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
+        if (r->esp_netif == mdns_priv_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
                 !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
@@ -573,12 +532,12 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
                     return;
                 }
                 if (!r->addr) {
-                    esp_err_t err = _mdns_copy_address_in_previous_result(browse->result, r);
+                    esp_err_t err = copy_address_in_previous_result(browse->result, r);
                     if (err == ESP_ERR_NO_MEM) {
                         return;
                     }
                 }
-                if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
+                if (add_browse_result(out_sync_browse, r) != ESP_OK) {
                     return;
                 }
             }
@@ -590,7 +549,7 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
                     mdns_priv_query_update_result_ttl(r, ttl);
                 }
                 if (previous_ttl != r->ttl) {
-                    if (_mdns_add_browse_result(out_sync_browse, r) != ESP_OK) {
+                    if (add_browse_result(out_sync_browse, r) != ESP_OK) {
                         return;
                     }
                 }
@@ -620,11 +579,55 @@ void mdns_browse_result_add_srv(mdns_browse_t *browse, const char *hostname, con
         return;
     }
     r->port = port;
-    r->esp_netif = mdns_netif_get_esp_netif(tcpip_if);
+    r->esp_netif = mdns_priv_get_esp_netif(tcpip_if);
     r->ip_protocol = ip_protocol;
     r->ttl = ttl;
     r->next = browse->result;
     browse->result = r;
-    _mdns_add_browse_result(out_sync_browse, r);
+    add_browse_result(out_sync_browse, r);
     return;
+}
+
+/**
+ * @defgroup MDNS_PUBCLIC_API
+ */
+mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier)
+{
+    mdns_browse_t *browse = NULL;
+
+    if (mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+        return NULL;
+    }
+
+    browse = browse_init(service, proto, notifier);
+    if (!browse) {
+        return NULL;
+    }
+
+    if (send_browse_action(ACTION_BROWSE_ADD, browse)) {
+        browse_item_free(browse);
+        return NULL;
+    }
+
+    return browse;
+}
+
+esp_err_t mdns_browse_delete(const char *service, const char *proto)
+{
+    mdns_browse_t *browse = NULL;
+
+    if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+        return ESP_FAIL;
+    }
+
+    browse = browse_init(service, proto, NULL);
+    if (!browse) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    if (send_browse_action(ACTION_BROWSE_END, browse)) {
+        browse_item_free(browse);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
 }

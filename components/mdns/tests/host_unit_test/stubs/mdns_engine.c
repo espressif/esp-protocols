@@ -25,7 +25,7 @@ static void execute_action(mdns_action_t *action)
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
-        mdns_browse_action(action, ACTION_RUN);
+        mdns_priv_browse_action(action, ACTION_RUN);
         break;
 
     case ACTION_TX_HANDLE:

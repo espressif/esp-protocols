@@ -66,12 +66,11 @@ static mdns_interfaces_t s_esp_netifs[MDNS_MAX_INTERFACES] = {
 };
 
 
-
 /**
  * @brief  Helper to get either ETH or STA if the other is provided
  *          Used when two interfaces are on the same subnet
  */
-mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if)
+mdns_if_t mdns_priv_netif_get_other_interface(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         return s_esp_netifs[tcpip_if].duplicate;
@@ -85,7 +84,7 @@ mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if)
  * @return Ordinal number of internal list of mdns network interface.
  *         Returns MDNS_MAX_INTERFACES if the predefined interface wasn't found in the list
  */
-static mdns_if_t mdns_if_from_preset_if(mdns_predef_if_t predef_if)
+static mdns_if_t mdns_if_from_preset(mdns_predef_if_t predef_if)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; ++i) {
         if (s_esp_netifs[i].predefined && s_esp_netifs[i].predef_if == predef_if) {
@@ -100,7 +99,7 @@ static mdns_if_t mdns_if_from_preset_if(mdns_predef_if_t predef_if)
  * @param  predef_if Predefined interface enum
  * @return esp_netif pointer from system list of network interfaces
  */
-static inline esp_netif_t *esp_netif_from_preset_if(mdns_predef_if_t predef_if)
+static inline esp_netif_t *netif_from_preset(mdns_predef_if_t predef_if)
 {
     switch (predef_if) {
     case MDNS_IF_STA:
@@ -116,12 +115,12 @@ static inline esp_netif_t *esp_netif_from_preset_if(mdns_predef_if_t predef_if)
     }
 }
 
-esp_netif_t *mdns_netif_get_esp_netif(mdns_if_t tcpip_if)
+esp_netif_t *mdns_priv_get_esp_netif(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         if (s_esp_netifs[tcpip_if].netif == NULL && s_esp_netifs[tcpip_if].predefined) {
             // If the local copy is NULL and this netif is predefined -> we can find it in the global netif list
-            s_esp_netifs[tcpip_if].netif = esp_netif_from_preset_if(s_esp_netifs[tcpip_if].predef_if);
+            s_esp_netifs[tcpip_if].netif = netif_from_preset(s_esp_netifs[tcpip_if].predef_if);
             // failing to find it means that the netif is *not* available -> return NULL
         }
         return s_esp_netifs[tcpip_if].netif;
@@ -129,28 +128,26 @@ esp_netif_t *mdns_netif_get_esp_netif(mdns_if_t tcpip_if)
     return NULL;
 }
 
-
 /*
  * @brief Clean internal mdns interface's pointer
  */
-void mdns_netif_disable(mdns_if_t tcpip_if)
+void mdns_priv_netif_disable(mdns_if_t tcpip_if)
 {
     if (tcpip_if < MDNS_MAX_INTERFACES) {
         s_esp_netifs[tcpip_if].netif = NULL;
     }
 }
 
-
 /*
  * @brief  Convert esp-netif handle to mdns if
  */
-static mdns_if_t _mdns_get_if_from_esp_netif(esp_netif_t *esp_netif)
+static mdns_if_t get_if_from_netif(esp_netif_t *esp_netif)
 {
     for (int i = 0; i < MDNS_MAX_INTERFACES; ++i) {
         // The predefined netifs in the static array are NULL when firstly calling this function
         // if IPv4 is disabled. Set these netifs here.
         if (s_esp_netifs[i].netif == NULL && s_esp_netifs[i].predefined) {
-            s_esp_netifs[i].netif = esp_netif_from_preset_if(s_esp_netifs[i].predef_if);
+            s_esp_netifs[i].netif = netif_from_preset(s_esp_netifs[i].predef_if);
         }
         if (esp_netif == s_esp_netifs[i].netif) {
             return i;
@@ -159,7 +156,7 @@ static mdns_if_t _mdns_get_if_from_esp_netif(esp_netif_t *esp_netif)
     return MDNS_MAX_INTERFACES;
 }
 
-static esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_actions_t event_action)
+static esp_err_t post_custom_action(mdns_if_t mdns_if, mdns_event_actions_t event_action)
 {
     if (!mdns_priv_is_server_init() || mdns_if >= MDNS_MAX_INTERFACES) {
         return ESP_ERR_INVALID_STATE;
@@ -184,24 +181,27 @@ static esp_err_t mdns_post_custom_action_tcpip_if(mdns_if_t mdns_if, mdns_event_
 /**
  * @brief  Dispatch interface changes based on system events
  */
-static inline void post_mdns_disable_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
+static inline void post_disable_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
 {
-    mdns_post_custom_action_tcpip_if(mdns_if_from_preset_if(preset_if), protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_DISABLE_IP4 : MDNS_EVENT_DISABLE_IP6);
+    post_custom_action(mdns_if_from_preset(preset_if),
+                       protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_DISABLE_IP4 : MDNS_EVENT_DISABLE_IP6);
 }
 
-static inline void post_mdns_enable_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
+static inline void post_enable_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
 {
-    mdns_post_custom_action_tcpip_if(mdns_if_from_preset_if(preset_if), protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ENABLE_IP4 : MDNS_EVENT_ENABLE_IP6);
+    post_custom_action(mdns_if_from_preset(preset_if),
+                       protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ENABLE_IP4 : MDNS_EVENT_ENABLE_IP6);
 }
 
-static inline void post_mdns_announce_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
+static inline void post_announce_pcb(mdns_predef_if_t preset_if, mdns_ip_protocol_t protocol)
 {
-    mdns_post_custom_action_tcpip_if(mdns_if_from_preset_if(preset_if), protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ANNOUNCE_IP4 : MDNS_EVENT_ANNOUNCE_IP6);
+    post_custom_action(mdns_if_from_preset(preset_if),
+                       protocol == MDNS_IP_PROTOCOL_V4 ? MDNS_EVENT_ANNOUNCE_IP4 : MDNS_EVENT_ANNOUNCE_IP6);
 }
 
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
-void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
-                                        int32_t event_id, void *event_data)
+static void handle_system_event_for_preset(void *arg, esp_event_base_t event_base,
+                                           int32_t event_id, void *event_data)
 {
     if (!mdns_priv_is_server_init()) {
         return;
@@ -212,22 +212,22 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT) {
         switch (event_id) {
         case WIFI_EVENT_STA_CONNECTED:
-            if (!esp_netif_dhcpc_get_status(esp_netif_from_preset_if(MDNS_IF_STA), &dcst)) {
+            if (!esp_netif_dhcpc_get_status(netif_from_preset(MDNS_IF_STA), &dcst)) {
                 if (dcst == ESP_NETIF_DHCP_STOPPED) {
-                    post_mdns_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
+                    post_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
                 }
             }
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
-            post_mdns_disable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
-            post_mdns_disable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
+            post_disable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
+            post_disable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
             break;
         case WIFI_EVENT_AP_START:
-            post_mdns_enable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V4);
+            post_enable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V4);
             break;
         case WIFI_EVENT_AP_STOP:
-            post_mdns_disable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V4);
-            post_mdns_disable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V6);
+            post_disable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V4);
+            post_disable_pcb(MDNS_IF_AP, MDNS_IP_PROTOCOL_V6);
             break;
         default:
             break;
@@ -238,15 +238,15 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         if (event_base == ETH_EVENT) {
             switch (event_id) {
             case ETHERNET_EVENT_CONNECTED:
-                if (!esp_netif_dhcpc_get_status(esp_netif_from_preset_if(MDNS_IF_ETH), &dcst)) {
+                if (!esp_netif_dhcpc_get_status(netif_from_preset(MDNS_IF_ETH), &dcst)) {
                     if (dcst == ESP_NETIF_DHCP_STOPPED) {
-                        post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                        post_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
                     }
                 }
                 break;
             case ETHERNET_EVENT_DISCONNECTED:
-                post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
-                post_mdns_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V6);
+                post_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                post_disable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V6);
                 break;
             default:
                 break;
@@ -256,23 +256,23 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
             if (event_base == IP_EVENT) {
                 switch (event_id) {
                 case IP_EVENT_STA_GOT_IP:
-                    post_mdns_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
-                    post_mdns_announce_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
+                    post_enable_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V4);
+                    post_announce_pcb(MDNS_IF_STA, MDNS_IP_PROTOCOL_V6);
                     break;
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
                 case IP_EVENT_ETH_GOT_IP:
-                    post_mdns_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
+                    post_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
                     break;
 #endif
                 case IP_EVENT_GOT_IP6: {
                     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *) event_data;
-                    mdns_if_t mdns_if = _mdns_get_if_from_esp_netif(event->esp_netif);
+                    mdns_if_t mdns_if = get_if_from_netif(event->esp_netif);
                     if (mdns_if >= MDNS_MAX_INTERFACES) {
                         return;
                     }
-                    post_mdns_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
-                    post_mdns_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
-                    mdns_browse_send_all(mdns_if);
+                    post_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
+                    post_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
+                    mdns_priv_browse_send_all(mdns_if);
 
                 }
                 break;
@@ -302,17 +302,82 @@ static inline void set_default_duplicated_interfaces(void)
     }
 }
 
-void mdns_netif_unregister_predefined_handlers(void)
+void mdns_priv_netif_unregister_predefined_handlers(void)
 {
 #if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
-    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
+    esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset);
 #endif
 #if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
-    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
+    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset);
 #endif
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
-    esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event);
+    esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset);
 #endif
+}
+
+esp_err_t mdns_priv_netif_init(void)
+{
+    esp_err_t err = ESP_OK;
+    // zero-out local copy of netifs to initiate a fresh search by interface key whenever a netif ptr is needed
+    for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
+        s_esp_netifs[i].netif = NULL;
+    }
+#if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
+    if ((err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset, NULL)) != ESP_OK) {
+        goto free_event_handlers;
+    }
+#endif
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
+    if ((err = esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset, NULL)) != ESP_OK) {
+        goto free_event_handlers;
+    }
+#endif
+#if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
+    if ((err = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, handle_system_event_for_preset, NULL)) != ESP_OK) {
+        goto free_event_handlers;
+    }
+#endif
+
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
+    set_default_duplicated_interfaces();
+#endif
+
+    uint8_t i;
+#ifdef CONFIG_LWIP_IPV6
+    esp_ip6_addr_t tmp_addr6;
+#endif
+#ifdef CONFIG_LWIP_IPV4
+    esp_netif_ip_info_t if_ip_info;
+#endif
+
+    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
+#ifdef CONFIG_LWIP_IPV6
+        if (!esp_netif_get_ip6_linklocal(mdns_priv_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
+            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V6);
+        }
+#endif
+#ifdef CONFIG_LWIP_IPV4
+        if (!esp_netif_get_ip_info(mdns_priv_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
+            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V4);
+        }
+#endif
+    }
+    return ESP_OK;
+#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
+free_event_handlers:
+    mdns_priv_netif_unregister_predefined_handlers();
+#endif
+    return err;
+}
+
+esp_err_t mdns_priv_netif_deinit(void)
+{
+    for (int i = 0; i < MDNS_MAX_INTERFACES; i++) {
+        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V6);
+        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V4);
+        s_esp_netifs[i].duplicate = MDNS_MAX_INTERFACES;
+    }
+    return ESP_OK;
 }
 
 /*
@@ -321,7 +386,7 @@ void mdns_netif_unregister_predefined_handlers(void)
 
 esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_action)
 {
-    return mdns_post_custom_action_tcpip_if(_mdns_get_if_from_esp_netif(esp_netif), event_action);
+    return post_custom_action(get_if_from_netif(esp_netif), event_action);
 }
 
 esp_err_t mdns_register_netif(esp_netif_t *esp_netif)
@@ -367,69 +432,4 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif)
     }
     mdns_priv_service_lock();
     return err;
-}
-
-esp_err_t mdns_netif_init(void)
-{
-    esp_err_t err = ESP_OK;
-    // zero-out local copy of netifs to initiate a fresh search by interface key whenever a netif ptr is needed
-    for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
-        s_esp_netifs[i].netif = NULL;
-    }
-#if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
-    if ((err = esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
-        goto free_event_handlers;
-    }
-#endif
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
-    if ((err = esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
-        goto free_event_handlers;
-    }
-#endif
-#if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
-    if ((err = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, mdns_preset_if_handle_system_event, NULL)) != ESP_OK) {
-        goto free_event_handlers;
-    }
-#endif
-
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
-    set_default_duplicated_interfaces();
-#endif
-
-    uint8_t i;
-#ifdef CONFIG_LWIP_IPV6
-    esp_ip6_addr_t tmp_addr6;
-#endif
-#ifdef CONFIG_LWIP_IPV4
-    esp_netif_ip_info_t if_ip_info;
-#endif
-
-    for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
-#ifdef CONFIG_LWIP_IPV6
-        if (!esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(i), &tmp_addr6) && !mdns_utils_ipv6_address_is_zero(tmp_addr6)) {
-            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V6);
-        }
-#endif
-#ifdef CONFIG_LWIP_IPV4
-        if (!esp_netif_get_ip_info(mdns_netif_get_esp_netif(i), &if_ip_info) && if_ip_info.ip.addr) {
-            mdns_priv_pcb_enable(i, MDNS_IP_PROTOCOL_V4);
-        }
-#endif
-    }
-    return ESP_OK;
-#if CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH
-free_event_handlers:
-    mdns_netif_unregister_predefined_handlers();
-#endif
-    return err;
-}
-
-esp_err_t mdns_netif_deinit(void)
-{
-    for (int i = 0; i < MDNS_MAX_INTERFACES; i++) {
-        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V6);
-        mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V4);
-        s_esp_netifs[i].duplicate = MDNS_MAX_INTERFACES;
-    }
-    return ESP_OK;
 }

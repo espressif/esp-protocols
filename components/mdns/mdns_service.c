@@ -72,7 +72,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 #ifdef CONFIG_LWIP_IPV4
     if (action & MDNS_EVENT_IP4_REVERSE_LOOKUP) {
         esp_netif_ip_info_t if_ip_info;
-        if (esp_netif_get_ip_info(mdns_netif_get_esp_netif(mdns_if), &if_ip_info) == ESP_OK) {
+        if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(mdns_if), &if_ip_info) == ESP_OK) {
             esp_ip4_addr_t *ip = &if_ip_info.ip;
             char *reverse_query_name = NULL;
             if (asprintf(&reverse_query_name, "%d.%d.%d.%d.in-addr",
@@ -87,7 +87,7 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 #ifdef CONFIG_LWIP_IPV6
     if (action & MDNS_EVENT_IP6_REVERSE_LOOKUP) {
         esp_ip6_addr_t addr6;
-        if (!esp_netif_get_ip6_linklocal(mdns_netif_get_esp_netif(mdns_if), &addr6) && !mdns_utils_ipv6_address_is_zero(addr6)) {
+        if (!esp_netif_get_ip6_linklocal(mdns_priv_get_esp_netif(mdns_if), &addr6) && !mdns_utils_ipv6_address_is_zero(addr6)) {
             uint8_t *paddr = (uint8_t *)&addr6.addr;
             const char sub[] = "ip6";
             const size_t query_name_size = 4 * sizeof(addr6.addr) /* (2 nibbles + 2 dots)/per byte of IP address */ + sizeof(sub);
@@ -128,7 +128,7 @@ static void _mdns_free_action(mdns_action_t *action)
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_END:
     case ACTION_BROWSE_SYNC:
-        mdns_browse_action(action, ACTION_CLEANUP);
+        mdns_priv_browse_action(action, ACTION_CLEANUP);
         break;
     case ACTION_TX_HANDLE:
         mdns_send_action(action, ACTION_CLEANUP);
@@ -166,7 +166,7 @@ static void _mdns_execute_action(mdns_action_t *action)
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
-        mdns_browse_action(action, ACTION_RUN);
+        mdns_priv_browse_action(action, ACTION_RUN);
         break;
 
     case ACTION_TX_HANDLE:
@@ -358,7 +358,7 @@ esp_err_t mdns_init(void)
         goto free_responder;
     }
 
-    if (mdns_netif_init() != ESP_OK) {
+    if (mdns_priv_netif_init() != ESP_OK) {
         err = ESP_FAIL;
         goto free_queue;
     }
@@ -372,7 +372,7 @@ esp_err_t mdns_init(void)
     return ESP_OK;
 
 free_all_and_disable_pcbs:
-    mdns_netif_deinit();
+    mdns_priv_netif_deinit();
 free_queue:
     vQueueDelete(s_action_queue);
 free_responder:
@@ -387,7 +387,7 @@ void mdns_free(void)
     }
 
     // Unregister handlers before destroying the mdns internals to avoid receiving async events while deinit
-    mdns_netif_unregister_predefined_handlers();
+    mdns_priv_netif_unregister_predefined_handlers();
 
     mdns_service_remove_all();
     mdns_priv_free_delegated_hostnames();
@@ -404,7 +404,7 @@ void mdns_free(void)
     }
     _mdns_clear_tx_queue_head();
     mdns_priv_query_free();
-    mdns_browse_free();
+    mdns_priv_browse_free();
     mdns_priv_responder_free();
 }
 

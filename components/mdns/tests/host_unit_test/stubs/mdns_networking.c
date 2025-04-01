@@ -11,37 +11,37 @@ struct pbuf  {
     size_t len;
 };
 
-bool mdns_is_netif_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+bool mdns_priv_if_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return true; // Default to ready for testing
 }
 
-esp_err_t _mdns_pcb_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+esp_err_t mdns_priv_if_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return ESP_OK;
 }
 
-esp_err_t _mdns_pcb_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     return ESP_OK;
 }
 
-size_t _mdns_udp_pcb_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, const esp_ip_addr_t *ip, uint16_t port, uint8_t *data, size_t len)
+size_t mdns_priv_if_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, const esp_ip_addr_t *ip, uint16_t port, uint8_t *data, size_t len)
 {
     return len; // Return the input length as if all data was sent successfully
 }
 
-void *_mdns_get_packet_data(mdns_rx_packet_t *packet)
+void *mdns_priv_get_packet_data(mdns_rx_packet_t *packet)
 {
     return packet->pb->payload;
 }
 
-size_t _mdns_get_packet_len(mdns_rx_packet_t *packet)
+size_t mdns_priv_get_packet_len(mdns_rx_packet_t *packet)
 {
     return packet->pb->len;
 }
 
-void _mdns_packet_free(mdns_rx_packet_t *packet)
+void mdns_priv_packet_free(mdns_rx_packet_t *packet)
 {
     mdns_mem_free(packet->pb->payload);
     mdns_mem_free(packet->pb);

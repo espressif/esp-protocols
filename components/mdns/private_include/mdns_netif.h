@@ -17,14 +17,14 @@ extern "C" {
  *
  * @note Called from mdns_init() in mdns.c
  */
-esp_err_t mdns_netif_init(void);
+esp_err_t mdns_priv_netif_init(void);
 
 /**
  * @brief Deinitialize the mDNS network interfaces
  *
  * @note Called from mdns_init() in mdns.c
  */
-esp_err_t mdns_netif_deinit(void);
+esp_err_t mdns_priv_netif_deinit(void);
 
 /**
  * @brief Unregister predefined (default) network interfaces
@@ -32,21 +32,21 @@ esp_err_t mdns_netif_deinit(void);
  * @note Called from mdns_free() in mdns.c
  *
  */
-void mdns_netif_unregister_predefined_handlers(void);
+void mdns_priv_netif_unregister_predefined_handlers(void);
 
 /**
  * @brief Clean the internal netif for the particular interface
  *
  * @note Called from mdns_responder on disabling pcbs
  */
-void mdns_netif_disable(mdns_if_t tcpip_if);
+void mdns_priv_netif_disable(mdns_if_t tcpip_if);
 
 /**
  * @brief Returns potentially duplicated interface
  *
  * @note Called from multiple places where Rx and Tx packets are processed
  */
-mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if);
+mdns_if_t mdns_priv_netif_get_other_interface(mdns_if_t tcpip_if);
 
 /**
  * @brief Gets the actual esp_netif pointer from the internal network interface list
@@ -60,7 +60,8 @@ mdns_if_t mdns_netif_get_other_interface(mdns_if_t tcpip_if);
  * @param tcpip_if Ordinal number of the interface
  * @return Pointer ot the esp_netif object if the interface is available, NULL otherwise
  */
-esp_netif_t *mdns_netif_get_esp_netif(mdns_if_t tcpip_if);
+esp_netif_t *mdns_priv_get_esp_netif(mdns_if_t tcpip_if);
+
 #ifdef __cplusplus
 }
 #endif

@@ -58,8 +58,8 @@
 #define vTaskDelete(a)             free(NULL)
 #define xSemaphoreGive(s)
 #define xQueueCreateMutex(s)
-#define _mdns_pcb_init(a,b)         true
-#define _mdns_pcb_deinit(a,b)       true
+#define mdns_priv_if_init(a,b)         true
+#define mdns_priv_if_deinit(a,b)       true
 #define xSemaphoreCreateMutex()     malloc(1)
 #define xSemaphoreCreateBinary()    malloc(1)
 #define vSemaphoreDelete(s)         free(s)
@@ -72,7 +72,7 @@
 
 #define ESP_TASK_PRIO_MAX 25
 #define ESP_TASKD_EVENT_PRIO 5
-#define _mdns_udp_pcb_write(tcpip_if, ip_protocol, ip, port, data, len) len
+#define mdns_priv_if_write(tcpip_if, ip_protocol, ip, port, data, len) len
 #define TaskHandle_t TaskHandle_t
 
 

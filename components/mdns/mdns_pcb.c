@@ -35,7 +35,7 @@ void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, 
 {
     mdns_pcb_t *_pcb = &s_pcbs[tcpip_if][ip_protocol];
     size_t i;
-    if (mdns_is_netif_ready(tcpip_if, ip_protocol)) {
+    if (mdns_priv_if_ready(tcpip_if, ip_protocol)) {
         if (PCB_STATE_IS_PROBING(_pcb)) {
             mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, services, len, include_ip);
         } else if (PCB_STATE_IS_ANNOUNCING(_pcb)) {
@@ -76,7 +76,7 @@ void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, 
  */
 bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if)
 {
-    mdns_if_t ifaces[MDNS_MAX_INTERFACES] = {tcpip_if, mdns_netif_get_other_interface(tcpip_if) };
+    mdns_if_t ifaces[MDNS_MAX_INTERFACES] = {tcpip_if, mdns_priv_netif_get_other_interface(tcpip_if) };
     if (ifaces[1] == MDNS_MAX_INTERFACES) {
         return false;
     }
@@ -94,7 +94,7 @@ bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if)
 
 static esp_err_t mdns_pcb_deinit_local(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_proto)
 {
-    esp_err_t err = _mdns_pcb_deinit(tcpip_if, ip_proto);
+    esp_err_t err = mdns_priv_if_deinit(tcpip_if, ip_proto);
     mdns_pcb_t *_pcb = &s_pcbs[tcpip_if][ip_proto];
     if (_pcb == NULL || err != ESP_OK) {
         return err;
@@ -140,12 +140,12 @@ static void _mdns_restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
  */
 void mdns_priv_pcb_disable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    mdns_netif_disable(tcpip_if);
+    mdns_priv_netif_disable(tcpip_if);
 
-    if (mdns_is_netif_ready(tcpip_if, ip_protocol)) {
+    if (mdns_priv_if_ready(tcpip_if, ip_protocol)) {
         _mdns_clear_pcb_tx_queue_head(tcpip_if, ip_protocol);
         mdns_pcb_deinit_local(tcpip_if, ip_protocol);
-        mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
+        mdns_if_t other_if = mdns_priv_netif_get_other_interface(tcpip_if);
         if (other_if != MDNS_MAX_INTERFACES && s_pcbs[other_if][ip_protocol].state == PCB_DUP) {
             s_pcbs[other_if][ip_protocol].state = PCB_OFF;
             mdns_priv_pcb_enable(other_if, ip_protocol);
@@ -159,8 +159,8 @@ void mdns_priv_pcb_disable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
  */
 void mdns_priv_pcb_enable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    if (!mdns_is_netif_ready(tcpip_if, ip_protocol)) {
-        if (_mdns_pcb_init(tcpip_if, ip_protocol)) {
+    if (!mdns_priv_if_ready(tcpip_if, ip_protocol)) {
+        if (mdns_priv_if_init(tcpip_if, ip_protocol)) {
             s_pcbs[tcpip_if][ip_protocol].failed_probes = 0;
             return;
         }
@@ -174,14 +174,14 @@ void mdns_priv_pcb_enable(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 void mdns_priv_pcb_set_duplicate(mdns_if_t tcpip_if)
 {
     uint8_t i;
-    mdns_if_t other_if = mdns_netif_get_other_interface(tcpip_if);
+    mdns_if_t other_if = mdns_priv_netif_get_other_interface(tcpip_if);
     if (other_if == MDNS_MAX_INTERFACES) {
         return; // no other interface found
     }
     for (i = 0; i < MDNS_IP_PROTOCOL_MAX; i++) {
-        if (mdns_is_netif_ready(other_if, i)) {
+        if (mdns_priv_if_ready(other_if, i)) {
             //stop this interface and mark as dup
-            if (mdns_is_netif_ready(tcpip_if, i)) {
+            if (mdns_priv_if_ready(tcpip_if, i)) {
                 _mdns_clear_pcb_tx_queue_head(tcpip_if, i);
                 mdns_pcb_deinit_local(tcpip_if, i);
             }
@@ -299,7 +299,7 @@ void mdns_priv_pcb_deinit(void)
 
 bool mdsn_priv_pcb_is_inited(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    return mdns_is_netif_ready(tcpip_if, ip_protocol) && s_pcbs[tcpip_if][ip_protocol].state > PCB_INIT;
+    return mdns_priv_if_ready(tcpip_if, ip_protocol) && s_pcbs[tcpip_if][ip_protocol].state > PCB_INIT;
 }
 
 bool mdns_priv_pcb_is_duplicate(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
@@ -426,7 +426,7 @@ void mdns_priv_pcb_send_bye_service(mdns_srv_item_t **services, size_t len, bool
 
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            if (mdns_is_netif_ready(i, j) && s_pcbs[i][j].state == PCB_RUNNING) {
+            if (mdns_priv_if_ready(i, j) && s_pcbs[i][j].state == PCB_RUNNING) {
                 mdns_send_bye_pcb((mdns_if_t) i, (mdns_ip_protocol_t) j, services, len, include_ip);
             }
         }
@@ -438,7 +438,7 @@ void mdns_priv_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe
     uint8_t i, j;
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
         for (j = 0; j < MDNS_IP_PROTOCOL_MAX; j++) {
-            if (mdns_is_netif_ready(i, j)) {
+            if (mdns_priv_if_ready(i, j)) {
                 mdns_pcb_t *_pcb = &s_pcbs[i][j];
                 if (clear_old_probe) {
                     mdns_mem_free(_pcb->probe_services);
