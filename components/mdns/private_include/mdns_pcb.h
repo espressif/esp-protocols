@@ -116,7 +116,6 @@ void mdns_priv_probe_all_pcbs(mdns_srv_item_t **services, size_t len, bool probe
  */
 void mdns_priv_init_pcb_probe(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns_srv_item_t **services, size_t len, bool probe_ip);
 
-
 #ifdef __cplusplus
 }
 #endif

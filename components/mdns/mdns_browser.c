@@ -90,7 +90,7 @@ static void browse_send(mdns_browse_t *browse, mdns_if_t interface)
     search.next = NULL;
 
     for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
-        _mdns_search_send_pcb(&search, interface, (mdns_ip_protocol_t)protocol_idx);
+        mdns_priv_query_send(&search, interface, (mdns_ip_protocol_t) protocol_idx);
     }
 }
 

@@ -151,22 +151,11 @@
 
 #define queueFree(type, queue)  while (queue) { type * _q = queue; queue = queue->next; free(_q); }
 
-#define PCB_STATE_IS_PROBING(s) (s->state > PCB_OFF && s->state < PCB_ANNOUNCE_1)
-#define PCB_STATE_IS_ANNOUNCING(s) (s->state > PCB_PROBE_3 && s->state < PCB_RUNNING)
-#define PCB_STATE_IS_RUNNING(s) (s->state == PCB_RUNNING)
-
 #ifndef HOOK_MALLOC_FAILED
-#define HOOK_MALLOC_FAILED  ESP_LOGE(TAG, "Cannot allocate memory (line: %d, free heap: %" PRIu32 " bytes)", __LINE__, esp_get_free_heap_size());
+#define HOOK_MALLOC_FAILED  do { ESP_LOGE(TAG, "Cannot allocate memory (line: %d, free heap: %" PRIu32 " bytes)", __LINE__, esp_get_free_heap_size()); } while(0)
 #endif
 
 typedef size_t mdns_if_t;
-
-typedef enum {
-    PCB_OFF, PCB_DUP, PCB_INIT,
-    PCB_PROBE_1, PCB_PROBE_2, PCB_PROBE_3,
-    PCB_ANNOUNCE_1, PCB_ANNOUNCE_2, PCB_ANNOUNCE_3,
-    PCB_RUNNING
-} mdns_pcb_state_t;
 
 typedef enum {
     MDNS_ANSWER, MDNS_NS, MDNS_EXTRA
