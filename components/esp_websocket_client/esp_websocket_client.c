@@ -25,6 +25,11 @@
 
 static const char *TAG = "websocket_client";
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+// Features supported in 5.5.0
+#define WS_TRANSPORT_STORE_RESPONSE_HEADERS    1
+#endif
+
 #define WEBSOCKET_TCP_DEFAULT_PORT      (80)
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
 #define WEBSOCKET_BUFFER_SIZE_BYTE      (1024)
@@ -101,6 +106,8 @@ typedef struct {
     const char                  *cert_common_name;
     esp_err_t (*crt_bundle_attach)(void *conf);
     esp_transport_handle_t      ext_transport;
+    char                        *response_headers;
+    size_t                      response_headers_len;
 } websocket_config_storage_t;
 
 typedef enum {
@@ -474,7 +481,11 @@ static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_
             .user_agent = client->config->user_agent,
             .headers = client->config->headers,
             .auth = client->config->auth,
-            .propagate_control_frames = true
+            .propagate_control_frames = true,
+#if WS_TRANSPORT_STORE_RESPONSE_HEADERS
+            .response_headers = client->config->response_headers,
+            .response_headers_len = client->config->response_headers_len
+#endif
         };
         return esp_transport_ws_set_config(trans, &config);
     }
@@ -725,7 +736,8 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->cert_common_name = config->cert_common_name;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
     client->config->ext_transport = config->ext_transport;
-
+    client->config->response_headers = config->response_headers;
+    client->config->response_headers_len = config->response_headers_len;
     if (config->uri) {
         if (esp_websocket_client_set_uri(client, config->uri) != ESP_OK) {
             ESP_LOGE(TAG, "Invalid uri");
