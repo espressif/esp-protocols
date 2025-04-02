@@ -25,6 +25,11 @@
 
 static const char *TAG = "websocket_client";
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+// Features supported in 5.5.0
+#define WS_TRANSPORT_GET_RESPONSE_HEADER    1
+#endif
+
 #define WEBSOCKET_TCP_DEFAULT_PORT      (80)
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
 #define WEBSOCKET_BUFFER_SIZE_BYTE      (1024)
@@ -85,6 +90,7 @@ typedef struct {
     char                        *subprotocol;
     char                        *user_agent;
     char                        *headers;
+    const char                  *response_headers;
     int                         pingpong_timeout_sec;
     size_t                      ping_interval_sec;
     const char                  *cert;
@@ -1020,6 +1026,9 @@ static void esp_websocket_client_task(void *pv)
                                                client->config->host,
                                                client->config->port,
                                                client->config->network_timeout_ms);
+#if WS_TRANSPORT_GET_RESPONSE_HEADER
+            client->config->response_headers = esp_transport_ws_get_response_header(client->transport);
+#endif
             if (result < 0) {
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
@@ -1340,6 +1349,18 @@ int esp_websocket_client_get_reconnect_timeout(esp_websocket_client_handle_t cli
 
     return client->wait_timeout_ms;
 }
+
+#if WS_TRANSPORT_GET_RESPONSE_HEADER
+const char* esp_websocket_client_get_response_header(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        ESP_LOGW(TAG, "Client was not initialized");
+        return NULL;
+    }
+
+    return client->config->response_headers;
+}
+#endif
 
 esp_err_t esp_websocket_client_set_reconnect_timeout(esp_websocket_client_handle_t client, int reconnect_timeout_ms)
 {
