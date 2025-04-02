@@ -75,7 +75,7 @@ static void wifi_destroy(iface_info_t *info)
     free(info);
 }
 
-iface_info_t *wifi_init(int prio)
+iface_info_t *example_wifi_init(int prio)
 {
     struct iface_info_t *wifi_info = malloc(sizeof(iface_info_t));
     assert(wifi_info);
@@ -100,9 +100,9 @@ iface_info_t *wifi_init(int prio)
             .password = CONFIG_ESP_WIFI_PASSWORD,
         },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 

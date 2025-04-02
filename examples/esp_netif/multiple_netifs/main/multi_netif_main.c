@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -23,9 +23,9 @@
 #include "nvs_flash.h"
 #include "iface_info.h"
 
-iface_info_t *eth_init(int prio);
-iface_info_t *wifi_init(int prio);
-iface_info_t *ppp_init(int prio);
+iface_info_t *example_eth_init(int prio);
+iface_info_t *example_wifi_init(int prio);
+iface_info_t *example_ppp_init(int prio);
 esp_err_t check_connectivity(const char *host);
 
 #define HOST        "www.espressif.com"
@@ -69,14 +69,18 @@ void app_main(void)
 
     // all interfaces
     iface_info_t *ifaces[] = {
-        eth_init(ETH_PRIO),
-        wifi_init(WIFI_PRIO),
-        ppp_init(PPP_PRIO),
+        example_eth_init(ETH_PRIO),
+        example_wifi_init(WIFI_PRIO),
+        example_ppp_init(PPP_PRIO),
     };
     size_t num_of_ifaces = sizeof(ifaces) / sizeof(ifaces[0]);
 
     while (true) {
+#ifdef CONFIG_EXAMPLE_DEMONSTRATE_DNS_CLEAR_CACHE
+        // For demonstration purposes we clear DNS table every iteration to exercise
+        // a condition of DNS servers being misconfigured
         dns_clear_cache();
+#endif
         vTaskDelay(pdMS_TO_TICKS(2000));
         ssize_t i = get_default(ifaces, num_of_ifaces);
         if (i == -1) {  // default netif is NULL, probably all interfaces are down -> retry
@@ -91,7 +95,9 @@ void app_main(void)
             continue;
         }
         if (connect_status == ESP_ERR_NOT_FOUND) {
+#ifndef CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF
             // set the default DNS info to global DNS server list
+            // manually if DNS_PER_DEFAULT_NETIF if OFF or not-supported
             for (int j = 0; j < 2; ++j) {
                 esp_netif_dns_info_t dns_info;
                 esp_netif_get_dns_info(ifaces[i]->netif, j, &dns_info);
@@ -102,6 +108,12 @@ void app_main(void)
                     ESP_LOGI(TAG, "Reconfigured DNS%i=" IPSTR, j, IP2STR(&ifaces[i]->dns[j].ip.u_addr.ip4));
                 }
             }
+#else
+            // simulate that the (default) netif is brought UP
+            // this is only needed, since we explicitly clear DNS servers every iteration using dns_clear_cache()
+            // (for demonstration purpose only, won't be needed in your project, unless you delete DNS info for some reasons)
+            esp_netif_action_connected(ifaces[i]->netif, NULL, 0, NULL);
+#endif
         }
         if (connect_status == ESP_FAIL) {
             ESP_LOGE(TAG, "No connection via the default netif!");

@@ -95,7 +95,7 @@ static void eth_destroy(iface_info_t *info)
     free(eth_info);
 }
 
-iface_info_t *eth_init(int prio)
+iface_info_t *example_eth_init(int prio)
 {
     struct eth_info_t *eth_info = malloc(sizeof(struct eth_info_t));
     assert(eth_info);
@@ -124,7 +124,7 @@ iface_info_t *eth_init(int prio)
     eth_info->parent.netif = esp_netif_new(&cfg);
     eth_info->glue = esp_eth_new_netif_glue(eth_info->eth_handle);
     // Attach Ethernet driver to TCP/IP stack
-    ESP_ERROR_CHECK(esp_netif_attach(eth_info->parent.netif, eth_info->glue ));
+    ESP_ERROR_CHECK(esp_netif_attach(eth_info->parent.netif, eth_info->glue));
 
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, eth_info));
