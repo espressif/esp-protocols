@@ -195,6 +195,11 @@ static void websocket_app_start(void)
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+    /*  WebSocket handshake response headers if available */
+    const char *headers = esp_websocket_client_get_response_header(client);
+    if (headers) {
+        ESP_LOGI(TAG, "WebSocket response headers:\n%s", headers);
+    }
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     // Sending text data
