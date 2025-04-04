@@ -14,6 +14,7 @@
 #include "mdns_send.h"
 #include "mdns_querier.h"
 #include "mdns_pcb.h"
+#include "mdns_service.h"
 
 typedef struct mdns_server_s {
     const char *hostname;

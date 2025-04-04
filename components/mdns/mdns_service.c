@@ -5,18 +5,14 @@
  */
 #include <string.h>
 #include "mdns_private.h"
-#include "mdns_networking.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_check.h"
 #include "mdns.h"
-#include "mdns_private.h"
-#include "mdns_networking.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
-#include "mdns_debug.h"
 #include "mdns_browser.h"
 #include "mdns_netif.h"
 #include "mdns_send.h"
@@ -25,10 +21,21 @@
 #include "mdns_pcb.h"
 #include "mdns_responder.h"
 
+#define MDNS_SERVICE_STACK_DEPTH    CONFIG_MDNS_TASK_STACK_SIZE
+#define MDNS_TASK_PRIORITY          CONFIG_MDNS_TASK_PRIORITY
+#if (MDNS_TASK_PRIORITY > ESP_TASK_PRIO_MAX)
+#error "mDNS task priority is higher than ESP_TASK_PRIO_MAX"
+#elif (MDNS_TASK_PRIORITY > ESP_TASKD_EVENT_PRIO)
+#warning "mDNS task priority is higher than ESP_TASKD_EVENT_PRIO, mDNS library might not work correctly"
+#endif
+#define MDNS_TASK_AFFINITY          CONFIG_MDNS_TASK_AFFINITY
 
-static volatile TaskHandle_t _mdns_service_task_handle = NULL;
-static SemaphoreHandle_t _mdns_service_semaphore = NULL;
-static StackType_t *_mdns_stack_buffer;
+#define MDNS_SERVICE_LOCK()     xSemaphoreTake(s_service_semaphore, portMAX_DELAY)
+#define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(s_service_semaphore)
+
+static volatile TaskHandle_t s_service_task_handle = NULL;
+static SemaphoreHandle_t s_service_semaphore = NULL;
+static StackType_t *s_stack_buffer;
 static QueueHandle_t s_action_queue;
 static esp_timer_handle_t s_timer_handle;
 
@@ -112,12 +119,10 @@ static void perform_event_action(mdns_if_t mdns_if, mdns_event_actions_t action)
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
 }
 
-
-
 /**
  * @brief  Free action data
  */
-static void _mdns_free_action(mdns_action_t *action)
+static void free_action(mdns_action_t *action)
 {
     switch (action->type) {
     case ACTION_SEARCH_ADD:
@@ -152,7 +157,7 @@ static void _mdns_free_action(mdns_action_t *action)
 /**
  * @brief  Called from service thread to execute given action
  */
-static void _mdns_execute_action(mdns_action_t *action)
+static void execute_action(mdns_action_t *action)
 {
     switch (action->type) {
     case ACTION_SYSTEM_EVENT:
@@ -191,7 +196,7 @@ static void _mdns_execute_action(mdns_action_t *action)
 /**
  * @brief  the main MDNS service task. Packets are received and parsed here
  */
-static void _mdns_service_task(void *pvParameters)
+static void service_task(void *pvParameters)
 {
     mdns_action_t *a = NULL;
     for (;;) {
@@ -202,27 +207,27 @@ static void _mdns_service_task(void *pvParameters)
                     break;
                 }
                 MDNS_SERVICE_LOCK();
-                _mdns_execute_action(a);
+                execute_action(a);
                 MDNS_SERVICE_UNLOCK();
             }
         } else {
             vTaskDelay(500 * portTICK_PERIOD_MS);
         }
     }
-    _mdns_service_task_handle = NULL;
+    s_service_task_handle = NULL;
     vTaskDelay(portMAX_DELAY);
 }
 
-static void _mdns_timer_cb(void *arg)
+static void timer_cb(void *arg)
 {
     mdns_priv_send_packets();
     mdns_priv_query_start_stop();
 }
 
-static esp_err_t _mdns_start_timer(void)
+static esp_err_t start_timer(void)
 {
     esp_timer_create_args_t timer_conf = {
-        .callback = _mdns_timer_cb,
+        .callback = timer_cb,
         .arg = NULL,
         .dispatch_method = ESP_TIMER_TASK,
         .name = "mdns_timer"
@@ -234,7 +239,7 @@ static esp_err_t _mdns_start_timer(void)
     return esp_timer_start_periodic(s_timer_handle, MDNS_TIMER_PERIOD_US);
 }
 
-static esp_err_t _mdns_stop_timer(void)
+static esp_err_t stop_timer(void)
 {
     esp_err_t err = ESP_OK;
     if (s_timer_handle) {
@@ -247,21 +252,21 @@ static esp_err_t _mdns_stop_timer(void)
     return err;
 }
 
-static esp_err_t _mdns_task_create_with_caps(void)
+static esp_err_t create_task_with_caps(void)
 {
     esp_err_t ret = ESP_OK;
     static StaticTask_t mdns_task_buffer;
 
-    _mdns_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
-    ESP_GOTO_ON_FALSE(_mdns_stack_buffer != NULL, ESP_FAIL, err, TAG, "failed to allocate memory for the mDNS task's stack");
+    s_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
+    ESP_GOTO_ON_FALSE(s_stack_buffer != NULL, ESP_FAIL, err, TAG, "failed to allocate memory for the mDNS task's stack");
 
-    _mdns_service_task_handle = xTaskCreateStaticPinnedToCore(_mdns_service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, _mdns_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
-    ESP_GOTO_ON_FALSE(_mdns_service_task_handle != NULL, ESP_FAIL, err, TAG, "failed to create task for the mDNS");
+    s_service_task_handle = xTaskCreateStaticPinnedToCore(service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, s_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
+    ESP_GOTO_ON_FALSE(s_service_task_handle != NULL, ESP_FAIL, err, TAG, "failed to create task for the mDNS");
 
     return ret;
 
 err:
-    mdns_mem_task_free(_mdns_stack_buffer);
+    mdns_mem_task_free(s_stack_buffer);
     return ret;
 }
 
@@ -272,22 +277,22 @@ err:
  *      - ESP_OK on success
  *      - ESP_FAIL on error
  */
-static esp_err_t _mdns_service_task_start(void)
+static esp_err_t service_task_start(void)
 {
     esp_err_t ret = ESP_OK;
-    if (!_mdns_service_semaphore) {
-        _mdns_service_semaphore = xSemaphoreCreateMutex();
-        ESP_RETURN_ON_FALSE(_mdns_service_semaphore != NULL, ESP_FAIL, TAG, "Failed to create the mDNS service lock");
+    if (!s_service_semaphore) {
+        s_service_semaphore = xSemaphoreCreateMutex();
+        ESP_RETURN_ON_FALSE(s_service_semaphore != NULL, ESP_FAIL, TAG, "Failed to create the mDNS service lock");
     }
     MDNS_SERVICE_LOCK();
-    ESP_GOTO_ON_ERROR(_mdns_start_timer(), err, TAG, "Failed to start the mDNS service timer");
+    ESP_GOTO_ON_ERROR(start_timer(), err, TAG, "Failed to start the mDNS service timer");
 
-    if (!_mdns_service_task_handle) {
-        ESP_GOTO_ON_ERROR(_mdns_task_create_with_caps(), err_stop_timer, TAG, "Failed to start the mDNS service task");
+    if (!s_service_task_handle) {
+        ESP_GOTO_ON_ERROR(create_task_with_caps(), err_stop_timer, TAG, "Failed to start the mDNS service task");
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0) && !CONFIG_IDF_TARGET_LINUX
         StackType_t *mdns_debug_stack_buffer;
         StaticTask_t *mdns_debug_task_buffer;
-        xTaskGetStaticBuffers(_mdns_service_task_handle, &mdns_debug_stack_buffer, &mdns_debug_task_buffer);
+        xTaskGetStaticBuffers(s_service_task_handle, &mdns_debug_stack_buffer, &mdns_debug_task_buffer);
         ESP_LOGD(TAG, "mdns_debug_stack_buffer:%p mdns_debug_task_buffer:%p\n", mdns_debug_stack_buffer, mdns_debug_task_buffer);
 #endif // CONFIG_IDF_TARGET_LINUX
     }
@@ -295,11 +300,11 @@ static esp_err_t _mdns_service_task_start(void)
     return ret;
 
 err_stop_timer:
-    _mdns_stop_timer();
+    stop_timer();
 err:
     MDNS_SERVICE_UNLOCK();
-    vSemaphoreDelete(_mdns_service_semaphore);
-    _mdns_service_semaphore = NULL;
+    vSemaphoreDelete(s_service_semaphore);
+    s_service_semaphore = NULL;
     return ret;
 }
 
@@ -309,24 +314,24 @@ err:
  * @return
  *      - ESP_OK
  */
-static esp_err_t _mdns_service_task_stop(void)
+static esp_err_t service_task_stop(void)
 {
-    _mdns_stop_timer();
-    if (_mdns_service_task_handle) {
-        TaskHandle_t task_handle = _mdns_service_task_handle;
+    stop_timer();
+    if (s_service_task_handle) {
+        TaskHandle_t task_handle = s_service_task_handle;
         mdns_action_t action;
         mdns_action_t *a = &action;
         action.type = ACTION_TASK_STOP;
         if (xQueueSend(s_action_queue, &a, (TickType_t)0) != pdPASS) {
-            _mdns_service_task_handle = NULL;
+            s_service_task_handle = NULL;
         }
-        while (_mdns_service_task_handle) {
+        while (s_service_task_handle) {
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
         vTaskDelete(task_handle);
     }
-    vSemaphoreDelete(_mdns_service_semaphore);
-    _mdns_service_semaphore = NULL;
+    vSemaphoreDelete(s_service_semaphore);
+    s_service_semaphore = NULL;
     return ESP_OK;
 }
 
@@ -363,7 +368,7 @@ esp_err_t mdns_init(void)
         goto free_queue;
     }
 
-    if (_mdns_service_task_start()) {
+    if (service_task_start()) {
         //service start failed!
         err = ESP_FAIL;
         goto free_all_and_disable_pcbs;
@@ -390,14 +395,14 @@ void mdns_free(void)
     mdns_priv_netif_unregister_predefined_handlers();
 
     mdns_service_remove_all();
-    _mdns_service_task_stop();
+    service_task_stop();
     // at this point, the service task is deleted, so we can destroy the stack size
-    mdns_mem_task_free(_mdns_stack_buffer);
+    mdns_mem_task_free(s_stack_buffer);
     mdns_priv_pcb_deinit();
     if (s_action_queue) {
         mdns_action_t *c;
         while (xQueueReceive(s_action_queue, &c, 0) == pdTRUE) {
-            _mdns_free_action(c);
+            free_action(c);
         }
         vQueueDelete(s_action_queue);
     }

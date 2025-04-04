@@ -21,6 +21,7 @@
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
 #include "mdns_netif.h"
+#include "mdns_service.h"
 
 /*
  * MDNS Server Networking

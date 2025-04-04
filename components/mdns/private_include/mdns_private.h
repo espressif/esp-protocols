@@ -3,8 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef MDNS_PRIVATE_H_
-#define MDNS_PRIVATE_H_
+#pragma once
 
 #include "sdkconfig.h"
 #include "mdns.h"
@@ -85,14 +84,6 @@
 #define MDNS_ANSWER_AAAA_SIZE       16
 
 #define MDNS_SERVICE_PORT           5353                    // UDP port that the server runs on
-#define MDNS_SERVICE_STACK_DEPTH    CONFIG_MDNS_TASK_STACK_SIZE
-#define MDNS_TASK_PRIORITY          CONFIG_MDNS_TASK_PRIORITY
-#if (MDNS_TASK_PRIORITY > ESP_TASK_PRIO_MAX)
-#error "mDNS task priority is higher than ESP_TASK_PRIO_MAX"
-#elif (MDNS_TASK_PRIORITY > ESP_TASKD_EVENT_PRIO)
-#warning "mDNS task priority is higher than ESP_TASKD_EVENT_PRIO, mDNS library might not work correctly"
-#endif
-#define MDNS_TASK_AFFINITY          CONFIG_MDNS_TASK_AFFINITY
 #define MDNS_SERVICE_ADD_TIMEOUT_MS CONFIG_MDNS_SERVICE_ADD_TIMEOUT_MS
 
 #define MDNS_PACKET_QUEUE_LEN       16                      // Maximum packets that can be queued for parsing
@@ -120,9 +111,6 @@
 #define MDNS_SRV_FQDN_OFFSET        6
 
 #define MDNS_TIMER_PERIOD_US        (CONFIG_MDNS_TIMER_PERIOD_MS*1000)
-
-#define MDNS_SERVICE_LOCK()     xSemaphoreTake(_mdns_service_semaphore, portMAX_DELAY)
-#define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(_mdns_service_semaphore)
 
 #define queueToEnd(type, queue, item)       \
     if (!queue) {                           \
@@ -416,23 +404,3 @@ typedef struct {
         } browse_sync;
     } data;
 } mdns_action_t;
-
-
-/**
- * @brief  Lock mdns service
- */
-void mdns_priv_service_lock(void);
-
-/**
- * @brief  Unlock mdns service
- */
-void mdns_priv_service_unlock(void);
-
-/**
- * @brief  Send the given action to the service queue
- */
-bool mdns_priv_queue_action(mdns_action_t *action);
-
-
-
-#endif /* MDNS_PRIVATE_H_ */

@@ -13,6 +13,7 @@
 #include "mdns_pcb.h"
 #include "mdns_netif.h"
 #include "mdns_responder.h"
+#include "mdns_service.h"
 
 static const char *TAG = "mdns_querier";
 static mdns_search_once_t *s_search_once;

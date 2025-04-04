@@ -6,13 +6,13 @@
 #include <string.h>
 #include "mdns_private.h"
 #include "mdns_browser.h"
-#include "mdns_send.h"
 #include "mdns_mem_caps.h"
 #include "mdns_debug.h"
 #include "mdns_utils.h"
 #include "mdns_querier.h"
 #include "mdns_responder.h"
 #include "mdns_netif.h"
+#include "mdns_service.h"
 #include "esp_log.h"
 
 static const char *TAG = "mdns_browser";

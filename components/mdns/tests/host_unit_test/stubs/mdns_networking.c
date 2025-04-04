@@ -5,6 +5,7 @@
  */
 #include "mdns_networking.h"
 #include "mdns_mem_caps.h"
+#include "mdns_service.h"
 
 struct pbuf  {
     void *payload;

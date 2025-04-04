@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <inttypes.h>
+#include "freertos/FreeRTOS.h"
 #include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_utils.h"
