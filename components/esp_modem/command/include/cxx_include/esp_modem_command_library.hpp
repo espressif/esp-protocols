@@ -1,49 +1,62 @@
-// Copyright 2021-2022 Espressif Systems (Shanghai) PTE LTD
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+/*
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
 #pragma once
 
-#include "generate/esp_modem_command_declare_helper.inc"
+#include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_dce_module.hpp"
+#include "cxx_include/esp_modem_types.hpp"
 
-
-#define DECLARE_ALL_COMMAND_APIS(...) \
+namespace esp_modem {
+namespace dce_commands {
+/**
+ * @defgroup ESP_MODEM_DCE_COMMAND ESP_MODEM DCE command library
+ * @brief Library of the most useful DCE commands
+ */
+/** @addtogroup ESP_MODEM_DCE_COMMAND
+ * @{
+ */
+/**
+ * @brief Generic AT command to be send with pass and fail phrases
+ *
+ * @param t Commandable object (anything that can accept commands)
+ * @param command Command to be sent do the commandable object
+ * @param pass_phrase String to be present in the reply to pass this command
+ * @param fail_phrase String to be present in the reply to fail this command
+ * @param timeout_ms Timeout in ms
+ */
+command_result generic_command(CommandableIf *t, const std::string &command,
+                               const std::string &pass_phrase,
+                               const std::string &fail_phrase, uint32_t timeout_ms);
+/**
+ * @brief Declaration of all commands is generated from esp_modem_command_declare.inc
+ */
 /**
  * @brief Sends the initial AT sequence to sync up with the device
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
-    \
+ */
+command_result sync(CommandableIf *t);
 /**
  * @brief Reads the operator name
  * @param[out] name operator name
  * @param[out] act access technology
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_operator_name, command_result, 2, STRING_OUT(p1, name), INT_OUT(p2, act)) \
-    \
+ */
+command_result get_operator_name(CommandableIf *t, std::string &name, int &act);
 /**
  * @brief Stores current user profile
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(store_profile, command_result, 0) \
-    \
+ */
+command_result store_profile(CommandableIf *t);
 /**
  * @brief Sets the supplied PIN code
  * @param[in] pin Pin
  * @return OK, FAIL or TIMEOUT
- */\
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
-    \
+ */
+command_result set_pin(CommandableIf *t, const std::string &pin);
 /**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
@@ -52,155 +65,133 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
  * @param[in] fail Pattern in response for the API to return FAIL
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
- */\
-ESP_MODEM_DECLARE_DCE_COMMAND(at_raw, command_result, 5, STRING_IN(p1, cmd), STRING_OUT(p2, out), STRING_IN(p3, pass), STRING_IN(p4, fail), INT_IN(p5, timeout)) \
-    \
+ */
+command_result at_raw(CommandableIf *t, const std::string &cmd, std::string &out, const std::string &pass, const std::string &fail, int timeout);
 /**
  * @brief Execute the supplied AT command
  * @param[in] cmd AT command
  * @param[out] out Command output string
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
- */\
-ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, 3, STRING_IN(p1, cmd), STRING_OUT(p2, out), INT_IN(p3, timeout)) \
-    \
+ */
+command_result at(CommandableIf *t, const std::string &cmd, std::string &out, int timeout);
 /**
  * @brief Checks if the SIM needs a PIN
  * @param[out] pin_ok true if the SIM card doesn't need a PIN to unlock
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, 1, BOOL_OUT(p1, pin_ok)) \
-    \
+ */
+command_result read_pin(CommandableIf *t, bool &pin_ok);
 /**
  * @brief Sets echo mode
  * @param[in] echo_on true if echo mode on (repeats the commands)
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_echo, command_result, 1, BOOL_IN(p1, echo_on)) \
-    \
+ */
+command_result set_echo(CommandableIf *t, const bool echo_on);
 /**
  * @brief Sets the Txt or Pdu mode for SMS (only txt is supported)
  * @param[in] txt true if txt mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(sms_txt_mode, command_result, 1, BOOL_IN(p1, txt)) \
-    \
+ */
+command_result sms_txt_mode(CommandableIf *t, const bool txt);
 /**
  * @brief Sets the default (GSM) character set
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(sms_character_set, command_result, 0) \
-    \
+ */
+command_result sms_character_set(CommandableIf *t);
 /**
  * @brief Sends SMS message in txt mode
  * @param[in] number Phone number to send the message to
  * @param[in] message Text message to be sent
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(send_sms, command_result, 2, STRING_IN(p1, number), STRING_IN(p2, message)) \
-    \
+ */
+command_result send_sms(CommandableIf *t, const std::string &number, const std::string &message);
 /**
  * @brief Resumes data mode (Switches back to the data mode, which was temporarily suspended)
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(resume_data_mode, command_result, 0) \
-    \
+ */
+command_result resume_data_mode(CommandableIf *t);
 /**
  * @brief Sets php context
  * @param[in] p1 PdP context struct to setup modem cellular connection
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_pdp_context, command_result, 1, STRUCT_OUT(PdpContext, p1)) \
-    \
+ */
+command_result set_pdp_context(CommandableIf *t, PdpContext &pdp);
 /**
  * @brief Switches to the command mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_command_mode, command_result, 0) \
-    \
+ */
+command_result set_command_mode(CommandableIf *t);
 /**
  * @brief Switches to the CMUX mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, 0) \
-    \
+ */
+command_result set_cmux(CommandableIf *t);
 /**
  * @brief Reads the IMSI number
  * @param[out] imsi Module's IMSI number
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, STRING_OUT(p1, imsi)) \
-    \
+ */
+command_result get_imsi(CommandableIf *t, std::string &imsi);
 /**
  * @brief Reads the IMEI number
  * @param[out] imei Module's IMEI number
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, STRING_OUT(p1, imei)) \
-    \
+ */
+command_result get_imei(CommandableIf *t, std::string &imei);
 /**
  * @brief Reads the module name
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, STRING_OUT(p1, name)) \
-    \
+ */
+command_result get_module_name(CommandableIf *t, std::string &name);
 /**
  * @brief Sets the modem to data mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_data_mode, command_result, 0) \
-    \
+ */
+command_result set_data_mode(CommandableIf *t);
 /**
  * @brief Get Signal quality
  * @param[out] rssi signal strength indication
  * @param[out] ber channel bit error rate
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_signal_quality, command_result, 2, INT_OUT(p1, rssi), INT_OUT(p2, ber)) \
-    \
+ */
+command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber);
 /**
  * @brief Sets HW control flow
  * @param[in] dce_flow 0=none, 2=RTS hw flow control of DCE
  * @param[in] dte_flow 0=none, 2=CTS hw flow control of DTE
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_flow_control, command_result, 2, INT_IN(p1, dce_flow), INT_IN(p2, dte_flow)) \
-    \
+ */
+command_result set_flow_control(CommandableIf *t, int dce_flow, int dte_flow);
 /**
  * @brief Hangs up current data call
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(hang_up, command_result, 0) \
-    \
+ */
+command_result hang_up(CommandableIf *t);
 /**
  * @brief Get voltage levels of modem power up circuitry
  * @param[out] voltage Current status in mV
  * @param[out] bcs charge status (-1-Not available, 0-Not charging, 1-Charging, 2-Charging done)
  * @param[out] bcl 1-100% battery capacity, -1-Not available
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_battery_status, command_result, 3, INT_OUT(p1, voltage), INT_OUT(p2, bcs), INT_OUT(p3, bcl)) \
-    \
+ */
+command_result get_battery_status(CommandableIf *t, int &voltage, int &bcs, int &bcl);
 /**
  * @brief Power down the module
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(power_down, command_result, 0) \
-    \
+ */
+command_result power_down(CommandableIf *t);
 /**
  * @brief Reset the module
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(reset, command_result, 0) \
-    \
+ */
+command_result reset(CommandableIf *t);
 /**
  * @brief Configures the baudrate
  * @param[in] baud Desired baud rate of the DTE
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(p1, baud)) \
-    \
+ */
+command_result set_baud(CommandableIf *t, int baud);
 /**
  * @brief Force an attempt to connect to a specific operator
  * @param[in] mode mode of attempt
@@ -215,88 +206,76 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_baud, command_result, 1, INT_IN(p1, baud)) \
  * format=2 - numeric
  * @param[in] oper the operator to connect to
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_operator, command_result, 3, INT_IN(p1, mode), INT_IN(p2, format), STRING_IN(p3, oper)) \
-    \
+ */
+command_result set_operator(CommandableIf *t, int mode, int format, const std::string &oper);
 /**
  * @brief Attach or detach from the GPRS service
  * @param[in] state 1-attach 0-detach
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_network_attachment_state, command_result, 1, INT_IN(p1, state)) \
-    \
+ */
+command_result set_network_attachment_state(CommandableIf *t, int state);
 /**
  * @brief Get network attachment state
  * @param[out] state 1-attached 0-detached
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_network_attachment_state, command_result, 1, INT_OUT(p1, state)) \
-    \
+ */
+command_result get_network_attachment_state(CommandableIf *t, int &state);
 /**
  * @brief What mode the radio should be set to
  * @param[in] state state 1-full 0-minimum ...
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_radio_state, command_result, 1, INT_IN(p1, state)) \
-    \
+ */
+command_result set_radio_state(CommandableIf *t, int state);
 /**
  * @brief Get current radio state
  * @param[out] state 1-full 0-minimum ...
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_radio_state, command_result, 1, INT_OUT(p1, state)) \
-    \
+ */
+command_result get_radio_state(CommandableIf *t, int &state);
 /**
  * @brief Set network mode
  * @param[in] mode preferred mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_network_mode, command_result, 1, INT_IN(p1, mode)) \
-    \
+ */
+command_result set_network_mode(CommandableIf *t, int mode);
 /**
  * @brief Preferred network mode (CAT-M and/or NB-IoT)
  * @param[in] mode preferred selection
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_preferred_mode, command_result, 1, INT_IN(p1, mode)) \
-    \
+ */
+command_result set_preferred_mode(CommandableIf *t, int mode);
 /**
  * @brief Set network bands for CAT-M or NB-IoT
  * @param[in] mode CAT-M or NB-IoT
  * @param[in] bands bitmap in hex representing bands
  * @param[in] size size of teh bands bitmap
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_network_bands, command_result, 3, STRING_IN(p1, mode), INTEGER_LIST_IN(p2, bands), INT_IN(p3, size)) \
-    \
+ */
+command_result set_network_bands(CommandableIf *t, const std::string &mode, const int *bands, int size);
 /**
  * @brief Show network system mode
  * @param[out] mode current network mode
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_network_system_mode, command_result, 1, INT_OUT(p1, mode)) \
-    \
+ */
+command_result get_network_system_mode(CommandableIf *t, int &mode);
 /**
  * @brief GNSS power control
  * @param[out] mode power mode (0 - off, 1 - on)
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_gnss_power_mode, command_result, 1, INT_IN(p1, mode)) \
-    \
+ */
+command_result set_gnss_power_mode(CommandableIf *t, int mode);
 /**
  * @brief GNSS power control
  * @param[out] mode power mode (0 - off, 1 - on)
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_gnss_power_mode, command_result, 1, INT_OUT(p1, mode)) \
-    \
+ */
+command_result get_gnss_power_mode(CommandableIf *t, int &mode);
 /**
  * @brief Configure PSM
  * @param[in] mode psm mode (0 - off, 1 - on, 2 - off & discard stored params)
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(config_psm, command_result, 3, INT_IN(p1, mode), STRING_IN(p2, tau), STRING_IN(p3, active_time)) \
-    \
+ */
+command_result config_psm(CommandableIf *t, int mode, const std::string &tau, const std::string &active_time);
 /**
  * @brief Configure CEREG urc
  * @param[in] value
@@ -306,9 +285,8 @@ ESP_MODEM_DECLARE_DCE_COMMAND(config_psm, command_result, 3, INT_IN(p1, mode), S
  * value = 3 - Enable network URC with location information and EMM cause
  * value = 4 - Enable network URC with location information and PSM value
  * value = 5 - Enable network URC with location information and PSM value, EMM cause
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(config_network_registration_urc, command_result, 1, INT_IN(p1, value)) \
-    \
+ */
+command_result config_network_registration_urc(CommandableIf *t, int value);
 /**
  *  @brief Gets the current network registration state
  *  @param[out] state The current network registration state
@@ -323,18 +301,16 @@ ESP_MODEM_DECLARE_DCE_COMMAND(config_network_registration_urc, command_result, 1
  *  state = 8 - Attached for emergency bearer services only
  *  state = 9 - Registered for CSFB not preferred, home network
  *  state = 10 - Registered for CSFB not preferred, roaming
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_network_registration_state, command_result, 1, INT_OUT(p1,state)) \
-    \
+ */
+command_result get_network_registration_state(CommandableIf *t, int &state);
 /**
  *  @brief Configures the mobile termination error (+CME ERROR)
  *  @param[in] mode The form of the final result code
  *  mode = 0 - Disable, use and send ERROR instead
  *  mode = 1 - Enable, use numeric error values
  *  mode = 2 - Enable, result code and use verbose error values
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(config_mobile_termination_error, command_result, 1, INT_IN(p1, mode)) \
-    \
+ */
+command_result config_mobile_termination_error(CommandableIf *t, int mode);
 /**
  * @brief Configure eDRX
  * @param[in] mode
@@ -351,33 +327,21 @@ ESP_MODEM_DECLARE_DCE_COMMAND(config_mobile_termination_error, command_result, 1
  * act = 5 - E-UTRAN (NB-S1 mode)
  * @param[in] edrx_value nible string containing encoded eDRX time
  * @param[in] ptw_value nible string containing encoded Paging Time Window
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(config_edrx, command_result, 3, INT_IN(p1, mode), INT_IN(p2, access_technology), STRING_IN(p3, edrx_value)) \
-
-#ifdef GENERATE_DOCS
-// cat ../include/generate/esp_modem_command_declare.inc | clang++ -E -P -CC  -xc++ -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p'
-// cat ../include/generate/esp_modem_command_declare.inc | clang -E -P -CC  -xc -I../include -DGENERATE_DOCS  - | sed -n '1,/DCE command documentation/!p' > c_api.h
-// cat ../include/generate/esp_modem_command_declare.inc | clang -E -P  -xc -I../include -DGENERATE_DOCS -DGENERATE_RST_LINKS - | sed 's/NL/\n/g' > cxx_api_links.rst
-
-// call parametrs by names for documentation
-#undef _ARG
-#define _ARG(param, name) name
-//  --- DCE command documentation starts here ---
-#ifdef __cplusplus
-class esp_modem::DCE : public DCE_T<GenericModule> {
-public:
-    using DCE_T<GenericModule>::DCE_T;
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) return_type name (__VA_ARGS__);
-#elif defined(GENERATE_RST_LINKS)
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) NL- :cpp:func:`esp_modem::DCE::name`
-#else
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, TEMPLATE_ARG, ...) return_type esp_modem_ ## name (__VA_ARGS__);
-#endif
-
-    DECLARE_ALL_COMMAND_APIS()
-
-#ifdef __cplusplus
-};
-#endif
-
-#endif
+ */
+command_result config_edrx(CommandableIf *t, int mode, int access_technology, const std::string &edrx_value);
+/**
+ * @brief Following commands that are different for some specific modules
+ */
+command_result get_battery_status_sim7xxx(CommandableIf *t, int &voltage, int &bcs, int &bcl);
+command_result set_gnss_power_mode_sim76xx(CommandableIf *t, int mode);
+command_result power_down_sim76xx(CommandableIf *t);
+command_result power_down_sim70xx(CommandableIf *t);
+command_result set_network_bands_sim76xx(CommandableIf *t, const std::string &mode, const int *bands, int size);
+command_result power_down_sim8xx(CommandableIf *t);
+command_result set_data_mode_alt(CommandableIf *t);
+command_result set_pdp_context(CommandableIf *t, PdpContext &pdp, uint32_t timeout_ms);
+/**
+ * @}
+ */
+} // dce_commands
+} // esp_modem

@@ -33,7 +33,10 @@ Mode switching commands
 Modem commands
 --------------
 
-.. include:: cxx_api_links.rst
+.. include:: ../command/dce.rst
+
+.. doxygenclass:: esp_modem::DCE
+   :members:
 
 .. _cpp_destroy:
 

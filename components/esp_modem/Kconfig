@@ -92,4 +92,15 @@ menu "esp-modem"
             If enabled, the library dumps all transmitted and received data.
             This option is only used for debugging.
 
+    config ESP_MODEM_ENABLE_DEVELOPMENT_MODE
+        bool "Use development mode"
+        default n
+        help
+            We use pre-generated headers and sources with common AT commands.
+            This is useful for using ESP-MODEM library with IDEs and code navigation.
+            When developing ESP-MODEM library, it's usually more convenient
+            to work with sources directly, using C-preprocessor's metaprogramming.
+            Set this to 'y' if you're making changes to the actual sources of
+            the AT command definitions (typically in esp_modem_command_declare.inc)
+
 endmenu

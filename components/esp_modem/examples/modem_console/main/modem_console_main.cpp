@@ -362,7 +362,8 @@ extern "C" void app_main(void)
     });
     const ConsoleCommand GetBatteryStatus("get_battery_status", "Reads voltage/battery status", no_args, [&](ConsoleCommand * c) {
         int volt, bcl, bcs;
-        CHECK_ERR(dce->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
+        CHECK_ERR(dce->get_module()->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
+        dce->get_battery_status(volt, bcl, bcs);
     });
     const ConsoleCommand PowerDown("power_down", "power down the module", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Power down the module...");

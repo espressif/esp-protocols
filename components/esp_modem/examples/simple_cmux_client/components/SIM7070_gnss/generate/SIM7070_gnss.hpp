@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,11 @@
 
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include "cxx_include/esp_modem_dce_module.hpp"
+#include "cxx_include/esp_modem_types.hpp"
+
 #include "sim70xx_gps.h"
+
+using PdpContext = esp_modem::PdpContext;
 
 /**
  * @brief Definition of a custom SIM7070 class with GNSS capabilities.
@@ -33,22 +37,22 @@ class DCE_gnss : public esp_modem::DCE_T<SIM7070_gnss> {
 public:
 
     using DCE_T<SIM7070_gnss>::DCE_T;
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-    template <typename ...Agrs> \
-    esp_modem::return_type name(Agrs&&... args)   \
-    {   \
-        return device->name(std::forward<Agrs>(args)...); \
-    }
 
-    DECLARE_ALL_COMMAND_APIS(forwards name(...)
-    {
-        device->name(...);
-    } )
+//  --- ESP-MODEM command module starts here ---
+#include "esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+     esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__)) { return device->name(ESP_MODEM_COMMAND_FORWARD(__VA_ARGS__)); }
 
+#include "esp_modem_command_declare.inc"
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
+
 
     esp_modem::command_result get_gnss_information_sim70xx(sim70xx_gps_t &gps);
 
+    esp_modem::command_result get_operator_name(std::string &name)
+    {
+        return device->get_operator_name(name);
+    }
 };
 
 
@@ -57,5 +61,5 @@ public:
  * @return unique pointer of the specific DCE
  */
 std::unique_ptr<DCE_gnss> create_SIM7070_GNSS_dce(const esp_modem::dce_config *config,
-        std::shared_ptr<esp_modem::DTE> dte,
-        esp_netif_t *netif);
+                                                  std::shared_ptr<esp_modem::DTE> dte,
+                                                  esp_netif_t *netif);

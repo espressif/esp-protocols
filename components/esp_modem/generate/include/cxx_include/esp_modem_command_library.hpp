@@ -1,16 +1,16 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once
 
-#include "esp_modem_dte.hpp"
-#include "esp_modem_dce_module.hpp"
-#include "esp_modem_types.hpp"
-#include "generate/esp_modem_command_declare.inc"
+#include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_dce_module.hpp"
+#include "cxx_include/esp_modem_types.hpp"
 
+//  --- ESP-MODEM command module starts here ---
 namespace esp_modem {
 namespace dce_commands {
 
@@ -38,10 +38,11 @@ command_result generic_command(CommandableIf *t, const std::string &command,
 /**
  * @brief Declaration of all commands is generated from esp_modem_command_declare.inc
  */
-#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, num, ...) \
-        return_type name(CommandableIf *t, ## __VA_ARGS__);
+#include "esp_modem_command_declare_helper.inc"
+#define ESP_MODEM_DECLARE_DCE_COMMAND(name, return_type, ...) \
+        return_type name(CommandableIf *t  ESP_MODEM_COMMAND_PARAMS_AFTER(__VA_ARGS__));
 
-DECLARE_ALL_COMMAND_APIS(declare name(Commandable *p, ...);)
+#include "esp_modem_command_declare.inc"
 
 #undef ESP_MODEM_DECLARE_DCE_COMMAND
 
