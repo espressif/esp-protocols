@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -16,6 +16,11 @@ namespace asio {
 namespace ssl {
 namespace mbedtls {
 
+bool set_hostname(asio::ssl::context::native_handle_type handle, std::string name)
+{
+    return handle->get()->set_hostname(std::move(name));
+}
+
 const char *error_message(int error_code)
 {
     static char error_buf[100];
@@ -25,7 +30,7 @@ const char *error_message(int error_code)
 
 void throw_alloc_failure(const char *location)
 {
-    asio::error_code ec( MBEDTLS_ERR_SSL_ALLOC_FAILED, asio::error::get_mbedtls_category());
+    asio::error_code ec(MBEDTLS_ERR_SSL_ALLOC_FAILED, asio::error::get_mbedtls_category());
     asio::detail::throw_error(ec, location);
 }
 
@@ -269,6 +274,16 @@ private:
             } else {
                 mbedtls_ssl_conf_ca_chain(&conf_, nullptr, nullptr);
             }
+
+            // Configure hostname before handshake if users pre-configured any
+            // use NULL if not set (to preserve the default behaviour of mbedtls < v3.6.3)
+            const char* hostname = !ctx->hostname_.empty() ? ctx->hostname_.c_str() : NULL;
+            ret = mbedtls_ssl_set_hostname(&ssl_, hostname);
+            if (ret < 0) {
+                print_error("mbedtls_ssl_set_hostname", ret);
+                return false;
+            }
+
             ret = mbedtls_ssl_setup(&ssl_, &conf_);
             if (ret) {
                 print_error("mbedtls_ssl_setup", ret);

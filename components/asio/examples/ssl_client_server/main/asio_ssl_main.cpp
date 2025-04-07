@@ -17,6 +17,8 @@
 #include "asio/ssl.hpp"
 #include "asio/buffer.hpp"
 #include "esp_pthread.h"
+// allows for direct access to mbedtls specifics
+#include "asio/ssl/mbedtls_specific.hpp"
 
 extern const unsigned char server_pem_start[] asm("_binary_srv_crt_start");
 extern const unsigned char server_pem_end[]   asm("_binary_srv_crt_end");
@@ -217,6 +219,7 @@ void ssl_server_thread()
     io_context.run();
 }
 
+
 void ssl_client_thread()
 {
     asio::io_context io_context;
@@ -229,6 +232,11 @@ void ssl_client_thread()
     asio::ssl::context ctx(asio::ssl::context::tls_client);
 #if CONFIG_EXAMPLE_CLIENT_VERIFY_PEER
     ctx.add_certificate_authority(cert_chain);
+    // mbedtls (from 3.6.3) requires hostname to be set when performing TLS handshake with verify-peer option
+    // asio::ssl allows for name verification using verification callback, i.e. socket_.set_verify_callback(asio::ssl::host_name_verification()),
+    // - which is not supported in Espressif ASIO port yet.
+    // Therefore we provide a way to directly use mbedtls API and here we just configure the expected hostname to verify
+    asio::ssl::mbedtls::set_hostname(ctx.native_handle(), server_ip);
 #endif // CONFIG_EXAMPLE_CLIENT_VERIFY_PEER
 
     Client c(io_context, ctx, endpoints);
