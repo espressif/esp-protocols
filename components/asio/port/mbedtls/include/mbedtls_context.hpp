@@ -1,5 +1,5 @@
 //
-// SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
@@ -52,6 +52,12 @@ public:
         return nullptr;
     }
 
+    bool set_hostname(std::string hostname)
+    {
+        hostname_ = std::move(hostname);
+        return true;
+    }
+
     std::size_t size(container c) const
     {
         switch (c) {
@@ -70,6 +76,7 @@ public:
     const_buffer cert_chain_;
     const_buffer private_key_;
     const_buffer ca_cert_;
+    std::string hostname_;
 };
 
 /**
