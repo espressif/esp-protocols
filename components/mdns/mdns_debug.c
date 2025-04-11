@@ -6,14 +6,58 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <stdarg.h>
 #include <inttypes.h>
-#include "freertos/FreeRTOS.h"
 #include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_utils.h"
 
+#ifdef CONFIG_MDNS_DEBUG_USE_ESP_LOG
+
+#include <stdarg.h>
+#include "esp_log.h"
+
+#define MDNS_DBG_MAX_LINE CONFIG_MDNS_DEBUG_BUFFER_SIZE
+
+static char s_mdns_dbg_buf[MDNS_DBG_MAX_LINE];
+static size_t s_mdns_dbg_pos = 0;
+
+static void mdns_dbg_puts(const char *str)
+{
+    ESP_LOGI("mdns", "%s", str);
+}
+
+static inline void mdns_dbg_flush(void)
+{
+    if (s_mdns_dbg_pos > 0) {
+        s_mdns_dbg_buf[s_mdns_dbg_pos] = '\0';
+        mdns_dbg_puts(s_mdns_dbg_buf);
+        s_mdns_dbg_pos = 0;
+    }
+}
+
+static void mdns_dbg_printf(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int len = vsnprintf(s_mdns_dbg_buf + s_mdns_dbg_pos, MDNS_DBG_MAX_LINE - s_mdns_dbg_pos, fmt, ap);
+    va_end(ap);
+
+    if (len < 0) {
+        return;
+    }
+
+    s_mdns_dbg_pos += len;
+
+    if (s_mdns_dbg_pos >= MDNS_DBG_MAX_LINE - 1) {
+        mdns_dbg_flush();
+    }
+}
+
+#define dbg_printf(...) mdns_dbg_printf(__VA_ARGS__)
+#else
 #define dbg_printf(...) printf(__VA_ARGS__)
+#define mdns_dbg_flush()
+#endif
 
 void static dbg_packet(const uint8_t *data, size_t len)
 {
@@ -239,6 +283,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
             }
         }
     }
+    mdns_dbg_flush();
 }
 
 void mdns_debug_tx_packet(mdns_tx_packet_t *p, uint8_t packet[MDNS_MAX_PACKET_SIZE], uint16_t index)
@@ -255,6 +300,7 @@ void mdns_debug_tx_packet(mdns_tx_packet_t *p, uint8_t packet[MDNS_MAX_PACKET_SI
     }
 #endif
     dbg_packet(packet, index);
+    mdns_dbg_flush();
 }
 
 void mdns_debug_rx_packet(mdns_rx_packet_t *packet, const uint8_t* data, uint16_t len)
@@ -271,6 +317,7 @@ void mdns_debug_rx_packet(mdns_rx_packet_t *packet, const uint8_t* data, uint16_
     }
 #endif
     dbg_packet(data, len);
+    mdns_dbg_flush();
 }
 
 static void dbg_printf_result(mdns_result_t *r_t)
@@ -302,6 +349,7 @@ static void dbg_printf_result(mdns_result_t *r_t)
 #endif
         r_a = r_a->next;
     }
+    mdns_dbg_flush();
 }
 
 void mdns_debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t)
@@ -309,6 +357,7 @@ void mdns_debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t)
     dbg_printf("----------------sync browse %s.%s result---------------\n", b_t->service, b_t->proto);
     dbg_printf("browse pointer: %p\n", b_t);
     dbg_printf_result(r_t);
+    mdns_dbg_flush();
 }
 
 void mdns_debug_printf_browse_result_all(mdns_result_t *r_t)
@@ -319,4 +368,5 @@ void mdns_debug_printf_browse_result_all(mdns_result_t *r_t)
         dbg_printf_result(r_t);
         r_t = r_t->next;
     }
+    mdns_dbg_flush();
 }

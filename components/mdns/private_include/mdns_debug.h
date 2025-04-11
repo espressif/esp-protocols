@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stddef.h>
+#include "sdkconfig.h"
 #include "mdns_private.h"
 
 #ifdef __cplusplus
@@ -13,13 +14,14 @@ extern "C" {
 #endif
 
 #ifdef CONFIG_MDNS_ENABLE_DEBUG_PRINTS
+#include "esp_log.h"
 
 /*  Define the debug macros for the mDNS module
  */
 #define DBG_BROWSE_RESULTS(result, browse) mdns_debug_printf_browse_result(result, browse)
 
 #define DBG_BROWSE_RESULTS_WITH_MSG(result, ...) do { \
-                                                     printf(__VA_ARGS__);         \
+                                                     ESP_LOGD("mdns", __VA_ARGS__);               \
                                                      mdns_debug_printf_browse_result_all(result); \
                                                  } while(0)
 
