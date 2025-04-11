@@ -5,8 +5,8 @@
  */
 
 #include <string.h>
+#include "sdkconfig.h"
 #include "esp_log.h"
-#include "esp_check.h"
 #include "esp_event.h"
 #include "mdns.h"
 #include "mdns_private.h"
@@ -65,7 +65,6 @@ static mdns_interfaces_t s_esp_netifs[MDNS_MAX_INTERFACES] = {
     { .predefined = true, .netif = NULL, .predef_if = MDNS_IF_ETH, .duplicate = MDNS_MAX_INTERFACES },
 #endif
 };
-
 
 /**
  * @brief  Helper to get either ETH or STA if the other is provided
@@ -178,7 +177,6 @@ static esp_err_t post_custom_action(mdns_if_t mdns_if, mdns_event_actions_t even
     return ESP_OK;
 }
 
-
 /**
  * @brief  Dispatch interface changes based on system events
  */
@@ -284,7 +282,6 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
 }
 #endif /* CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH */
 
-
 static inline void set_default_duplicated_interfaces(void)
 {
     mdns_if_t wifi_sta_if = MDNS_MAX_INTERFACES;
@@ -384,7 +381,6 @@ esp_err_t mdns_priv_netif_deinit(void)
 /*
  * Public Methods
  * */
-
 esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_action)
 {
     return post_custom_action(get_if_from_netif(esp_netif), event_action);

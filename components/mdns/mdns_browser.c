@@ -152,6 +152,7 @@ static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_b
         browse->service = mdns_mem_strndup(service, MDNS_NAME_BUF_LEN - 1);
         if (!browse->service) {
             browse_item_free(browse);
+            HOOK_MALLOC_FAILED;
             return NULL;
         }
     }

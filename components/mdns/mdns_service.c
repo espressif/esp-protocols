@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <string.h>
+#include "sdkconfig.h"
 #include "mdns_private.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -258,13 +259,15 @@ static esp_err_t create_task_with_caps(void)
     static StaticTask_t mdns_task_buffer;
 
     s_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
-    ESP_GOTO_ON_FALSE(s_stack_buffer != NULL, ESP_FAIL, err, TAG, "failed to allocate memory for the mDNS task's stack");
+    ESP_GOTO_ON_FALSE(s_stack_buffer != NULL, ESP_FAIL, alloc_failed, TAG, "failed to allocate memory for the mDNS task's stack");
 
     s_service_task_handle = xTaskCreateStaticPinnedToCore(service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, s_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
     ESP_GOTO_ON_FALSE(s_service_task_handle != NULL, ESP_FAIL, err, TAG, "failed to create task for the mDNS");
 
     return ret;
 
+alloc_failed:
+    HOOK_MALLOC_FAILED;
 err:
     mdns_mem_task_free(s_stack_buffer);
     return ret;

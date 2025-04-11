@@ -4,12 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <string.h>
+#include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_mem_caps.h"
 #include "esp_log.h"
 #include "mdns_utils.h"
 #include "mdns_responder.h"
 
+static const char *TAG = "mdns_utils";
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";
 
@@ -119,7 +121,7 @@ bool mdns_utils_hostname_is_ours(const char *hostname)
 bool mdns_utils_service_match(const mdns_service_t *srv, const char *service, const char *proto,
                               const char *hostname)
 {
-    if (!service || !proto || !srv->hostname) {
+    if (!service || !proto || !srv || !srv->hostname) {
         return false;
     }
     return !strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) &&
@@ -164,7 +166,7 @@ bool mdns_utils_service_match_instance(const mdns_service_t *srv, const char *in
     if (!service || !proto) {
         return false;
     }
-    // instance==NULL -> _mdns_instance_name_match() will check the default instance
+    // instance==NULL -> mdns_utils_instance_name_match() will check the default instance
     // hostname==NULL -> matches if instance, service and proto matches
     return !strcasecmp(srv->service, service) && mdns_utils_instance_name_match(srv->instance, instance) &&
            !strcasecmp(srv->proto, proto) && (mdns_utils_str_null_or_empty(hostname) || !strcasecmp(srv->hostname, hostname));
@@ -216,6 +218,7 @@ mdns_ip_addr_t *mdns_utils_copy_address_list(const mdns_ip_addr_t *address_list)
     while (address_list != NULL) {
         mdns_ip_addr_t *addr = (mdns_ip_addr_t *)mdns_mem_malloc(sizeof(mdns_ip_addr_t));
         if (addr == NULL) {
+            HOOK_MALLOC_FAILED;
             mdns_utils_free_address_list(head);
             return NULL;
         }

@@ -140,7 +140,7 @@
 #define queueFree(type, queue)  while (queue) { type * _q = queue; queue = queue->next; free(_q); }
 
 #ifndef HOOK_MALLOC_FAILED
-#define HOOK_MALLOC_FAILED  do { ESP_LOGE(TAG, "Cannot allocate memory (line: %d, free heap: %" PRIu32 " bytes)", __LINE__, esp_get_free_heap_size()); } while(0)
+#define HOOK_MALLOC_FAILED  do { ESP_LOGE(TAG, "Cannot allocate memory (%s(%d), free heap: %" PRIu32 " bytes)", __func__, __LINE__, esp_get_free_heap_size()); } while(0)
 #endif
 
 typedef size_t mdns_if_t;
