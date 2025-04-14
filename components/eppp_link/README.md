@@ -11,12 +11,12 @@ We usually call this node a SLAVE microcontroller. The "HOST" microcontroller ru
 brings in the WiFi connectivity from the "SLAVE" microcontroller.
 
 ```
-             SLAVE micro                                  HOST micro
-    \|/  +----------------+                           +----------------+
-     |   |                |          serial line      |                |
-     +---+ WiFi NAT PPPoS |=== UART / SPI / SDIO =====| PPPoS client   |
-         |        (server)|                           |                |
-         +----------------+                           +----------------+
+             SLAVE micro                                     HOST micro
+    \|/  +----------------+                               +----------------+
+     |   |                |       (serial) line           |                |
+     +---+ WiFi NAT PPPoS |=== UART / SPI / SDIO / ETH ===| PPPoS client   |
+         |        (server)|                               |                |
+         +----------------+                               +----------------+
 ```
 
 ## API
@@ -55,3 +55,9 @@ Tested with WiFi-NAPT example
 
 * TCP - 9Mbits/s
 * UDP - 11Mbits/s
+
+### Ethernet
+
+- Internal EMAC with real PHY chip
+    * TCP - 5Mbits/s
+    * UDP - 8Mbits/s
