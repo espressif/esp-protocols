@@ -433,6 +433,18 @@ esp_err_t esp_websocket_client_set_ping_interval_sec(esp_websocket_client_handle
 int esp_websocket_client_get_reconnect_timeout(esp_websocket_client_handle_t client);
 
 /**
+ * @brief      Get the response header for client.
+ *
+ *  Notes:
+ *  - This API should be called after the connection atempt otherwise its result is meaningless
+ *
+ * @param[in]  client             The client
+ *
+ * @return     The response header
+ */
+const char* esp_websocket_client_get_response_header(esp_websocket_client_handle_t client);
+
+/**
  * @brief      Set next reconnect timeout for client.
  *
  *  Notes:
