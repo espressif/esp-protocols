@@ -142,6 +142,20 @@ menu "mDNS"
         help
             Enable for the library to log received and sent mDNS packets to stdout.
 
+    config MDNS_DEBUG_USE_ESP_LOG
+        bool "Route debug prints to ESP_LOG"
+        depends on MDNS_ENABLE_DEBUG_PRINTS
+        default y
+        help
+            Enable this option to route debug prints to ESP_LOG, which allows more flexibility.
+
+    config MDNS_DEBUG_BUFFER_SIZE
+        int "Size of temporary buffer for debug prints"
+        depends on MDNS_DEBUG_USE_ESP_LOG
+        default 1024
+        help
+            This buffer is used to output mDNS packets in debug prints.
+
     config MDNS_ENABLE_CONSOLE_CLI
         bool "Enable Command Line Interface on device console"
         default y
