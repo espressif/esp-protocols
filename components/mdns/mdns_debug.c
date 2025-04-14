@@ -35,22 +35,66 @@ static inline void mdns_dbg_flush(void)
     }
 }
 
+static void mdns_dbg_vprintf(const char *fmt, va_list args)
+{
+    // Try to format directly into the buffer
+    int len = vsnprintf(s_mdns_dbg_buf + s_mdns_dbg_pos,
+                        MDNS_DBG_MAX_LINE - s_mdns_dbg_pos,
+                        fmt, args);
+
+    if (len < 0) {
+        return; // Error in formatting
+    }
+
+    // Check if the entire formatted string fit in the buffer
+    if (len < (MDNS_DBG_MAX_LINE - s_mdns_dbg_pos)) {
+        // If it fit, just update the position
+        s_mdns_dbg_pos += len;
+    } else {
+        // The formatted string was truncated because it didn't fit
+        // First, flush what we have (the partial string)
+        mdns_dbg_flush();
+
+        // Create a new va_list copy and try again with the full buffer
+        va_list args_copy;
+        va_copy(args_copy, args);
+
+        // Format again with the entire buffer available
+        len = vsnprintf(s_mdns_dbg_buf, MDNS_DBG_MAX_LINE - 1, fmt, args_copy);
+        va_end(args_copy);
+
+        if (len < 0) {
+            return; // Error
+        }
+
+        // Check if content will be lost (true truncation)
+        if (len >= MDNS_DBG_MAX_LINE - 1) {
+            // This is when actual content will be lost - log a warning
+            ESP_LOGW("mdns", "Message truncated: length (%d) exceeds buffer size (%d). Consider increasing CONFIG_MDNS_DEBUG_BUFFER_SIZE.",
+                     len, MDNS_DBG_MAX_LINE - 1);
+
+            // Display what we could fit, then flush and return
+            s_mdns_dbg_pos = MDNS_DBG_MAX_LINE - 1;
+            mdns_dbg_flush();
+            return;
+        }
+
+        // If we get here, the whole message fit this time
+        s_mdns_dbg_pos = len;
+    }
+
+    // If buffer is nearly full after this operation, flush it
+    if (s_mdns_dbg_pos >= MDNS_DBG_MAX_LINE - 1) {
+        mdns_dbg_flush();
+    }
+}
+
 static void mdns_dbg_printf(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    int len = vsnprintf(s_mdns_dbg_buf + s_mdns_dbg_pos, MDNS_DBG_MAX_LINE - s_mdns_dbg_pos, fmt, ap);
+    mdns_dbg_vprintf(fmt, ap);
     va_end(ap);
-
-    if (len < 0) {
-        return;
-    }
-
-    s_mdns_dbg_pos += len;
-
-    if (s_mdns_dbg_pos >= MDNS_DBG_MAX_LINE - 1) {
-        mdns_dbg_flush();
-    }
 }
 
 #define dbg_printf(...) mdns_dbg_printf(__VA_ARGS__)
