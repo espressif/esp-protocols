@@ -234,6 +234,17 @@ static int ppp_cmd_iperf(int argc, char **argv)
     iperf_start(&cfg);
     return 0;
 }
+static int restart(int argc, char **argv)
+{
+    ESP_LOGI("main", "Restarting");
+    esp_restart();
+}
+static int heap_size(int argc, char **argv)
+{
+    uint32_t heap_size = heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT);
+    printf("min heap size: %"PRIu32"\n", heap_size);
+    return 0;
+}
 
 void register_pppd(void)
 {
@@ -286,4 +297,25 @@ void register_pppd(void)
         .argtable = &iperf_args
     };
     ESP_ERROR_CHECK(esp_console_cmd_register(&iperf_cmd));
+
+    {
+        const esp_console_cmd_t cmd = {
+            .command = "restart",
+            .help = "Restart the program",
+            .hint = NULL,
+            .func = &restart,
+        };
+        ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
+
+    }
+    {
+        const esp_console_cmd_t heap_cmd = {
+            .command = "heap",
+            .help = "Get minimum size of free heap memory that was available during program execution",
+            .hint = NULL,
+            .func = &heap_size,
+        };
+        ESP_ERROR_CHECK( esp_console_cmd_register(&heap_cmd) );
+    }
+
 }
