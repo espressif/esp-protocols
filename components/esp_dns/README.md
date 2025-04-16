@@ -201,7 +201,7 @@ This component utilizes the `CONFIG_LWIP_HOOK_NETCONN_EXT_RESOLVE_CUSTOM` hook t
 
 Once you add this component to your project, it will replace the default LWIP DNS resolution automatically.
 
-**⚠️ Warning:** This component cannot work alongside other components that use the CONFIG_LWIP_HOOK_NETCONN_EXT_RESOLVE_CUSTOM hook, such as the OpenThread component.
+**⚠️ Warning:** This component cannot work alongside other components that use the `CONFIG_LWIP_HOOK_NETCONN_EXT_RESOLVE_CUSTOM` hook.
 
 
 ## Troubleshooting
