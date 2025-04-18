@@ -1,0 +1,8 @@
+dependencies:
+  idf:
+    version: ">=5.1"
+  protocol_examples_common:
+    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+  esp_dns:
+    version: "*"
+    override_path: '../../../'
