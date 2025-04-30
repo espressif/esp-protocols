@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -55,9 +55,6 @@ void init_network_interface(void)
 {
     s_wifi_event_group = xEventGroupCreate();
 
-    ESP_ERROR_CHECK(esp_netif_init());
-
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -66,15 +63,15 @@ void init_network_interface(void)
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                    ESP_EVENT_ANY_ID,
-                    &event_handler,
-                    NULL,
-                    &instance_any_id));
+                                                        ESP_EVENT_ANY_ID,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                    IP_EVENT_STA_GOT_IP,
-                    &event_handler,
-                    NULL,
-                    &instance_got_ip));
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -82,9 +79,9 @@ void init_network_interface(void)
             .password = CONFIG_ESP_WIFI_PASSWORD,
         },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -127,13 +124,21 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
     init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
-//    ESP_ERROR_CHECK(esp_netif_init());
-//    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
+    config.spi.is_master = false;
+    config.spi.host = CONFIG_EXAMPLE_SPI_HOST;
+    config.spi.mosi = CONFIG_EXAMPLE_SPI_MOSI_PIN;
+    config.spi.miso = CONFIG_EXAMPLE_SPI_MISO_PIN;
+    config.spi.sclk = CONFIG_EXAMPLE_SPI_SCLK_PIN;
+    config.spi.cs = CONFIG_EXAMPLE_SPI_CS_PIN;
+    config.spi.intr = CONFIG_EXAMPLE_SPI_INTR_PIN;
+    config.spi.freq = CONFIG_EXAMPLE_SPI_FREQUENCY;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;

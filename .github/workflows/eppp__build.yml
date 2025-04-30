@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.5", "release-v5.4", "release-v5.3"]
         test: [ { app: host, path: "examples/host" }, { app: slave, path: "examples/slave" }, { app: test_app, path: "test/test_app" }]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -21,6 +21,8 @@ jobs:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: "DeprecationWarning: 'MultiCommand' is deprecated and will be removed\nCryptographyDeprecationWarning: Parsed a serial number which wasn't positive"
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
