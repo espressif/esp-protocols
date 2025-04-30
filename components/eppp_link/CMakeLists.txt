@@ -12,7 +12,7 @@ if(CONFIG_EPPP_LINK_DEVICE_SDIO)
     set(transport_src eppp_sdio_slave.c eppp_sdio_host.c)
 endif()
 
-idf_component_register(SRCS eppp_link.c ${transport_src}
+idf_component_register(SRCS eppp_link.c ${transport_src} eppp_slip.c
                     INCLUDE_DIRS "include"
                     PRIV_REQUIRES esp_netif esp_timer esp_eth ${driver_deps})
 

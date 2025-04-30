@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2019-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -143,7 +143,7 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
     }
 
 #elif CONFIG_EPPP_LINK_DEVICE_UART
-    ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_VERBOSE);
+    ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_WARN);
     uart_write_bytes(handle->uart_port, buffer, len);
 #endif // DEVICE UART or SPI
     return ESP_OK;
@@ -178,6 +178,18 @@ static void netif_deinit(esp_netif_t *netif)
     }
 }
 
+extern esp_netif_netstack_config_t *netstack_default_slip;
+#define ESP_NETIF_INHERENT_DEFAULT_SLIP() \
+    {   \
+        ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(mac) \
+        ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(ip_info) \
+        .get_ip_event = 0,    \
+        .lost_ip_event = 0,   \
+        .if_key = "SLP_DEF",  \
+        .if_desc = "slip",    \
+        .route_prio = 1,     \
+        .bridge_info = NULL \
+};
 static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
 {
     if (s_eppp_netif_count > 9) {   // Limit to max 10 netifs, since we use "EPPPx" as the unique key (where x is 0-9)
@@ -239,8 +251,20 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
 #endif
     };
     const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
+    esp_netif_ip_info_t slip_ip4 = {};
+    if (role == EPPP_CLIENT) {
+        slip_ip4.ip.addr = ESP_IP4TOADDR(192, 168, 11, 2);
+        slip_ip4.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
+        slip_ip4.gw.addr = ESP_IP4TOADDR(192, 168, 11, 1);
+    } else {
+        slip_ip4.ip.addr = ESP_IP4TOADDR(192, 168, 11, 1);
+        slip_ip4.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
+        slip_ip4.gw.addr = ESP_IP4TOADDR(192, 168, 11, 1);
+    }
 
-    esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_PPP();
+    esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_SLIP();
+    base_netif_cfg.ip_info = &slip_ip4;
+
     char if_key[] = "EPPP0"; // netif key needs to be unique
     if_key[sizeof(if_key) - 2 /* 2 = two chars before the terminator */ ] += s_eppp_netif_count++;
     base_netif_cfg.if_key = if_key;
@@ -254,7 +278,7 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
     }
     esp_netif_config_t netif_ppp_config = { .base = &base_netif_cfg,
                                             .driver = ppp_driver_cfg,
-                                            .stack = ESP_NETIF_NETSTACK_DEFAULT_PPP
+                                            .stack = netstack_default_slip,
                                           };
 
     esp_netif_t *netif = esp_netif_new(&netif_ppp_config);
@@ -676,7 +700,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
         uart_get_buffered_data_len(h->uart_port, &len);
         if (len) {
             len = uart_read_bytes(h->uart_port, buffer, BUF_SIZE, 0);
-            ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_VERBOSE);
+            ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_INFO);
             esp_netif_receive(netif, buffer, len, NULL);
         }
     } else {
@@ -768,12 +792,12 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
         ESP_LOGE(TAG, "Failed to initialize PPP netif");
         return NULL;
     }
-    esp_netif_ppp_config_t netif_params;
-    ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
-    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
-    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
-    netif_params.ppp_error_event_enabled = true;
-    ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
+//    esp_netif_ppp_config_t netif_params;
+//    ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
+//    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
+//    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
+//    netif_params.ppp_error_event_enabled = true;
+//    ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
         init_master(&config->spi, netif);
@@ -868,12 +892,12 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
         return NULL;
     }
     ESP_LOGI(TAG, "Waiting for IP address %d", netif_cnt);
-    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, pdMS_TO_TICKS(connect_timeout_ms));
-    if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
-        ESP_LOGE(TAG, "Connection failed!");
-        eppp_close(netif);
-        return NULL;
-    }
+//    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, pdMS_TO_TICKS(connect_timeout_ms));
+//    if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
+//        ESP_LOGE(TAG, "Connection failed!");
+//        eppp_close(netif);
+//        return NULL;
+//    }
     ESP_LOGI(TAG, "Connected! %d", netif_cnt);
     return netif;
 }
