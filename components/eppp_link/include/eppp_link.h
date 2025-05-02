@@ -1,14 +1,14 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#pragma once
 
 #define EPPP_DEFAULT_SERVER_IP() ESP_IP4TOADDR(192, 168, 11, 1)
 #define EPPP_DEFAULT_CLIENT_IP() ESP_IP4TOADDR(192, 168, 11, 2)
 
-#define EPPP_DEFAULT_CONFIG(our_ip, their_ip) { \
-    .transport = EPPP_TRANSPORT_UART,           \
+#define EPPP_DEFAULT_SPI_CONFIG()               \
     .spi = {                                    \
             .host = 1,                          \
             .mosi = 11,                         \
@@ -21,6 +21,8 @@
             .cs_ena_pretrans = 0,               \
             .cs_ena_posttrans = 0,              \
     },                                          \
+
+#define EPPP_DEFAULT_UART_CONFIG() \
     .uart = {   \
             .port = 1,          \
             .baud = 921600,     \
@@ -29,6 +31,8 @@
             .queue_size = 16,   \
             .rx_buffer_size = 1024, \
     },                          \
+
+#define EPPP_DEFAULT_SDIO_CONFIG() \
     .sdio = {                                   \
             .width = 4,                         \
             .clk = 18,                          \
@@ -38,6 +42,31 @@
             .d2 = 16,                           \
             .d3 = 17,           \
     },                          \
+
+#define EPPP_DEFAULT_ETH_CONFIG()   \
+    .ethernet = {                   \
+    },                              \
+
+#if CONFIG_EPPP_LINK_DEVICE_SPI
+#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_SPI_CONFIG()
+#elif CONFIG_EPPP_LINK_DEVICE_UART
+#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_UART_CONFIG()
+#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_SDIO_CONFIG()
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+
+#define EPPP_TRANSPORT_INIT(cfg)        eppp_eth_init(&cfg->ethernet)
+#define EPPP_TRANSPORT_DEINIT(handle)   eppp_eth_deinit(handle)
+#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_ETH_CONFIG()
+
+#else
+#error Unexpeted transport
+#endif
+
+
+#define EPPP_DEFAULT_CONFIG(our_ip, their_ip) { \
+    .transport = EPPP_TRANSPORT_UART,           \
+    EPPP_DEFAULT_TRANSPORT_CONFIG()             \
     . task = {                  \
             .run_task = true,   \
             .stack_size = 4096, \
@@ -69,39 +98,43 @@ typedef enum eppp_transport {
 
 typedef struct eppp_config_t {
     eppp_transport_t transport;
+    union {
+        struct eppp_config_spi_s {
+            int host;
+            int mosi;
+            int miso;
+            int sclk;
+            int cs;
+            int intr;
+            int freq;
+            int input_delay_ns;
+            int cs_ena_pretrans;
+            int cs_ena_posttrans;
+        } spi;
 
-    struct eppp_config_spi_s {
-        int host;
-        int mosi;
-        int miso;
-        int sclk;
-        int cs;
-        int intr;
-        int freq;
-        int input_delay_ns;
-        int cs_ena_pretrans;
-        int cs_ena_posttrans;
-    } spi;
+        struct eppp_config_uart_s {
+            int port;
+            int baud;
+            int tx_io;
+            int rx_io;
+            int queue_size;
+            int rx_buffer_size;
+        } uart;
 
-    struct eppp_config_uart_s {
-        int port;
-        int baud;
-        int tx_io;
-        int rx_io;
-        int queue_size;
-        int rx_buffer_size;
-    } uart;
+        struct eppp_config_sdio_s {
+            int width;
+            int clk;
+            int cmd;
+            int d0;
+            int d1;
+            int d2;
+            int d3;
+        } sdio;
 
-    struct eppp_config_sdio_s {
-        int width;
-        int clk;
-        int cmd;
-        int d0;
-        int d1;
-        int d2;
-        int d3;
-    } sdio;
+        struct eppp_config_ethernet_s {
+        } ethernet;
 
+    };
     struct eppp_config_task_s {
         bool run_task;
         int stack_size;
@@ -117,12 +150,21 @@ typedef struct eppp_config_t {
 
 } eppp_config_t;
 
+typedef struct eppp_handle* eppp_transport_handle_t;
+
 esp_netif_t *eppp_connect(eppp_config_t *config);
 
 esp_netif_t *eppp_listen(eppp_config_t *config);
 
 void eppp_close(esp_netif_t *netif);
 
+
+/**
+ * @brief Initialize the EPPP link layer
+ * @param role
+ * @param config
+ * @return
+ */
 esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config);
 
 void eppp_deinit(esp_netif_t *netif);

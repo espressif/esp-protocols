@@ -12,6 +12,7 @@
 #include "esp_event.h"
 #include "esp_netif_ppp.h"
 #include "eppp_link.h"
+#include "eppp_transport_eth.h"
 #include "eppp_transport.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
@@ -69,6 +70,7 @@ enum blocked_status {
 
 #endif // CONFIG_EPPP_LINK_DEVICE_SPI
 
+#if 0
 struct eppp_handle {
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     QueueHandle_t out_queue;
@@ -92,6 +94,7 @@ struct eppp_handle {
     bool exited;
     bool netif_stop;
 };
+#endif
 
 typedef esp_err_t (*transmit_t)(void *h, void *buffer, size_t len);
 
@@ -190,19 +193,14 @@ extern esp_netif_netstack_config_t *netstack_default_slip;
         .route_prio = 1,     \
         .bridge_info = NULL \
 };
-static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
+
+static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp_config_t *eppp_config)
 {
     if (s_eppp_netif_count > 9) {   // Limit to max 10 netifs, since we use "EPPPx" as the unique key (where x is 0-9)
         ESP_LOGE(TAG, "Cannot create more than 10 instances");
         return NULL;
     }
 
-    // Create the object first
-    struct eppp_handle *h = calloc(1, sizeof(struct eppp_handle));
-    if (!h) {
-        ESP_LOGE(TAG, "Failed to allocate eppp_handle");
-        return NULL;
-    }
     h->role = role;
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     h->out_queue = xQueueCreate(CONFIG_EPPP_LINK_PACKET_QUEUE_SIZE, sizeof(struct packet));
@@ -240,17 +238,17 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
 
 #endif
 
-    esp_netif_driver_ifconfig_t driver_cfg = {
-        .handle = h,
-#if CONFIG_EPPP_LINK_DEVICE_SDIO
-        .transmit = role == EPPP_CLIENT ? eppp_sdio_host_tx : eppp_sdio_slave_tx,
-#elif CONFIG_EPPP_LINK_DEVICE_ETH
-        .transmit = eppp_transport_tx,
-#else
-        .transmit = transmit,
-#endif
-    };
-    const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
+//    esp_netif_driver_ifconfig_t driver_cfg = {
+//        .handle = h,
+//#if CONFIG_EPPP_LINK_DEVICE_SDIO
+//        .transmit = role == EPPP_CLIENT ? eppp_sdio_host_tx : eppp_sdio_slave_tx,
+//#elif CONFIG_EPPP_LINK_DEVICE_ETH
+//        .transmit = eppp_transport_tx,
+//#else
+//        .transmit = transmit,
+//#endif
+//    };
+//    const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
     esp_netif_ip_info_t slip_ip4 = {};
     if (role == EPPP_CLIENT) {
         slip_ip4.ip.addr = ESP_IP4TOADDR(192, 168, 11, 2);
@@ -277,7 +275,7 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_config_t *eppp_config)
         base_netif_cfg.route_prio = eppp_config->ppp.netif_prio;
     }
     esp_netif_config_t netif_ppp_config = { .base = &base_netif_cfg,
-                                            .driver = ppp_driver_cfg,
+                                            .driver = NULL,
                                             .stack = netstack_default_slip,
                                           };
 
@@ -758,6 +756,7 @@ void eppp_deinit(esp_netif_t *netif)
     if (netif == NULL) {
         return;
     }
+    eppp_transport_handle_t h = esp_netif_get_io_driver(netif);
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     if (h->role == EPPP_CLIENT) {
@@ -775,29 +774,32 @@ void eppp_deinit(esp_netif_t *netif)
         eppp_sdio_slave_deinit();
     }
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
-    eppp_transport_deinit();
+    EPPP_TRANSPORT_DEINIT(h);
 #endif
     netif_deinit(netif);
 }
 
 esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 {
+    __attribute__((unused)) esp_err_t ret = ESP_OK;
+    esp_netif_t *netif = NULL;
     if (config == NULL || (role != EPPP_SERVER && role != EPPP_CLIENT)) {
         ESP_LOGE(TAG, "Invalid configuration or role");
         return NULL;
     }
 
-    esp_netif_t *netif = netif_init(role, config);
-    if (!netif) {
-        ESP_LOGE(TAG, "Failed to initialize PPP netif");
-        return NULL;
-    }
-//    esp_netif_ppp_config_t netif_params;
-//    ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
-//    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
-//    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
-//    netif_params.ppp_error_event_enabled = true;
-//    ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
+    eppp_transport_handle_t h = EPPP_TRANSPORT_INIT(config);
+    ESP_GOTO_ON_FALSE(h, ESP_ERR_NO_MEM, err, TAG, "Failed to init EPPP transport");
+    ESP_GOTO_ON_FALSE(netif = netif_init(role, h, config), ESP_ERR_NO_MEM, err, TAG, "Failed to init EPPP netif");
+
+#ifdef CONFIG_EPPP_OVER_PPP
+    esp_netif_ppp_config_t netif_params;
+    ESP_ERROR_CHECK(esp_netif_ppp_get_params(netif, &netif_params));
+    netif_params.ppp_our_ip4_addr = config->ppp.our_ip4_addr;
+    netif_params.ppp_their_ip4_addr = config->ppp.their_ip4_addr;
+    netif_params.ppp_error_event_enabled = true;
+    ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
+#endif
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     if (role == EPPP_CLIENT) {
         init_master(&config->spi, netif);
@@ -820,14 +822,23 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
         return NULL;
     }
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
-    esp_err_t ret = eppp_transport_init(config, netif);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
-        return NULL;
-    }
+//    ret = eppp_transport_init(config, netif);
+//    if (ret != ESP_OK) {
+//        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
+//        return NULL;
+//    }
 
 #endif
+    ESP_GOTO_ON_ERROR(esp_netif_attach(netif, h), err, TAG, "Failed to attach netif to EPPP transport");
     return netif;
+err:
+    if (h) {
+        EPPP_TRANSPORT_DEINIT(h);
+    }
+    if (netif) {
+        netif_deinit(netif);
+    }
+    return NULL;
 }
 
 esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_timeout_ms)
