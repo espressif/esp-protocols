@@ -14,11 +14,9 @@
 #include "eppp_link.h"
 #include "eppp_transport_eth.h"
 #include "eppp_transport_spi.h"
+#include "eppp_transport_uart.h"
 #include "eppp_transport.h"
 
-#if CONFIG_EPPP_LINK_DEVICE_UART
-#include "driver/uart.h"
-#endif
 
 #if CONFIG_EPPP_LINK_DEVICE_ETH
 #define EPPP_NEEDS_TASK 0
@@ -205,58 +203,7 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 
 //#if CONFIG_EPPP_LINK_DEVICE_SPI
 
-#if CONFIG_EPPP_LINK_DEVICE_UART
-#define BUF_SIZE (1024)
-
-static esp_err_t init_uart(struct eppp_handle *h, eppp_config_t *config)
-{
-    h->uart_port = config->uart.port;
-    uart_config_t uart_config = {};
-    uart_config.baud_rate = config->uart.baud;
-    uart_config.data_bits = UART_DATA_8_BITS;
-    uart_config.parity    = UART_PARITY_DISABLE;
-    uart_config.stop_bits = UART_STOP_BITS_1;
-    uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-    uart_config.source_clk = UART_SCLK_DEFAULT;
-
-    ESP_RETURN_ON_ERROR(uart_driver_install(h->uart_port, config->uart.rx_buffer_size, 0, config->uart.queue_size, &h->uart_event_queue, 0), TAG, "Failed to install UART");
-    ESP_RETURN_ON_ERROR(uart_param_config(h->uart_port, &uart_config), TAG, "Failed to set params");
-    ESP_RETURN_ON_ERROR(uart_set_pin(h->uart_port, config->uart.tx_io, config->uart.rx_io, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE), TAG, "Failed to set UART pins");
-    ESP_RETURN_ON_ERROR(uart_set_rx_timeout(h->uart_port, 1), TAG, "Failed to set UART Rx timeout");
-    return ESP_OK;
-}
-
-static void deinit_uart(struct eppp_handle *h)
-{
-    uart_driver_delete(h->uart_port);
-}
-
-esp_err_t eppp_perform(esp_netif_t *netif)
-{
-    static uint8_t buffer[BUF_SIZE] = {};
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    uart_event_t event = {};
-    if (h->stop) {
-        return ESP_ERR_TIMEOUT;
-    }
-
-    if (xQueueReceive(h->uart_event_queue, &event, pdMS_TO_TICKS(100)) != pdTRUE) {
-        return ESP_OK;
-    }
-    if (event.type == UART_DATA) {
-        size_t len;
-        uart_get_buffered_data_len(h->uart_port, &len);
-        if (len) {
-            len = uart_read_bytes(h->uart_port, buffer, BUF_SIZE, 0);
-            ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_INFO);
-            esp_netif_receive(netif, buffer, len, NULL);
-        }
-    } else {
-        ESP_LOGW(TAG, "Received UART event: %d", event.type);
-    }
-    return ESP_OK;
-}
-#elif CONFIG_EPPP_LINK_DEVICE_SDIO
+#if CONFIG_EPPP_LINK_DEVICE_SDIO
 
 esp_err_t eppp_perform(esp_netif_t *netif)
 {
@@ -306,7 +253,7 @@ void eppp_deinit(esp_netif_t *netif)
     if (netif == NULL) {
         return;
     }
-    eppp_transport_handle_t h = esp_netif_get_io_driver(netif);
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     EPPP_TRANSPORT_DEINIT(h);
 //    if (h->role == EPPP_CLIENT) {
@@ -315,7 +262,8 @@ void eppp_deinit(esp_netif_t *netif)
 //        deinit_slave(netif);
 //    }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
-    deinit_uart(esp_netif_get_io_driver(netif));
+    EPPP_TRANSPORT_DEINIT(h);
+//    deinit_uart(esp_netif_get_io_driver(netif));
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
     if (h->role == EPPP_CLIENT) {
@@ -352,7 +300,7 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 #endif
 
 #if CONFIG_EPPP_LINK_DEVICE_UART
-    init_uart(esp_netif_get_io_driver(netif), config);
+//    init_uart(esp_netif_get_io_driver(netif), config);
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
     esp_err_t ret;
     if (role == EPPP_SERVER) {
