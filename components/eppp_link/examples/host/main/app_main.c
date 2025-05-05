@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -104,6 +104,14 @@ void app_main(void)
     eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
+    config.spi.is_master = false;
+    config.spi.host = 1;
+    config.spi.mosi = 23;
+    config.spi.miso = 19;
+    config.spi.sclk = 18;
+    config.spi.cs = 5;
+    config.spi.intr = 17;
+    config.spi.freq = 4000000;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;

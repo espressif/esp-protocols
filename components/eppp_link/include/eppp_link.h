@@ -49,6 +49,9 @@
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
 #define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_SPI_CONFIG()
+#define EPPP_TRANSPORT_INIT(cfg)        eppp_spi_init(&cfg->spi)
+#define EPPP_TRANSPORT_DEINIT(handle)   eppp_spi_deinit(handle)
+
 #elif CONFIG_EPPP_LINK_DEVICE_UART
 #define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_UART_CONFIG()
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
@@ -101,6 +104,7 @@ typedef struct eppp_config_t {
     union {
         struct eppp_config_spi_s {
             int host;
+            bool is_master;
             int mosi;
             int miso;
             int sclk;

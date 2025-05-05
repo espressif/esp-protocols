@@ -13,6 +13,7 @@
 #include "esp_netif_ppp.h"
 #include "eppp_link.h"
 #include "eppp_transport_eth.h"
+#include "eppp_transport_spi.h"
 #include "eppp_transport.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SPI
@@ -40,37 +41,16 @@ static const char *TAG = "eppp_link";
 static int s_retry_num = 0;
 static int s_eppp_netif_count = 0; // used as a suffix for the netif key
 
-
-struct packet {
-    size_t len;
-    uint8_t *data;
-};
-
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-#define MAX_PAYLOAD 1500
-#define MIN_TRIGGER_US 20
-#define SPI_HEADER_MAGIC 0x1234
-
 static void timer_callback(void *arg);
 
-struct header {
-    uint16_t magic;
-    uint16_t size;
-    uint16_t next_size;
-    uint16_t check;
-} __attribute__((packed));
+//struct packet {
+//    size_t len;
+//    uint8_t *data;
+//};
 
-enum blocked_status {
-    NONE,
-    MASTER_BLOCKED,
-    MASTER_WANTS_READ,
-    SLAVE_BLOCKED,
-    SLAVE_WANTS_WRITE,
-};
-
-#endif // CONFIG_EPPP_LINK_DEVICE_SPI
 
 #if 0
+
 struct eppp_handle {
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     QueueHandle_t out_queue;
@@ -110,47 +90,6 @@ void eppp_sdio_host_deinit(void);
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
 
 #else
-static esp_err_t transmit(void *h, void *buffer, size_t len)
-{
-    struct eppp_handle *handle = h;
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-    struct packet buf = { };
-    uint8_t *current_buffer = buffer;
-    size_t remaining = len;
-    do {    // TODO(IDF-9194): Refactor this loop to allocate only once and perform
-        //       fragmentation after receiving from the queue (applicable only if MTU > MAX_PAYLOAD)
-        size_t batch = remaining > MAX_PAYLOAD ? MAX_PAYLOAD : remaining;
-        buf.data = malloc(batch);
-        if (buf.data == NULL) {
-            ESP_LOGE(TAG, "Failed to allocate packet");
-            return ESP_ERR_NO_MEM;
-        }
-        buf.len = batch;
-        remaining -= batch;
-        memcpy(buf.data, current_buffer, batch);
-        current_buffer += batch;
-        BaseType_t ret = xQueueSend(handle->out_queue, &buf, 0);
-        if (ret != pdTRUE) {
-            ESP_LOGE(TAG, "Failed to queue packet to slave!");
-            return ESP_ERR_NO_MEM;
-        }
-    } while (remaining > 0);
-
-    if (handle->role == EPPP_SERVER && handle->blocked == SLAVE_BLOCKED) {
-        uint32_t now = esp_timer_get_time();
-        uint32_t diff = now - handle->slave_last_edge;
-        if (diff < MIN_TRIGGER_US) {
-            esp_rom_delay_us(MIN_TRIGGER_US - diff);
-        }
-        gpio_set_level(handle->gpio_intr, 0);
-    }
-
-#elif CONFIG_EPPP_LINK_DEVICE_UART
-    ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_WARN);
-    uart_write_bytes(handle->uart_port, buffer, len);
-#endif // DEVICE UART or SPI
-    return ESP_OK;
-}
 #endif
 
 static void netif_deinit(esp_netif_t *netif)
@@ -209,7 +148,7 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp
         free(h);
         return NULL;
     }
-    if (role == EPPP_CLIENT) {
+    if (h->is_master) {
         h->ready_semaphore = xSemaphoreCreateBinary();
         if (!h->ready_semaphore) {
             ESP_LOGE(TAG, "Failed to create the packet queue");
@@ -221,7 +160,7 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp
     h->transaction_size = 0;
     h->outbound.data = NULL;
     h->outbound.len = 0;
-    if (role == EPPP_SERVER) {
+    if (!h->is_master) {
         esp_timer_create_args_t args = {
             .callback = &timer_callback,
             .arg = h,
@@ -426,9 +365,8 @@ static esp_err_t deinit_master(esp_netif_t *netif)
     return ESP_OK;
 }
 
-static esp_err_t init_master(struct eppp_config_spi_s *config, esp_netif_t *netif)
+esp_err_t init_master(struct eppp_config_spi_s *config, struct eppp_handle *h)
 {
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
     h->spi_host = config->host;
     h->gpio_intr = config->intr;
     spi_bus_config_t bus_cfg = {};
@@ -473,7 +411,7 @@ static esp_err_t init_master(struct eppp_config_spi_s *config, esp_netif_t *neti
     gpio_config(&io_conf);
     gpio_install_isr_service(0);
     gpio_set_intr_type(config->intr, GPIO_INTR_ANYEDGE);
-    gpio_isr_handler_add(config->intr, gpio_isr_handler, esp_netif_get_io_driver(netif));
+    gpio_isr_handler_add(config->intr, gpio_isr_handler, h);
     return ESP_OK;
 }
 
@@ -508,9 +446,8 @@ static esp_err_t deinit_slave(esp_netif_t *netif)
     return ESP_OK;
 }
 
-static esp_err_t init_slave(struct eppp_config_spi_s *config, esp_netif_t *netif)
+esp_err_t init_slave(struct eppp_config_spi_s *config, struct eppp_handle *h)
 {
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
     h->spi_host = config->host;
     h->gpio_intr = config->intr;
     spi_bus_config_t bus_cfg = {};
@@ -580,7 +517,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     struct eppp_handle *h = esp_netif_get_io_driver(netif);
 
     // Perform transaction for master and slave
-    const perform_transaction_t perform_transaction = h->role == EPPP_CLIENT ? perform_transaction_master : perform_transaction_slave;
+    const perform_transaction_t perform_transaction = h->is_master ? perform_transaction_master : perform_transaction_slave;
 
     if (h->stop) {
         return ESP_ERR_TIMEOUT;
@@ -589,7 +526,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     BaseType_t tx_queue_stat;
     bool allow_test_tx = false;
     uint16_t next_tx_size = 0;
-    if (h->role == EPPP_CLIENT) {
+    if (h->is_master) {
         // SPI MASTER only code
         if (xSemaphoreTake(h->ready_semaphore, pdMS_TO_TICKS(1000)) != pdTRUE) {
             // slave might not be ready, but maybe we just missed an interrupt
@@ -758,7 +695,6 @@ void eppp_deinit(esp_netif_t *netif)
     }
     eppp_transport_handle_t h = esp_netif_get_io_driver(netif);
 #if CONFIG_EPPP_LINK_DEVICE_SPI
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
     if (h->role == EPPP_CLIENT) {
         deinit_master(netif);
     } else {
@@ -801,12 +737,12 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #endif
 #if CONFIG_EPPP_LINK_DEVICE_SPI
-    if (role == EPPP_CLIENT) {
-        init_master(&config->spi, netif);
-    } else {
-        init_slave(&config->spi, netif);
-
-    }
+//    if (role == EPPP_CLIENT) {
+//        init_master(&config->spi, netif);
+//    } else {
+//        init_slave(&config->spi, netif);
+//
+//    }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     init_uart(esp_netif_get_io_driver(netif), config);
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO

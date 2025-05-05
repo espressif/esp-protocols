@@ -8,6 +8,10 @@ if(CONFIG_EPPP_LINK_DEVICE_ETH)
     set(transport_src eppp_eth.c)
 endif()
 
+if(CONFIG_EPPP_LINK_DEVICE_SPI)
+    set(transport_src eppp_spi.c)
+endif()
+
 if(CONFIG_EPPP_LINK_DEVICE_SDIO)
     set(transport_src eppp_sdio_slave.c eppp_sdio_host.c)
 endif()
