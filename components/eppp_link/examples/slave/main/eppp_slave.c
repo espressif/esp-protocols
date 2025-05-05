@@ -134,7 +134,7 @@ void app_main(void)
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
-    config.spi.is_master = true;
+    config.spi.is_master = false;
     config.spi.host = 1;
     config.spi.mosi = 23;
     config.spi.miso = 19;

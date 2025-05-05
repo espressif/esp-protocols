@@ -16,13 +16,7 @@
 #include "eppp_transport_spi.h"
 #include "eppp_transport.h"
 
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-#include "driver/spi_master.h"
-#include "driver/spi_slave.h"
-#include "driver/gpio.h"
-#include "esp_timer.h"
-#include "esp_rom_crc.h"
-#elif CONFIG_EPPP_LINK_DEVICE_UART
+#if CONFIG_EPPP_LINK_DEVICE_UART
 #include "driver/uart.h"
 #endif
 
@@ -40,43 +34,6 @@ static EventGroupHandle_t s_event_group = NULL;
 static const char *TAG = "eppp_link";
 static int s_retry_num = 0;
 static int s_eppp_netif_count = 0; // used as a suffix for the netif key
-
-static void timer_callback(void *arg);
-
-//struct packet {
-//    size_t len;
-//    uint8_t *data;
-//};
-
-
-#if 0
-
-struct eppp_handle {
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-    QueueHandle_t out_queue;
-    QueueHandle_t ready_semaphore;
-    spi_device_handle_t spi_device;
-    spi_host_device_t spi_host;
-    int gpio_intr;
-    uint16_t next_size;
-    uint16_t transaction_size;
-    struct packet outbound;
-    enum blocked_status blocked;
-    uint32_t slave_last_edge;
-    esp_timer_handle_t timer;
-#elif CONFIG_EPPP_LINK_DEVICE_UART
-    QueueHandle_t uart_event_queue;
-    uart_port_t uart_port;
-#endif
-    esp_netif_t *netif;
-    eppp_type_t role;
-    bool stop;
-    bool exited;
-    bool netif_stop;
-};
-#endif
-
-typedef esp_err_t (*transmit_t)(void *h, void *buffer, size_t len);
 
 #if CONFIG_EPPP_LINK_DEVICE_SDIO
 esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len);
@@ -97,23 +54,6 @@ static void netif_deinit(esp_netif_t *netif)
     if (netif == NULL) {
         return;
     }
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    if (h == NULL) {
-        return;
-    }
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-    struct packet buf = { };
-    while (xQueueReceive(h->out_queue, &buf, 0) == pdTRUE) {
-        if (buf.len > 0) {
-            free(buf.data);
-        }
-    }
-    vQueueDelete(h->out_queue);
-    if (h->role == EPPP_CLIENT) {
-        vSemaphoreDelete(h->ready_semaphore);
-    }
-#endif
-    free(h);
     esp_netif_destroy(netif);
     if (s_eppp_netif_count > 0) {
         s_eppp_netif_count--;
@@ -141,42 +81,6 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp
     }
 
     h->role = role;
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-    h->out_queue = xQueueCreate(CONFIG_EPPP_LINK_PACKET_QUEUE_SIZE, sizeof(struct packet));
-    if (!h->out_queue) {
-        ESP_LOGE(TAG, "Failed to create the packet queue");
-        free(h);
-        return NULL;
-    }
-    if (h->is_master) {
-        h->ready_semaphore = xSemaphoreCreateBinary();
-        if (!h->ready_semaphore) {
-            ESP_LOGE(TAG, "Failed to create the packet queue");
-            vQueueDelete(h->out_queue);
-            free(h);
-            return NULL;
-        }
-    }
-    h->transaction_size = 0;
-    h->outbound.data = NULL;
-    h->outbound.len = 0;
-    if (!h->is_master) {
-        esp_timer_create_args_t args = {
-            .callback = &timer_callback,
-            .arg = h,
-            .name = "timer"
-        };
-        if (esp_timer_create(&args, &h->timer) != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to create the packet queue");
-            vQueueDelete(h->out_queue);
-            vSemaphoreDelete(h->ready_semaphore);
-            free(h);
-            return NULL;
-        }
-    }
-
-#endif
-
 //    esp_netif_driver_ifconfig_t driver_cfg = {
 //        .handle = h,
 //#if CONFIG_EPPP_LINK_DEVICE_SDIO
@@ -218,20 +122,7 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp
                                             .stack = netstack_default_slip,
                                           };
 
-    esp_netif_t *netif = esp_netif_new(&netif_ppp_config);
-    if (!netif) {
-        ESP_LOGE(TAG, "Failed to create esp_netif");
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-        vQueueDelete(h->out_queue);
-        if (h->ready_semaphore) {
-            vSemaphoreDelete(h->ready_semaphore);
-        }
-#endif
-        free(h);
-        return NULL;
-    }
-    return netif;
-
+    return esp_netif_new(&netif_ppp_config);
 }
 
 esp_err_t eppp_netif_stop(esp_netif_t *netif, int stop_timeout_ms)
@@ -312,287 +203,9 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
     }
 }
 
-#if CONFIG_EPPP_LINK_DEVICE_SPI
+//#if CONFIG_EPPP_LINK_DEVICE_SPI
 
-#define SPI_ALIGN(size) (((size) + 3U) & ~(3U))
-#define TRANSFER_SIZE SPI_ALIGN((MAX_PAYLOAD + 6))
-#define NEXT_TRANSACTION_SIZE(a,b) (((a)>(b))?(a):(b)) /* next transaction: whichever is bigger */
-
-static void IRAM_ATTR timer_callback(void *arg)
-{
-    struct eppp_handle *h = arg;
-    if (h->blocked == SLAVE_WANTS_WRITE) {
-        gpio_set_level(h->gpio_intr, 0);
-    }
-}
-
-static void IRAM_ATTR gpio_isr_handler(void *arg)
-{
-    static uint32_t s_last_time;
-    uint32_t now = esp_timer_get_time();
-    uint32_t diff = now - s_last_time;
-    if (diff < MIN_TRIGGER_US) { // debounce
-        return;
-    }
-    s_last_time = now;
-    struct eppp_handle *h = arg;
-    BaseType_t yield = false;
-
-    // Positive edge means SPI slave prepared the data
-    if (gpio_get_level(h->gpio_intr) == 1) {
-        xSemaphoreGiveFromISR(h->ready_semaphore, &yield);
-        if (yield) {
-            portYIELD_FROM_ISR();
-        }
-        return;
-    }
-
-    // Negative edge (when master blocked) means that slave wants to transmit
-    if (h->blocked == MASTER_BLOCKED) {
-        struct packet buf = { .data = NULL, .len = -1 };
-        xQueueSendFromISR(h->out_queue, &buf, &yield);
-        if (yield) {
-            portYIELD_FROM_ISR();
-        }
-    }
-}
-
-static esp_err_t deinit_master(esp_netif_t *netif)
-{
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    ESP_RETURN_ON_ERROR(spi_bus_remove_device(h->spi_device), TAG, "Failed to remove SPI bus");
-    ESP_RETURN_ON_ERROR(spi_bus_free(h->spi_host), TAG, "Failed to free SPI bus");
-    return ESP_OK;
-}
-
-esp_err_t init_master(struct eppp_config_spi_s *config, struct eppp_handle *h)
-{
-    h->spi_host = config->host;
-    h->gpio_intr = config->intr;
-    spi_bus_config_t bus_cfg = {};
-    bus_cfg.mosi_io_num = config->mosi;
-    bus_cfg.miso_io_num = config->miso;
-    bus_cfg.sclk_io_num = config->sclk;
-    bus_cfg.quadwp_io_num = -1;
-    bus_cfg.quadhd_io_num = -1;
-    bus_cfg.max_transfer_sz = TRANSFER_SIZE;
-    bus_cfg.flags = 0;
-    bus_cfg.intr_flags = 0;
-
-    // TODO: Init and deinit SPI bus separately (per Kconfig?)
-    if (spi_bus_initialize(config->host, &bus_cfg, SPI_DMA_CH_AUTO) != ESP_OK) {
-        return ESP_FAIL;
-    }
-
-    spi_device_interface_config_t dev_cfg = {};
-    dev_cfg.clock_speed_hz = config->freq;
-    dev_cfg.mode = 0;
-    dev_cfg.spics_io_num = config->cs;
-    dev_cfg.cs_ena_pretrans = config->cs_ena_pretrans;
-    dev_cfg.cs_ena_posttrans = config->cs_ena_posttrans;
-    dev_cfg.duty_cycle_pos = 128;
-    dev_cfg.input_delay_ns = config->input_delay_ns;
-    dev_cfg.pre_cb = NULL;
-    dev_cfg.post_cb = NULL;
-    dev_cfg.queue_size = 3;
-
-    if (spi_bus_add_device(config->host, &dev_cfg, &h->spi_device) != ESP_OK) {
-        return ESP_FAIL;
-    }
-
-    //GPIO config for the handshake line.
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_ANYEDGE,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = 1,
-        .pin_bit_mask = BIT64(config->intr),
-    };
-
-    gpio_config(&io_conf);
-    gpio_install_isr_service(0);
-    gpio_set_intr_type(config->intr, GPIO_INTR_ANYEDGE);
-    gpio_isr_handler_add(config->intr, gpio_isr_handler, h);
-    return ESP_OK;
-}
-
-static void post_setup(spi_slave_transaction_t *trans)
-{
-    struct eppp_handle *h = trans->user;
-    h->slave_last_edge = esp_timer_get_time();
-    gpio_set_level(h->gpio_intr, 1);
-    if (h->transaction_size == 0) { // If no transaction planned:
-        if (h->outbound.len == 0) { // we're blocked if we don't have any data
-            h->blocked = SLAVE_BLOCKED;
-        } else {
-            h->blocked = SLAVE_WANTS_WRITE; // we notify the master that we want to write
-            esp_timer_start_once(h->timer, MIN_TRIGGER_US);
-        }
-    }
-}
-
-static void post_trans(spi_slave_transaction_t *trans)
-{
-    struct eppp_handle *h = trans->user;
-    h->blocked = NONE;
-    gpio_set_level(h->gpio_intr, 0);
-}
-
-static esp_err_t deinit_slave(esp_netif_t *netif)
-{
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    ESP_RETURN_ON_ERROR(spi_slave_free(h->spi_host), TAG, "Failed to free SPI slave host");
-    ESP_RETURN_ON_ERROR(spi_bus_remove_device(h->spi_device), TAG, "Failed to remove SPI device");
-    ESP_RETURN_ON_ERROR(spi_bus_free(h->spi_host), TAG, "Failed to free SPI bus");
-    return ESP_OK;
-}
-
-esp_err_t init_slave(struct eppp_config_spi_s *config, struct eppp_handle *h)
-{
-    h->spi_host = config->host;
-    h->gpio_intr = config->intr;
-    spi_bus_config_t bus_cfg = {};
-    bus_cfg.mosi_io_num = config->mosi;
-    bus_cfg.miso_io_num = config->miso;
-    bus_cfg.sclk_io_num = config->sclk;
-    bus_cfg.quadwp_io_num = -1;
-    bus_cfg.quadhd_io_num = -1;
-    bus_cfg.flags = 0;
-    bus_cfg.intr_flags = 0;
-
-    //Configuration for the SPI slave interface
-    spi_slave_interface_config_t slvcfg = {
-        .mode = 0,
-        .spics_io_num = config->cs,
-        .queue_size = 3,
-        .flags = 0,
-        .post_setup_cb = post_setup,
-        .post_trans_cb = post_trans,
-    };
-
-    //Configuration for the handshake line
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = BIT64(config->intr),
-    };
-
-    gpio_config(&io_conf);
-    gpio_set_pull_mode(config->mosi, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(config->sclk, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(config->cs, GPIO_PULLUP_ONLY);
-
-    //Initialize SPI slave interface
-    if (spi_slave_initialize(config->host, &bus_cfg, &slvcfg, SPI_DMA_CH_AUTO) != ESP_OK) {
-        return ESP_FAIL;
-    }
-    return ESP_OK;
-}
-
-typedef esp_err_t (*perform_transaction_t)(struct eppp_handle *h, size_t len, const void *tx_buffer, void *rx_buffer);
-
-static esp_err_t perform_transaction_master(struct eppp_handle *h, size_t len, const void *tx_buffer, void *rx_buffer)
-{
-    spi_transaction_t t = {};
-    t.length = len * 8;
-    t.tx_buffer = tx_buffer;
-    t.rx_buffer = rx_buffer;
-    return spi_device_transmit(h->spi_device, &t);
-}
-
-static esp_err_t perform_transaction_slave(struct eppp_handle *h, size_t len, const void *tx_buffer, void *rx_buffer)
-{
-    spi_slave_transaction_t t = {};
-    t.user = h;
-    t.length = len * 8;
-    t.tx_buffer = tx_buffer;
-    t.rx_buffer = rx_buffer;
-    return spi_slave_transmit(h->spi_host, &t, portMAX_DELAY);
-}
-
-esp_err_t eppp_perform(esp_netif_t *netif)
-{
-    static WORD_ALIGNED_ATTR uint8_t out_buf[TRANSFER_SIZE] = {};
-    static WORD_ALIGNED_ATTR uint8_t in_buf[TRANSFER_SIZE] = {};
-
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-
-    // Perform transaction for master and slave
-    const perform_transaction_t perform_transaction = h->is_master ? perform_transaction_master : perform_transaction_slave;
-
-    if (h->stop) {
-        return ESP_ERR_TIMEOUT;
-    }
-
-    BaseType_t tx_queue_stat;
-    bool allow_test_tx = false;
-    uint16_t next_tx_size = 0;
-    if (h->is_master) {
-        // SPI MASTER only code
-        if (xSemaphoreTake(h->ready_semaphore, pdMS_TO_TICKS(1000)) != pdTRUE) {
-            // slave might not be ready, but maybe we just missed an interrupt
-            allow_test_tx = true;
-        }
-        if (h->outbound.len == 0 && h->transaction_size == 0 && h->blocked == NONE) {
-            h->blocked = MASTER_BLOCKED;
-            xQueueReceive(h->out_queue, &h->outbound, portMAX_DELAY);
-            h->blocked = NONE;
-            if (h->outbound.len == -1) {
-                h->outbound.len = 0;
-                h->blocked = MASTER_WANTS_READ;
-            }
-        } else if (h->blocked == MASTER_WANTS_READ) {
-            h->blocked = NONE;
-        }
-    }
-    struct header *head = (void *)out_buf;
-    if (h->outbound.len <= h->transaction_size && allow_test_tx == false) {
-        // sending outbound
-        head->size = h->outbound.len;
-        if (h->outbound.len > 0) {
-            memcpy(out_buf + sizeof(struct header), h->outbound.data, h->outbound.len);
-            free(h->outbound.data);
-            ESP_LOG_BUFFER_HEXDUMP(TAG, out_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
-            h->outbound.data = NULL;
-            h->outbound.len = 0;
-        }
-        do {
-            tx_queue_stat = xQueueReceive(h->out_queue, &h->outbound, 0);
-        } while (tx_queue_stat == pdTRUE && h->outbound.len == -1);
-        if (h->outbound.len == -1) { // used as a signal only, no actual data
-            h->outbound.len = 0;
-        }
-    } else {
-        // outbound is bigger, need to transmit in another transaction (keep this empty)
-        head->size = 0;
-    }
-    next_tx_size = head->next_size = h->outbound.len;
-    head->magic = SPI_HEADER_MAGIC;
-    head->check = esp_rom_crc16_le(0, out_buf, sizeof(struct header) - sizeof(uint16_t));
-    esp_err_t ret = perform_transaction(h, sizeof(struct header) + h->transaction_size, out_buf, in_buf);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "spi_device_transmit failed");
-        h->transaction_size = 0; // need to start with HEADER only transaction
-        return ESP_FAIL;
-    }
-    head = (void *)in_buf;
-    uint16_t check = esp_rom_crc16_le(0, in_buf, sizeof(struct header) - sizeof(uint16_t));
-    if (check != head->check || head->magic != SPI_HEADER_MAGIC) {
-        h->transaction_size = 0; // need to start with HEADER only transaction
-        if (allow_test_tx) {
-            return ESP_OK;
-        }
-        ESP_LOGE(TAG, "Wrong checksum or magic");
-        return ESP_FAIL;
-    }
-    if (head->size > 0) {
-        ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
-        esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
-    }
-    h->transaction_size = NEXT_TRANSACTION_SIZE(next_tx_size, head->next_size);
-    return ESP_OK;
-}
-
-#elif CONFIG_EPPP_LINK_DEVICE_UART
+#if CONFIG_EPPP_LINK_DEVICE_UART
 #define BUF_SIZE (1024)
 
 static esp_err_t init_uart(struct eppp_handle *h, eppp_config_t *config)
@@ -658,7 +271,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     }
 }
 
-#endif // CONFIG_EPPP_LINK_DEVICE_SPI / UART
+#endif //  UART
 
 #if EPPP_NEEDS_TASK
 static void ppp_task(void *args)
@@ -695,11 +308,12 @@ void eppp_deinit(esp_netif_t *netif)
     }
     eppp_transport_handle_t h = esp_netif_get_io_driver(netif);
 #if CONFIG_EPPP_LINK_DEVICE_SPI
-    if (h->role == EPPP_CLIENT) {
-        deinit_master(netif);
-    } else {
-        deinit_slave(netif);
-    }
+    EPPP_TRANSPORT_DEINIT(h);
+//    if (h->role == EPPP_CLIENT) {
+//        deinit_master(netif);
+//    } else {
+//        deinit_slave(netif);
+//    }
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     deinit_uart(esp_netif_get_io_driver(netif));
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
@@ -736,14 +350,8 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
     netif_params.ppp_error_event_enabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(netif, &netif_params));
 #endif
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-//    if (role == EPPP_CLIENT) {
-//        init_master(&config->spi, netif);
-//    } else {
-//        init_slave(&config->spi, netif);
-//
-//    }
-#elif CONFIG_EPPP_LINK_DEVICE_UART
+
+#if CONFIG_EPPP_LINK_DEVICE_UART
     init_uart(esp_netif_get_io_driver(netif), config);
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
     esp_err_t ret;
