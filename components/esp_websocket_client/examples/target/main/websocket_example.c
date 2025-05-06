@@ -32,6 +32,7 @@
 #include <cJSON.h>
 
 #define NO_DATA_TIMEOUT_SEC 5
+#define WS_HANDSHAKE_RESPONSE_HEADERS_MAX_SIZE 1024
 
 static const char *TAG = "websocket";
 
@@ -177,6 +178,8 @@ static void websocket_app_start(void)
 #if CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
     websocket_cfg.skip_cert_common_name_check = true;
 #endif
+    websocket_cfg.response_headers = malloc(WS_HANDSHAKE_RESPONSE_HEADERS_MAX_SIZE);
+    websocket_cfg.response_headers_len = WS_HANDSHAKE_RESPONSE_HEADERS_MAX_SIZE;
 
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
 
@@ -189,6 +192,12 @@ static void websocket_app_start(void)
     int i = 0;
     while (i < 5) {
         if (esp_websocket_client_is_connected(client)) {
+            if (i == 0) {
+                /*  WebSocket handshake response headers if available */
+                if (websocket_cfg.response_headers) {
+                    ESP_LOGI(TAG, "WebSocket response headers:\n%s", websocket_cfg.response_headers);
+                }
+            }
             int len = sprintf(data, "hello %04d", i++);
             ESP_LOGI(TAG, "Sending %s", data);
             esp_websocket_client_send_text(client, data, len, portMAX_DELAY);
