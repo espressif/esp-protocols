@@ -370,7 +370,9 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
 {
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     if (urc_handler) {
-        urc_handler(data, consumed + len);
+        if (urc_handler(data, consumed + len) == command_result::OK) {
+            return true;
+        }
     }
     if (result != command_result::TIMEOUT || got_line == nullptr) {
         return false;   // this line has been processed already (got OK or FAIL previously)
