@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "driver/sdio_slave.h"
+#include "eppp_link.h"
 #include "eppp_sdio.h"
 #include "esp_check.h"
 
@@ -109,7 +110,7 @@ static void event_cb(uint8_t pos)
     }
 }
 
-esp_err_t eppp_sdio_slave_init(void)
+esp_err_t eppp_sdio_slave_init(struct eppp_config_sdio_s *eppp_config)
 {
     sdio_slave_config_t config = {
         .sending_mode       = SDIO_SLAVE_SEND_PACKET,
@@ -166,7 +167,7 @@ void eppp_sdio_slave_deinit(void)
 {
 }
 
-esp_err_t eppp_sdio_slave_init(void)
+esp_err_t eppp_sdio_slave_init(struct eppp_config_sdio_s *config)
 {
     return ESP_ERR_NOT_SUPPORTED;
 }

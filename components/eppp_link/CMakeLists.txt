@@ -17,7 +17,7 @@ if(CONFIG_EPPP_LINK_DEVICE_UART)
 endif()
 
 if(CONFIG_EPPP_LINK_DEVICE_SDIO)
-    set(transport_src eppp_sdio_slave.c eppp_sdio_host.c)
+    set(transport_src eppp_sdio.c eppp_sdio_slave.c eppp_sdio_host.c)
 endif()
 
 idf_component_register(SRCS eppp_link.c ${transport_src} eppp_slip.c

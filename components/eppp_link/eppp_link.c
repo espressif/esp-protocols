@@ -15,6 +15,7 @@
 #include "eppp_transport_eth.h"
 #include "eppp_transport_spi.h"
 #include "eppp_transport_uart.h"
+#include "eppp_transport_sdio.h"
 #include "eppp_transport.h"
 
 
@@ -34,14 +35,7 @@ static int s_retry_num = 0;
 static int s_eppp_netif_count = 0; // used as a suffix for the netif key
 
 #if CONFIG_EPPP_LINK_DEVICE_SDIO
-esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len);
-esp_err_t eppp_sdio_host_rx(esp_netif_t *netif);
-esp_err_t eppp_sdio_slave_rx(esp_netif_t *netif);
-esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len);
-esp_err_t eppp_sdio_host_init(struct eppp_config_sdio_s *config);
-esp_err_t eppp_sdio_slave_init(void);
-void eppp_sdio_slave_deinit(void);
-void eppp_sdio_host_deinit(void);
+
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
 
 #else
@@ -205,18 +199,7 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 
 #if CONFIG_EPPP_LINK_DEVICE_SDIO
 
-esp_err_t eppp_perform(esp_netif_t *netif)
-{
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    if (h->stop) {
-        return ESP_ERR_TIMEOUT;
-    }
-    if (h->role == EPPP_SERVER) {
-        return eppp_sdio_slave_rx(netif);
-    } else {
-        return eppp_sdio_host_rx(netif);
-    }
-}
+
 
 #endif //  UART
 
@@ -265,12 +248,8 @@ void eppp_deinit(esp_netif_t *netif)
     EPPP_TRANSPORT_DEINIT(h);
 //    deinit_uart(esp_netif_get_io_driver(netif));
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
-    struct eppp_handle *h = esp_netif_get_io_driver(netif);
-    if (h->role == EPPP_CLIENT) {
-        eppp_sdio_host_deinit();
-    } else {
-        eppp_sdio_slave_deinit();
-    }
+//    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    EPPP_TRANSPORT_DEINIT(h);
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
     EPPP_TRANSPORT_DEINIT(h);
 #endif
@@ -302,17 +281,17 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
 #if CONFIG_EPPP_LINK_DEVICE_UART
 //    init_uart(esp_netif_get_io_driver(netif), config);
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
-    esp_err_t ret;
-    if (role == EPPP_SERVER) {
-        ret = eppp_sdio_slave_init();
-    } else {
-        ret = eppp_sdio_host_init(&config->sdio);
-    }
-
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
-        return NULL;
-    }
+//    esp_err_t ret;
+////    if (role == EPPP_SERVER) {
+////        ret = eppp_sdio_slave_init();
+////    } else {
+////        ret = eppp_sdio_host_init(&config->sdio);
+////    }
+//
+//    if (ret != ESP_OK) {
+//        ESP_LOGE(TAG, "Failed to initialize SDIO %d", ret);
+//        return NULL;
+//    }
 #elif CONFIG_EPPP_LINK_DEVICE_ETH
 //    ret = eppp_transport_init(config, netif);
 //    if (ret != ESP_OK) {

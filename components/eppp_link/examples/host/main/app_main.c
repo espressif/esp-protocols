@@ -119,6 +119,7 @@ void app_main(void)
     config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
 #else
     config.transport = EPPP_TRANSPORT_SDIO;
+    config.sdio.is_host = true;
 #endif
     esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {

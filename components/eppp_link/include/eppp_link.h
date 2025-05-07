@@ -37,8 +37,8 @@
             .width = 4,                         \
             .clk = 18,                          \
             .cmd = 19,                          \
-            .d0 = 49,                           \
-            .d1 = 50,                           \
+            .d0 = 14,                           \
+            .d1 = 15,                           \
             .d2 = 16,                           \
             .d3 = 17,           \
     },                          \
@@ -59,11 +59,13 @@
 
 #elif CONFIG_EPPP_LINK_DEVICE_SDIO
 #define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_SDIO_CONFIG()
-#elif CONFIG_EPPP_LINK_DEVICE_ETH
+#define EPPP_TRANSPORT_INIT(cfg)        eppp_sdio_init(&cfg->sdio)
+#define EPPP_TRANSPORT_DEINIT(handle)   eppp_sdio_deinit(handle)
 
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_ETH_CONFIG()
 #define EPPP_TRANSPORT_INIT(cfg)        eppp_eth_init(&cfg->ethernet)
 #define EPPP_TRANSPORT_DEINIT(handle)   eppp_eth_deinit(handle)
-#define EPPP_DEFAULT_TRANSPORT_CONFIG() EPPP_DEFAULT_ETH_CONFIG()
 
 #else
 #error Unexpeted transport
@@ -129,6 +131,7 @@ typedef struct eppp_config_t {
         } uart;
 
         struct eppp_config_sdio_s {
+            bool is_host;
             int width;
             int clk;
             int cmd;
