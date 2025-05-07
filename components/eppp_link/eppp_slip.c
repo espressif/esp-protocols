@@ -15,6 +15,7 @@
 #include "esp_netif_net_stack.h"
 #include "lwip/esp_netif_net_stack.h"
 #include "lwip/prot/ethernet.h"
+#include "ping/ping_sock.h"
 
 #define TAG "slip"
 #define SLIP_MAX_SIZE 1500
@@ -143,3 +144,99 @@ const struct esp_netif_netstack_config s_netif_config_slip = {
 };
 
 const esp_netif_netstack_config_t *netstack_default_slip = &s_netif_config_slip;
+
+#include "lwip/inet.h"
+#include "lwip/netdb.h"
+#include "lwip/sockets.h"
+
+
+static void cmd_ping_on_ping_success(esp_ping_handle_t hdl, void *args)
+{
+    uint8_t ttl;
+    uint16_t seqno;
+    uint32_t elapsed_time, recv_len;
+    ip_addr_t target_addr;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_TTL, &ttl, sizeof(ttl));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_SIZE, &recv_len, sizeof(recv_len));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &elapsed_time, sizeof(elapsed_time));
+    printf("%" PRIu32 " bytes from %s icmp_seq=%" PRIu16 " ttl=%" PRIu16 " time=%" PRIu32 " ms\n",
+           recv_len, ipaddr_ntoa((ip_addr_t *)&target_addr), seqno, ttl, elapsed_time);
+    ESP_ERROR_CHECK(esp_ping_stop(hdl));
+    ESP_ERROR_CHECK(esp_ping_delete_session(hdl));
+    ESP_LOGW(TAG, "PING success -- stop and post IP");
+    esp_netif_t *netif = (esp_netif_t *)args;
+    esp_netif_ip_info_t ip = {0};
+    esp_netif_get_ip_info(netif, &ip);
+//    ip.ip.addr = ESP_IP4TOADDR(192, 168, 11, 2);
+//    ip.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
+//    ip.gw.addr = ESP_IP4TOADDR(192, 168, 11, 1);
+
+//    ip.ip.addr = target_addr.u_addr.ip4.addr;
+    esp_netif_set_ip_info(netif, &ip);
+}
+
+static void cmd_ping_on_ping_timeout(esp_ping_handle_t hdl, void *args)
+{
+    uint16_t seqno;
+    ip_addr_t target_addr;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_SEQNO, &seqno, sizeof(seqno));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
+    printf("From %s icmp_seq=%d timeout\n", ipaddr_ntoa((ip_addr_t *)&target_addr), seqno);
+}
+
+static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args)
+{
+    ip_addr_t target_addr;
+    uint32_t transmitted;
+    uint32_t received;
+    uint32_t total_time_ms;
+    uint32_t loss;
+
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_IPADDR, &target_addr, sizeof(target_addr));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_DURATION, &total_time_ms, sizeof(total_time_ms));
+
+    if (transmitted > 0) {
+        loss = (uint32_t)((1 - ((float)received) / transmitted) * 100);
+    } else {
+        loss = 0;
+    }
+    if (IP_IS_V4(&target_addr)) {
+        printf("\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
+    } else {
+        printf("\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
+    }
+    printf("%" PRIu32 " packets transmitted, %" PRIu32 " received, %" PRIu32 "%% packet loss, time %" PRIu32 "ms\n",
+           transmitted, received, loss, total_time_ms);
+    // delete the ping sessions, so that we clean up all resources and can create a new ping session
+    ESP_ERROR_CHECK(esp_ping_delete_session(hdl));
+
+}
+
+void try_ping(esp_netif_t *netif)
+{
+    ESP_LOGI(TAG, "Trying to ping");
+    esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
+    config.count = 100;
+//    config.interface = esp_netif_get_netif_impl_index(netif);
+    ESP_LOGI(TAG, "Trying to ping to interface %d", config.interface);
+    ip_addr_t target_addr = {0};
+    esp_netif_ip_info_t ip;
+    esp_netif_get_ip_info(netif, &ip);
+    target_addr.u_addr.ip4.addr =  ip.gw.addr;
+//    IP_ADDR4(&target_addr, 192, 168, 11, 1);
+    config.target_addr = target_addr;
+    esp_ping_callbacks_t cbs = {
+        .cb_args = netif,
+        .on_ping_success = cmd_ping_on_ping_success,
+        .on_ping_timeout = cmd_ping_on_ping_timeout,
+        .on_ping_end = cmd_ping_on_ping_end
+    };
+    esp_ping_handle_t ping;
+    ESP_ERROR_CHECK(esp_ping_new_session(&config, &cbs, &ping));
+    ESP_ERROR_CHECK(esp_ping_start(ping));
+    ESP_LOGI(TAG, "Ping started");
+}

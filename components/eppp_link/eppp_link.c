@@ -57,8 +57,9 @@ extern esp_netif_netstack_config_t *netstack_default_slip;
     {   \
         ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(mac) \
         ESP_COMPILER_DESIGNATED_INIT_AGGREGATE_TYPE_EMPTY(ip_info) \
-        .get_ip_event = 0,    \
-        .lost_ip_event = 0,   \
+        .flags = ESP_NETIF_FLAG_EVENT_IP_MODIFIED,              \
+        .get_ip_event = IP_EVENT_PPP_GOT_IP,    \
+        .lost_ip_event = IP_EVENT_PPP_LOST_IP,   \
         .if_key = "SLP_DEF",  \
         .if_desc = "slip",    \
         .route_prio = 1,     \
@@ -85,15 +86,9 @@ static esp_netif_t *netif_init(eppp_type_t role, eppp_transport_handle_t h, eppp
 //    };
 //    const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
     esp_netif_ip_info_t slip_ip4 = {};
-    if (role == EPPP_CLIENT) {
-        slip_ip4.ip.addr = ESP_IP4TOADDR(192, 168, 11, 2);
-        slip_ip4.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
-        slip_ip4.gw.addr = ESP_IP4TOADDR(192, 168, 11, 1);
-    } else {
-        slip_ip4.ip.addr = ESP_IP4TOADDR(192, 168, 11, 1);
-        slip_ip4.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
-        slip_ip4.gw.addr = ESP_IP4TOADDR(192, 168, 11, 1);
-    }
+    slip_ip4.ip.addr = eppp_config->ppp.our_ip4_addr.addr;
+    slip_ip4.gw.addr = eppp_config->ppp.their_ip4_addr.addr;
+    slip_ip4.netmask.addr = ESP_IP4TOADDR(255, 255, 255, 0);
 
     esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_SLIP();
     base_netif_cfg.ip_info = &slip_ip4;
@@ -135,10 +130,13 @@ esp_err_t eppp_netif_stop(esp_netif_t *netif, int stop_timeout_ms)
     return ESP_OK;
 }
 
+void try_ping(esp_netif_t *netif);
+
 esp_err_t eppp_netif_start(esp_netif_t *netif)
 {
     esp_netif_action_start(netif, 0, 0, 0);
     esp_netif_action_connected(netif, 0, 0, 0);
+    try_ping(netif);
     return ESP_OK;
 }
 
@@ -374,12 +372,12 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
         return NULL;
     }
     ESP_LOGI(TAG, "Waiting for IP address %d", netif_cnt);
-//    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, pdMS_TO_TICKS(connect_timeout_ms));
-//    if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
-//        ESP_LOGE(TAG, "Connection failed!");
-//        eppp_close(netif);
-//        return NULL;
-//    }
+    EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS << (netif_cnt * 2), pdFALSE, pdFALSE, pdMS_TO_TICKS(connect_timeout_ms));
+    if (bits & (CONNECTION_FAILED << (netif_cnt * 2))) {
+        ESP_LOGE(TAG, "Connection failed!");
+        eppp_close(netif);
+        return NULL;
+    }
     ESP_LOGI(TAG, "Connected! %d", netif_cnt);
     return netif;
 }

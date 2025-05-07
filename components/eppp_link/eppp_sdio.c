@@ -77,7 +77,7 @@ err:
 
 void eppp_sdio_deinit(eppp_transport_handle_t h)
 {
-    struct eppp_sdio *sdio = __containerof(h, struct eppp_sdio, parent);;
+    struct eppp_sdio *sdio = __containerof(h, struct eppp_sdio, parent);
     if (sdio->is_host) {
         eppp_sdio_host_deinit();
     } else {

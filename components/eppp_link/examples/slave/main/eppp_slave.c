@@ -127,9 +127,9 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
-//    ESP_ERROR_CHECK(esp_netif_init());
-//    ESP_ERROR_CHECK(esp_event_loop_create_default());
+//    init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
