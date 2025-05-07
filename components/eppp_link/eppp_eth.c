@@ -16,6 +16,7 @@
 #include "esp_eth_driver.h"
 #include "ethernet_init.h"
 #include "esp_eth_spec.h"
+#include "eppp_transport_eth.h"
 
 typedef struct header {
     uint8_t dst[ETH_ADDR_LEN];
@@ -26,7 +27,6 @@ typedef struct header {
 static const char *TAG = "eppp_ethernet";
 static bool s_is_connected = false;
 static esp_eth_handle_t *s_eth_handles = NULL;
-static uint8_t s_out_buffer[ETH_MAX_PACKET_SIZE];
 static uint8_t s_their_mac[ETH_ADDR_LEN];
 static uint8_t s_our_mac[ETH_ADDR_LEN];
 
@@ -102,11 +102,12 @@ void eppp_transport_deinit(void)
 
 esp_err_t eppp_transport_tx(void *h, void *buffer, size_t len)
 {
+    static uint8_t out_buffer[ETH_MAX_PACKET_SIZE];
     if (!s_is_connected) {
         return ESP_FAIL;
     }
     // setup Ethernet header
-    header_t *head = (header_t *)s_out_buffer;
+    header_t *head = (header_t *)out_buffer;
     memcpy(head->dst, s_their_mac, ETH_ADDR_LEN);
     memcpy(head->src, s_our_mac, ETH_ADDR_LEN);
     head->len = len;
@@ -114,6 +115,52 @@ esp_err_t eppp_transport_tx(void *h, void *buffer, size_t len)
     if (len > ETH_MAX_PAYLOAD_LEN) {
         return ESP_FAIL;
     }
-    memcpy(s_out_buffer + ETH_HEADER_LEN, buffer, len);
-    return esp_eth_transmit(s_eth_handles[0], s_out_buffer, len + ETH_HEADER_LEN);
+    memcpy(out_buffer + ETH_HEADER_LEN, buffer, len);
+    return esp_eth_transmit(s_eth_handles[0], out_buffer, len + ETH_HEADER_LEN);
+}
+
+static esp_err_t start_driver(esp_netif_t *esp_netif)
+{
+    ESP_RETURN_ON_ERROR(eppp_transport_ethernet_init(&s_eth_handles), TAG, "Failed to initialize Ethernet driver");
+    ESP_RETURN_ON_ERROR(esp_eth_update_input_path(s_eth_handles[0], receive, esp_netif), TAG, "Failed to set Ethernet Rx callback");
+    sscanf(CONFIG_EPPP_LINK_ETHERNET_OUR_ADDRESS, "%2" PRIu8 ":%2" PRIu8 ":%2" PRIi8 ":%2" PRIu8 ":%2" PRIu8 ":%2" PRIu8,
+           &s_our_mac[0], &s_our_mac[1], &s_our_mac[2], &s_our_mac[3], &s_our_mac[4], &s_our_mac[5]);
+
+    sscanf(CONFIG_EPPP_LINK_ETHERNET_THEIR_ADDRESS, "%2" PRIu8 ":%2" PRIu8 ":%2" PRIi8 ":%2" PRIu8 ":%2" PRIu8 ":%2" PRIu8,
+           &s_their_mac[0], &s_their_mac[1], &s_their_mac[2], &s_their_mac[3], &s_their_mac[4], &s_their_mac[5]);
+    esp_eth_ioctl(s_eth_handles[0], ETH_CMD_S_MAC_ADDR, s_our_mac);
+    ESP_RETURN_ON_ERROR(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, event_handler, NULL), TAG, "Failed to register Ethernet handlers");
+    ESP_RETURN_ON_ERROR(esp_eth_start(s_eth_handles[0]), TAG, "Failed to start Ethernet driver");
+    return ESP_OK;
+}
+
+static esp_err_t post_attach(esp_netif_t *esp_netif, void *args)
+{
+    eppp_transport_handle_t h = (eppp_transport_handle_t)args;
+    h->base.netif = esp_netif;
+
+    esp_netif_driver_ifconfig_t driver_ifconfig = {
+        .handle =  h,
+        .transmit = eppp_transport_tx,
+    };
+
+    ESP_RETURN_ON_ERROR(esp_netif_set_driver_config(esp_netif, &driver_ifconfig), TAG, "Failed to set driver config");
+    ESP_LOGI(TAG, "EPPP Ethernet transport attached to EPPP netif %s", esp_netif_get_desc(esp_netif));
+    ESP_RETURN_ON_ERROR(start_driver(esp_netif), TAG, "Failed to start EPPP ethernet driver");
+    ESP_LOGI(TAG, "EPPP Ethernet driver started");
+    return ESP_OK;
+}
+
+eppp_transport_handle_t eppp_eth_init(struct eppp_config_ethernet_s *config)
+{
+    eppp_transport_handle_t h = calloc(1, sizeof(struct eppp_handle));
+    ESP_RETURN_ON_FALSE(h, NULL, TAG, "Failed to allocate eppp_handle");
+    h->base.post_attach = post_attach;
+    return h;
+}
+
+void eppp_eth_deinit(eppp_transport_handle_t h)
+{
+    esp_eth_stop(s_eth_handles[0]);
+    eppp_transport_ethernet_deinit(s_eth_handles);
 }

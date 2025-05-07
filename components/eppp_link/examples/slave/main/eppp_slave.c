@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -66,15 +66,15 @@ void init_network_interface(void)
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                    ESP_EVENT_ANY_ID,
-                    &event_handler,
-                    NULL,
-                    &instance_any_id));
+                                                        ESP_EVENT_ANY_ID,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                    IP_EVENT_STA_GOT_IP,
-                    &event_handler,
-                    NULL,
-                    &instance_got_ip));
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -82,9 +82,9 @@ void init_network_interface(void)
             .password = CONFIG_ESP_WIFI_PASSWORD,
         },
     };
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -127,13 +127,21 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
-//    ESP_ERROR_CHECK(esp_netif_init());
-//    ESP_ERROR_CHECK(esp_event_loop_create_default());
+//    init_network_interface();   // WiFi station if withing SoC capabilities (otherwise a placeholder)
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     eppp_config_t config = EPPP_DEFAULT_SERVER_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
+    config.spi.is_master = false;
+    config.spi.host = 1;
+    config.spi.mosi = 23;
+    config.spi.miso = 19;
+    config.spi.sclk = 18;
+    config.spi.cs = 5;
+    config.spi.intr = 17;
+    config.spi.freq = 1000000;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
@@ -148,5 +156,6 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to setup connection");
         return ;
     }
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
     ESP_ERROR_CHECK(esp_netif_napt_enable(eppp_netif));
 }
