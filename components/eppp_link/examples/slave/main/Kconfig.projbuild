@@ -98,4 +98,14 @@ menu "Example Configuration"
         help
             Baudrate used by the PPP over UART
 
+    config EXAMPLE_WIFI_OVER_EPPP_CHANNEL
+        bool "Use WiFi over EPPP channel"
+        default n
+        depends on EPPP_LINK_CHANNELS_SUPPORT
+        help
+            Enable this option to use WiFi over EPPP channel.
+            If this option is enabled, the example will only start the Wi-Fi driver,
+            but the Wi-Fi netif will reside on client's end and will channel
+            the Rx and Tx data via EPPP channels.
+
 endmenu
