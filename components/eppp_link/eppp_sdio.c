@@ -13,6 +13,7 @@
 #include "eppp_link.h"
 #include "eppp_transport.h"
 #include "eppp_transport_sdio.h"
+#include "eppp_sdio.h"
 
 #define TAG "eppp_sdio"
 
@@ -67,6 +68,9 @@ eppp_transport_handle_t eppp_sdio_init(struct eppp_config_sdio_s *config)
     ESP_RETURN_ON_FALSE(config, NULL, TAG, "Config cannot be null");
     struct eppp_sdio *h = calloc(1, sizeof(struct eppp_sdio));
     ESP_RETURN_ON_FALSE(h, NULL, TAG, "Failed to allocate eppp_handle");
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+    h->parent.channel_tx = eppp_sdio_transmit_channel;
+#endif
     h->parent.base.post_attach = post_attach;
     h->is_host = config->is_host;
     esp_err_t (*init_fn)(struct eppp_config_sdio_s * eppp_config) = h->is_host ? eppp_sdio_host_init : eppp_sdio_slave_init;

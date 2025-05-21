@@ -367,3 +367,24 @@ void eppp_close(esp_netif_t *netif)
     eppp_deinit(netif);
     remove_handlers();
 }
+
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+esp_err_t eppp_add_channels(esp_netif_t *netif, eppp_channel_fn_t *tx, const eppp_channel_fn_t rx, void* context)
+{
+    ESP_RETURN_ON_FALSE(netif != NULL && tx != NULL && rx != NULL, ESP_ERR_INVALID_ARG, TAG, "Invalid arguments");
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    ESP_RETURN_ON_FALSE(h != NULL && h->channel_tx != NULL, ESP_ERR_INVALID_STATE, TAG, "Transport not initialized");
+    *tx = h->channel_tx;
+    h->channel_rx = rx;
+    h->context = context;
+    return ESP_OK;
+}
+
+void* eppp_get_context(esp_netif_t *netif)
+{
+    ESP_RETURN_ON_FALSE(netif != NULL, NULL, TAG, "Invalid netif");
+    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+    ESP_RETURN_ON_FALSE(h != NULL, NULL, TAG, "EPPP Not initialized");
+    return h->context;
+}
+#endif

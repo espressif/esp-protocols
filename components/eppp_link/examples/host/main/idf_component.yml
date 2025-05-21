@@ -1,7 +1,7 @@
 dependencies:
-  espressif/iperf-cmd: "^0.1.1"
+  espressif/iperf-cmd: ^0.1.1
   espressif/eppp_link:
-    version: "*"
-    override_path: "../../.."
+    version: '*'
+    override_path: ../../..
   console_cmd_ping:
-    version: "*"
+    version: '*'

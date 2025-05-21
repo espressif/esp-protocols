@@ -93,4 +93,21 @@ menu "eppp_link"
         default "06:00:00:00:00:02"
         depends on EPPP_LINK_DEVICE_ETH
 
+    config EPPP_LINK_CHANNELS_SUPPORT
+        bool "Enable channel support (multiple logical channels)"
+        default n
+        depends on !EPPP_LINK_DEVICE_ETH
+        help
+            Enable support for multiple logical channels in the EPPP link layer.
+            When enabled, you can configure the number of channels used for communication.
+
+    config EPPP_LINK_NR_OF_CHANNELS
+        int "Number of logical channels"
+        depends on EPPP_LINK_CHANNELS_SUPPORT && !EPPP_LINK_DEVICE_ETH
+        range 1 8
+        default 2
+        help
+            Set the number of logical channels for EPPP link communication.
+            Each channel can be used for independent data streams.
+
 endmenu

@@ -11,12 +11,14 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_check.h"
 #include "nvs_flash.h"
 #include "eppp_link.h"
+#include "inttypes.h"
 
 static const char *TAG = "eppp_slave";
 
-#if CONFIG_SOC_WIFI_SUPPORTED
+#if defined(CONFIG_SOC_WIFI_SUPPORTED) && !defined(CONFIG_EXAMPLE_WIFI_OVER_EPPP_CHANNEL)
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -27,12 +29,13 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-
 static int s_retry_num = 0;
 
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
+    ESP_LOGI(TAG, "event_handler: event_base=%s event_id=%" PRIi32, event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        ESP_LOGI(TAG, "WIFI start event");
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         if (s_retry_num < CONFIG_ESP_MAXIMUM_RETRY) {
@@ -107,12 +110,15 @@ void init_network_interface(void)
 }
 #else
 
+// If the SoC does not have WiFi capabilities, we can initialize a different network interface, this function is a placeholder for that purpose.
+// This function is also a no-op if EXAMPLE_WIFI_OVER_EPPP_CHANNEL==1, since the Wi-Fi network interface will live on the other peer (on the host side).
 void init_network_interface(void)
 {
-    // placeholder to initialize any other network interface if WiFi is not available
 }
 
-#endif // SoC WiFi capable chip
+#endif // SoC WiFi capable chip || WiFi over EPPP channel
+
+void station_over_eppp_channel(void *arg);
 
 void app_main(void)
 {
@@ -153,5 +159,9 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to setup connection");
         return ;
     }
+#ifdef CONFIG_EXAMPLE_WIFI_OVER_EPPP_CHANNEL
+    station_over_eppp_channel(eppp_netif);
+#else
     ESP_ERROR_CHECK(esp_netif_napt_enable(eppp_netif));
+#endif // CONFIG_EXAMPLE_WIFI_OVER_EPPP_CHANNEL
 }

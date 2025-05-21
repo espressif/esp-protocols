@@ -1,7 +1,7 @@
 # ESP PPP Link component (eppp_link)
 
 The component provides a general purpose connectivity engine between two microcontrollers, one acting as PPP server, the other one as PPP client.
-This component could be used for extending network using physical serial connection. Applications could vary from providing PRC engine for multiprocessor solutions to serial connection to POSIX machine. This uses a standard PPP protocol (if enabled) to negotiate IP addresses and networking, so standard PPP toolset could be used, e.g. a `pppd` service on linux. Typical application is a WiFi connectivity provider for chips that do not have WiFi.
+This component could be used for extending network using physical serial connection. Applications could vary from providing RPC engine for multiprocessor solutions to serial connection to POSIX machine. This uses a standard PPP protocol (if enabled) to negotiate IP addresses and networking, so standard PPP toolset could be used, e.g. a `pppd` service on linux. Typical application is a WiFi connectivity provider for chips that do not have WiFi.
 Uses simplified TUN network interface by default to enable faster data transfer on non-UART transports.
 
 ## Typical application
@@ -21,6 +21,27 @@ brings in the WiFi connectivity from the communication coprocessor.
          +----------------+                               +----------------+
 ```
 
+## Features
+
+### Network Interface Modes
+
+Standard PPP Mode (where PPP protocols is preferred) or simple tunnel using TUN Mode.
+
+### Transport layer
+
+UART, SPI, SDIO, Ethernet
+
+### Support for logical channels
+
+Allows channeling custom data (e.g. 802.11 frames)
+
+## (Other) usecases
+
+Besides the communication coprocessor example mentioned above, this component could be used to:
+* Bring Wi-Fi connectivity to a computer using ESP32 chip.
+* Connect your microcontroller to the internet via a pppd server (running on a raspberry)
+* Bridging two networks with two microcontrollers
+
 ## Configuration
 
 ### Choose the transport layer
@@ -39,6 +60,14 @@ Use `idf.py menuconfig` to select the transport layer:
 
 Use PPP netif for UART; Keep the default (TUN) for others
 
+### Channel support (multiple logical channels)
+
+* `CONFIG_EPPP_LINK_CHANNELS_SUPPORT` -- Enable support for multiple logical channels (default: disabled)
+* `CONFIG_EPPP_LINK_NR_OF_CHANNELS` -- Number of logical channels (default: 2, range: 1-8, only visible if channel support is enabled)
+
+When channel support is enabled, the EPPP link can multiplex multiple logical data streams over the same transport. The number of channels is configurable. Channel support is not available for Ethernet transport.
+
+To use channels in your application, use the `eppp_add_channels()` API and provide your own channel transmit/receive callbacks. These APIs and related types are only available when channel support is enabled in Kconfig.
 
 ## API
 
@@ -57,6 +86,9 @@ Use PPP netif for UART; Keep the default (TUN) for others
 * `eppp_netif_start()` -- Starts the network, could be called after startup or whenever a connection is lost
 * `eppp_netif_stop()` --  Stops the network
 * `eppp_perform()` -- Perform one iteration of the PPP task (need to be called regularly in task-less configuration)
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+* `eppp_add_channels()` -- Register channel transmit/receive callbacks (only available if channel support is enabled)
+#endif
 
 ## Throughput
 
