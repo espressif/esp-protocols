@@ -1,11 +1,15 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #pragma once
 #include "mosquitto.h"
 #include "esp_tls.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct mosquitto__config;
 
@@ -17,7 +21,7 @@ typedef void (*mosq_message_cb_t)(char *client, char *topic, char *data, int len
  * structure.
  */
 struct mosq_broker_config {
-    char *host; /*!< Address on which the broker is listening for connections */
+    const char *host; /*!< Address on which the broker is listening for connections */
     int port;   /*!< Port number of the broker to listen to */
     esp_tls_cfg_server_t *tls_cfg;  /*!< ESP-TLS configuration (if TLS transport used)
                                      * Please refer to the ESP-TLS official documentation
@@ -48,3 +52,7 @@ int mosq_broker_run(struct mosq_broker_config *config);
  * @note After calling this API, function mosq_broker_run() unblocks and returns.
  */
 void mosq_broker_stop(void);
+
+#ifdef __cplusplus
+}
+#endif
