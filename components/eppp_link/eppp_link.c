@@ -163,6 +163,7 @@ static int get_netif_num(esp_netif_t *netif)
     return  netif_cnt;
 }
 
+#ifdef CONFIG_EPPP_LINK_USES_PPP
 static void on_ppp_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     esp_netif_t **netif = data;
@@ -172,6 +173,7 @@ static void on_ppp_event(void *arg, esp_event_base_t base, int32_t event_id, voi
         h->netif_stop = true;
     }
 }
+#endif // CONFIG_EPPP_LINK_USES_PPP
 
 static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
@@ -222,7 +224,9 @@ static void remove_handlers(void)
         vEventGroupDelete(s_event_group);
         s_event_group = NULL;
         esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event);
+#ifdef CONFIG_EPPP_LINK_USES_PPP
         esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, on_ppp_event);
+#endif
     }
 }
 
@@ -296,11 +300,13 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
             remove_handlers();
             return NULL;
         }
+#ifdef CONFIG_EPPP_LINK_USES_PPP
         if (esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, on_ppp_event, NULL) !=  ESP_OK) {
             ESP_LOGE(TAG, "Failed to register PPP status handler");
             remove_handlers();
             return NULL;
         }
+#endif // CONFIG_EPPP_LINK_USES_PPP
     }
     esp_netif_t *netif = eppp_init(role, config);
     if (!netif) {
