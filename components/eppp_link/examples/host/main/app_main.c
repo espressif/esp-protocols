@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -104,13 +104,24 @@ void app_main(void)
     eppp_config_t config = EPPP_DEFAULT_CLIENT_CONFIG();
 #if CONFIG_EPPP_LINK_DEVICE_SPI
     config.transport = EPPP_TRANSPORT_SPI;
+    config.spi.is_master = true;
+    config.spi.host = CONFIG_EXAMPLE_SPI_HOST;
+    config.spi.mosi = CONFIG_EXAMPLE_SPI_MOSI_PIN;
+    config.spi.miso = CONFIG_EXAMPLE_SPI_MISO_PIN;
+    config.spi.sclk = CONFIG_EXAMPLE_SPI_SCLK_PIN;
+    config.spi.cs = CONFIG_EXAMPLE_SPI_CS_PIN;
+    config.spi.intr = CONFIG_EXAMPLE_SPI_INTR_PIN;
+    config.spi.freq = CONFIG_EXAMPLE_SPI_FREQUENCY;
 #elif CONFIG_EPPP_LINK_DEVICE_UART
     config.transport = EPPP_TRANSPORT_UART;
     config.uart.tx_io = CONFIG_EXAMPLE_UART_TX_PIN;
     config.uart.rx_io = CONFIG_EXAMPLE_UART_RX_PIN;
     config.uart.baud = CONFIG_EXAMPLE_UART_BAUDRATE;
+#elif CONFIG_EPPP_LINK_DEVICE_ETH
+    config.transport = EPPP_TRANSPORT_ETHERNET;
 #else
     config.transport = EPPP_TRANSPORT_SDIO;
+    config.sdio.is_host = true;
 #endif
     esp_netif_t *eppp_netif = eppp_connect(&config);
     if (eppp_netif == NULL) {

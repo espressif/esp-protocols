@@ -1,10 +1,16 @@
 menu "eppp_link"
 
-    config EPPP_LINK_USES_LWIP
-        bool
-        default "y"
+    config EPPP_LINK_USES_PPP
+        bool "Use PPP network interface"
+        default "n"
         select LWIP_PPP_SUPPORT
         select LWIP_PPP_SERVER_SUPPORT
+        help
+            Enable this option to use PPP network interface.
+            This is useful when pairing with another PPP device,
+            e.g. pppd service on Linux.
+            By default EPPP_LINK uses plain TUN interface,
+            relying on transports to split on packet boundaries.
 
     choice EPPP_LINK_DEVICE
         prompt "Choose PPP device"
