@@ -496,7 +496,20 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
     client->transport_list = esp_transport_list_init();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->transport_list, return ESP_ERR_NO_MEM);
     if (strcasecmp(client->config->scheme, WS_OVER_TCP_SCHEME) == 0) {
-        esp_transport_handle_t tcp = esp_transport_tcp_init();
+        esp_transport_handle_t tcp = NULL;
+        if (client->config->ext_transport == NULL) {
+            tcp = esp_transport_tcp_init();
+        } else {
+            tcp = client->config->ext_transport;
+
+            esp_transport_handle_t ws = esp_transport_ws_init(tcp);
+            ESP_WS_CLIENT_MEM_CHECK(TAG, ws, return ESP_ERR_NO_MEM);
+            esp_transport_set_default_port(ws, WEBSOCKET_TCP_DEFAULT_PORT);
+            esp_transport_list_add(client->transport_list, ws, WS_OVER_TCP_SCHEME);
+            ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, WS_OVER_TCP_SCHEME), return ESP_FAIL;)
+            return ESP_OK;
+        }
+
         ESP_WS_CLIENT_MEM_CHECK(TAG, tcp, return ESP_ERR_NO_MEM);
 
         esp_transport_set_default_port(tcp, WEBSOCKET_TCP_DEFAULT_PORT);
@@ -515,7 +528,20 @@ static esp_err_t esp_websocket_client_create_transport(esp_websocket_client_hand
         esp_transport_list_add(client->transport_list, ws, WS_OVER_TCP_SCHEME);
         ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, WS_OVER_TCP_SCHEME), return ESP_FAIL;)
     } else if (strcasecmp(client->config->scheme, WS_OVER_TLS_SCHEME) == 0) {
-        esp_transport_handle_t ssl = esp_transport_ssl_init();
+        esp_transport_handle_t ssl = NULL;
+        if (client->config->ext_transport == NULL) {
+            ssl = esp_transport_ssl_init();
+        } else {
+            ssl = client->config->ext_transport;
+
+            esp_transport_handle_t wss = esp_transport_ws_init(ssl);
+            ESP_WS_CLIENT_MEM_CHECK(TAG, wss, return ESP_ERR_NO_MEM);
+            esp_transport_set_default_port(wss, WEBSOCKET_SSL_DEFAULT_PORT);
+            esp_transport_list_add(client->transport_list, wss, WS_OVER_TLS_SCHEME);
+            ESP_WS_CLIENT_ERR_OK_CHECK(TAG, set_websocket_transport_optional_settings(client, WS_OVER_TLS_SCHEME), return ESP_FAIL;)
+            return ESP_OK;
+        }
+
         ESP_WS_CLIENT_MEM_CHECK(TAG, ssl, return ESP_ERR_NO_MEM);
 
         esp_transport_set_default_port(ssl, WEBSOCKET_SSL_DEFAULT_PORT);
@@ -986,9 +1012,7 @@ static void esp_websocket_client_task(void *pv)
     client->run = true;
 
     //get transport by scheme
-    if (client->transport == NULL && client->config->ext_transport == NULL) {
-        client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
-    }
+    client->transport = esp_transport_list_get_transport(client->transport_list, client->config->scheme);
 
     if (client->transport == NULL) {
         ESP_LOGE(TAG, "There are no transports valid, stop websocket client");
@@ -1155,12 +1179,9 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
-    client->transport = client->config->ext_transport;
-    if (!client->transport) {
-        if (esp_websocket_client_create_transport(client) != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to create websocket transport");
-            return ESP_FAIL;
-        }
+    if (esp_websocket_client_create_transport(client) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create websocket transport");
+        return ESP_FAIL;
     }
 
     if (xTaskCreate(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
