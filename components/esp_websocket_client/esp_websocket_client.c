@@ -484,6 +484,14 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     return ESP_OK;
 }
 
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+static void websocket_header_hook(void * client, const char * line, int line_len)
+{
+    ESP_LOGD(TAG, "%s header:%.*s", __func__, line_len, line);
+    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_HEADER_RECEIVED, line, line_len);
+}
+#endif
+
 static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_handle_t client, const char *scheme)
 {
     esp_transport_handle_t trans = esp_transport_list_get_transport(client->transport_list, scheme);
@@ -493,6 +501,10 @@ static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_
             .sub_protocol = client->config->subprotocol,
             .user_agent = client->config->user_agent,
             .headers = client->config->headers,
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+            .header_hook = websocket_header_hook,
+            .header_user_context = client,
+#endif
             .auth = client->config->auth,
             .propagate_control_frames = true
         };
