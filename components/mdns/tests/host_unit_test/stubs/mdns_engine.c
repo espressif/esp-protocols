@@ -60,11 +60,3 @@ void mdns_priv_service_lock(void)
 void mdns_priv_service_unlock(void)
 {
 }
-
-// void mdns_priv_service_init(void)
-// {
-// }
-
-// void mdns_priv_service_free(void)
-// {
-// }

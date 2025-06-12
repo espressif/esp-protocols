@@ -12,13 +12,6 @@ endif()
 
 include(unity/${UNIT_TESTS}/unit_test.cmake)
 
-# Define list of files to mock
-#set(MOCK_FILES
-#        "mdns_pcb"
-#        "mdns_send"
-#        # Add more files here as needed, without .h extension
-#)
-
 # Verify headers exist and create mock commands for each
 foreach(mock_file ${MOCK_FILES})
     set(header_path "${COMPONENT_DIR}/private_include/${mock_file}.h")
@@ -72,12 +65,3 @@ list(APPEND SOURCES
 foreach(mock_file ${MOCK_FILES})
     list(APPEND SOURCES ${CMAKE_CURRENT_BINARY_DIR}/mocks/mock_${mock_file}.c)
 endforeach()
-
-#enable_testing()
-#add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME} --test)
-#add_custom_target(generate_mocks
-#        DEPENDS ${MOCK_OUTPUTS}
-#)
-#add_dependencies(${PROJECT_NAME} generate_mocks)
-#target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)
-#target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)

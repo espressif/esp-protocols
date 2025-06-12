@@ -137,10 +137,8 @@ jobs:
           cd components/mdns/tests/host_unit_test/
           pip install dnslib
           cd input && python generate_cases.py && cd ..
-          mkdir build2 && cd build2
-          cmake -DCMAKE_C_COMPILER=afl-cc ..
-          cmake --build .
-          cd ..
+          cmake -B build2 -S . -G "Ninja" -DCMAKE_C_COMPILER=afl-cc
+          cmake --build build2
           timeout 10m afl-fuzz -i input -o out -- build2/mdns_host_unit_test || \
           if [ $? -eq 124 ]; then  # timeout exit code
             if [ -n "$(find out/default/crashes -type f 2>/dev/null)" ]; then
