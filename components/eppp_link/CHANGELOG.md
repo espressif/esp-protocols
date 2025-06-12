@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/espressif/esp-protocols/commits/eppp-v0.3.0)
+
+### Features
+
+- Add support for TUN interface ([2ff150c3](https://github.com/espressif/esp-protocols/commit/2ff150c3))
+- Add support for transport via Ethernet link ([a21ce883](https://github.com/espressif/esp-protocols/commit/a21ce883))
+
 ## [0.2.0](https://github.com/espressif/esp-protocols/commits/eppp-v0.2.0)
 
 ### Features
