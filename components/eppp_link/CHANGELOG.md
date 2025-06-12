@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1](https://github.com/espressif/esp-protocols/commits/eppp-v0.3.1)
+
+### Bug Fixes
+
+- Fix NETIF_PPP_STATUS link issue if PPP disabled in lwip ([077ea0bb](https://github.com/espressif/esp-protocols/commit/077ea0bb))
+
 ## [0.3.0](https://github.com/espressif/esp-protocols/commits/eppp-v0.3.0)
 
 ### Features
