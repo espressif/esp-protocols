@@ -39,6 +39,14 @@ Use `idf.py menuconfig` to select the transport layer:
 
 Use PPP netif for UART; Keep the default (TUN) for others
 
+### Channel support (multiple logical channels)
+
+* `CONFIG_EPPP_LINK_CHANNELS_SUPPORT` -- Enable support for multiple logical channels (default: disabled)
+* `CONFIG_EPPP_LINK_NR_OF_CHANNELS` -- Number of logical channels (default: 2, range: 1-8, only visible if channel support is enabled)
+
+When channel support is enabled, the EPPP link can multiplex multiple logical data streams over the same transport. The number of channels is configurable. Channel support is not available for Ethernet transport.
+
+To use channels in your application, use the `eppp_add_channels()` API and provide your own channel transmit/receive callbacks. These APIs and related types are only available when channel support is enabled in Kconfig.
 
 ## API
 
@@ -57,6 +65,9 @@ Use PPP netif for UART; Keep the default (TUN) for others
 * `eppp_netif_start()` -- Starts the network, could be called after startup or whenever a connection is lost
 * `eppp_netif_stop()` --  Stops the network
 * `eppp_perform()` -- Perform one iteration of the PPP task (need to be called regularly in task-less configuration)
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+* `eppp_add_channels()` -- Register channel transmit/receive callbacks (only available if channel support is enabled)
+#endif
 
 ## Throughput
 
