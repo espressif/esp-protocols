@@ -10,9 +10,9 @@
 #include "esp_netif.h"
 #include "driver/sdio_slave.h"
 #include "eppp_link.h"
+#include "eppp_transport.h"
 #include "eppp_sdio.h"
 #include "esp_check.h"
-
 #if CONFIG_EPPP_LINK_DEVICE_SDIO_SLAVE
 #define BUFFER_NUM 4
 #define BUFFER_SIZE SDIO_PAYLOAD
@@ -21,19 +21,18 @@ static DMA_ATTR uint8_t sdio_slave_rx_buffer[BUFFER_NUM][BUFFER_SIZE];
 static DMA_ATTR uint8_t sdio_slave_tx_buffer[SDIO_PAYLOAD];
 static int s_slave_request = 0;
 
-esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len)
+static esp_err_t eppp_sdio_host_tx_generic(int channel, void *buffer, size_t len)
 {
     if (s_slave_request != REQ_INIT) {
         // silently skip the Tx if the SDIO not fully initialized
         return ESP_OK;
     }
-    memcpy(sdio_slave_tx_buffer, buffer, len);
-    size_t send_len = SDIO_ALIGN(len);
-    if (send_len > len) {
-        // pad with SOF's if the size is not 4 bytes aligned
-        memset(&sdio_slave_tx_buffer[len], PPP_SOF, send_len - len);
-    }
-
+    struct header *head = (void *)sdio_slave_tx_buffer;
+    head->magic = PPP_SOF;
+    head->channel = channel;
+    head->size = len;
+    memcpy(sdio_slave_tx_buffer + sizeof(struct header), buffer, len);
+    size_t send_len = SDIO_ALIGN(len + sizeof(struct header));
     ESP_LOG_BUFFER_HEXDUMP(TAG, sdio_slave_tx_buffer, send_len, ESP_LOG_VERBOSE);
     esp_err_t ret = sdio_slave_transmit(sdio_slave_tx_buffer, send_len);
     if (ret != ESP_OK) {
@@ -43,6 +42,18 @@ esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len)
     }
     return ESP_OK;
 }
+
+esp_err_t eppp_sdio_slave_tx(void *h, void *buffer, size_t len)
+{
+    return eppp_sdio_host_tx_generic(0, buffer, len);
+}
+
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+esp_err_t eppp_sdio_transmit_channel(esp_netif_t *netif, int channel, void *buffer, size_t len)
+{
+    return eppp_sdio_host_tx_generic(channel, buffer, len);
+}
+#endif
 
 static esp_err_t slave_reset(void)
 {
@@ -82,7 +93,29 @@ esp_err_t eppp_sdio_slave_rx(esp_netif_t *netif)
     if (ret == ESP_ERR_NOT_FINISHED || ret == ESP_OK) {
 again:
         ptr = sdio_slave_recv_get_buf(handle, &length);
-        esp_netif_receive(netif, ptr, length, NULL);
+        struct header *head = (void *)ptr;
+        if (head->magic != PPP_SOF) {
+            ESP_LOGE(TAG, "invalid magic %x", head->magic);
+            return ESP_FAIL;
+        }
+        if (head->channel > NR_OF_CHANNELS) {
+            ESP_LOGE(TAG, "invalid channel %x", head->channel);
+            return ESP_FAIL;
+        }
+        if (head->size > SDIO_PAYLOAD || head->size > length) {
+            ESP_LOGE(TAG, "invalid size %x", head->size);
+            return ESP_FAIL;
+        }
+        if (head->channel == 0) {
+            esp_netif_receive(netif, ptr + sizeof(struct header), head->size, NULL);
+        } else {
+#if defined(CONFIG_EPPP_LINK_CHANNELS_SUPPORT)
+            struct eppp_handle *h = esp_netif_get_io_driver(netif);
+            if (h->channel_rx) {
+                h->channel_rx(netif, head->channel, ptr + sizeof(struct header), head->size);
+            }
+#endif
+        }
         if (sdio_slave_recv_load_buf(handle) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to recycle packet buffer");
             return ESP_FAIL;

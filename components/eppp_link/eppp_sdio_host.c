@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,6 +15,7 @@
 #include "sdmmc_cmd.h"
 #include "esp_check.h"
 #include "eppp_link.h"
+#include "eppp_transport.h"
 
 #if CONFIG_EPPP_LINK_DEVICE_SDIO_HOST
 
@@ -28,22 +29,23 @@ static SemaphoreHandle_t s_essl_mutex = NULL;
 static essl_handle_t s_essl = NULL;
 static sdmmc_card_t *s_card = NULL;
 
-static DRAM_DMA_ALIGNED_ATTR uint8_t send_buffer[SDIO_PAYLOAD];
-static DMA_ATTR uint8_t rcv_buffer[SDIO_PAYLOAD];
+static DRAM_DMA_ALIGNED_ATTR uint8_t send_buffer[SDIO_PACKET_SIZE];
+static DMA_ATTR uint8_t rcv_buffer[SDIO_PACKET_SIZE];
 
-esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len)
+static esp_err_t eppp_sdio_host_tx_generic(int channel, void *buffer, size_t len)
 {
     if (s_essl == NULL || s_essl_mutex == NULL) {
         // silently skip the Tx if the SDIO not fully initialized
         return ESP_OK;
     }
 
-    memcpy(send_buffer, buffer, len);
-    size_t send_len = SDIO_ALIGN(len);
-    if (send_len > len) {
-        // pad with SOF's
-        memset(&send_buffer[len], PPP_SOF, send_len - len);
-    }
+
+    struct header *head = (void *)send_buffer;
+    head->magic = PPP_SOF;
+    head->channel = channel;
+    head->size = len;
+    memcpy(send_buffer + sizeof(struct header), buffer, len);
+    size_t send_len = SDIO_ALIGN(len + sizeof(struct header));
     xSemaphoreTake(s_essl_mutex, portMAX_DELAY);
     esp_err_t ret = essl_send_packet(s_essl, send_buffer, send_len, PACKET_TIMEOUT_MS);
     if (ret != ESP_OK) {
@@ -55,6 +57,19 @@ esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len)
     xSemaphoreGive(s_essl_mutex);
     return ret;
 }
+
+esp_err_t eppp_sdio_host_tx(void *h, void *buffer, size_t len)
+{
+    return eppp_sdio_host_tx_generic(0, buffer, len);
+}
+
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+esp_err_t eppp_sdio_transmit_channel(esp_netif_t *netif, int channel, void *buffer, size_t len)
+{
+    return eppp_sdio_host_tx_generic(channel, buffer, len);
+}
+#endif
+
 
 static esp_err_t request_slave_reset(void)
 {
@@ -145,15 +160,37 @@ esp_err_t eppp_sdio_host_rx(esp_netif_t *netif)
     if (intr & ESSL_SDIO_DEF_ESP32.new_packet_intr_mask) {
         esp_err_t ret;
         do {
-            size_t size_read = SDIO_PAYLOAD;
-            ret = essl_get_packet(s_essl, rcv_buffer, SDIO_PAYLOAD, &size_read, PACKET_TIMEOUT_MS);
+            size_t size_read = SDIO_PACKET_SIZE;
+            ret = essl_get_packet(s_essl, rcv_buffer, SDIO_PACKET_SIZE, &size_read, PACKET_TIMEOUT_MS);
             if (ret == ESP_ERR_NOT_FOUND) {
                 ESP_LOGE(TAG, "interrupt but no data can be read");
                 break;
             } else if (ret == ESP_OK) {
                 ESP_LOGD(TAG, "receive data, size: %d", size_read);
+                struct header *head = (void *)rcv_buffer;
+                if (head->magic != PPP_SOF) {
+                    ESP_LOGE(TAG, "invalid magic %x", head->magic);
+                    break;
+                }
+                if (head->channel > NR_OF_CHANNELS) {
+                    ESP_LOGE(TAG, "invalid channel %x", head->channel);
+                    break;
+                }
+                if (head->size > SDIO_PAYLOAD || head->size > size_read) {
+                    ESP_LOGE(TAG, "invalid size %x", head->size);
+                    break;
+                }
                 ESP_LOG_BUFFER_HEXDUMP(TAG, rcv_buffer, size_read, ESP_LOG_VERBOSE);
-                esp_netif_receive(netif, rcv_buffer, size_read, NULL);
+                if (head->channel == 0) {
+                    esp_netif_receive(netif, rcv_buffer + sizeof(struct header), head->size, NULL);
+                } else {
+#if defined(CONFIG_EPPP_LINK_CHANNELS_SUPPORT)
+                    struct eppp_handle *h = esp_netif_get_io_driver(netif);
+                    if (h->channel_rx) {
+                        h->channel_rx(netif, head->channel, rcv_buffer + sizeof(struct header), head->size);
+                    }
+#endif
+                }
                 break;
             } else {
                 ESP_LOGE(TAG, "rx packet error: %08X", ret);
