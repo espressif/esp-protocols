@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          python -m pip install idf-build-apps dnspython pytest pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf
+          python -m pip install idf-build-apps==2.10.0 dnspython pytest pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf
           cd $GITHUB_WORKSPACE/protocols
           # Build host tests app (with all configs and targets supported)
           python ./ci/build_apps.py components/mdns/tests/host_test/
