@@ -177,6 +177,9 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
     case HTTP_EVENT_REDIRECT:
         ESP_LOGE(TAG, "HTTP_EVENT_REDIRECT: Not supported(%d)", esp_http_client_get_status_code(evt->client));
         break;
+    default:
+        ESP_LOGD(TAG, "Other HTTP event: %d", evt->event_id);
+        break;
     }
     return ESP_OK;
 }
