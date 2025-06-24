@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -368,18 +368,23 @@ void DTE::on_read(got_line_cb on_read_cb)
 bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
 {
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    command_result commandResult = command_result::FAIL;
     if (urc_handler) {
-        urc_handler(data, consumed + len);
+        commandResult = urc_handler(data, consumed + len);
     }
-    if (result != command_result::TIMEOUT || got_line == nullptr) {
-        return false;   // this line has been processed already (got OK or FAIL previously)
+    if (result != command_result::TIMEOUT && got_line == nullptr) {
+        return false; // this line has been processed already (got OK or FAIL previously)
     }
 #endif
     if (memchr(data + consumed, separator, len)) {
-        result = got_line(data, consumed + len);
+        result = got_line(data + consumed, consumed + len);
         if (result == command_result::OK || result == command_result::FAIL) {
             signal.set(GOT_LINE);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+            return commandResult == command_result::OK;
+#else
             return true;
+#endif
         }
     }
     return false;
