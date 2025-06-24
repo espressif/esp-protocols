@@ -359,7 +359,6 @@ void DTE::on_read(got_line_cb on_read_cb)
         auto res = on_read_cb(data, len);
         if (res == command_result::OK || res == command_result::FAIL) {
             primary_term->set_read_cb(nullptr);
-            internal_lock.unlock();
             return true;
         }
         return false;
