@@ -635,17 +635,40 @@ command_result get_network_registration_state(CommandableIf *t, int &state)
     }
 
     constexpr std::string_view pattern = "+CEREG: ";
-    int state_pos_start;
-    int state_pos_end;
-    if (out.find(pattern) == std::string::npos || (state_pos_start = out.find(',')) == std::string::npos) {
+
+    // Check if pattern exists and find its position
+    size_t pattern_pos = out.find(pattern);
+    if (pattern_pos == std::string::npos) {
         return command_result::FAIL;
     }
 
-    if (out.find(pattern) == std::string::npos || (state_pos_end = out.find(',', state_pos_start)) == std::string::npos) {
-        if (std::from_chars(out.data() + state_pos_start, out.data() + out.size(), state).ec == std::errc::invalid_argument) {
-            return command_result::FAIL;
+    // Find the first comma after the pattern
+    size_t state_pos_start = out.find(',', pattern_pos);
+    if (state_pos_start == std::string::npos) {
+        return command_result::FAIL;
+    }
+
+    // Find the end of the state value - either a second comma or end of line
+    size_t state_pos_end = out.find(',', state_pos_start + 1);
+    if (state_pos_end == std::string::npos) {
+        // No second comma found, look for end of line characters
+        state_pos_end = out.find('\r', state_pos_start);
+        if (state_pos_end == std::string::npos) {
+            state_pos_end = out.find('\n', state_pos_start);
         }
-    } else if (std::from_chars(out.data() + state_pos_start, out.data() + state_pos_end, state).ec == std::errc::invalid_argument) {
+        if (state_pos_end == std::string::npos) {
+            // No end delimiter found, use end of string
+            state_pos_end = out.size();
+        }
+    }
+
+    // Validate that we have a valid range to parse
+    if (state_pos_start + 1 >= state_pos_end) {
+        return command_result::FAIL;
+    }
+
+    // Extract state value (skip the comma)
+    if (std::from_chars(out.data() + state_pos_start + 1, out.data() + state_pos_end, state).ec == std::errc::invalid_argument) {
         return command_result::FAIL;
     }
 
