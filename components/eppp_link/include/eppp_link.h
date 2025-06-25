@@ -5,6 +5,10 @@
  */
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EPPP_DEFAULT_SERVER_IP() ESP_IP4TOADDR(192, 168, 11, 1)
 #define EPPP_DEFAULT_CLIENT_IP() ESP_IP4TOADDR(192, 168, 11, 2)
 
@@ -110,7 +114,6 @@ typedef enum eppp_transport {
 
 typedef struct eppp_config_t {
     eppp_transport_t transport;
-
     struct eppp_config_spi_s {
         int host;
         bool is_master;
@@ -203,3 +206,15 @@ void eppp_netif_deinit(esp_netif_t *netif);
  *  - ESP_ERR_TIMEOUT indicates that the operation was requested to stop
  */
 esp_err_t eppp_perform(esp_netif_t *netif);
+
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+typedef esp_err_t (*eppp_channel_fn_t)(esp_netif_t *netif, int nr, void *buffer, size_t len);
+
+esp_err_t eppp_add_channels(esp_netif_t *netif, eppp_channel_fn_t *tx, const eppp_channel_fn_t rx, void* context);
+
+void* eppp_get_context(esp_netif_t *netif);
+#endif // CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+
+#ifdef __cplusplus
+}
+#endif

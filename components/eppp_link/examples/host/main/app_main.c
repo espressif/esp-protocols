@@ -14,6 +14,7 @@
 #include "esp_netif.h"
 #include "eppp_link.h"
 #include "esp_log.h"
+#include "esp_check.h"
 #include "mqtt_client.h"
 #include "console_ping.h"
 
@@ -88,6 +89,7 @@ static void mqtt_app_start(void)
 }
 #endif // MQTT
 
+void station_over_eppp_channel(void *arg);
 
 void app_main(void)
 {
@@ -156,6 +158,9 @@ void app_main(void)
     // start console REPL
     ESP_ERROR_CHECK(console_cmd_start());
 
+#ifdef CONFIG_EXAMPLE_WIFI_OVER_EPPP_CHANNEL
+    station_over_eppp_channel(eppp_netif);
+#endif
 #if CONFIG_EXAMPLE_MQTT
     mqtt_app_start();
 #endif

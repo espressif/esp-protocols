@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_check.h"
@@ -24,7 +25,8 @@
 
 #define MAX_PAYLOAD 1500
 #define MIN_TRIGGER_US 20
-#define SPI_HEADER_MAGIC 0x1234
+#define PPP_SOF 0x7E
+#define SPI_HEADER_MAGIC PPP_SOF
 #define SPI_ALIGN(size) (((size) + 3U) & ~(3U))
 #define TRANSFER_SIZE SPI_ALIGN((MAX_PAYLOAD + 6))
 #define NEXT_TRANSACTION_SIZE(a,b) (((a)>(b))?(a):(b)) /* next transaction: whichever is bigger */
@@ -32,10 +34,12 @@
 struct packet {
     size_t len;
     uint8_t *data;
+    int channel;
 };
 
 struct header {
-    uint16_t magic;
+    uint8_t magic;
+    uint8_t channel;
     uint16_t size;
     uint16_t next_size;
     uint16_t check;
@@ -65,12 +69,10 @@ struct eppp_spi {
     esp_timer_handle_t timer;
 };
 
-static esp_err_t transmit(void *h, void *buffer, size_t len)
+static esp_err_t transmit_generic(struct eppp_spi *handle, int channel, void *buffer, size_t len)
 {
-    struct eppp_handle *common = h;
-    struct eppp_spi *handle = __containerof(common, struct eppp_spi, parent);;
-#if CONFIG_EPPP_LINK_DEVICE_SPI
-    struct packet buf = { };
+
+    struct packet buf = { .channel = channel };
     uint8_t *current_buffer = buffer;
     size_t remaining = len;
     do {    // TODO(IDF-9194): Refactor this loop to allocate only once and perform
@@ -100,13 +102,24 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
         }
         gpio_set_level(handle->gpio_intr, 0);
     }
-
-#elif CONFIG_EPPP_LINK_DEVICE_UART
-    ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_WARN);
-    uart_write_bytes(handle->uart_port, buffer, len);
-#endif // DEVICE UART or SPI
     return ESP_OK;
 }
+
+static esp_err_t transmit(void *h, void *buffer, size_t len)
+{
+    struct eppp_handle *handle = h;
+    struct eppp_spi *spi_handle = __containerof(handle, struct eppp_spi, parent);;
+    return transmit_generic(spi_handle, 0, buffer, len);
+}
+
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+static esp_err_t transmit_channel(esp_netif_t *netif, int channel, void *buffer, size_t len)
+{
+    struct eppp_handle *handle = esp_netif_get_io_driver(netif);
+    struct eppp_spi *spi_handle = __containerof(handle, struct eppp_spi, parent);;
+    return transmit_generic(spi_handle, channel, buffer, len);
+}
+#endif
 
 static void IRAM_ATTR timer_callback(void *arg)
 {
@@ -339,6 +352,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     if (h->outbound.len <= h->transaction_size && allow_test_tx == false) {
         // sending outbound
         head->size = h->outbound.len;
+        head->channel = h->outbound.channel;
         if (h->outbound.len > 0) {
             memcpy(out_buf + sizeof(struct header), h->outbound.data, h->outbound.len);
             free(h->outbound.data);
@@ -355,6 +369,7 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     } else {
         // outbound is bigger, need to transmit in another transaction (keep this empty)
         head->size = 0;
+        head->channel = 0;
     }
     next_tx_size = head->next_size = h->outbound.len;
     head->magic = SPI_HEADER_MAGIC;
@@ -367,17 +382,25 @@ esp_err_t eppp_perform(esp_netif_t *netif)
     }
     head = (void *)in_buf;
     uint16_t check = esp_rom_crc16_le(0, in_buf, sizeof(struct header) - sizeof(uint16_t));
-    if (check != head->check || head->magic != SPI_HEADER_MAGIC) {
+    if (check != head->check || head->magic != SPI_HEADER_MAGIC || head->channel > NR_OF_CHANNELS) {
         h->transaction_size = 0; // need to start with HEADER only transaction
         if (allow_test_tx) {
             return ESP_OK;
         }
-        ESP_LOGE(TAG, "Wrong checksum or magic");
+        ESP_LOGE(TAG, "Wrong checksum, magic, or channel: %x %x %x", check, head->magic, head->channel);
         return ESP_FAIL;
     }
     if (head->size > 0) {
         ESP_LOG_BUFFER_HEXDUMP(TAG, in_buf + sizeof(struct header), head->size, ESP_LOG_VERBOSE);
-        esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
+        if (head->channel == 0) {
+            esp_netif_receive(netif, in_buf + sizeof(struct header), head->size, NULL);
+        } else {
+#if defined(CONFIG_EPPP_LINK_CHANNELS_SUPPORT)
+            if (h->parent.channel_rx) {
+                h->parent.channel_rx(netif, head->channel, in_buf + sizeof(struct header), head->size);
+            }
+#endif
+        }
     }
     h->transaction_size = NEXT_TRANSACTION_SIZE(next_tx_size, head->next_size);
     return ESP_OK;
@@ -415,6 +438,9 @@ eppp_transport_handle_t eppp_spi_init(struct eppp_config_spi_s *config)
     ESP_RETURN_ON_FALSE(config, NULL, TAG, "Config cannot be null");
     struct eppp_spi *h = calloc(1, sizeof(struct eppp_spi));
     ESP_RETURN_ON_FALSE(h, NULL, TAG, "Failed to allocate eppp_handle");
+#ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+    h->parent.channel_tx = transmit_channel;
+#endif
     h->is_master = config->is_master;
     h->parent.base.post_attach = post_attach;
     h->out_queue = xQueueCreate(CONFIG_EPPP_LINK_PACKET_QUEUE_SIZE, sizeof(struct packet));
