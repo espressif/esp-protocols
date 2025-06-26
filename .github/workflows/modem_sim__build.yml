@@ -1,0 +1,28 @@
+name: "modem_sim: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_modem_sim:
+    if: contains(github.event.pull_request.labels.*.name, 'modem_sim') || github.event_name == 'push'
+    name: Build
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.4"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v3
+      - name: Build ESP-AT with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          cd common_components/modem_sim
+          ./install.sh
+          source export.sh
+          idf.py build
