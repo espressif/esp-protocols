@@ -1,5 +1,13 @@
 menu "Mosquitto"
 
+    config MOSQ_IS_ENABLED
+        # Invisible option that is enabled if MOSQ is added to the IDF components.
+        # This is used to "select" CONFIG_ESP_TLS_SERVER option (needed for TLS connection)
+        # (these are optionally used in mosq)
+        bool
+        default "y"
+        select ESP_TLS_SERVER
+
     config MOSQ_ENABLE_SYS
         bool "Enable $SYS topics"
         default n
