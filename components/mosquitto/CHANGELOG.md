@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.20~3](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_3)
+
+
+### Bug Fixes
+
+- Support build on older IDF branches ([13b90ad1](https://github.com/espressif/esp-protocols/commit/13b90ad1))
+- Fix misleading error when accepting connection ([fd410061](https://github.com/espressif/esp-protocols/commit/fd410061), [#807](https://github.com/espressif/esp-protocols/issues/807))
+- Make mosquitto component c++ compatible ([c4169765](https://github.com/espressif/esp-protocols/commit/c4169765), [#817](https://github.com/espressif/esp-protocols/issues/817))
+- include config.h before any system header ([1b1ede43](https://github.com/espressif/esp-protocols/commit/1b1ede43))
+
 ## [2.0.20~2](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_2)
 
 ### Features
