@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -80,6 +80,7 @@ typedef struct {
     char                        *auth;
     int                         port;
     bool                        auto_reconnect;
+    bool                        close_reconnect;
     void                        *user_context;
     int                         network_timeout_ms;
     char                        *subprotocol;
@@ -376,6 +377,7 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
     if (config->disable_auto_reconnect) {
         cfg->auto_reconnect = false;
     }
+    cfg->close_reconnect = config->enable_close_reconnect;
 
     if (config->disable_pingpong_discon) {
         cfg->pingpong_timeout_sec = 0;
@@ -1128,10 +1130,21 @@ static void esp_websocket_client_task(void *pv)
             } else if (ret < 0) {
                 ESP_LOGW(TAG, "Connection terminated while waiting for clean TCP close");
             }
-            client->run = false;
-            client->state = WEBSOCKET_STATE_UNKNOW;
-            esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
-            break;
+            if (client->config->close_reconnect && xSemaphoreTakeRecursive(client->lock, lock_timeout) == pdPASS) {
+                client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
+                client->error_handle.error_type = WEBSOCKET_ERROR_TYPE_SERVER_CLOSE;
+                esp_transport_close(client->transport);
+                esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
+                client->reconnect_tick_ms = _tick_get_ms();
+                ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+                xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+                xSemaphoreGiveRecursive(client->lock);
+            } else {
+                client->run = false;
+                client->state = WEBSOCKET_STATE_UNKNOW;
+                esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
+                break;
+            }
         }
     }
 
