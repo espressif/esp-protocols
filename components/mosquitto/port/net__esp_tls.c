@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
  *
- * SPDX-FileContributor: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2024-2025 Espressif Systems (Shanghai) CO LTD
  */
 
 /*
@@ -106,6 +106,9 @@ struct mosquitto *net__socket_accept(struct mosquitto__listener_sock *listensock
 
     new_sock = accept(listensock->sock, NULL, 0);
     if (new_sock == INVALID_SOCKET) {
+        if (errno == EAGAIN) {  // mosquitto tries to accept() in a loop until EAGAIN is returned
+            return NULL;
+        }
         log__printf(NULL, MOSQ_LOG_ERR,
                     "Unable to accept new connection, system socket count has been exceeded. Try increasing \"ulimit -n\" or equivalent.");
         return NULL;
