@@ -105,7 +105,7 @@ struct mosquitto *net__socket_accept(struct mosquitto__listener_sock *listensock
     struct mosquitto *new_context;
 
     new_sock = accept(listensock->sock, NULL, 0);
-    if (new_sock == INVALID_SOCKET) {
+    if (errno == ERR_MEM || errno == ERR_VAL) {
         log__printf(NULL, MOSQ_LOG_ERR,
                     "Unable to accept new connection, system socket count has been exceeded. Try increasing \"ulimit -n\" or equivalent.");
         return NULL;
