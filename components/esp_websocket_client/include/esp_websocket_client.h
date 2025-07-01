@@ -31,6 +31,7 @@ ESP_EVENT_DECLARE_BASE(WEBSOCKET_EVENTS);         // declaration of the task eve
 typedef enum {
     WEBSOCKET_EVENT_ANY = -1,
     WEBSOCKET_EVENT_ERROR = 0,      /*!< This event occurs when there are any errors during execution */
+    WEBSOCKET_EVENT_HEADER_RECEIVED,/*!< This event occurs for each pre-upgrade HTTP header */
     WEBSOCKET_EVENT_CONNECTED,      /*!< Once the Websocket has been connected to the server, no data exchange has been performed */
     WEBSOCKET_EVENT_DISCONNECTED,   /*!< The connection has been disconnected */
     WEBSOCKET_EVENT_DATA,           /*!< When receiving data from the server, possibly multiple portions of the packet */
