@@ -37,7 +37,7 @@ Variables:
 
 -  void(\* handle_message_cb  <br>On message callback. If configured, user function is called whenever mosquitto processes a message.
 
--  char \* host  <br>Address on which the broker is listening for connections
+-  const char \* host  <br>Address on which the broker is listening for connections
 
 -  int port  <br>Port number of the broker to listen to
 
