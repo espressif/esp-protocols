@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,14 +18,14 @@ using namespace esp_modem;
 
 command_result net_open(CommandableIf *t)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string out;
     auto ret = dce_commands::generic_get_string(t, "AT+QISTATE?\r", out, 1000);
     if (ret != command_result::OK) {
         return ret;
     }
     if (out.find("+QISTATE: 0") != std::string::npos) {
-        ESP_LOGV(TAG, "%s", out.data() );
+        ESP_LOGV(TAG, "%s", out.data());
         ESP_LOGD(TAG, "Already there");
         return command_result::FAIL;
     } else if (out.empty()) {
@@ -36,7 +36,7 @@ command_result net_open(CommandableIf *t)
 
 command_result net_close(CommandableIf *t)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     dce_commands::generic_command(t, "AT+QICLOSE=0\r", "OK", "ERROR", 10000);
     esp_modem::Task::Delay(1000);
     return dce_commands::generic_command(t, "AT+QIDEACT=1\r", "OK", "ERROR", 40000);
@@ -44,11 +44,11 @@ command_result net_close(CommandableIf *t)
 
 command_result tcp_open(CommandableIf *t, const std::string &host, int port, int timeout)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string ip_open = R"(AT+QIOPEN=1,0,"TCP",")" + host + "\"," + std::to_string(port) + "\r";
     auto ret = dce_commands::generic_command(t, ip_open, "+QIOPEN: 0,0", "ERROR", timeout);
     if (ret != command_result::OK) {
-        ESP_LOGE(TAG, "%s Failed", __func__ );
+        ESP_LOGE(TAG, "%s Failed", __func__);
         return ret;
     }
     return command_result::OK;
@@ -56,27 +56,27 @@ command_result tcp_open(CommandableIf *t, const std::string &host, int port, int
 
 command_result tcp_close(CommandableIf *t)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     return dce_commands::generic_command(t, "AT+QICLOSE=0\r", "OK", "ERROR", 10000);
 }
 
 command_result tcp_send(CommandableIf *t, uint8_t *data, size_t len)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     assert(0);      // Remove when fix done
     return command_result::FAIL;
 }
 
 command_result tcp_recv(CommandableIf *t, uint8_t *data, size_t len, size_t &out_len)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     assert(0);      // Remove when fix done
     return command_result::FAIL;
 }
 
 command_result get_ip(CommandableIf *t, std::string &ip)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string out;
     auto ret = dce_commands::generic_get_string(t, "AT+QIACT?\r", out, 5000);
     if (ret != command_result::OK) {
@@ -130,12 +130,15 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     auto *recv_data = (char *)data;
     if (data_to_recv == 0) {
         const std::string_view head = "+QIRD: ";
-        auto head_pos = std::search(recv_data, recv_data + len, head.begin(), head.end());
-        if (head_pos == recv_data + len) {
+        const std::string_view recv_data_view = std::string_view(recv_data, len);
+        auto head_pos_found = recv_data_view.find(head);
+        if (head_pos_found == std::string_view::npos) {
             return ret::FAIL;
         }
 
+        auto *head_pos = recv_data + head_pos_found;
         auto next_nl = (char *)memchr(head_pos + head.size(), '\n', MIN_MESSAGE);
+
         if (next_nl == nullptr) {
             return ret::FAIL;
         }
