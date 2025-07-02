@@ -16,6 +16,8 @@
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "esp_check.h"
+#include "esp_http_server.h"
+#include "esp_timer.h"
 
 extern uint8_t g_at_cmd_port;
 
@@ -73,6 +75,7 @@ static uint8_t at_setup_cmd_test(uint8_t para_num)
 
 #define TAG "at_custom_cmd"
 static esp_netif_t *s_netif = NULL;
+static httpd_handle_t http_server = NULL;
 
 static void on_ppp_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
@@ -206,10 +209,202 @@ static uint8_t at_exe_cereg(uint8_t *cmd_name)
     return ESP_AT_RESULT_CODE_OK;
 }
 
+/* HTTP Server handlers */
+static esp_err_t hello_get_handler(httpd_req_t *req)
+{
+    const char* resp_str = "Hello from ESP-AT HTTP Server!";
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static esp_err_t root_get_handler(httpd_req_t *req)
+{
+    const char* resp_str = "ESP-AT HTTP Server is running";
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static esp_err_t test_get_handler(httpd_req_t *req)
+{
+    const char* resp_str = "{\"status\":\"success\",\"message\":\"Test endpoint working\",\"timestamp\":12345}";
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp_str, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static esp_err_t async_get_handler(httpd_req_t *req)
+{
+    printf("Starting async chunked response handler\r\n");
+
+    // Set content type for plain text response
+    httpd_resp_set_type(req, "text/plain");
+
+    // Static counter to track requests
+    static uint8_t req_count = 0;
+    req_count++;
+
+    // Send initial response with request count
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), "=== Async Response #%d ===\r\n", req_count);
+    httpd_resp_sendstr_chunk(req, buffer);
+
+    // Long message broken into chunks
+    const char* chunks[] = {
+        "This is a simulated slow server response.\r\n",
+        "Chunk 1: The ESP-AT HTTP server is demonstrating...\r\n",
+        "Chunk 2: ...asynchronous chunked transfer encoding...\r\n",
+        "Chunk 3: ...with artificial delays between chunks...\r\n",
+        "Chunk 4: ...to simulate real-world network conditions.\r\n",
+        "Chunk 5: Processing data... please wait...\r\n",
+        "Chunk 6: Still processing... almost done...\r\n",
+        "Chunk 7: Final chunk - transfer complete!\r\n",
+        "=== END OF RESPONSE ===\r\n"
+    };
+
+    int num_chunks = sizeof(chunks) / sizeof(chunks[0]);
+
+    // Send each chunk with delays
+    for (int i = 0; i < num_chunks; i++) {
+        // Add a delay to simulate slow processing
+        vTaskDelay(pdMS_TO_TICKS(1500)); // 1.5 second delay between chunks
+
+        // Add chunk number and timestamp
+        snprintf(buffer, sizeof(buffer), "[%d/%d] [%d ms] %s",
+                 i + 1, num_chunks, (int)(esp_timer_get_time() / 1000), chunks[i]);
+
+        printf("Sending chunk %d: %s", i + 1, chunks[i]);
+        httpd_resp_sendstr_chunk(req, buffer);
+    }
+
+    // Add final summary
+    vTaskDelay(pdMS_TO_TICKS(500));
+    snprintf(buffer, sizeof(buffer), "\r\nTransfer completed in %d chunks with delays.\r\n", num_chunks);
+    httpd_resp_sendstr_chunk(req, buffer);
+
+    // Send NULL to signal end of chunked transfer
+    httpd_resp_sendstr_chunk(req, NULL);
+
+    printf("Async chunked response completed\r\n");
+    return ESP_OK;
+}
+
+static const httpd_uri_t hello = {
+    .uri       = "/hello",
+    .method    = HTTP_GET,
+    .handler   = hello_get_handler,
+    .user_ctx  = NULL
+};
+
+static const httpd_uri_t root = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = root_get_handler,
+    .user_ctx  = NULL
+};
+
+static const httpd_uri_t test = {
+    .uri       = "/test",
+    .method    = HTTP_GET,
+    .handler   = test_get_handler,
+    .user_ctx  = NULL
+};
+
+static const httpd_uri_t async_uri = {
+    .uri       = "/async",
+    .method    = HTTP_GET,
+    .handler   = async_get_handler,
+    .user_ctx  = NULL
+};
+
+static esp_err_t start_http_server(void)
+{
+    if (http_server != NULL) {
+        printf("HTTP server already running\r\n");
+        return ESP_OK;
+    }
+
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.server_port = 8080;
+    config.lru_purge_enable = true;
+
+    printf("Starting HTTP server on port: %d\r\n", config.server_port);
+    if (httpd_start(&http_server, &config) == ESP_OK) {
+        printf("Registering URI handlers\r\n");
+        httpd_register_uri_handler(http_server, &hello);
+        httpd_register_uri_handler(http_server, &root);
+        httpd_register_uri_handler(http_server, &test);
+        httpd_register_uri_handler(http_server, &async_uri);
+        return ESP_OK;
+    }
+
+    printf("Error starting HTTP server!\r\n");
+    return ESP_FAIL;
+}
+
+static esp_err_t stop_http_server(void)
+{
+    if (http_server != NULL) {
+        httpd_stop(http_server);
+        http_server = NULL;
+        printf("HTTP server stopped\r\n");
+        return ESP_OK;
+    }
+    return ESP_OK;
+}
+
+/* HTTP Server AT Commands */
+static uint8_t at_test_httpd(uint8_t *cmd_name)
+{
+    uint8_t buffer[64] = {0};
+    snprintf((char *)buffer, 64, "AT%s=<0/1> - Start/Stop HTTP server\r\n", cmd_name);
+    esp_at_port_write_data(buffer, strlen((char *)buffer));
+    return ESP_AT_RESULT_CODE_OK;
+}
+
+static uint8_t at_query_httpd(uint8_t *cmd_name)
+{
+    uint8_t buffer[64] = {0};
+    snprintf((char *)buffer, 64, "+HTTPD:%d\r\n", http_server != NULL ? 1 : 0);
+    esp_at_port_write_data(buffer, strlen((char *)buffer));
+    return ESP_AT_RESULT_CODE_OK;
+}
+
+static uint8_t at_setup_httpd(uint8_t para_num)
+{
+    int32_t action = 0;
+    if (esp_at_get_para_as_digit(0, &action) != ESP_AT_PARA_PARSE_RESULT_OK) {
+        return ESP_AT_RESULT_CODE_ERROR;
+    }
+
+    if (action == 1) {
+        if (start_http_server() == ESP_OK) {
+            printf("HTTP server started successfully\r\n");
+            return ESP_AT_RESULT_CODE_OK;
+        }
+    } else if (action == 0) {
+        if (stop_http_server() == ESP_OK) {
+            return ESP_AT_RESULT_CODE_OK;
+        }
+    }
+
+    return ESP_AT_RESULT_CODE_ERROR;
+}
+
+static uint8_t at_exe_httpd(uint8_t *cmd_name)
+{
+    // Default action: start server
+    if (start_http_server() == ESP_OK) {
+        printf("HTTP server started via execute command\r\n");
+        return ESP_AT_RESULT_CODE_OK;
+    }
+    return ESP_AT_RESULT_CODE_ERROR;
+}
+
 
 static const esp_at_cmd_struct at_custom_cmd[] = {
     {"+PPPD", at_test_cmd_test, at_query_cmd_test, at_setup_cmd_test, at_exe_cmd_test},
     {"+CEREG", at_test_cereg, at_query_cereg, at_setup_cereg, at_exe_cereg},
+    {"+HTTPD", at_test_httpd, at_query_httpd, at_setup_httpd, at_exe_httpd},
     /**
      * @brief You can define your own AT commands here.
      */

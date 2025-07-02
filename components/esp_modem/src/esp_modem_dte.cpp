@@ -367,24 +367,21 @@ void DTE::on_read(got_line_cb on_read_cb)
 
 bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
 {
+    // returning true indicates that the processing finished and lower layers can destroy the accumulated buffer
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-    command_result commandResult = command_result::FAIL;
+    bool consume_buffer = false;
     if (urc_handler) {
-        commandResult = urc_handler(data, consumed + len);
+        consume_buffer = urc_handler(data, consumed + len) != command_result::TIMEOUT;
     }
-    if (result != command_result::TIMEOUT && got_line == nullptr) {
-        return false; // this line has been processed already (got OK or FAIL previously)
+    if (result != command_result::TIMEOUT || got_line == nullptr) {
+        return consume_buffer;   // this line has been processed already (got OK or FAIL previously)
     }
 #endif
     if (memchr(data + consumed, separator, len)) {
-        result = got_line(data + consumed, consumed + len);
+        result = got_line(data, consumed + len);
         if (result == command_result::OK || result == command_result::FAIL) {
             signal.set(GOT_LINE);
-#ifdef CONFIG_ESP_MODEM_URC_HANDLER
-            return commandResult == command_result::OK;
-#else
             return true;
-#endif
         }
     }
     return false;
