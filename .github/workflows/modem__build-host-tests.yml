@@ -45,7 +45,7 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
-        test: ["target", "target_ota", "target_iperf"]
+        test: ["target", "target_ota", "target_iperf", "target_urc"]
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
