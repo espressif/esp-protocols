@@ -18,7 +18,25 @@ menu "Example Configuration"
             bool "SIM7600"
             help
                 SIM7600 is Multi-Band LTE-TDD/LTE-FDD/HSPA+ and GSM/GPRS/EDGE module
+        config EXAMPLE_MODEM_DEVICE_ESPAT
+            bool "ESP-AT"
+            help
+                ESP-AT firmware for ESP32 modules with WiFi connectivity
     endchoice
+
+    if EXAMPLE_MODEM_DEVICE_ESPAT
+        config EXAMPLE_WIFI_SSID
+            string "WiFi SSID"
+            default "myssid"
+            help
+                SSID (network name) to connect to.
+
+        config EXAMPLE_WIFI_PASSWORD
+            string "WiFi Password"
+            default "mypassword"
+            help
+                WiFi password (WPA or WPA2).
+    endif
 
     config EXAMPLE_MODEM_APN
         string "Set MODEM APN"
