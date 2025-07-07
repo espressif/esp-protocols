@@ -2,6 +2,8 @@ if (CONFIG_EXAMPLE_MODEM_DEVICE_BG96)
     set(device_srcs sock_commands_bg96.cpp)
 elseif(CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600)
     set(device_srcs sock_commands_sim7600.cpp)
+elseif(CONFIG_EXAMPLE_MODEM_DEVICE_ESPAT)
+    set(device_srcs sock_commands_espat.cpp)
 endif()
 
 if(CONFIG_ESP_MODEM_ENABLE_DEVELOPMENT_MODE)
