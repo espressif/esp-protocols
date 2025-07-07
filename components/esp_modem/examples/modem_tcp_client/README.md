@@ -22,3 +22,18 @@ To enable this mode, please set `EXAMPLE_CUSTOM_TCP_TRANSPORT=y`
 This configuration could be used with any network library, which is connecting to a localhost endpoint instead of remote one. This example creates a localhost listener which basically mimics the remote endpoint by forwarding the traffic between the library and the TCP/socket layer of the modem (which is already secure if the TLS is used in the network library)
 
 ![with localhost listener](at_client_localhost.png)
+
+### Multi-connection support
+
+This example supports opening multiple TCP connections concurrently when the modem firmware allows it.
+
+- ESP-AT: Multi-connection mode is enabled via `AT+CIPMUX=1`. The example assigns a unique link ID per DCE instance and includes the link ID in `CIPSTART/CIPSEND/CIPRECVDATA` commands.
+- BG96/SIM7600: The example uses module-specific multi-connection syntax (for example `QIOPEN/CIPOPEN` with a connection ID) and tracks link IDs internally.
+
+How it works:
+- The `sock_dce` layer creates multiple DCE instances over a shared DTE. A lightweight mutex coordinates access to the UART so only one DCE issues AT commands at a time.
+- Asynchronous URCs (for example `+IPD`, `+QIURC`, `+CIPRXGET: 1,<cid>`) wake the corresponding DCE which then performs receive operations for its link.
+
+Usage:
+- `app_main` starts two DCE tasks to demonstrate concurrent connections. Adjust the number of DCE instances as needed.
+- For ESP-AT, ensure your firmware supports `CIPMUX=1` and passive receive (`CIPRECVTYPE`).
