@@ -1,0 +1,24 @@
+From 06b15a30e860daef303b6c6541a2cae858c17e6c Mon Sep 17 00:00:00 2001
+From: David Cermak <cermak@espressif.com>
+Date: Thu, 10 Jul 2025 11:09:57 +0200
+Subject: [PATCH] fix(media_lib): Remove deprecated freeRTOS header
+
+---
+ components/media_lib_sal/port/media_lib_os_freertos.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/components/media_lib_sal/port/media_lib_os_freertos.c b/components/media_lib_sal/port/media_lib_os_freertos.c
+index d248d59..7b588ca 100644
+--- a/components/media_lib_sal/port/media_lib_os_freertos.c
++++ b/components/media_lib_sal/port/media_lib_os_freertos.c
+@@ -40,7 +40,7 @@
+ #include "esp_idf_version.h"
+
+ #if CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT
+-#include "freertos/task_snapshot.h"
++#include "esp_private/freertos_debug.h"
+ #endif
+
+ #ifdef __XTENSA__
+--
+2.43.0
