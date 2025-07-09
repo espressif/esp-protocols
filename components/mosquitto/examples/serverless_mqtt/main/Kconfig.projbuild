@@ -33,8 +33,40 @@ menu "Example Configuration"
                 WiFi station password for the example to use.
     endmenu
 
+    choice EXAMPLE_PEER_LIB
+        prompt "Choose peer library"
+        default EXAMPLE_PEER_LIB_LIBJUICE
+        help
+            Choose the peer library to use for WebRTC communication.
+            libjuice: Use libjuice library for ICE/STUN/TURN (Performs manual signalling)
+            esp_peer: Use ESP-IDF specific peer library
+
+        config EXAMPLE_PEER_LIB_ESP_PEER
+            bool "esp_peer"
+
+        config EXAMPLE_PEER_LIB_LIBJUICE
+            bool "libjuice"
+    endchoice
+
+    config EXAMPLE_WEBRTC_URL
+        string "WebRTC server URL"
+        depends on EXAMPLE_PEER_LIB_ESP_PEER
+        default "https://webrtc.espressif.com/join/"
+        help
+            URL of WebRTC remote endpoint.
+
+    config EXAMPLE_WEBRTC_ROOM_ID
+        string "WebRTC room ID"
+        depends on EXAMPLE_PEER_LIB_ESP_PEER
+        default "12345"
+        help
+            Room ID for WebRTC synchronisation.
+            Could be a random number, but the same for both peers.
+
+
     config EXAMPLE_MQTT_BROKER_URI
         string "MQTT Broker URL"
+        depends on EXAMPLE_PEER_LIB_LIBJUICE
         default "mqtt://mqtt.eclipseprojects.io"
         help
             URL of the mqtt broker use for synchronisation and exchanging
@@ -42,12 +74,14 @@ menu "Example Configuration"
 
     config EXAMPLE_MQTT_SYNC_TOPIC
         string "MQTT topic for synchronisation"
+        depends on EXAMPLE_PEER_LIB_LIBJUICE
         default "/topic/serverless_mqtt"
         help
             MQTT topic used fo synchronisation.
 
     config EXAMPLE_STUN_SERVER
         string "Hostname of STUN server"
+        depends on EXAMPLE_PEER_LIB_LIBJUICE
         default "stun.l.google.com"
         help
             STUN server hostname.
@@ -67,6 +101,7 @@ menu "Example Configuration"
 
     choice EXAMPLE_SERVERLESS_ROLE
         prompt "Choose your role"
+        depends on EXAMPLE_PEER_LIB_LIBJUICE
         default EXAMPLE_SERVERLESS_ROLE_PEER1
         help
             Choose either peer1 or peer2.
