@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.0](https://github.com/espressif/esp-protocols/commits/eppp-v1.0.0)
+
+### Features
+
+- Add support for custom channels ([4ee9360f](https://github.com/espressif/esp-protocols/commit/4ee9360f))
+
 ## [0.3.1](https://github.com/espressif/esp-protocols/commits/eppp-v0.3.1)
 
 ### Bug Fixes
