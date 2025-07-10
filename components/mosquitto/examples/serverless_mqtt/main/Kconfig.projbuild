@@ -82,4 +82,19 @@ menu "Example Configuration"
             bool "peer2"
     endchoice
 
+    choice EXAMPLE_PEER_LIB
+        prompt "Choose peer library"
+        default EXAMPLE_PEER_LIB_LIBJUICE
+        help
+            Choose the peer library to use for WebRTC communication.
+            libjuice: Use libjuice library for ICE/STUN/TURN (Performs manual signalling)
+            esp_peer: Use ESP-IDF specific peer library
+
+        config EXAMPLE_PEER_LIB_ESP_PEER
+            bool "esp_peer"
+
+        config EXAMPLE_PEER_LIB_LIBJUICE
+            bool "libjuice"
+    endchoice
+
 endmenu
