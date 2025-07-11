@@ -120,7 +120,9 @@
 ### Updated
 
 - esp_websocket_client: Updated version to 1.0.0 Updated tests to run agains release-v5.0 ([996fef7](https://github.com/espressif/esp-protocols/commit/996fef7))
-- esp_websocket_client: * Error handling improved to show status code from server * Added new API `esp_websocket_client_set_headers` * Dispatches 'WEBSOCKET_EVENT_BEFORE_CONNECT' event before tcp connection ([d047ff5](https://github.com/espressif/esp-protocols/commit/d047ff5))
+- esp_websocket_client: Error handling improved to show status code from server ([d047ff5](https://github.com/espressif/esp-protocols/commit/d047ff5))
+- esp_websocket_client: Added new API `esp_websocket_client_set_headers` ([d047ff5](https://github.com/espressif/esp-protocols/commit/d047ff5))
+- esp_websocket_client: Dispatches 'WEBSOCKET_EVENT_BEFORE_CONNECT' event before tcp connection ([d047ff5](https://github.com/espressif/esp-protocols/commit/d047ff5))
 - unite all tags under common structure py test: update tags under common structure ([c6db3ea](https://github.com/espressif/esp-protocols/commit/c6db3ea))
 - websocket: Support HTTP basic authorization ([1b13448](https://github.com/espressif/esp-protocols/commit/1b13448))
 - Add task_name config option ([1d68884](https://github.com/espressif/esp-protocols/commit/1d68884))
