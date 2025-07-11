@@ -1,0 +1,10 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/esp_modem:
+    version: "*"
+    override_path: ../../..
+  espressif/mbedtls_cxx:
+    version: "*"
+    override_path: ../../../../mbedtls_cxx
+  idf:
+    version: ">=4.1.0"
