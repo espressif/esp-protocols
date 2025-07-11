@@ -66,6 +66,7 @@ esp_err_t peer_init(on_peer_recv_t cb)
 {
     esp_err_t ret = ESP_FAIL;
     ESP_GOTO_ON_FALSE(cb, ESP_ERR_INVALID_ARG, err, TAG, "Invalid peer receive callback");
+    s_on_recv = cb;
     ESP_GOTO_ON_ERROR(create_candidates(), err, TAG, "Failed to create juice candidates");
     ESP_GOTO_ON_ERROR(sync_peers(), err, TAG, "Failed to sync with the other peer");
     EventBits_t bits = xEventGroupWaitBits(s_state, PEER_FAIL | PEER_CONNECTED, pdFALSE, pdFALSE, pdMS_TO_TICKS(90000));

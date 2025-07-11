@@ -7,7 +7,7 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # Setup ESP-PEER from GitHub repo (but it's supported only on certain targets)
 set(ESP_PEER_COMPATIBLE_TARGETS "esp32s2" "esp32s3" "esp32p4" "esp32")
 if(IDF_TARGET IN_LIST ESP_PEER_COMPATIBLE_TARGETS)
-execute_process(COMMAND ${CMAKE_BINARY_DIR}/../esp_peer_setup.sh
+execute_process(COMMAND ${CMAKE_BINARY_DIR}/../esp_peer_setup/install.sh
                 ${CMAKE_BINARY_DIR}
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                 RESULT_VARIABLE script_result)

@@ -1,24 +1,28 @@
-From 06b15a30e860daef303b6c6541a2cae858c17e6c Mon Sep 17 00:00:00 2001
+From cdc43a56f5ea1ab1935f55f47f8644f5dd30825e Mon Sep 17 00:00:00 2001
 From: David Cermak <cermak@espressif.com>
 Date: Thu, 10 Jul 2025 11:09:57 +0200
 Subject: [PATCH] fix(media_lib): Remove deprecated freeRTOS header
 
 ---
- components/media_lib_sal/port/media_lib_os_freertos.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ components/media_lib_sal/port/media_lib_os_freertos.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/components/media_lib_sal/port/media_lib_os_freertos.c b/components/media_lib_sal/port/media_lib_os_freertos.c
-index d248d59..7b588ca 100644
+index d248d59..aea0527 100644
 --- a/components/media_lib_sal/port/media_lib_os_freertos.c
 +++ b/components/media_lib_sal/port/media_lib_os_freertos.c
-@@ -40,7 +40,7 @@
+@@ -40,8 +40,12 @@
  #include "esp_idf_version.h"
 
  #if CONFIG_FREERTOS_ENABLE_TASK_SNAPSHOT
--#include "freertos/task_snapshot.h"
++#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0))
 +#include "esp_private/freertos_debug.h"
++#else
+ #include "freertos/task_snapshot.h"
  #endif
++#endif
 
  #ifdef __XTENSA__
+ #include "esp_debug_helpers.h"
 --
 2.43.0
