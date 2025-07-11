@@ -185,7 +185,7 @@ menu "Example Configuration"
 
     config EXAMPLE_MQTT_BROKER_URI
         string "MQTT Broker URL"
-        default "mqtt://mqtt.eclipseprojects.io"
+        default "mqtt://test.mosquitto.org"
         help
             URL of the mqtt broker which this example connects to.
 
