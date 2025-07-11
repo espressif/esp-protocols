@@ -1,0 +1,7 @@
+## IDF Component Manager Manifest File
+dependencies:
+  ## Required IDF version
+  idf: ">=4.1.0"
+  espressif/esp_modem:
+    version: "^1.0.0"
+    override_path: "../../../"
