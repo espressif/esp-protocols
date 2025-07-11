@@ -2,7 +2,7 @@ if(CONFIG_EXAMPLE_PEER_LIB_ESP_PEER)
     set(PEER_BACKEND_SRC "webrtc.c")
 endif()
 
-idf_component_register(SRCS "serverless_mqtt.c"
+idf_component_register(SRCS "serverless_mqtt.c" "peer_impl.c"
                             "wifi_connect.c"
                             "${PEER_BACKEND_SRC}"
                     INCLUDE_DIRS "."

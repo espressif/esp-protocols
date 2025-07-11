@@ -3,15 +3,6 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
-/* OpenAI realtime communication Demo code
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-
 #include "media_lib_os.h"
 #include "esp_log.h"
 #include "esp_webrtc_defaults.h"
@@ -19,7 +10,6 @@
 #include "common.h"
 #include "esp_timer.h"
 #include "esp_random.h"
-
 
 bool network_is_connected(void);
 /**
