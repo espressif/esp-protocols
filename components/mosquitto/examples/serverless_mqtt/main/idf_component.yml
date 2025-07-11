@@ -3,4 +3,3 @@ dependencies:
   espressif/mosquitto:
     override_path: ../../..
   espressif/sock_utils: "*"
-  espressif/esp_libsrtp: "~1.0.0"
