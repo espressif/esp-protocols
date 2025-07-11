@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Create directory "modem_sim_esp32", go inside it
 # Usage: ./install.sh [platform] [module]
@@ -7,21 +8,25 @@ SCRIPT_DIR=$(pwd)
 mkdir -p modem_sim_esp32
 cd modem_sim_esp32
 
-# Shallow clone https://github.com/espressif/esp-at.git
-if [ ! -d "esp-at" ]; then
-    git clone --depth 1 https://github.com/espressif/esp-at.git
-else
-    echo "esp-at directory already exists, skipping clone."
-fi
-
-cd esp-at
-
-# Add esp-idf directory which is a symlink to the $IDF_PATH
 if [ -z "$IDF_PATH" ]; then
     echo "Error: IDF_PATH environment variable is not set"
     exit 1
 fi
 
+# Default ESP_AT_VERSION uses this specific commit from master to support new chips and features
+ESP_AT_VERSION="aa9d7e0e9b741744f7bf5bec3bbf887cff033d5f"
+
+# Shallow clone of esp-at.git at $ESP_AT_VERSION
+if [ ! -d "esp-at" ]; then
+    # cannot shallow clone from a specific commit, so we init, shallow fetch, and checkout
+    mkdir -p esp-at && cd esp-at && git init && git remote add origin https://github.com/espressif/esp-at.git
+    git fetch --depth 1 origin $ESP_AT_VERSION && git checkout $ESP_AT_VERSION
+else
+    echo "esp-at directory already exists, skipping clone."
+    cd esp-at
+fi
+
+# Add esp-idf directory which is a symlink to the $IDF_PATH
 if [ ! -L "esp-idf" ]; then
     ln -sf "$IDF_PATH" esp-idf
 else

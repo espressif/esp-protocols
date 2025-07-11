@@ -19,8 +19,6 @@
 #include "esp_http_server.h"
 #include "esp_timer.h"
 
-extern uint8_t g_at_cmd_port;
-
 static uint8_t at_test_cmd_test(uint8_t *cmd_name)
 {
     uint8_t buffer[64] = {0};
@@ -102,18 +100,32 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 static SemaphoreHandle_t at_sync_sema = NULL;
 static void wait_data_callback(void)
 {
-    static uint8_t buffer[1024] = {0};
-    // xSemaphoreGive(at_sync_sema);
+    static uint8_t buffer[1500] = {0};
     int len = esp_at_port_read_data(buffer, sizeof(buffer) - 1);
-    ESP_LOG_BUFFER_HEXDUMP("ppp_uart_recv", buffer, len, ESP_LOG_VERBOSE);
+
+    // Check for the escape sequence "+++" in the received data
+    const uint8_t escape_seq[] = "+++";
+    uint8_t *escape_ptr = memmem(buffer, len, escape_seq, 3);
+
+    if (escape_ptr != NULL) {
+        printf("Found +++ sequence, signal to the command processing thread\n");
+
+        int data_before_escape = escape_ptr - buffer;
+        if (data_before_escape > 0) {
+            esp_netif_receive(s_netif, buffer, data_before_escape, NULL);
+        }
+
+        if (at_sync_sema) {
+            xSemaphoreGive(at_sync_sema);
+        }
+        return;
+    }
     esp_netif_receive(s_netif, buffer, len, NULL);
 }
 
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
-    // struct eppp_handle *handle = h;
     printf("transmit: %d bytes\n", len);
-    // ESP_LOG_BUFFER_HEXDUMP("ppp_uart_send", buffer, len, ESP_LOG_INFO);
     esp_at_port_write_data(buffer, len);
     return ESP_OK;
 }
@@ -123,7 +135,7 @@ static uint8_t at_exe_cmd_test(uint8_t *cmd_name)
     uint8_t buffer[64] = {0};
     snprintf((char *)buffer, 64, "execute command: <AT%s> is executed\r\n", cmd_name);
     esp_at_port_write_data(buffer, strlen((char *)buffer));
-    printf("YYYEEES Command <AT%s> executed successfully\r\n", cmd_name);
+    printf("Command <AT%s> executed successfully\r\n", cmd_name);
     if (!at_sync_sema) {
         at_sync_sema = xSemaphoreCreateBinary();
         assert(at_sync_sema != NULL);
@@ -162,22 +174,8 @@ static uint8_t at_exe_cmd_test(uint8_t *cmd_name)
     esp_netif_action_start(s_netif, 0, 0, 0);
     esp_netif_action_connected(s_netif, 0, 0, 0);
 
-    // receive input data
-    // while(xSemaphoreTake(at_sync_sema, portMAX_DELAY)) {
-    //     int len = esp_at_port_read_data(buffer, sizeof(buffer) - 1);
-    //     if (len > 0) {
-    //         buffer[len] = '\0'; // null-terminate the string
-    //         printf("Received data: %s\n", buffer);
-    //     } else {
-    //         printf("No data received or error occurred.\n");
-    //         continue;
-    //     }
-    // }
-
-    // uart_write_bytes(g_at_cmd_port, "CONNECT\r\n", strlen("CONNECT\r\n"));
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        printf("-");
+    while (xSemaphoreTake(at_sync_sema, pdMS_TO_TICKS(1000)) == pdFALSE) {
+        printf(".");
     }
     return ESP_AT_RESULT_CODE_OK;
 }
@@ -191,7 +189,6 @@ static uint8_t at_test_cereg(uint8_t *cmd_name)
 static uint8_t at_query_cereg(uint8_t *cmd_name)
 {
     printf("%s: AT command <AT%s> is executed\r\n", __func__, cmd_name);
-    // static uint8_t buffer[] = "+CEREG: 0,1,2,3,4,5\r\n";
     static uint8_t buffer[] = "+CEREG: 7,8\r\n";
     esp_at_port_write_data(buffer, sizeof(buffer));
     return ESP_AT_RESULT_CODE_OK;
@@ -209,7 +206,6 @@ static uint8_t at_exe_cereg(uint8_t *cmd_name)
     return ESP_AT_RESULT_CODE_OK;
 }
 
-/* HTTP Server handlers */
 static esp_err_t hello_get_handler(httpd_req_t *req)
 {
     const char* resp_str = "Hello from ESP-AT HTTP Server!";
@@ -405,9 +401,6 @@ static const esp_at_cmd_struct at_custom_cmd[] = {
     {"+PPPD", at_test_cmd_test, at_query_cmd_test, at_setup_cmd_test, at_exe_cmd_test},
     {"+CEREG", at_test_cereg, at_query_cereg, at_setup_cereg, at_exe_cereg},
     {"+HTTPD", at_test_httpd, at_query_httpd, at_setup_httpd, at_exe_httpd},
-    /**
-     * @brief You can define your own AT commands here.
-     */
 };
 
 bool esp_at_custom_cmd_register(void)
