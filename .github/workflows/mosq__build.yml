@@ -14,10 +14,15 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.5", "release-v5.4", "release-v5.3", "release-v5.2", "release-v5.1"]
+        example: ["broker", "serverless_mqtt"]
+        exclude:
+          - idf_ver: "release-v5.1"
+            example: "serverless_mqtt"  # serverless_mqtt is not supported due to esp-peer
+
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
-      TEST_DIR: components/mosquitto/examples
+      TEST_DIR: components/mosquitto/examples/${{ matrix.example }}
       TARGET_TEST: broker
       TARGET_TEST_DIR: build_esp32_default
     steps:
@@ -31,14 +36,17 @@ jobs:
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
           python ci/build_apps.py -c ${TEST_DIR} -m components/mosquitto/.build-test-rules.yml
-          # upload only the target test artifacts
-          cd ${TEST_DIR}/${TARGET_TEST}
-          ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
-          zip -qur artifacts.zip ${TARGET_TEST_DIR}
+          if [ "${{ matrix.example }}" == "${TARGET_TEST}" ]; then
+            # upload only the target test artifacts
+            cd ${TEST_DIR}
+            ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
+            zip -qur artifacts.zip ${TARGET_TEST_DIR}
+          fi
       - uses: actions/upload-artifact@v4
+        if: ${{ matrix.example == 'broker' }}
         with:
           name: mosq_target_esp32_${{ matrix.idf_ver }}
-          path: ${{ env.TEST_DIR }}/${{ env.TARGET_TEST }}/artifacts.zip
+          path: ${{ env.TEST_DIR }}/artifacts.zip
           if-no-files-found: error
 
   test_mosq:

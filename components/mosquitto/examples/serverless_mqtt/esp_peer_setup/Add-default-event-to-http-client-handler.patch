@@ -1,0 +1,24 @@
+From a2d51a026449cf1ba2cb53996ce1cdf1f6f078d2 Mon Sep 17 00:00:00 2001
+From: David Cermak <cermak@espressif.com>
+Date: Wed, 9 Jul 2025 12:40:36 +0200
+Subject: [PATCH] fix(htt): Add default event to http-client handler
+
+---
+ components/esp_webrtc/impl/apprtc_signal/https_client.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/components/esp_webrtc/impl/apprtc_signal/https_client.c b/components/esp_webrtc/impl/apprtc_signal/https_client.c
+index b7ee6fc..aca4a4e 100644
+--- a/components/esp_webrtc/impl/apprtc_signal/https_client.c
++++ b/components/esp_webrtc/impl/apprtc_signal/https_client.c
+@@ -48,6 +48,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
+ {
+     http_info_t *info = evt->user_data;
+     switch (evt->event_id) {
++        default:
++            break;
+         case HTTP_EVENT_ERROR:
+             ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+             break;
+--
+2.25.1
