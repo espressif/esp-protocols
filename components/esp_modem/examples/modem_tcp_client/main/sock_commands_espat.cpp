@@ -21,14 +21,14 @@ command_result net_open(CommandableIf *t)
     ESP_LOGV(TAG, "%s", __func__);
 
     // Set WiFi mode to station
-    auto ret = dce_commands::generic_command(t, "AT+CWMODE=1\r", "OK", "ERROR", 5000);
+    auto ret = dce_commands::generic_command(t, "AT+CWMODE=1\r\n", "OK", "ERROR", 5000);
     if (ret != command_result::OK) {
         ESP_LOGE(TAG, "Failed to set WiFi mode");
         return ret;
     }
 
     // Connect to WiFi network
-    std::string wifi_cmd = "AT+CWJAP=\"" CONFIG_EXAMPLE_WIFI_SSID "\",\"" CONFIG_EXAMPLE_WIFI_PASSWORD "\"\r";
+    std::string wifi_cmd = "AT+CWJAP=\"" CONFIG_EXAMPLE_WIFI_SSID "\",\"" CONFIG_EXAMPLE_WIFI_PASSWORD "\"\r\n";
     ret = dce_commands::generic_command(t, wifi_cmd, "OK", "ERROR", 15000);
     if (ret != command_result::OK) {
         ESP_LOGE(TAG, "Failed to connect to WiFi");
@@ -43,7 +43,7 @@ command_result net_close(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__);
     // Disconnect from WiFi
-    auto ret = dce_commands::generic_command(t, "AT+CWQAP\r", "OK", "ERROR", 5000);
+    auto ret = dce_commands::generic_command(t, "AT+CWQAP\r\n", "OK", "ERROR", 5000);
     if (ret != command_result::OK) {
         ESP_LOGW(TAG, "Failed to disconnect WiFi (may already be disconnected)");
     }
@@ -55,13 +55,13 @@ command_result tcp_open(CommandableIf *t, const std::string &host, int port, int
     ESP_LOGV(TAG, "%s", __func__);
 
     // Set single connection mode (just in case)
-    auto ret = dce_commands::generic_command(t, "AT+CIPMUX=0\r", "OK", "ERROR", 1000);
+    auto ret = dce_commands::generic_command(t, "AT+CIPMUX=0\r\n", "OK", "ERROR", 1000);
     if (ret != command_result::OK) {
         ESP_LOGW(TAG, "Failed to set single connection mode");
     }
 
     // Establish TCP connection
-    std::string tcp_cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r";
+    std::string tcp_cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
     ret = dce_commands::generic_command(t, tcp_cmd, "CONNECT", "ERROR", timeout);
     if (ret != command_result::OK) {
         ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d", host.c_str(), port);
@@ -75,7 +75,7 @@ command_result tcp_open(CommandableIf *t, const std::string &host, int port, int
 command_result tcp_close(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__);
-    return dce_commands::generic_command(t, "AT+CIPCLOSE\r", "CLOSED", "ERROR", 5000);
+    return dce_commands::generic_command(t, "AT+CIPCLOSE\r\n", "CLOSED", "ERROR", 5000);
 }
 
 command_result tcp_send(CommandableIf *t, uint8_t *data, size_t len)
@@ -98,7 +98,7 @@ command_result get_ip(CommandableIf *t, std::string &ip)
 {
     ESP_LOGV(TAG, "%s", __func__);
     std::string out;
-    auto ret = dce_commands::generic_get_string(t, "AT+CIFSR\r", out, 5000);
+    auto ret = dce_commands::at_raw(t, "AT+CIFSR\r\n", out, "OK", "ERROR", 5000);
     if (ret != command_result::OK) {
         return ret;
     }
@@ -122,10 +122,10 @@ command_result get_ip(CommandableIf *t, std::string &ip)
 
 command_result set_rx_mode(CommandableIf *t, int mode)
 {
-    ESP_LOGV(TAG, "%s", __func__);
+    ESP_LOGE(TAG, "%s", __func__);
     // Set passive receive mode (1) for better control
     // Active mode (0) would send +IPD automatically
-    std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(mode) + "\r";
+    std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(mode) + "\r\n";
     return dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
 }
 
@@ -137,17 +137,17 @@ void Responder::start_sending(size_t len)
 {
     data_to_send = len;
     send_stat = 0;
-    send_cmd("AT+CIPSEND=" + std::to_string(len) + "\r");
+    send_cmd("AT+CIPSEND=" + std::to_string(len) + "\r\n");
 }
 
 void Responder::start_receiving(size_t len)
 {
-    send_cmd("AT+CIPRECVDATA=" + std::to_string(len) + "\r");
+    send_cmd("AT+CIPRECVDATA=" + std::to_string(len) + "\r\n");
 }
 
 bool Responder::start_connecting(std::string host, int port)
 {
-    std::string cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r";
+    std::string cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
     send_cmd(cmd);
     return true;
 }

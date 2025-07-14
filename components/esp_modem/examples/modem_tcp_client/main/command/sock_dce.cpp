@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #include "esp_vfs.h"
 #include "esp_vfs_eventfd.h"
-
 #include "sock_dce.hpp"
+#include "cxx_include/esp_modem_command_library_utils.hpp"
 
 namespace sock_dce {
 
@@ -304,6 +304,21 @@ std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr
     return Factory::create(config, std::move(dte));
 }
 
+
+esp_modem::command_result DCE::sync()
+{
+    return esp_modem::dce_commands::generic_command_common(dte.get(), "AT\r\n");
+}
+
+esp_modem::command_result DCE::set_echo(bool on)
+{
+    return esp_modem::dce_commands::generic_command_common(dte.get(), "ATE0\r\n");
+}
+
+esp_modem::command_result DCE::set_pdp_context(esp_modem::PdpContext &pdp)
+{
+    return esp_modem::command_result::OK;
+}
 
 /**
  * @brief Opens network in AT command mode

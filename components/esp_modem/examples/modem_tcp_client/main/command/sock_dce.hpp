@@ -101,6 +101,9 @@ class DCE : public ::esp_modem::GenericModule {
     using esp_modem::GenericModule::GenericModule;
 public:
 
+    esp_modem::command_result sync() override;
+    esp_modem::command_result set_echo(bool on) override;
+    esp_modem::command_result set_pdp_context(esp_modem::PdpContext &pdp) override;
     /**
      * @brief Opens network in AT command mode
      * @return OK, FAIL or TIMEOUT
