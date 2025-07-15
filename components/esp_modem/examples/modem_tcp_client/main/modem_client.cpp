@@ -124,15 +124,14 @@ extern "C" void app_main(void)
     mqtt_config.network.transport = ssl;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
+    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);
     esp_mqtt_client_start(mqtt_client);
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
-    dce->set_rx_mode(1);
     if (!dce->connect(BROKER_URL, BROKER_PORT)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }
-    while (1) {
+    while (true) {
         while (dce->perform_sock()) {
             ESP_LOGV(TAG, "...performing");
         }

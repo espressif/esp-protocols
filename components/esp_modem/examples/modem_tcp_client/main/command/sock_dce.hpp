@@ -8,6 +8,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include <cxx_include/esp_modem_dce_factory.hpp>
 #include "sock_commands.hpp"
+#include "sock_module.hpp"
 #include <sys/socket.h>
 
 #pragma  once
@@ -97,13 +98,10 @@ private:
     std::shared_ptr<esp_modem::DTE> &dte;
 };
 
-class DCE : public ::esp_modem::GenericModule {
-    using esp_modem::GenericModule::GenericModule;
+class DCE : public Module {
+    using Module::Module;
 public:
 
-    esp_modem::command_result sync() override;
-    esp_modem::command_result set_echo(bool on) override;
-    esp_modem::command_result set_pdp_context(esp_modem::PdpContext &pdp) override;
     /**
      * @brief Opens network in AT command mode
      * @return OK, FAIL or TIMEOUT

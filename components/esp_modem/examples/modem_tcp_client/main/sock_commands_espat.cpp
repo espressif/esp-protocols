@@ -9,8 +9,30 @@
 #include "sock_commands.hpp"
 #include "cxx_include/esp_modem_command_library_utils.hpp"
 #include "sock_dce.hpp"
+#include "sock_module.hpp"
 
 static const char *TAG = "sock_commands_espat";
+
+namespace sock_dce {
+
+using namespace esp_modem;
+
+command_result Module::sync()
+{
+    return dce_commands::generic_command_common(dte.get(), "AT\r\n");
+}
+
+command_result Module::set_echo(bool on)
+{
+    return dce_commands::generic_command_common(dte.get(), "ATE0\r\n");
+}
+
+command_result Module::set_pdp_context(PdpContext &pdp)
+{
+    return command_result::OK;
+}
+
+}
 
 namespace sock_commands {
 
@@ -34,8 +56,14 @@ command_result net_open(CommandableIf *t)
         ESP_LOGE(TAG, "Failed to connect to WiFi");
         return ret;
     }
-
     ESP_LOGI(TAG, "WiFi connected successfully");
+
+    // Set passive receive mode (1) for better control
+    ret = set_rx_mode(t, 1);
+    if (ret != command_result::OK) {
+        ESP_LOGE(TAG, "Failed to set preferred Rx mode");
+        return ret;
+    }
     return command_result::OK;
 }
 
@@ -123,8 +151,7 @@ command_result get_ip(CommandableIf *t, std::string &ip)
 command_result set_rx_mode(CommandableIf *t, int mode)
 {
     ESP_LOGE(TAG, "%s", __func__);
-    // Set passive receive mode (1) for better control
-    // Active mode (0) would send +IPD automatically
+    // Active mode (0) sends data automatically, Passive mode (1) notifies about data for reading
     std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(mode) + "\r\n";
     return dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
 }
