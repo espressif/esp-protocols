@@ -63,7 +63,9 @@ public:
         return total_len;
     }
 
+    int link_id{s_link_id++};
 private:
+    static int s_link_id;
     static constexpr size_t buffer_size = 512;
 
     bool on_read(char *data, size_t len)
@@ -99,8 +101,9 @@ private:
 };
 
 class DCE : public Module {
-    using Module::Module;
 public:
+    DCE(std::shared_ptr<esp_modem::DTE> dte_arg, const esp_modem_dce_config *config);
+    ~DCE();
 
 //  --- ESP-MODEM command module starts here ---
 #include "esp_modem_command_declare_helper.inc"
@@ -203,6 +206,14 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
             return 1;
         }
         return -1;
+    }
+    static std::vector<DCE*> dce_list;
+    static bool network_init;
+    static void read_callback(uint8_t *data, size_t len)
+    {
+        for (auto dce : dce_list) {
+            dce->perform_at(data, len);
+        }
     }
 
 private:

@@ -86,28 +86,28 @@ command_result net_close(CommandableIf *t)
     return command_result::OK;
 }
 
-command_result tcp_open(CommandableIf *t, const std::string &host, int port, int timeout)
-{
-    ESP_LOGV(TAG, "%s", __func__);
-
-    // Use link ID 0 for now (can be extended to support multiple concurrent connections)
-    const int link_id = 0;
-
-    // Establish TCP connection with link ID for multiple connections mode
-    std::string tcp_cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
-
-    // In multiple connections mode, response format is: <link ID>,CONNECT
-    std::string expected_response = std::to_string(link_id) + ",CONNECT";
-
-    auto ret = dce_commands::generic_command(t, tcp_cmd, expected_response, "ERROR", timeout);
-    if (ret != command_result::OK) {
-        ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d on link %d", host.c_str(), port, link_id);
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "TCP connection established to %s:%d on link %d", host.c_str(), port, link_id);
-    return command_result::OK;
-}
+// command_result tcp_open(CommandableIf *t, const std::string &host, int port, int timeout)
+// {
+//     ESP_LOGV(TAG, "%s", __func__);
+//
+//     // Use link ID 0 for now (can be extended to support multiple concurrent connections)
+//     const int link_id = 0;
+//
+//     // Establish TCP connection with link ID for multiple connections mode
+//     std::string tcp_cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
+//
+//     // In multiple connections mode, response format is: <link ID>,CONNECT
+//     std::string expected_response = std::to_string(link_id) + ",CONNECT";
+//
+//     auto ret = dce_commands::generic_command(t, tcp_cmd, expected_response, "ERROR", timeout);
+//     if (ret != command_result::OK) {
+//         ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d on link %d", host.c_str(), port, link_id);
+//         return ret;
+//     }
+//
+//     ESP_LOGI(TAG, "TCP connection established to %s:%d on link %d", host.c_str(), port, link_id);
+//     return command_result::OK;
+// }
 
 command_result tcp_close(CommandableIf *t)
 {
@@ -122,21 +122,6 @@ command_result tcp_close(CommandableIf *t)
     return dce_commands::generic_command(t, close_cmd, expected_response, "ERROR", 5000);
 }
 
-command_result tcp_send(CommandableIf *t, uint8_t *data, size_t len)
-{
-    ESP_LOGV(TAG, "%s", __func__);
-    // This function is not used in the current implementation
-    // Data sending is handled by the DCE responder
-    return command_result::FAIL;
-}
-
-command_result tcp_recv(CommandableIf *t, uint8_t *data, size_t len, size_t &out_len)
-{
-    ESP_LOGV(TAG, "%s", __func__);
-    // This function is not used in the current implementation
-    // Data receiving is handled by the DCE responder
-    return command_result::FAIL;
-}
 
 command_result get_ip(CommandableIf *t, std::string &ip)
 {
@@ -183,21 +168,18 @@ void Responder::start_sending(size_t len)
     data_to_send = len;
     send_stat = 0;
     // For multiple connections mode, include link ID
-    const int link_id = 0;
     send_cmd("AT+CIPSEND=" + std::to_string(link_id) + "," + std::to_string(len) + "\r\n");
 }
 
 void Responder::start_receiving(size_t len)
 {
     // For multiple connections mode, include link ID
-    const int link_id = 0;
     send_cmd("AT+CIPRECVDATA=" + std::to_string(link_id) + "," + std::to_string(len) + "\r\n");
 }
 
 bool Responder::start_connecting(std::string host, int port)
 {
     // For multiple connections mode, include link ID
-    const int link_id = 0;
     std::string cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
     send_cmd(cmd);
     return true;

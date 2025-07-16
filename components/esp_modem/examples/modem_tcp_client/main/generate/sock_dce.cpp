@@ -15,6 +15,27 @@ namespace sock_dce {
 
 constexpr auto const *TAG = "sock_dce";
 
+// Definition of the static member variables
+std::vector<DCE*> DCE::dce_list{};
+bool DCE::network_init = false;
+int Responder::s_link_id = 0;
+
+// Constructor - add this DCE instance to the static list
+DCE::DCE(std::shared_ptr<esp_modem::DTE> dte_arg, const esp_modem_dce_config *config)
+    : Module(std::move(dte_arg), config)
+{
+    dce_list.push_back(this);
+}
+
+// Destructor - remove this DCE instance from the static list
+DCE::~DCE()
+{
+    auto it = std::find(dce_list.begin(), dce_list.end(), this);
+    if (it != dce_list.end()) {
+        dce_list.erase(it);
+    }
+}
+
 
 bool DCE::perform_sock()
 {
@@ -224,10 +245,12 @@ void DCE::start_listening(int port)
 
 bool DCE::connect(std::string host, int port)
 {
+    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
+    assert(data_ready_fd > 0);
     dte->on_read(nullptr);
     tcp_close();
     dte->on_read([this](uint8_t *data, size_t len) {
-        this->perform_at(data, len);
+        read_callback(data, len);
         return esp_modem::command_result::TIMEOUT;
     });
     if (!at.start_connecting(host, port)) {
@@ -241,11 +264,12 @@ bool DCE::connect(std::string host, int port)
 
 bool DCE::init()
 {
+    if (network_init) {
+        return true;
+    }
+    network_init = true;
     esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
     esp_vfs_eventfd_register(&config);
-
-    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
-    assert(data_ready_fd > 0);
 
     dte->on_read(nullptr);
     const int retries = 5;
