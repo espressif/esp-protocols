@@ -73,6 +73,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+// sock_dce::DCE::dce_list{};
 
 extern "C" void app_main(void)
 {
@@ -104,7 +105,7 @@ extern "C" void app_main(void)
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_APN);
 
     /* create the DCE and initialize network manually (using AT commands) */
-    auto dce = sock_dce::create(&dce_config, std::move(dte));
+    auto dce = sock_dce::create(&dce_config, dte);
     if (!dce->init()) {
         ESP_LOGE(TAG,  "Failed to setup network");
         return;

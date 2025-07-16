@@ -99,8 +99,14 @@ private:
 };
 
 class DCE : public Module {
-    using Module::Module;
 public:
+    // Constructor and destructor for managing dce_list
+    // explicit GenericModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
+    //     dte(std::move(dte)), pdp(std::move(pdp)) {}
+    // explicit GenericModule(std::shared_ptr<DTE> dte, );
+    //
+    DCE(std::shared_ptr<esp_modem::DTE> dte_arg, const esp_modem_dce_config *config);
+    ~DCE();
 
     /**
      * @brief Opens network in AT command mode
@@ -237,6 +243,15 @@ private:
     int sock {-1};
     int listen_sock {-1};
     int data_ready_fd {-1};
+    static std::vector<DCE*> dce_list;
+    static bool network_init;
+    static void read_callback(uint8_t *data, size_t len)
+    {
+        for (auto dce : dce_list) {
+            dce->perform_at(data, len);
+        }
+    }
+
 };
 std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr<esp_modem::DTE> dte);
 }
