@@ -58,6 +58,14 @@ command_result net_open(CommandableIf *t)
     }
     ESP_LOGI(TAG, "WiFi connected successfully");
 
+    // Enable multiple connections mode
+    ret = dce_commands::generic_command(t, "AT+CIPMUX=1\r\n", "OK", "ERROR", 1000);
+    if (ret != command_result::OK) {
+        ESP_LOGE(TAG, "Failed to enable multiple connections mode");
+        return ret;
+    }
+    ESP_LOGI(TAG, "Multiple connections mode enabled");
+
     // Set passive receive mode (1) for better control
     ret = set_rx_mode(t, 1);
     if (ret != command_result::OK) {
@@ -82,28 +90,36 @@ command_result tcp_open(CommandableIf *t, const std::string &host, int port, int
 {
     ESP_LOGV(TAG, "%s", __func__);
 
-    // Set single connection mode (just in case)
-    auto ret = dce_commands::generic_command(t, "AT+CIPMUX=0\r\n", "OK", "ERROR", 1000);
-    if (ret != command_result::OK) {
-        ESP_LOGW(TAG, "Failed to set single connection mode");
-    }
+    // Use link ID 0 for now (can be extended to support multiple concurrent connections)
+    const int link_id = 0;
 
-    // Establish TCP connection
-    std::string tcp_cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
-    ret = dce_commands::generic_command(t, tcp_cmd, "CONNECT", "ERROR", timeout);
+    // Establish TCP connection with link ID for multiple connections mode
+    std::string tcp_cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
+
+    // In multiple connections mode, response format is: <link ID>,CONNECT
+    std::string expected_response = std::to_string(link_id) + ",CONNECT";
+
+    auto ret = dce_commands::generic_command(t, tcp_cmd, expected_response, "ERROR", timeout);
     if (ret != command_result::OK) {
-        ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d", host.c_str(), port);
+        ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d on link %d", host.c_str(), port, link_id);
         return ret;
     }
 
-    ESP_LOGI(TAG, "TCP connection established to %s:%d", host.c_str(), port);
+    ESP_LOGI(TAG, "TCP connection established to %s:%d on link %d", host.c_str(), port, link_id);
     return command_result::OK;
 }
 
 command_result tcp_close(CommandableIf *t)
 {
     ESP_LOGV(TAG, "%s", __func__);
-    return dce_commands::generic_command(t, "AT+CIPCLOSE\r\n", "CLOSED", "ERROR", 5000);
+    // Use link ID 0 for closing connection
+    const int link_id = 0;
+    std::string close_cmd = "AT+CIPCLOSE=" + std::to_string(link_id) + "\r\n";
+
+    // In multiple connections mode, response format is: <link ID>,CLOSED
+    std::string expected_response = std::to_string(link_id) + ",CLOSED";
+
+    return dce_commands::generic_command(t, close_cmd, expected_response, "ERROR", 5000);
 }
 
 command_result tcp_send(CommandableIf *t, uint8_t *data, size_t len)
@@ -150,9 +166,11 @@ command_result get_ip(CommandableIf *t, std::string &ip)
 
 command_result set_rx_mode(CommandableIf *t, int mode)
 {
-    ESP_LOGE(TAG, "%s", __func__);
+    ESP_LOGV(TAG, "%s", __func__);
+    // For multiple connections mode, set receive mode for link ID 0
+    const int link_id = 0;
     // Active mode (0) sends data automatically, Passive mode (1) notifies about data for reading
-    std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(mode) + "\r\n";
+    std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(link_id) + "," + std::to_string(mode) + "\r\n";
     return dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
 }
 
@@ -164,17 +182,23 @@ void Responder::start_sending(size_t len)
 {
     data_to_send = len;
     send_stat = 0;
-    send_cmd("AT+CIPSEND=" + std::to_string(len) + "\r\n");
+    // For multiple connections mode, include link ID
+    const int link_id = 0;
+    send_cmd("AT+CIPSEND=" + std::to_string(link_id) + "," + std::to_string(len) + "\r\n");
 }
 
 void Responder::start_receiving(size_t len)
 {
-    send_cmd("AT+CIPRECVDATA=" + std::to_string(len) + "\r\n");
+    // For multiple connections mode, include link ID
+    const int link_id = 0;
+    send_cmd("AT+CIPRECVDATA=" + std::to_string(link_id) + "," + std::to_string(len) + "\r\n");
 }
 
 bool Responder::start_connecting(std::string host, int port)
 {
-    std::string cmd = "AT+CIPSTART=\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
+    // For multiple connections mode, include link ID
+    const int link_id = 0;
+    std::string cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
     send_cmd(cmd);
     return true;
 }
@@ -299,7 +323,8 @@ Responder::ret Responder::send(std::string_view response)
 
 Responder::ret Responder::connect(std::string_view response)
 {
-    if (response.find("CONNECT") != std::string::npos) {
+    // In multiple connections mode, response format is: <link ID>,CONNECT
+    if (response.find(",CONNECT") != std::string::npos || response.find("CONNECT") != std::string::npos) {
         ESP_LOGI(TAG, "TCP connected!");
         return ret::OK;
     }
@@ -321,7 +346,7 @@ Responder::ret Responder::check_async_replies(status state, std::string_view &re
         ESP_LOGW(TAG, "WiFi disconnected");
     }
 
-    // Handle TCP status messages
+    // Handle TCP status messages (multiple connections format: <link ID>,CONNECT or <link ID>,CLOSED)
     if (response.find("CONNECT") != std::string::npos && state == status::CONNECTING) {
         return connect(response);
     } else if (response.find("CLOSED") != std::string::npos) {
@@ -329,7 +354,7 @@ Responder::ret Responder::check_async_replies(status state, std::string_view &re
         return ret::FAIL;
     }
 
-    // Handle data notifications in active mode (if we switch to it later)
+    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
     if (response.find("+IPD,") != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
