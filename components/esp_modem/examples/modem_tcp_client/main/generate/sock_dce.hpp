@@ -34,6 +34,7 @@ public:
         sock(s), data_ready_fd(ready_fd), dte(dte_arg) {}
     ret process_data(status state, uint8_t *data, size_t len);
     ret check_async_replies(status state, std::string_view &response);
+    ret check_urc(status state, std::string_view &response);
 
     void start_sending(size_t len);
     void start_receiving(size_t len);
@@ -64,6 +65,7 @@ public:
     }
 
     int link_id{s_link_id++};
+    static SemaphoreHandle_t s_dte_mutex;
 private:
     static int s_link_id;
     static constexpr size_t buffer_size = 512;
@@ -72,6 +74,7 @@ private:
     {
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
         ::send(sock, data, len, 0);
+        printf("sending %d\n", len);
 #else
         ::memcpy(&buffer[actual_read], data, len);
         actual_read += len;
@@ -144,6 +147,7 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
             return 0;
         }
         at.clear_offsets();
+        // TODO: MUTEX
         state = status::RECEIVING;
         uint64_t data;
         read(data_ready_fd, &data, sizeof(data));
@@ -166,6 +170,7 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
         if (!wait_to_idle(timeout_ms)) {
             return -1;
         }
+        // TODO: MUTEX
         state = status::SENDING;
         memcpy(at.get_buf(), buffer, len_to_send);
         ESP_LOG_BUFFER_HEXDUMP("dce", at.get_buf(), len, ESP_LOG_VERBOSE);

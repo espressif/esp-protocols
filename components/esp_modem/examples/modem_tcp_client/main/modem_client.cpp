@@ -23,7 +23,8 @@
 #include "tcp_transport_mbedtls.h"
 #include "tcp_transport_at.h"
 
-#define BROKER_URL "test.mosquitto.org"
+// #define BROKER_URL "test.mosquitto.org"
+#define BROKER_URL "192.168.0.39"
 #define BROKER_PORT 1883
 
 
@@ -31,6 +32,8 @@ static const char *TAG = "modem_client";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int GOT_DATA_BIT = BIT2;
+static const int DCE0_DONE = BIT3;
+static const int DCE1_DONE = BIT4;
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -75,9 +78,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
 // sock_dce::DCE::dce_list{};
 
+static void perform(void* ctx);
+
 extern "C" void app_main(void)
 {
-
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -111,12 +115,34 @@ extern "C" void app_main(void)
         return;
     }
 
+    xTaskCreate(perform, "perform", 4096, dce.get(), 4, nullptr);
+
+    // vTaskDelay(pdMS_TO_TICKS(15000));
+    /* create another DCE to serve a new connection */
+    auto dce1 = sock_dce::create(&dce_config, dte);
+    if (!dce1->init()) {
+        ESP_LOGE(TAG,  "Failed to setup network");
+        return;
+    }
+    xTaskCreate(perform, "perform", 4096, dce1.get(), 4, nullptr);
+
+    xEventGroupWaitBits(event_group, DCE0_DONE | DCE1_DONE, pdFALSE, pdTRUE, portMAX_DELAY);
+}
+
+static void perform(void* ctx)
+{
+    auto dce = static_cast<sock_dce::DCE*>(ctx);
+    char mqtt_client_id[] = "MQTT_CLIENT_0";
+    static int counter = 0;
+    const int id = counter++;
+    mqtt_client_id[12] += id;    // assumes different client id per each thread
     esp_mqtt_client_config_t mqtt_config = {};
-    mqtt_config.broker.address.port = BROKER_PORT;
+    mqtt_config.broker.address.port = BROKER_PORT + id;
     mqtt_config.session.message_retransmit_timeout = 10000;
+    mqtt_config.credentials.client_id = mqtt_client_id;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     mqtt_config.broker.address.uri = "mqtt://127.0.0.1";
-    dce->start_listening(BROKER_PORT);
+    dce->start_listening(BROKER_PORT + id);
 #else
     mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
     esp_transport_handle_t at = esp_transport_at_init(dce.get());
@@ -146,8 +172,6 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "Network reinitialized, retrying");
         }
     }
-#else
-    vTaskDelay(portMAX_DELAY);
 #endif
-
+    xEventGroupSetBits(event_group, id ? DCE0_DONE : DCE1_DONE);
 }

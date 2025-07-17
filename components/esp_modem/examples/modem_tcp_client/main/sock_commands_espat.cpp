@@ -67,11 +67,18 @@ command_result net_open(CommandableIf *t)
     ESP_LOGI(TAG, "Multiple connections mode enabled");
 
     // Set passive receive mode (1) for better control
-    ret = set_rx_mode(t, 1);
-    if (ret != command_result::OK) {
-        ESP_LOGE(TAG, "Failed to set preferred Rx mode");
-        return ret;
+    for (int i = 0; i < 2; i++) {
+        std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(i) + ",1\r\n";
+        dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
     }
+    // std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(link_id) + "," + std::to_string(mode) + "\r\n";
+    // return dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
+    //
+    // ret = set_rx_mode(t, 1);
+    // if (ret != command_result::OK) {
+    //     ESP_LOGE(TAG, "Failed to set preferred Rx mode");
+    //     return ret;
+    // }
     return command_result::OK;
 }
 
@@ -111,6 +118,7 @@ command_result net_close(CommandableIf *t)
 
 command_result tcp_close(CommandableIf *t)
 {
+    return command_result::OK;
     ESP_LOGV(TAG, "%s", __func__);
     // Use link ID 0 for closing connection
     const int link_id = 0;
@@ -192,6 +200,12 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     auto *recv_data = (char *)data;
 
     if (data_to_recv == 0) {
+        // const std::string_view error_str = "ERROR";
+        // const std::string_view data_sv(recv_data, len);
+        // if (data_sv.find(error_str) == std::string_view::npos) {
+        //     // no data,
+        //     return ret::OK;
+        // }
         const std::string_view head = "+CIPRECVDATA:";
 
         // Find the response header
@@ -200,7 +214,7 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
         });
 
         if (head_pos == recv_data + len) {
-            return ret::FAIL;
+            return ret::IN_PROGRESS;
         }
 
         // Find the end of the length field
@@ -316,6 +330,17 @@ Responder::ret Responder::connect(std::string_view response)
     }
     return ret::IN_PROGRESS;
 }
+Responder::ret Responder::check_urc(status state, std::string_view &response)
+{
+    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
+    std::string expected_urc = "+IPD," + std::to_string(link_id);
+    if (response.find(expected_urc) != std::string::npos) {
+        uint64_t data_ready = 1;
+        write(data_ready_fd, &data_ready, sizeof(data_ready));
+        ESP_LOGD(TAG, "Data available notification");
+    }
+    return ret::IN_PROGRESS;
+}
 
 Responder::ret Responder::check_async_replies(status state, std::string_view &response)
 {
@@ -334,13 +359,6 @@ Responder::ret Responder::check_async_replies(status state, std::string_view &re
     } else if (response.find("CLOSED") != std::string::npos) {
         ESP_LOGW(TAG, "TCP connection closed");
         return ret::FAIL;
-    }
-
-    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
-    if (response.find("+IPD,") != std::string::npos) {
-        uint64_t data_ready = 1;
-        write(data_ready_fd, &data_ready, sizeof(data_ready));
-        ESP_LOGD(TAG, "Data available notification");
     }
 
     if (state == status::SENDING) {
