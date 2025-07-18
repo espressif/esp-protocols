@@ -34,6 +34,7 @@ public:
         sock(s), data_ready_fd(ready_fd), dte(dte_arg) {}
     ret process_data(status state, uint8_t *data, size_t len);
     ret check_async_replies(status state, std::string_view &response);
+    ret check_urc(status state, std::string_view &response);
 
     void start_sending(size_t len);
     void start_receiving(size_t len);
@@ -63,13 +64,17 @@ public:
         return total_len;
     }
 
+    int link_id{s_link_id++};
+    static SemaphoreHandle_t s_dte_mutex;
 private:
+    static int s_link_id;
     static constexpr size_t buffer_size = 512;
 
     bool on_read(char *data, size_t len)
     {
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
         ::send(sock, data, len, 0);
+        printf("sending %d\n", len);
 #else
         ::memcpy(&buffer[actual_read], data, len);
         actual_read += len;
@@ -100,11 +105,6 @@ private:
 
 class DCE : public Module {
 public:
-    // Constructor and destructor for managing dce_list
-    // explicit GenericModule(std::shared_ptr<DTE> dte, std::unique_ptr<PdpContext> pdp):
-    //     dte(std::move(dte)), pdp(std::move(pdp)) {}
-    // explicit GenericModule(std::shared_ptr<DTE> dte, );
-    //
     DCE(std::shared_ptr<esp_modem::DTE> dte_arg, const esp_modem_dce_config *config);
     ~DCE();
 
@@ -169,6 +169,9 @@ public:
             return 0;
         }
         at.clear_offsets();
+        ESP_LOGI("TAG", "TAKE RECV %d", at.link_id);
+        xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+        ESP_LOGE("TAG", "TAKE RECV %d", at.link_id);
         state = status::RECEIVING;
         uint64_t data;
         read(data_ready_fd, &data, sizeof(data));
@@ -190,6 +193,9 @@ public:
         if (!wait_to_idle(timeout_ms)) {
             return -1;
         }
+        ESP_LOGI("TAG", "TAKE SEND %d", at.link_id);
+        xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+        ESP_LOGE("TAG", "TAKE SEND %d", at.link_id);
         state = status::SENDING;
         memcpy(at.get_buf(), buffer, len_to_send);
         ESP_LOG_BUFFER_HEXDUMP("dce", at.get_buf(), len, ESP_LOG_VERBOSE);
@@ -230,6 +236,14 @@ public:
         }
         return -1;
     }
+    static std::vector<DCE *> dce_list;
+    static bool network_init;
+    static void read_callback(uint8_t *data, size_t len)
+    {
+        for (auto dce : dce_list) {
+            dce->perform_at(data, len);
+        }
+    }
 private:
     esp_modem::SignalGroup signal;
     void close_sock();
@@ -243,15 +257,6 @@ private:
     int sock {-1};
     int listen_sock {-1};
     int data_ready_fd {-1};
-    static std::vector<DCE*> dce_list;
-    static bool network_init;
-    static void read_callback(uint8_t *data, size_t len)
-    {
-        for (auto dce : dce_list) {
-            dce->perform_at(data, len);
-        }
-    }
-
 };
 std::unique_ptr<DCE> create(const esp_modem::dce_config *config, std::shared_ptr<esp_modem::DTE> dte);
 }

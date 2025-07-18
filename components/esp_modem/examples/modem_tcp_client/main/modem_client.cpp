@@ -24,7 +24,7 @@
 #include "tcp_transport_at.h"
 
 // #define BROKER_URL "test.mosquitto.org"
-#define BROKER_URL "192.168.0.39"
+#define BROKER_URL "broker.emqx.io"
 #define BROKER_PORT 1883
 
 
@@ -76,8 +76,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-// sock_dce::DCE::dce_list{};
-
 static void perform(void* ctx);
 
 extern "C" void app_main(void)
@@ -117,7 +115,8 @@ extern "C" void app_main(void)
 
     xTaskCreate(perform, "perform", 4096, dce.get(), 4, nullptr);
 
-    // vTaskDelay(pdMS_TO_TICKS(15000));
+    // vTaskDelay(pdMS_TO_TICKS(5000));
+    // vTaskDelay(portMAX_DELAY);
     /* create another DCE to serve a new connection */
     auto dce1 = sock_dce::create(&dce_config, dte);
     if (!dce1->init()) {
@@ -127,6 +126,13 @@ extern "C" void app_main(void)
     xTaskCreate(perform, "perform", 4096, dce1.get(), 4, nullptr);
 
     xEventGroupWaitBits(event_group, DCE0_DONE | DCE1_DONE, pdFALSE, pdTRUE, portMAX_DELAY);
+#ifdef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
+    // we release smart pointers, as this example does never exit
+    // and in tcp-transport option we don't need a task to run
+    // so we exit main and keep DCE's "running"
+    dce.release();
+    dce1.release();
+#endif
 }
 
 static void perform(void* ctx)
@@ -137,7 +143,7 @@ static void perform(void* ctx)
     const int id = counter++;
     mqtt_client_id[12] += id;    // assumes different client id per each thread
     esp_mqtt_client_config_t mqtt_config = {};
-    mqtt_config.broker.address.port = BROKER_PORT + id;
+    mqtt_config.broker.address.port = BROKER_PORT; // + id;
     mqtt_config.session.message_retransmit_timeout = 10000;
     mqtt_config.credentials.client_id = mqtt_client_id;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
@@ -145,10 +151,10 @@ static void perform(void* ctx)
     dce->start_listening(BROKER_PORT + id);
 #else
     mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
-    esp_transport_handle_t at = esp_transport_at_init(dce.get());
-    esp_transport_handle_t ssl = esp_transport_tls_init(at);
+    esp_transport_handle_t at = esp_transport_at_init(dce);
+    // esp_transport_handle_t ssl = esp_transport_tls_init(at);
 
-    mqtt_config.network.transport = ssl;
+    mqtt_config.network.transport = at;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);
@@ -174,4 +180,5 @@ static void perform(void* ctx)
     }
 #endif
     xEventGroupSetBits(event_group, id ? DCE0_DONE : DCE1_DONE);
+    vTaskDelete(nullptr);
 }

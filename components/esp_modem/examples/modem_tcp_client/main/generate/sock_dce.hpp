@@ -147,7 +147,9 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
             return 0;
         }
         at.clear_offsets();
-        // TODO: MUTEX
+        ESP_LOGI("TAG", "TAKE RECV %d", at.link_id);
+        xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+        ESP_LOGE("TAG", "TAKE RECV %d", at.link_id);
         state = status::RECEIVING;
         uint64_t data;
         read(data_ready_fd, &data, sizeof(data));
@@ -170,7 +172,9 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
         if (!wait_to_idle(timeout_ms)) {
             return -1;
         }
-        // TODO: MUTEX
+        ESP_LOGI("TAG", "TAKE SEND %d", at.link_id);
+        xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+        ESP_LOGE("TAG", "TAKE SEND %d", at.link_id);
         state = status::SENDING;
         memcpy(at.get_buf(), buffer, len_to_send);
         ESP_LOG_BUFFER_HEXDUMP("dce", at.get_buf(), len, ESP_LOG_VERBOSE);
