@@ -8,6 +8,7 @@
 #include "cxx_include/esp_modem_api.hpp"
 #include <cxx_include/esp_modem_dce_factory.hpp>
 #include "sock_commands.hpp"
+#include "sock_module.hpp"
 #include <sys/socket.h>
 
 #pragma  once
@@ -97,8 +98,8 @@ private:
     std::shared_ptr<esp_modem::DTE> &dte;
 };
 
-class DCE : public ::esp_modem::GenericModule {
-    using esp_modem::GenericModule::GenericModule;
+class DCE : public Module {
+    using Module::Module;
 public:
 
     /**

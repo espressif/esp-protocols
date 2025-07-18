@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -23,8 +23,8 @@
 #include "tcp_transport_mbedtls.h"
 #include "tcp_transport_at.h"
 
-#define BROKER_URL "mqtt.eclipseprojects.io"
-#define BROKER_PORT 8883
+#define BROKER_URL "test.mosquitto.org"
+#define BROKER_PORT 1883
 
 
 static const char *TAG = "modem_client";
@@ -114,7 +114,7 @@ extern "C" void app_main(void)
     mqtt_config.broker.address.port = BROKER_PORT;
     mqtt_config.session.message_retransmit_timeout = 10000;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
-    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
+    mqtt_config.broker.address.uri = "mqtt://127.0.0.1";
     dce->start_listening(BROKER_PORT);
 #else
     mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
@@ -124,14 +124,14 @@ extern "C" void app_main(void)
     mqtt_config.network.transport = ssl;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
+    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);
     esp_mqtt_client_start(mqtt_client);
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     if (!dce->connect(BROKER_URL, BROKER_PORT)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }
-    while (1) {
+    while (true) {
         while (dce->perform_sock()) {
             ESP_LOGV(TAG, "...performing");
         }
