@@ -200,23 +200,13 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     auto *recv_data = (char *)data;
 
     if (data_to_recv == 0) {
-        // const std::string_view error_str = "ERROR";
-        // const std::string_view data_sv(recv_data, len);
-        // if (data_sv.find(error_str) == std::string_view::npos) {
-        //     // no data,
-        //     return ret::OK;
-        // }
         const std::string_view head = "+CIPRECVDATA:";
-
-        // Find the response header
-        auto head_pos = std::search(recv_data, recv_data + len, head.data(), head.data() + head.size(), [](char a, char b) {
-            return a == b;
-        });
-
-        if (head_pos == recv_data + len) {
+        const std::string_view recv_data_view(recv_data, len);
+        const auto head_pos_found = recv_data_view.find(head);
+        if (head_pos_found == std::string_view::npos) {
             return ret::IN_PROGRESS;
         }
-
+        const auto *head_pos = recv_data + head_pos_found;
         // Find the end of the length field
         auto next_comma = (char *)memchr(head_pos + head.size(), ',', MIN_MESSAGE);
         if (next_comma == nullptr) {
@@ -265,12 +255,22 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     char *ok_pos = nullptr;
     if (actual_len + 1 + 2 /* OK */ <= len) {
         ok_pos = (char *)memchr(recv_data + actual_len + 1, 'O', MIN_MESSAGE);
-        if (ok_pos == nullptr || ok_pos[1] != 'K') {
+        if (ok_pos == nullptr) { // || ok_pos[1] != 'K') {
+            data_to_recv = 0;
+            return ret::FAIL;
+        }
+        if (ok_pos + 1 < recv_data + len && ok_pos[1] != 'K') {
+            // we ignore the condition when receiving 'O' as the last character in the last batch,
+            // don't wait for the 'K' in the next run, assume the data are valid and let higher layers deal with it.
             data_to_recv = 0;
             return ret::FAIL;
         }
     }
-
+    if (ok_pos != nullptr && (char *)data + len - ok_pos - 2 > MIN_MESSAGE) {
+        // check for async replies after the Recv header
+        std::string_view response((char *)ok_pos + 2 /* OK */, (char *)data + len - ok_pos);
+        check_urc(status::RECEIVING, response);
+    }
     // Reset and prepare for next receive
     data_to_recv = 0;
     return ret::OK;

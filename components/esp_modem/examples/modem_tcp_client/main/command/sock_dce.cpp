@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <charconv>
 #include <sys/socket.h>
 #include "esp_vfs.h"

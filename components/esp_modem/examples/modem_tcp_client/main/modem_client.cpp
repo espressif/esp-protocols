@@ -24,8 +24,9 @@
 #include "tcp_transport_at.h"
 
 // #define BROKER_URL "test.mosquitto.org"
-#define BROKER_URL "broker.emqx.io"
-#define BROKER_PORT 1883
+// #define BROKER_URL "broker.emqx.io"
+#define BROKER_URL "192.168.0.18"
+#define BROKER_PORT 8883
 
 
 static const char *TAG = "modem_client";
@@ -141,20 +142,20 @@ static void perform(void* ctx)
     char mqtt_client_id[] = "MQTT_CLIENT_0";
     static int counter = 0;
     const int id = counter++;
-    mqtt_client_id[12] += id;    // assumes different client id per each thread
+    mqtt_client_id[12] += id;    // assumes a different client id per each thread
     esp_mqtt_client_config_t mqtt_config = {};
-    mqtt_config.broker.address.port = BROKER_PORT; // + id;
+    mqtt_config.broker.address.port = BROKER_PORT + id;
     mqtt_config.session.message_retransmit_timeout = 10000;
     mqtt_config.credentials.client_id = mqtt_client_id;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
-    mqtt_config.broker.address.uri = "mqtt://127.0.0.1";
+    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
     dce->start_listening(BROKER_PORT + id);
 #else
-    mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
+    mqtt_config.broker.address.uri = "mqtts://" BROKER_URL;
     esp_transport_handle_t at = esp_transport_at_init(dce);
-    // esp_transport_handle_t ssl = esp_transport_tls_init(at);
+    esp_transport_handle_t ssl = esp_transport_tls_init(at);
 
-    mqtt_config.network.transport = at;
+    mqtt_config.network.transport = ssl;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);

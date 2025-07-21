@@ -343,23 +343,24 @@ Responder::ret Responder::connect(std::string_view response)
 Responder::ret Responder::check_urc(status state, std::string_view &response)
 {
     // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
-    std::string expected_urc = "+IPD," + std::to_string(link_id);
-    if (response.find(expected_urc) != std::string::npos) {
-        uint64_t data_ready = 1;
-        write(data_ready_fd, &data_ready, sizeof(data_ready));
-        ESP_LOGD(TAG, "Data available notification");
-    }
-    return ret::IN_PROGRESS;
-}
-
-Responder::ret Responder::check_async_replies(status state, std::string_view &response)
-{
     if (response.find("+CIPRXGET: 1") != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
         ESP_LOGD(TAG, "Got data on modem!");
     }
     return ret::IN_PROGRESS;
+}
+
+Responder::ret Responder::check_async_replies(status state, std::string_view &response)
+{
+    ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
+    if (state == status::SENDING) {
+        return send(response);
+    } else if (state == status::CONNECTING) {
+        return connect(response);
+    }
+    return ret::IN_PROGRESS;
+
 }
 
 Responder::ret Responder::process_data(status state, uint8_t *data, size_t len)

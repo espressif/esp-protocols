@@ -133,7 +133,7 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
         const std::string_view recv_data_view = std::string_view(recv_data, len);
         auto head_pos_found = recv_data_view.find(head);
         if (head_pos_found == std::string_view::npos) {
-            return ret::FAIL;
+            return ret::IN_PROGRESS;
         }
 
         auto *head_pos = recv_data + head_pos_found;
