@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,13 +18,13 @@ using namespace esp_modem;
 
 command_result net_open(CommandableIf *term)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string response;
     auto ret = dce_commands::generic_get_string(term, "AT+NETOPEN?\r", response, 1000);
     if (ret != command_result::OK) {
         return ret;
     }
-    ESP_LOGV(TAG, "%s", response.data() );
+    ESP_LOGV(TAG, "%s", response.data());
     if (response.find("+NETOPEN: 1") != std::string::npos) {
         ESP_LOGD(TAG, "Already there");
         ret = command_result::OK;
@@ -42,23 +42,23 @@ command_result net_open(CommandableIf *term)
 
 command_result net_close(CommandableIf *term)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     return dce_commands::generic_command(term, "AT+NETCLOSE\r", "+NETCLOSE:", "ERROR", 30000);
 }
 
 command_result tcp_open(CommandableIf *term, const std::string &host, int port, int timeout)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     auto ret = dce_commands::generic_command(term, "AT+CIPRXGET=1\r", "OK", "ERROR", 50000);
     if (ret != command_result::OK) {
         ESP_LOGE(TAG, "Setting Rx mode failed!");
         return ret;
     }
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string ip_open = R"(AT+CIPOPEN=0,"TCP",")" + host + "\"," + std::to_string(port) + "\r";
     ret = dce_commands::generic_command(term, ip_open, "+CIPOPEN: 0,0", "ERROR", timeout);
     if (ret != command_result::OK) {
-        ESP_LOGE(TAG, "%s Failed", __func__ );
+        ESP_LOGE(TAG, "%s Failed", __func__);
         return ret;
     }
     return command_result::OK;
@@ -66,13 +66,13 @@ command_result tcp_open(CommandableIf *term, const std::string &host, int port, 
 
 command_result tcp_close(CommandableIf *term)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     return dce_commands::generic_command(term, "AT+CIPCLOSE=0\r", "+CIPCLOSE:", "ERROR", 10000);
 }
 
 command_result tcp_send(CommandableIf *term, uint8_t *data, size_t len)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string send = "AT+CIPSEND=0," + std::to_string(len) + "\r";
     auto ret = term->command(send, [&](uint8_t *data, size_t len) {
         std::string_view response((char *)data, len);
@@ -107,7 +107,7 @@ command_result tcp_send(CommandableIf *term, uint8_t *data, size_t len)
     uint8_t ctrl_z = '\x1A';
     term->write(&ctrl_z, 1);
     int count = 0;
-    while (ret == command_result::TIMEOUT && count++ < 1000 ) {
+    while (ret == command_result::TIMEOUT && count++ < 1000) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
     term->on_read(nullptr);
@@ -116,7 +116,7 @@ command_result tcp_send(CommandableIf *term, uint8_t *data, size_t len)
 
 command_result tcp_recv(CommandableIf *term, uint8_t *data, size_t len, size_t &out_len)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string out;
     auto ret = dce_commands::generic_get_string(term, "AT+CIPRXGET=4,0\r", out);
     if (ret != command_result::OK) {
@@ -340,21 +340,26 @@ Responder::ret Responder::connect(std::string_view response)
     return Responder::ret::IN_PROGRESS;
 }
 
+Responder::ret Responder::check_urc(status state, std::string_view &response)
+{
+    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
+    std::string expected_urc = "+IPD," + std::to_string(link_id);
+    if (response.find(expected_urc) != std::string::npos) {
+        uint64_t data_ready = 1;
+        write(data_ready_fd, &data_ready, sizeof(data_ready));
+        ESP_LOGD(TAG, "Data available notification");
+    }
+    return ret::IN_PROGRESS;
+}
+
 Responder::ret Responder::check_async_replies(status state, std::string_view &response)
 {
-    ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
     if (response.find("+CIPRXGET: 1") != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
         ESP_LOGD(TAG, "Got data on modem!");
     }
-    if (state == status::SENDING) {
-        return send(response);
-    } else if (state == status::CONNECTING) {
-        return connect(response);
-    }
     return ret::IN_PROGRESS;
-
 }
 
 Responder::ret Responder::process_data(status state, uint8_t *data, size_t len)

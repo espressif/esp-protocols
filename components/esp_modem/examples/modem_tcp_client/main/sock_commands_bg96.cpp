@@ -295,9 +295,9 @@ Responder::ret Responder::connect(std::string_view response)
     return Responder::ret::IN_PROGRESS;
 }
 
-Responder::ret Responder::check_async_replies(status state, std::string_view &response)
+Responder::ret Responder::check_urc(status state, std::string_view &response)
 {
-    ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
+    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
     if (response.find("+QIURC: \"recv\",0") != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
@@ -321,9 +321,17 @@ Responder::ret Responder::check_async_replies(status state, std::string_view &re
     } else if (response.find("+QIURC: \"closed\",0") != std::string::npos) {
         return ret::FAIL;
     }
+    return ret::IN_PROGRESS;
+}
+
+
+Responder::ret Responder::check_async_replies(status state, std::string_view &response)
+{
+    ESP_LOGD(TAG, "response %.*s", static_cast<int>(response.size()), response.data());
     if (state == status::SENDING) {
         return send(response);
-    } else if (state == status::CONNECTING) {
+    }
+    if (state == status::CONNECTING) {
         return connect(response);
     }
     return ret::IN_PROGRESS;
