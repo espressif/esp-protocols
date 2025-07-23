@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.5.0)
+
+### Features
+
+- add separate tx lock for send and receive ([250eebf](https://github.com/espressif/esp-protocols/commit/250eebf))
+- add unregister event to websocket client ([ce16050](https://github.com/espressif/esp-protocols/commit/ce16050))
+- add ability to reconnect after close ([19891d8](https://github.com/espressif/esp-protocols/commit/19891d8))
+
+### Bug Fixes
+
+- release client-lock during WEBSOCKET_EVENT_DATA ([030cb75](https://github.com/espressif/esp-protocols/commit/030cb75))
+
 ## [1.4.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.4.0)
 
 ### Features
