@@ -154,7 +154,7 @@
         }                                           \
     }
 
-#define queueFree(type, queue)  while (queue) { type * _q = queue; queue = queue->next; free(_q); }
+#define queueFree(type, queue)  while (queue) { type * _q = queue; queue = queue->next; mdns_mem_free(_q); }
 
 #define PCB_STATE_IS_PROBING(s) (s->state > PCB_OFF && s->state < PCB_ANNOUNCE_1)
 #define PCB_STATE_IS_ANNOUNCING(s) (s->state > PCB_PROBE_3 && s->state < PCB_RUNNING)
