@@ -18,6 +18,10 @@ jobs:
         exclude:
           - idf_ver: "release-v5.1"
             example: "serverless_mqtt"  # serverless_mqtt is not supported due to esp-peer
+        include:
+          - idf_ver: "latest"
+            example: "serverless_mqtt"
+            warning: "'octal_mode' is deprecated"
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -31,6 +35,8 @@ jobs:
         with:
           submodules: recursive
       - name: Build with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
