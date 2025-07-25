@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <algorithm>
 #include <charconv>
 #include <sys/socket.h>
 #include "esp_vfs.h"
@@ -14,6 +15,28 @@
 namespace sock_dce {
 
 constexpr auto const *TAG = "sock_dce";
+
+// Definition of the static member variables
+std::vector<DCE*> DCE::dce_list{};
+bool DCE::network_init = false;
+int Responder::s_link_id = 0;
+SemaphoreHandle_t Responder::s_dte_mutex{};
+
+// Constructor - add this DCE instance to the static list
+DCE::DCE(std::shared_ptr<esp_modem::DTE> dte_arg, const esp_modem_dce_config *config)
+    : Module(std::move(dte_arg), config)
+{
+    dce_list.push_back(this);
+}
+
+// Destructor - remove this DCE instance from the static list
+DCE::~DCE()
+{
+    auto it = std::find(dce_list.begin(), dce_list.end(), this);
+    if (it != dce_list.end()) {
+        dce_list.erase(it);
+    }
+}
 
 
 bool DCE::perform_sock()
@@ -61,13 +84,22 @@ bool DCE::perform_sock()
 
 void DCE::perform_at(uint8_t *data, size_t len)
 {
-    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_VERBOSE);
+    std::string_view resp_sv((char *)data, len);
+    at.check_urc(state, resp_sv);
+    if (state == status::IDLE) {
+        return;
+    }
+    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     switch (at.process_data(state, data, len)) {
     case Responder::ret::OK:
+        ESP_LOGW(TAG, "GIVE data %d", at.link_id);
+        xSemaphoreGive(at.s_dte_mutex);
         state = status::IDLE;
         signal.set(IDLE);
         return;
     case Responder::ret::FAIL:
+        ESP_LOGW(TAG, "GIVE data %d", at.link_id);
+        xSemaphoreGive(at.s_dte_mutex);
         state = status::FAILED;
         signal.set(IDLE);
         return;
@@ -82,10 +114,14 @@ void DCE::perform_at(uint8_t *data, size_t len)
     std::string_view response((char *)data, len);
     switch (at.check_async_replies(state, response)) {
     case Responder::ret::OK:
+        ESP_LOGW(TAG, "GIVE command %d", at.link_id);
+        xSemaphoreGive(at.s_dte_mutex);
         state = status::IDLE;
         signal.set(IDLE);
         return;
     case Responder::ret::FAIL:
+        ESP_LOGW(TAG, "GIVE command %d", at.link_id);
+        xSemaphoreGive(at.s_dte_mutex);
         state = status::FAILED;
         signal.set(IDLE);
         return;
@@ -131,6 +167,9 @@ bool DCE::at_to_sock()
         close_sock();
         return false;
     }
+    ESP_LOGI(TAG, "TAKE RECV %d", at.link_id);
+    xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+    ESP_LOGE(TAG, "TAKE RECV %d", at.link_id);
     state = status::RECEIVING;
     at.start_receiving(at.get_buf_len());
     return true;
@@ -139,8 +178,8 @@ bool DCE::at_to_sock()
 bool DCE::sock_to_at()
 {
     ESP_LOGD(TAG,  "socket read: data available");
-    if (!signal.wait(IDLE, 1000)) {
-        ESP_LOGE(TAG,  "Failed to get idle");
+    if (!signal.wait(IDLE, 5000)) {
+        ESP_LOGE(TAG,  "Failed to get idle 2");
         close_sock();
         return false;
     }
@@ -149,6 +188,9 @@ bool DCE::sock_to_at()
         close_sock();
         return false;
     }
+    ESP_LOGI(TAG, "TAKE SEND %d", at.link_id);
+    xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+    ESP_LOGE(TAG, "TAKE SEND %d", at.link_id);
     state = status::SENDING;
     int len = ::recv(sock, at.get_buf(), at.get_buf_len(), 0);
     if (len < 0) {
@@ -224,12 +266,17 @@ void DCE::start_listening(int port)
 
 bool DCE::connect(std::string host, int port)
 {
-    dte->on_read(nullptr);
-    tcp_close();
-    dte->on_read([this](uint8_t *data, size_t len) {
-        this->perform_at(data, len);
-        return esp_modem::command_result::TIMEOUT;
-    });
+    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
+    assert(data_ready_fd > 0);
+    // dte->on_read(nullptr);
+    // tcp_close();
+    // dte->on_read([](uint8_t *data, size_t len) {
+    //     read_callback(data, len);
+    //     return esp_modem::command_result::TIMEOUT;
+    // });
+    ESP_LOGI(TAG, "TAKE CONNECT %d", at.link_id);
+    xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
+    ESP_LOGE(TAG, "TAKE CONNECT %d", at.link_id);
     if (!at.start_connecting(host, port)) {
         ESP_LOGE(TAG, "Unable to start connecting");
         dte->on_read(nullptr);
@@ -241,11 +288,14 @@ bool DCE::connect(std::string host, int port)
 
 bool DCE::init()
 {
+    if (network_init) {
+        return true;
+    }
+    network_init = true;
+    Responder::s_dte_mutex = xSemaphoreCreateBinary();
+    xSemaphoreGive(at.s_dte_mutex);
     esp_vfs_eventfd_config_t config = ESP_VFS_EVENTD_CONFIG_DEFAULT();
     esp_vfs_eventfd_register(&config);
-
-    data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
-    assert(data_ready_fd > 0);
 
     dte->on_read(nullptr);
     const int retries = 5;
@@ -287,6 +337,10 @@ bool DCE::init()
         esp_modem::Task::Delay(5000);
     }
     ESP_LOGI(TAG, "Got IP %s", ip_addr.c_str());
+    dte->on_read([](uint8_t *data, size_t len) {
+        read_callback(data, len);
+        return esp_modem::command_result::TIMEOUT;
+    });
     return true;
 }
 
