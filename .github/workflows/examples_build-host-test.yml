@@ -59,10 +59,11 @@ jobs:
       - name: Build with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
+          . ${GITHUB_WORKSPACE}/ci/config_env.sh
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
-          python ./ci/build_apps.py examples/mqtt -l -t linux
-          timeout 5 ./examples/mqtt/build_linux_default/esp_mqtt_demo.elf | tee test.log  || true
+          python ./ci/build_apps.py examples/mqtt -l -t linux -r 'sdkconfig.ci'
+          timeout 5 ./examples/mqtt/build_linux/esp_mqtt_demo.elf | tee test.log  || true
           grep 'MQTT_EVENT_DATA' test.log
 
   run_on_target:

@@ -36,6 +36,7 @@ jobs:
         shell: bash
         working-directory: ${{ env.TEST_DIR }}
         run: |
+          . ${GITHUB_WORKSPACE}/ci/config_env.sh
           . ${IDF_PATH}/export.sh
           rm -rf sdkconfig build
           [ -f ${SDKCONFIG} ] && cp ${SDKCONFIG} sdkconfig.defaults

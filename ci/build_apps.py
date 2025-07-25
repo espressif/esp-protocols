@@ -65,6 +65,7 @@ if __name__ == '__main__':
 
     sys.exit(
         build_apps(apps,
+                   verbose=2,
                    dry_run=False,
                    keep_going=False,
                    no_preserve=args.delete,
