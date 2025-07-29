@@ -1,0 +1,28 @@
+From 600c9baaa622cd0885697829bcc5e22fa0a79e68 Mon Sep 17 00:00:00 2001
+From: David Cermak <cermak@espressif.com>
+Date: Fri, 25 Jul 2025 17:20:10 +0200
+Subject: [PATCH] fix(media_lib): Remove deprecated API for get_stack_frame API
+
+---
+ components/media_lib_sal/port/media_lib_os_freertos.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/components/media_lib_sal/port/media_lib_os_freertos.c b/components/media_lib_sal/port/media_lib_os_freertos.c
+index d248d59..1117926 100644
+--- a/components/media_lib_sal/port/media_lib_os_freertos.c
++++ b/components/media_lib_sal/port/media_lib_os_freertos.c
+@@ -369,7 +369,11 @@ static int _get_stack_frame(void** addr, int n)
+     TaskSnapshot_t snap_shot;
+     TaskHandle_t cur_task = xTaskGetCurrentTaskHandle();
+     vTaskGetSnapshot(cur_task, &snap_shot);
+-    snap_shot.pxTopOfStack = pxTaskGetStackStart(cur_task);;
++#if (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 5, 0))
++    snap_shot.pxTopOfStack = xTaskGetStackStart(cur_task);
++#else
++    snap_shot.pxTopOfStack = pxTaskGetStackStart(cur_task);
++#endif
+     esp_backtrace_get_start(&(frame.pc), &(frame.sp), &(frame.next_pc));
+
+     for (int i = 0; i < n; i++) {
+--
+2.43.0

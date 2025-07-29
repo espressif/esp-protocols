@@ -14,6 +14,7 @@ COMPONENTS_SRC="${EXTRACTED_DIR}/components"
 COMPONENTS_DST="${ESP_PEER_DIR}/components"
 PATCH_FILE_1="${THIS_DIR}/Remove-deprecated-freeRTOS-header.patch"
 PATCH_FILE_2="${THIS_DIR}/libpeer-Add-direct-dependency-to-libsrtp.patch"
+PATCH_FILE_3="${THIS_DIR}/Remove-deprecated-API-for-get_stack_fr.patch"
 
 # Download if not exists
 if [ ! -d "$EXTRACTED_DIR" ]; then
@@ -22,6 +23,7 @@ if [ ! -d "$EXTRACTED_DIR" ]; then
     unzip -o "$ZIP_PATH" -d "$ESP_PEER_DIR"
     patch -p1 -d "$EXTRACTED_DIR" < "$PATCH_FILE_1"
     patch -p1 -d "$EXTRACTED_DIR" < "$PATCH_FILE_2"
+    patch -p1 -d "$EXTRACTED_DIR" < "$PATCH_FILE_3"
     mv ${EXTRACTED_DIR}/components ${ESP_PEER_DIR}
     mv ${ESP_PEER_DIR}/components/esp_webrtc/impl/peer_default ${ESP_PEER_DIR}/components
 fi
