@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -23,7 +23,9 @@
 #include "tcp_transport_mbedtls.h"
 #include "tcp_transport_at.h"
 
-#define BROKER_URL "mqtt.eclipseprojects.io"
+// #define BROKER_URL "test.mosquitto.org"
+// #define BROKER_URL "broker.emqx.io"
+#define BROKER_URL "192.168.0.18"
 #define BROKER_PORT 8883
 
 
@@ -31,6 +33,8 @@ static const char *TAG = "modem_client";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int GOT_DATA_BIT = BIT2;
+static const int DCE0_DONE = BIT3;
+static const int DCE1_DONE = BIT4;
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -73,10 +77,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+static void perform(void* ctx);
 
 extern "C" void app_main(void)
 {
-
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -104,34 +108,64 @@ extern "C" void app_main(void)
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(CONFIG_EXAMPLE_MODEM_APN);
 
     /* create the DCE and initialize network manually (using AT commands) */
-    auto dce = sock_dce::create(&dce_config, std::move(dte));
+    auto dce = sock_dce::create(&dce_config, dte);
     if (!dce->init()) {
         ESP_LOGE(TAG,  "Failed to setup network");
         return;
     }
 
+    xTaskCreate(perform, "perform", 4096, dce.get(), 4, nullptr);
+
+    // vTaskDelay(pdMS_TO_TICKS(5000));
+    // vTaskDelay(portMAX_DELAY);
+    /* create another DCE to serve a new connection */
+    auto dce1 = sock_dce::create(&dce_config, dte);
+    if (!dce1->init()) {
+        ESP_LOGE(TAG,  "Failed to setup network");
+        return;
+    }
+    xTaskCreate(perform, "perform", 4096, dce1.get(), 4, nullptr);
+
+    xEventGroupWaitBits(event_group, DCE0_DONE | DCE1_DONE, pdFALSE, pdTRUE, portMAX_DELAY);
+#ifdef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
+    // we release smart pointers, as this example does never exit
+    // and in tcp-transport option we don't need a task to run
+    // so we exit main and keep DCE's "running"
+    dce.release();
+    dce1.release();
+#endif
+}
+
+static void perform(void* ctx)
+{
+    auto dce = static_cast<sock_dce::DCE*>(ctx);
+    char mqtt_client_id[] = "MQTT_CLIENT_0";
+    static int counter = 0;
+    const int id = counter++;
+    mqtt_client_id[12] += id;    // assumes a different client id per each thread
     esp_mqtt_client_config_t mqtt_config = {};
-    mqtt_config.broker.address.port = BROKER_PORT;
+    mqtt_config.broker.address.port = BROKER_PORT + id;
     mqtt_config.session.message_retransmit_timeout = 10000;
+    mqtt_config.credentials.client_id = mqtt_client_id;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
-    dce->start_listening(BROKER_PORT);
+    dce->start_listening(BROKER_PORT + id);
 #else
-    mqtt_config.broker.address.uri = "mqtt://" BROKER_URL;
-    esp_transport_handle_t at = esp_transport_at_init(dce.get());
+    mqtt_config.broker.address.uri = "mqtts://" BROKER_URL;
+    esp_transport_handle_t at = esp_transport_at_init(dce);
     esp_transport_handle_t ssl = esp_transport_tls_init(at);
 
     mqtt_config.network.transport = ssl;
 #endif
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
+    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);
     esp_mqtt_client_start(mqtt_client);
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     if (!dce->connect(BROKER_URL, BROKER_PORT)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }
-    while (1) {
+    while (true) {
         while (dce->perform_sock()) {
             ESP_LOGV(TAG, "...performing");
         }
@@ -145,8 +179,7 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "Network reinitialized, retrying");
         }
     }
-#else
-    vTaskDelay(portMAX_DELAY);
 #endif
-
+    xEventGroupSetBits(event_group, id ? DCE0_DONE : DCE1_DONE);
+    vTaskDelete(nullptr);
 }
