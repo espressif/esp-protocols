@@ -11,7 +11,7 @@ Allows you to **scan networks**, **connect**, **disconnect**, and **monitor Wi-F
 * **Disconnect** from Wi-Fi
 * **Auto-fill SSID** from scanned networks list
 * **Mobile-friendly**, lightweight, no build tools needed
-* Works out of the box with the [modified ESP32 REST API firmware](../README.md)
+* Works out of the box with the [modified ESP32 REST API firmware](../)
 
 ## How to Use
 
@@ -76,4 +76,4 @@ If you are unsure of the IP address, check your PPP server log, your router's DH
 ## Credits
 
 * Frontend by \glarionenko, \2025
-* Backend REST API — see [eppp\_link/slave\_wifi\_rest\_api/README.md](../README.md)
+* Backend REST API — see [eppp\_link/slave\_wifi\_rest\_api/](../)

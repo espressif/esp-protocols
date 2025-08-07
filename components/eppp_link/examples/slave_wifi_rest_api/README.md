@@ -1,4 +1,4 @@
-# ESP32 [eppp\_link\_slave](../slave/) Example – Modifications and REST Wi-Fi Control
+# ESP32 [eppp\_link/slave](../slave/) Example – Modifications and REST Wi-Fi Control
 
 [See the original example here](../slave/)
 
