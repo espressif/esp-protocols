@@ -79,7 +79,7 @@ Interact from browser, curl, or your own UI:
   curl -X POST http://<esp32_ip>/wifi/disconnect
   ```
 
-> See [README.md](./README.md) for a ready-to-use web UI!
+> See [Web panel](webPanel/) for a ready-to-use web UI!
 
 ---
 
