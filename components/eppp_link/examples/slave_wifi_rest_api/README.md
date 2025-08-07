@@ -1,5 +1,7 @@
 # ESP32 eppp\_slave Example – Modifications and REST Wi-Fi Control
 
+[See the original example here](../slave/)
+
 This document describes the key modifications and usage instructions for the enhanced `eppp_slave` example, enabling REST-based Wi-Fi configuration and monitoring.
 
 ---
@@ -92,7 +94,8 @@ Interact from browser, curl, or your own UI:
 
 ## Example: Integrating with Your UI
 
-You can use the provided web UI (see `README.md`) or integrate these endpoints into any admin dashboard, mobile app, or automation script.
+You can use the provided web UI ([See documentation for the web panel](webPanel/README.md)
+) or integrate these endpoints into any admin dashboard, mobile app, or automation script.
 
 ---
 
