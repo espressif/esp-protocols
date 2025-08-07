@@ -1,14 +1,14 @@
-# ESP32 eppp\_slave Example – Modifications and REST Wi-Fi Control
+# ESP32 [eppp\_link\_slave](../slave/) Example – Modifications and REST Wi-Fi Control
 
 [See the original example here](../slave/)
 
-This document describes the key modifications and usage instructions for the enhanced `eppp_slave` example, enabling REST-based Wi-Fi configuration and monitoring.
+This document describes the key modifications and usage instructions for the enhanced [slave](../slave/) example, enabling REST-based Wi-Fi configuration and monitoring.
 
 ---
 
 ## Overview
 
-This version extends the original `eppp_slave` PPP example with a full-featured REST API for Wi-Fi management. All new functionality is backward compatible; Wi-Fi can still be set via Kconfig, but runtime control is now possible from your browser or scripts.
+This version extends the original [slave](../slave/) PPP example with a full-featured REST API for Wi-Fi management. All new functionality is backward compatible; Wi-Fi can still be set via Kconfig, but runtime control is now possible from your browser or scripts.
 
 ---
 
