@@ -4,4 +4,4 @@
 set -e
 
 # MQTT public broker URI
-export CI_MQTT_BROKER_URI="broker.emqx.io"
+export CI_MQTT_BROKER_URI="test.mosquitto.org"
