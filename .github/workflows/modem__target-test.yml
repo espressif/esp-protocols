@@ -34,19 +34,16 @@ jobs:
           IDF_TARGET: ${{ matrix.idf_target }}
           SDKCONFIG: sdkconfig.ci.${{ matrix.test.app }}
         shell: bash
-        working-directory: ${{ env.TEST_DIR }}
         run: |
           . ${GITHUB_WORKSPACE}/ci/config_env.sh
           . ${IDF_PATH}/export.sh
-          rm -rf sdkconfig build
-          [ -f ${SDKCONFIG} ] && cp ${SDKCONFIG} sdkconfig.defaults
-          idf.py set-target ${{ matrix.idf_target }}
-          idf.py build
-          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh ${GITHUB_WORKSPACE}/${TEST_DIR}/build
+          python -m pip install idf-build-apps
+          python ./ci/build_apps.py ${{ env.TEST_DIR }} -t ${{ matrix.idf_target }} -r 'sdkconfig.ci.${{ matrix.test.app }}'
+          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh ${GITHUB_WORKSPACE}/${TEST_DIR}/build_${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v4
         with:
           name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
-          path: ${{ env.TEST_DIR }}/build
+          path: ${{ env.TEST_DIR }}/build_${{ matrix.idf_target }}
           if-no-files-found: error
 
   target_tests_esp_modem:
