@@ -25,6 +25,9 @@ jobs:
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
+          if [[ "${{ matrix.idf_ver }}" != "latest" ]]; then
+            export EXPECTED_WARNING="unknown kconfig symbol 'MBEDTLS_SSL_COOKIE_C'"
+          fi
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
           python ./ci/build_apps.py ./components/mbedtls_cxx/${{ matrix.test.path }} -vv --preserve-all
