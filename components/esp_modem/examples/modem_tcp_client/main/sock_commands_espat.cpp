@@ -257,12 +257,15 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
         ok_pos = (char *)memchr(recv_data + actual_len + 1, 'O', MIN_MESSAGE);
         if (ok_pos == nullptr) { // || ok_pos[1] != 'K') {
             data_to_recv = 0;
+            ESP_LOGE(TAG, "Missed 'OK' marker");
+            return ret::OK;
             return ret::FAIL;
         }
         if (ok_pos + 1 < recv_data + len && ok_pos[1] != 'K') {
             // we ignore the condition when receiving 'O' as the last character in the last batch,
             // don't wait for the 'K' in the next run, assume the data are valid and let higher layers deal with it.
             data_to_recv = 0;
+            ESP_LOGE(TAG, "Missed 'OK' marker2");
             return ret::FAIL;
         }
     }

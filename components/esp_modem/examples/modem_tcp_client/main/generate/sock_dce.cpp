@@ -84,10 +84,12 @@ bool DCE::perform_sock()
 
 void DCE::perform_at(uint8_t *data, size_t len)
 {
-    std::string_view resp_sv((char *)data, len);
-    at.check_urc(state, resp_sv);
-    if (state == status::IDLE) {
-        return;
+    if (state != status::RECEIVING) {
+        std::string_view resp_sv((char *)data, len);
+        at.check_urc(state, resp_sv);
+        if (state == status::IDLE) {
+            return;
+        }
     }
     ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
     switch (at.process_data(state, data, len)) {
