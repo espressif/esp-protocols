@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +13,6 @@
 #include "cxx_include/esp_modem_netif.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_netif_ppp.h"
-
 
 namespace esp_modem {
 
@@ -39,6 +38,7 @@ esp_err_t Netif::esp_modem_dte_transmit(void *h, void *buffer, size_t len)
     return ESP_FAIL;
 }
 
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
 esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
 {
     auto d = (ppp_netif_driver *) args;
@@ -62,6 +62,7 @@ esp_err_t Netif::esp_modem_post_attach(esp_netif_t *esp_netif, void *args)
 
     return ESP_OK;
 }
+#endif // CONFIG_ESP_MODEM_USE_PPP_MODE
 
 void Netif::receive(uint8_t *data, size_t len)
 {
@@ -73,12 +74,16 @@ Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
 {
     driver.base.netif = ppp_netif;
     driver.ppp = this;
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
     driver.base.post_attach = esp_modem_post_attach;
     ESP_MODEM_THROW_IF_ERROR(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, (void *) this));
+#endif
     ESP_MODEM_THROW_IF_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, ppp_netif));
     ESP_MODEM_THROW_IF_ERROR(
         esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected, ppp_netif));
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
     ESP_MODEM_THROW_IF_ERROR(esp_netif_attach(ppp_netif, &driver));
+#endif
 }
 
 void Netif::start()
@@ -120,7 +125,9 @@ Netif::~Netif()
         signal.clear(PPP_STARTED);
         signal.wait(PPP_EXIT, 30000);
     }
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
     esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed);
+#endif
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected);
 }

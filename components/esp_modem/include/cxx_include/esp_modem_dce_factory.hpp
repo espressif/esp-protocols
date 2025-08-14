@@ -62,12 +62,16 @@ class Creator {
 public:
     Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif): dte(std::move(dte)), device(nullptr), netif(esp_netif)
     {
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
         ESP_MODEM_THROW_IF_FALSE(netif != nullptr, "Null netif");
+#endif
     }
 
     Creator(std::shared_ptr<DTE> dte, esp_netif_t *esp_netif, std::shared_ptr<T_Module> dev): dte(std::move(dte)), device(std::move(dev)), netif(esp_netif)
     {
+#ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
         ESP_MODEM_THROW_IF_FALSE(netif != nullptr, "Null netif");
+#endif
     }
 
     explicit Creator(std::shared_ptr<DTE> dte): dte(std::move(dte)), device(nullptr), netif(nullptr)
