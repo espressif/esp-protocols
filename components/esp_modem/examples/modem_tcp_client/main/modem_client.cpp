@@ -23,11 +23,17 @@
 #include "tcp_transport_mbedtls.h"
 #include "tcp_transport_at.h"
 
-#define BROKER_URL "test.mosquitto.org"
-// #define BROKER_URL "broker.emqx.io"
-// #define BROKER_URL "192.168.0.18"
+#define USE_TLS 0
+
+#define BROKER_HOST "test.mosquitto.org"
+#if USE_TLS
+#define BROKER_SCHEME "mqtts"
 #define BROKER_PORT 8883
-// #define BROKER_PORT 1883
+#else
+#define BROKER_SCHEME "mqtt"
+#define BROKER_PORT 1883
+#endif
+#define BROKER_URL BROKER_SCHEME "://" BROKER_HOST
 
 
 static const char *TAG = "modem_client";
@@ -85,6 +91,7 @@ extern "C" void app_main(void)
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_log_level_set("*", ESP_LOG_INFO);
 
     event_group = xEventGroupCreate();
 
@@ -129,11 +136,9 @@ extern "C" void app_main(void)
 
     xEventGroupWaitBits(event_group, DCE0_DONE | DCE1_DONE, pdFALSE, pdTRUE, portMAX_DELAY);
 #ifdef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
-    // we release smart pointers, as this example does never exit
-    // and in tcp-transport option we don't need a task to run
-    // so we exit main and keep DCE's "running"
-    dce.release();
-    dce1.release();
+    // this example does never keeps both DCEs running and in tcp-transport option
+    // we don't need a task to run so we exit main and keep DCE's "running"
+    vTaskDelay(portMAX_DELAY);
 #endif
 }
 
@@ -149,20 +154,24 @@ static void perform(void* ctx)
     mqtt_config.credentials.client_id = mqtt_client_id;
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     mqtt_config.broker.address.port = BROKER_PORT + id;
-    mqtt_config.broker.address.uri = "mqtts://127.0.0.1";
+    mqtt_config.broker.address.uri = BROKER_SCHEME "://127.0.0.1";
     dce->start_listening(BROKER_PORT + id);
 #else
     mqtt_config.broker.address.port = BROKER_PORT;
-    mqtt_config.broker.address.uri = "mqtts://" BROKER_URL;
+    mqtt_config.broker.address.uri = BROKER_URL;
     esp_transport_handle_t at = esp_transport_at_init(dce);
+#if USE_TLS
     esp_transport_handle_t ssl = esp_transport_tls_init(at);
     mqtt_config.network.transport = ssl;
-#endif
+#else
+    mqtt_config.network.transport = at;
+#endif // USE_TLS
+#endif // CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
     esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
     esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, nullptr);
     esp_mqtt_client_start(mqtt_client);
 #ifndef CONFIG_EXAMPLE_CUSTOM_TCP_TRANSPORT
-    if (!dce->connect(BROKER_URL, BROKER_PORT)) {
+    if (!dce->connect(BROKER_HOST, BROKER_PORT)) {
         ESP_LOGE(TAG, "Failed to start DCE");
         return;
     }
@@ -176,12 +185,11 @@ static void perform(void* ctx)
             ESP_LOGE(TAG, "Failed to reinit network");
             return;
         }
-        if (!dce->connect(BROKER_URL, BROKER_PORT)) {
+        if (!dce->connect(BROKER_HOST, BROKER_PORT)) {
             ESP_LOGI(TAG, "Network reinitialized, retrying");
         }
     }
 #endif
-    vTaskDelay(portMAX_DELAY);
     xEventGroupSetBits(event_group, id ? DCE0_DONE : DCE1_DONE);
     vTaskDelete(nullptr);
 }

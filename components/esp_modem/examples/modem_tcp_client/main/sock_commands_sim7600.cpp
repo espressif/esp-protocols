@@ -195,17 +195,17 @@ void Responder::start_sending(size_t len)
 {
     data_to_send = len;
     send_stat = 0;
-    send_cmd("AT+CIPSEND=0," + std::to_string(len) + "\r");
+    send_cmd("AT+CIPSEND=" + std::to_string(link_id) + "," + std::to_string(len) + "\r");
 }
 
 void Responder::start_receiving(size_t len)
 {
-    send_cmd("AT+CIPRXGET=2,0," + std::to_string(len) + "\r");
+    send_cmd("AT+CIPRXGET=2," + std::to_string(link_id) + "," + std::to_string(len) + "\r");
 }
 
 bool Responder::start_connecting(std::string host, int port)
 {
-    send_cmd(R"(AT+CIPOPEN=0,"TCP",")" + host + "\"," + std::to_string(port) + "\r");
+    send_cmd(std::string("AT+CIPOPEN=") + std::to_string(link_id) + R"(,"TCP",")" + host + "\"," + std::to_string(port) + "\r");
     return true;
 }
 
@@ -215,7 +215,7 @@ Responder::ret Responder::recv(uint8_t *data, size_t len)
     size_t actual_len = 0;
     auto *recv_data = (char *)data;
     if (data_to_recv == 0) {
-        static constexpr std::string_view head = "+CIPRXGET: 2,0,";
+        const std::string head = std::string("+CIPRXGET: 2,") + std::to_string(link_id) + ",";
         auto head_pos = std::search(recv_data, recv_data + len, head.begin(), head.end());
         if (head_pos == recv_data + len) {
             return ret::FAIL;
@@ -329,7 +329,8 @@ Responder::ret Responder::send(std::string_view response)
 
 Responder::ret Responder::connect(std::string_view response)
 {
-    if (response.find("+CIPOPEN: 0,0") != std::string::npos) {
+    std::string open_response = "+CIPOPEN: " + std::to_string(link_id) + ",0";
+    if (response.find(open_response) != std::string::npos) {
         ESP_LOGI(TAG, "Connected!");
         return ret::OK;
     }
@@ -342,8 +343,10 @@ Responder::ret Responder::connect(std::string_view response)
 
 Responder::ret Responder::check_urc(status state, std::string_view &response)
 {
-    // Handle data notifications - in multiple connections mode, format is +IPD,<link ID>,<len>
-    if (response.find("+CIPRXGET: 1") != std::string::npos) {
+    // 1. When <mode> is set to 1 and the 2-4 mode will take effect.
+    // 2. If AT+CIPRXGET=1, it will report +CIPRXGET: 1,<cid>(multi client) when
+    const std::string expected = std::string("+CIPRXGET: 1,") + std::to_string(link_id);
+    if (response.find(expected) != std::string::npos) {
         uint64_t data_ready = 1;
         write(data_ready_fd, &data_ready, sizeof(data_ready));
         ESP_LOGD(TAG, "Got data on modem!");
