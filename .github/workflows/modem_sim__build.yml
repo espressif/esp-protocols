@@ -11,17 +11,21 @@ jobs:
   build_modem_sim:
     if: contains(github.event.pull_request.labels.*.name, 'modem_sim') || github.event_name == 'push'
     name: Build
-    strategy:
-      matrix:
-        idf_ver: ["release-v5.4"]
-    runs-on: ubuntu-22.04
-    container: espressif/idf:${{ matrix.idf_ver }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v3
+      - name: Checkout idf
+        uses: actions/checkout@v3
+        with:
+          repository: espressif/esp-idf
+          ref: 8ad0d3d8f2faab752635bee36070313c47c07a13
+          path: idf
       - name: Build ESP-AT with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
+          export IDF_PATH=$GITHUB_WORKSPACE/idf
+          ${IDF_PATH}/install.sh
           cd common_components/modem_sim
           ./install.sh
           source export.sh
