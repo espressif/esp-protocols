@@ -65,12 +65,13 @@ static err_t tun_output_v4(struct netif *netif, struct pbuf *p, const ip4_addr_t
     LWIP_UNUSED_ARG(ipaddr);
     return tun_output(netif, p);
 }
+#if LWIP_IPV6
 static err_t tun_output_v6(struct netif *netif, struct pbuf *p, const ip6_addr_t *ipaddr)
 {
     LWIP_UNUSED_ARG(ipaddr);
     return tun_output(netif, p);
 }
-
+#endif
 static err_t tun_init(struct netif *netif)
 {
     if (netif == NULL) {
@@ -151,9 +152,12 @@ static void cmd_ping_on_ping_end(esp_ping_handle_t hdl, void *args)
     }
     if (IP_IS_V4(&target_addr)) {
         ESP_LOGD(TAG, "\n--- %s ping statistics ---\n", inet_ntoa(*ip_2_ip4(&target_addr)));
-    } else {
+    }
+#if LWIP_IPV6
+    else {
         ESP_LOGD(TAG, "\n--- %s ping statistics ---\n", inet6_ntoa(*ip_2_ip6(&target_addr)));
     }
+#endif
     ESP_LOGI(TAG, "%" PRIu32 " packets transmitted, %" PRIu32 " received, %" PRIu32 "%% packet loss, time %" PRIu32 "ms\n",
              transmitted, received, loss, total_time_ms);
     esp_ping_delete_session(hdl);
@@ -168,7 +172,11 @@ esp_err_t eppp_check_connection(esp_netif_t *netif)
     ip_addr_t target_addr = {0};
     esp_netif_ip_info_t ip;
     esp_netif_get_ip_info(netif, &ip);
+#if LWIP_IPV6
     target_addr.u_addr.ip4.addr =  ip.gw.addr;
+#else
+    target_addr.addr =  ip.gw.addr;
+#endif
     config.target_addr = target_addr;
     esp_ping_callbacks_t cbs = {
         .cb_args = netif,
