@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1](https://github.com/espressif/esp-protocols/commits/eppp-v1.0.1)
+
+### Bug Fixes
+
+- Support for IPv4-only mode ([653328ba](https://github.com/espressif/esp-protocols/commit/653328ba), [#864](https://github.com/espressif/esp-protocols/issues/864))
+
 ## [1.0.0](https://github.com/espressif/esp-protocols/commits/eppp-v1.0.0)
 
 ### Features
