@@ -34,6 +34,9 @@ extern "C" {
             .rx_io = 26,        \
             .queue_size = 16,   \
             .rx_buffer_size = 1024, \
+            .rts_io = -1,       \
+            .cts_io = -1,       \
+            .flow_control = 0,  \
     },                          \
 
 #define EPPP_DEFAULT_SDIO_CONFIG() \
@@ -135,6 +138,9 @@ typedef struct eppp_config_t {
         int rx_io;
         int queue_size;
         int rx_buffer_size;
+        int rts_io;
+        int cts_io;
+        int flow_control;
     } uart;
 
     struct eppp_config_sdio_s {
