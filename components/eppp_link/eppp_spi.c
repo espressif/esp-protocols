@@ -208,7 +208,9 @@ static esp_err_t init_master(struct eppp_config_spi_s *config, struct eppp_spi *
     };
 
     ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err_dev, TAG, "Failed to config interrupt GPIO");
-    ESP_GOTO_ON_ERROR(gpio_install_isr_service(0), err_dev, TAG, "Failed to install GPIO ISR");
+    ret = gpio_install_isr_service(0);
+    ESP_GOTO_ON_FALSE(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE /* In case the GPIO ISR already installed */,
+                      ret, err_dev, TAG, "Failed to install GPIO ISR");
     ESP_GOTO_ON_ERROR(gpio_set_intr_type(config->intr, GPIO_INTR_ANYEDGE), err_dev, TAG, "Failed to set ISR type");
     ESP_GOTO_ON_ERROR(gpio_isr_handler_add(config->intr, gpio_isr_handler, h), err_dev, TAG, "Failed to add ISR handler");
     return ESP_OK;
@@ -467,9 +469,6 @@ err:
     }
     if (h->ready_semaphore) {
         vSemaphoreDelete(h->ready_semaphore);
-    }
-    if (h->out_queue) {
-        vQueueDelete(h->out_queue);
     }
     free(h);
     return NULL;
