@@ -990,7 +990,11 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             return ESP_OK;
         }
 
-        esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DATA, client->rx_buffer, rlen);
+        if (client->last_opcode == WS_TRANSPORT_OPCODES_PONG) {
+            esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_PONG, client->rx_buffer, rlen);
+        } else {
+            esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DATA, client->rx_buffer, rlen);
+        }
 
         client->payload_offset += rlen;
     } while (client->payload_offset < client->payload_len);
