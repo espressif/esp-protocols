@@ -89,11 +89,23 @@ def test_examples_protocol_websocket(dut):
       3. send and receive data
     """
 
+    # Test for connection:
+    # Verifies that the WebSocket client correctly connected.
+    def test_connected(dut):
+        dut.expect('WEBSOCKET_EVENT_CONNECTED')
+        print('Received CONNECTED')
+
+    # Test for PONG functionality:
+    # Verifies that the WebSocket client correctly receives a PONG response after sending a PING.
+    # The PING is automatically sent when the connection is established.
+    def test_pong(dut):
+        dut.expect('WEBSOCKET_EVENT_PONG')
+        print('Received PONG')
+
     # Test for echo functionality:
     # Sends a series of simple "hello" messages to the WebSocket server and verifies that each one is echoed back correctly.
     # This tests the basic responsiveness and correctness of the WebSocket connection.
     def test_echo(dut):
-        dut.expect('WEBSOCKET_EVENT_CONNECTED')
         for i in range(0, 5):
             dut.expect(re.compile(b'Received=hello (\\d)'))
         print('All echos received')
@@ -236,6 +248,8 @@ def test_examples_protocol_websocket(dut):
             print('DUT connecting to {}'.format(uri))
             dut.expect('Please enter uri of websocket endpoint', timeout=30)
             dut.write(uri)
+            test_connected(dut)
+            test_pong(dut)
             test_echo(dut)
             test_recv_long_msg(dut, ws, 2000, 3)
             test_json(dut, ws)
@@ -246,4 +260,6 @@ def test_examples_protocol_websocket(dut):
             test_close(dut)
     else:
         print('DUT connecting to {}'.format(uri))
+        test_connected(dut)
+        test_pong(dut)
         test_echo(dut)

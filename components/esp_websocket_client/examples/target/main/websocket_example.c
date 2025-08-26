@@ -79,6 +79,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         break;
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
+        esp_websocket_client_send_with_opcode((esp_websocket_client_handle_t)handler_args, WS_TRANSPORT_OPCODES_PING, NULL, 0, portMAX_DELAY);
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DISCONNECTED");
@@ -114,6 +115,12 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
 
         ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
 
+        xTimerReset(shutdown_signal_timer, portMAX_DELAY);
+        break;
+    case WEBSOCKET_EVENT_PONG:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_PONG");
+        ESP_LOGI(TAG, "Received opcode=%d", data->op_code);
+        // Reset shutdown timer on PONG as well
         xTimerReset(shutdown_signal_timer, portMAX_DELAY);
         break;
     case WEBSOCKET_EVENT_ERROR:
