@@ -167,6 +167,9 @@ esp_err_t eppp_check_connection(esp_netif_t *netif)
 {
     esp_err_t ret = ESP_OK;
     esp_ping_config_t config = ESP_PING_DEFAULT_CONFIG();
+#if CONFIG_LOG_MAXIMUM_LEVEL > 3
+    config.task_stack_size += 1024;  // Some additional stack needed for verbose logs
+#endif
     config.count = 100;
     ESP_LOGI(TAG, "Checking connection on EPPP interface #%" PRIu32, config.interface);
     ip_addr_t target_addr = {0};
