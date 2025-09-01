@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.20~4](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_4)
+
+### Features
+
+- Update brokerless example to work with esp-peer ([76e45f72](https://github.com/espressif/esp-protocols/commit/76e45f72))
+
+### Bug Fixes
+
+- drop newlib from PRIV_REQUIRES ([6318022c](https://github.com/espressif/esp-protocols/commit/6318022c))
+- Make esp-peer build optional ([03df9ae9](https://github.com/espressif/esp-protocols/commit/03df9ae9))
+- Fix esp_webRTC deprecation with new FreeRTOS ([78ae2559](https://github.com/espressif/esp-protocols/commit/78ae2559))
+
 ## [2.0.20~3](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_3)
 
 

@@ -1,4 +1,4 @@
-version: "2.0.20~3"
+version: "2.0.20~4"
 url: https://github.com/espressif/esp-protocols/tree/master/components/mosquitto
 description: The component provides a simple ESP32 port of mosquitto broker
 dependencies:
