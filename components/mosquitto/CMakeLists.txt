@@ -82,7 +82,7 @@ idf_component_register(SRCS ${m_srcs}
                                       ${m_incl_dir} ${m_lib_dir} ${m_deps_dir}
                     INCLUDE_DIRS ${m_incl_dir} port/include
                     REQUIRES esp-tls
-                    PRIV_REQUIRES newlib sock_utils esp_timer)
+                    PRIV_REQUIRES sock_utils esp_timer)
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE "WITH_BROKER")
 if (CONFIG_MOSQ_ENABLE_SYS)
