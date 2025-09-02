@@ -426,7 +426,7 @@ size_t esp_websocket_client_get_ping_interval_sec(esp_websocket_client_handle_t 
 esp_err_t esp_websocket_client_set_ping_interval_sec(esp_websocket_client_handle_t client, size_t ping_interval_sec);
 
 /**
- * @brief      Get the next reconnect timeout for client. Returns -1 when client is not initialized or automatic reconnect is disabled.
+ * @brief      Get the reconnect timeout for client. Returns -1 when client is not initialized or automatic reconnect is disabled.
  *
  * @param[in]  client             The client
  *
@@ -435,11 +435,10 @@ esp_err_t esp_websocket_client_set_ping_interval_sec(esp_websocket_client_handle
 int esp_websocket_client_get_reconnect_timeout(esp_websocket_client_handle_t client);
 
 /**
- * @brief      Set next reconnect timeout for client.
+ * @brief      Set new reconnect timeout for client.
  *
  *  Notes:
- *  - Changing this value when reconnection delay is already active does not immediately affect the active delay and may have unexpected result.
- *  - Good place to change this value is when handling WEBSOCKET_EVENT_DISCONNECTED or WEBSOCKET_EVENT_ERROR events.
+ *  - This also updates already active reconnection delay, if any.
  *
  * @param[in]  client             The client
  * @param[in]  reconnect_timeout_ms  The new timeout
