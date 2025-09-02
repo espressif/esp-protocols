@@ -14,11 +14,17 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
-#include "esp_vfs_dev.h"        // For optional VFS support
-#include "vfs_resource/vfs_create.hpp"
+#include "esp_idf_version.h"
 #include "network_dce.hpp"
 #include "manual_ota.hpp"
 #include "mqtt_client.h"
+// For optional VFS support
+#include "vfs_resource/vfs_create.hpp"
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#include "driver/uart_vfs.h"
+#else
+#include "esp_vfs_dev.h"
+#endif
 
 using namespace esp_modem;
 
@@ -189,7 +195,12 @@ extern "C" void app_main(void)
     assert(vfs_create_uart(&uart_config, &dte_config.vfs_config) == true);
 
     auto dte = create_vfs_dte(&dte_config);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    uart_vfs_dev_use_driver(uart_config.uart.port_num);
+#else
     esp_vfs_dev_uart_use_driver(uart_config.uart.port_num);
+#endif
+
 #else
     auto dte = create_uart_dte(&dte_config);
 #endif // CONFIG_TEST_USE_VFS_TERM
