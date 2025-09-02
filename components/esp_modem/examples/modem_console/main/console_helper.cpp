@@ -63,13 +63,12 @@ void ConsoleCommand::RegisterCommand(const char *command, const char *help, cons
 
     arg_type end = { .end = arg_end(1) };
     arg_table.emplace_back(end);
-    const esp_console_cmd_t command_def = {
-        .command = command,
-        .help = help,
-        .hint = nullptr,
-        .func = command_func_pts[last_command],
-        .argtable = &arg_table[0]
-    };
+    esp_console_cmd_t command_def = { };
+    command_def.command = command;
+    command_def.help = help;
+    command_def.hint = nullptr;
+    command_def.func = command_func_pts[last_command];
+    command_def.argtable = &arg_table[0];
     ESP_ERROR_CHECK(esp_console_cmd_register(&command_def));
     last_command++;
     console_commands.emplace_back(this);
