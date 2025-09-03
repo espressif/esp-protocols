@@ -34,6 +34,7 @@ CFLAGS=-g -Wno-unused-value -Wno-missing-declarations -Wno-pointer-bool-conversi
                  -I$(COMPONENTS_DIR)/soc/src/esp32/include \
                  -I$(COMPONENTS_DIR)/xtensa/include \
                  -I$(COMPONENTS_DIR)/xtensa/esp32/include \
+                 -I$(COMPONENTS_DIR)/esp_hw_support/etm/include \
                  -I$(COMPILER_ICLUDE_DIR)/include
 
 

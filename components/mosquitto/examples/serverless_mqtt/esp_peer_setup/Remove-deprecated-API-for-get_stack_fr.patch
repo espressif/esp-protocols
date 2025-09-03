@@ -16,7 +16,7 @@ index d248d59..1117926 100644
      TaskHandle_t cur_task = xTaskGetCurrentTaskHandle();
      vTaskGetSnapshot(cur_task, &snap_shot);
 -    snap_shot.pxTopOfStack = pxTaskGetStackStart(cur_task);;
-+#if (ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(5, 5, 0))
++#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
 +    snap_shot.pxTopOfStack = xTaskGetStackStart(cur_task);
 +#else
 +    snap_shot.pxTopOfStack = pxTaskGetStackStart(cur_task);
