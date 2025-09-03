@@ -64,6 +64,12 @@ static const char *TAG = "websocket_client";
 #define WS_OVER_TCP_SCHEME  "ws"
 #define WS_OVER_TLS_SCHEME  "wss"
 #define WS_HTTP_BASIC_AUTH  "Basic "
+#define WS_HTTP_REDIRECT(code) ((code >= 300) && (code < 400))
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
+// Features supported in 5.5.0
+#define WS_TRANSPORT_REDIRECT_HEADER_SUPPORT    1
+#endif
 
 const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
@@ -1072,6 +1078,29 @@ static void esp_websocket_client_task(void *pv)
                 esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                 break;
             }
+#if WS_TRANSPORT_REDIRECT_HEADER_SUPPORT
+            else if (WS_HTTP_REDIRECT(result)) {
+                const char *redir = esp_transport_ws_get_redir_uri(client->transport);
+                if (redir) {
+                    // Redirecting to a new URI
+                    free(client->config->uri);
+
+                    client->config->uri = strdup(redir);
+                    client->config->port = 0;
+
+                    esp_websocket_client_set_uri(client, client->config->uri);
+
+                    if (client->config->port == 0) {
+                        client->config->port = esp_transport_get_default_port(client->transport);
+                    }
+
+                    // Rerun the connection with the redir uri.
+                    client->state = WEBSOCKET_STATE_INIT;
+                    ESP_LOGI(TAG, "Redirecting to %s", client->config->uri);
+                    break;
+                }
+            }
+#endif
             ESP_LOGD(TAG, "Transport connected to %s://%s:%d", client->config->scheme, client->config->host, client->config->port);
 
             client->state = WEBSOCKET_STATE_CONNECTED;
