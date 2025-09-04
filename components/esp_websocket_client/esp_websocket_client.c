@@ -972,6 +972,15 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             esp_websocket_free_buf(client, false);
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
+                // Check for specific transport error codes
+                if (error_handle->last_error == ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT) {
+                    ESP_LOGV(TAG, "Transport layer reported timeout during read");
+                    return ESP_OK; // Treat timeout as OK, not an error
+                } else if (error_handle->last_error == ESP_ERR_ESP_TLS_TCP_CLOSED_FIN) {
+                    ESP_LOGD(TAG, "Connection closed by peer (FIN)");
+                    esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+                    return ESP_FAIL;
+                }
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
                                            rlen, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
                                            error_handle->esp_tls_flags, errno);
@@ -984,10 +993,50 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         client->last_fin = esp_transport_ws_get_fin_flag(client->transport);
         client->last_opcode = esp_transport_ws_get_read_opcode(client->transport);
 
-        if (rlen == 0 && client->last_opcode == WS_TRANSPORT_OPCODES_NONE) {
-            ESP_LOGV(TAG, "esp_transport_read timeouts");
+        // Enhanced timeout detection: Use transport layer error codes to distinguish timeout from valid empty message
+        if (rlen == 0) {
+            // Check transport layer error codes to determine if this is a timeout
+            esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
+            bool is_timeout = false;
+
+            if (error_handle) {
+                // Check for specific transport error codes that indicate timeout
+                if (error_handle->last_error == ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT) {
+                    is_timeout = true;
+                    ESP_LOGV(TAG, "Transport layer reported timeout (ESP_ERR_ESP_TLS_CONNECTION_TIMEOUT)");
+                }
+            }
+
+            // Fallback: Check WebSocket frame state for timeout indicators
+            if (!is_timeout) {
+                // Condition 1: No opcode set (transport layer indicates no frame received)
+                if (client->last_opcode == WS_TRANSPORT_OPCODES_NONE) {
+                    is_timeout = true;
+                    ESP_LOGV(TAG, "No opcode set, treating as timeout");
+                }
+                // Condition 2: Check if we're in a fragmented message state but got no data
+                else if (client->payload_offset > 0 && client->payload_len > 0 && client->payload_offset < client->payload_len) {
+                    // We're expecting more data for a fragmented message but got nothing
+                    is_timeout = true;
+                    ESP_LOGV(TAG, "Fragmented message timeout (offset=%d, payload_len=%d)",
+                             client->payload_offset, client->payload_len);
+                }
+            }
+
+            if (is_timeout) {
+                ESP_LOGV(TAG, "esp_transport_read timeout detected (rlen=%d, opcode=%d, payload_len=%d, offset=%d)",
+                         rlen, client->last_opcode, client->payload_len, client->payload_offset);
+                esp_websocket_free_buf(client, false);
+                return ESP_OK;
+            }
+        }
+
+        // Additional validation: Check for invalid opcodes that might indicate corruption
+        if (rlen > 0 && client->last_opcode > 0xF) {
+            ESP_LOGW(TAG, "Received invalid WebSocket opcode: %d (max valid is 15)", client->last_opcode);
             esp_websocket_free_buf(client, false);
-            return ESP_OK;
+            esp_websocket_client_error(client, "Invalid WebSocket opcode received: %d", client->last_opcode);
+            return ESP_FAIL;
         }
 
         esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DATA, client->rx_buffer, rlen);
@@ -1015,6 +1064,12 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     } else if (client->last_opcode == WS_TRANSPORT_OPCODES_CLOSE) {
         ESP_LOGD(TAG, "Received close frame");
         client->state = WEBSOCKET_STATE_CLOSING;
+    } else if (client->last_opcode > 0xF) {
+        // Invalid opcode detected - this indicates potential state corruption
+        ESP_LOGW(TAG, "Invalid opcode %d detected, resetting client state", client->last_opcode);
+        esp_websocket_free_buf(client, false);
+        esp_websocket_client_error(client, "Invalid WebSocket opcode %d - potential state corruption", client->last_opcode);
+        return ESP_FAIL;
     }
     esp_websocket_free_buf(client, false);
     return ESP_OK;
