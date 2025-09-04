@@ -207,6 +207,33 @@ private:
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
     void exit_cmux_internal();                              /*!< Cleanup CMUX */
 
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    /**
+     * @brief Buffer state tracking for enhanced URC processing
+     */
+    struct BufferState {
+        size_t total_processed = 0;         /*!< Total bytes processed by URC handlers */
+        size_t last_urc_processed = 0;      /*!< Last offset processed by URC */
+        bool command_waiting = false;       /*!< Whether command is waiting for response */
+        size_t command_start_offset = 0;    /*!< Where current command response started */
+    } buffer_state;
+
+    /**
+     * @brief Update buffer state when new data arrives
+     * @param new_data_size Size of new data added to buffer
+     */
+    void update_buffer_state(size_t new_data_size);
+
+    /**
+     * @brief Create URC buffer information for enhanced handlers
+     * @param data Buffer data pointer
+     * @param consumed Already consumed bytes
+     * @param len New data length
+     * @return UrcBufferInfo structure with complete buffer context
+     */
+    UrcBufferInfo create_urc_info(uint8_t* data, size_t consumed, size_t len);
+#endif
+
     Lock internal_lock{};                                   /*!< Locks DTE operations */
     unique_buffer buffer;                                   /*!< DTE buffer */
     std::shared_ptr<CMux> cmux_term;                        /*!< Primary terminal for this DTE */

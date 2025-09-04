@@ -544,10 +544,10 @@ This approach provides a clean migration path to modem v2.0 while solving the fu
 - [x] **Add enhanced URC interface to DCE template** (`esp_modem_dce_template.hpp`)
   - [x] `set_enhanced_urc()` method in DCE_T class
 
-- [ ] **Implement buffer state tracking in DTE**
-  - [ ] Add `BufferState` struct to track processing state
-  - [ ] Add `create_urc_info()` method to build buffer information
-  - [ ] Add `update_buffer_state()` method to track state changes
+- [x] **Implement buffer state tracking in DTE**
+  - [x] Add `BufferState` struct to track processing state
+  - [x] Add `create_urc_info()` method to build buffer information
+  - [x] Add `update_buffer_state()` method to track state changes
 
 - [ ] **Implement enhanced processing pipeline**
   - [ ] Modify `process_line()` to call enhanced URC handler

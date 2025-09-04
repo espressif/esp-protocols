@@ -65,6 +65,10 @@ void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {
         Scoped<Lock> l(command_cb.line_lock);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+        // Update buffer state when new data arrives
+        update_buffer_state(len);
+#endif
 #ifndef CONFIG_ESP_MODEM_URC_HANDLER
         if (command_cb.got_line == nullptr || command_cb.result != command_result::TIMEOUT) {
             return false;   // this line has been processed already (got OK or FAIL previously)
@@ -150,10 +154,19 @@ void DTE::set_command_callbacks()
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l1(internal_lock);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    // Track command start
+    buffer_state.command_waiting = true;
+    buffer_state.command_start_offset = buffer_state.total_processed;
+#endif
     command_cb.set(got_line, separator);
     primary_term->write((uint8_t *)command.c_str(), command.length());
     command_cb.wait_for_line(time_ms);
     command_cb.set(nullptr);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    // Track command end
+    buffer_state.command_waiting = false;
+#endif
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
     inflatable.deflate();
@@ -423,3 +436,22 @@ void DTE::extra_buffer::grow(size_t need_size)
  */
 unique_buffer::unique_buffer(size_t size):
     data(std::make_unique<uint8_t[]>(size)), size(size), consumed(0) {}
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+void DTE::update_buffer_state(size_t new_data_size)
+{
+    buffer_state.total_processed += new_data_size;
+}
+
+DTE::UrcBufferInfo DTE::create_urc_info(uint8_t* data, size_t consumed, size_t len)
+{
+    return {
+        .buffer_start = data,
+        .buffer_total_size = consumed + len,
+        .processed_offset = buffer_state.last_urc_processed,
+        .new_data_size = (consumed + len) - buffer_state.last_urc_processed,
+        .new_data_start = data + buffer_state.last_urc_processed,
+        .is_command_active = buffer_state.command_waiting
+    };
+}
+#endif
