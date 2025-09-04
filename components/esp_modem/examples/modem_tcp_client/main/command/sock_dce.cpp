@@ -91,16 +91,18 @@ void DCE::perform_at(uint8_t *data, size_t len)
             return;
         }
     }
-    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_INFO);
+    // Trace incoming AT bytes when handling a response; use DEBUG level
+    ESP_LOG_BUFFER_HEXDUMP(TAG, data, len, ESP_LOG_DEBUG);
     switch (at.process_data(state, data, len)) {
     case Responder::ret::OK:
-        ESP_LOGW(TAG, "GIVE data %d", at.link_id);
+        // Release DTE access for this link after processing data
+        ESP_LOGD(TAG, "GIVE data %d", at.link_id);
         xSemaphoreGive(at.s_dte_mutex);
         state = status::IDLE;
         signal.set(IDLE);
         return;
     case Responder::ret::FAIL:
-        ESP_LOGW(TAG, "GIVE data %d", at.link_id);
+        ESP_LOGD(TAG, "GIVE data %d", at.link_id);
         xSemaphoreGive(at.s_dte_mutex);
         state = status::FAILED;
         signal.set(IDLE);
@@ -116,13 +118,13 @@ void DCE::perform_at(uint8_t *data, size_t len)
     std::string_view response((char *)data, len);
     switch (at.check_async_replies(state, response)) {
     case Responder::ret::OK:
-        ESP_LOGW(TAG, "GIVE command %d", at.link_id);
+        ESP_LOGD(TAG, "GIVE command %d", at.link_id);
         xSemaphoreGive(at.s_dte_mutex);
         state = status::IDLE;
         signal.set(IDLE);
         return;
     case Responder::ret::FAIL:
-        ESP_LOGW(TAG, "GIVE command %d", at.link_id);
+        ESP_LOGD(TAG, "GIVE command %d", at.link_id);
         xSemaphoreGive(at.s_dte_mutex);
         state = status::FAILED;
         signal.set(IDLE);
@@ -169,9 +171,10 @@ bool DCE::at_to_sock()
         close_sock();
         return false;
     }
-    ESP_LOGI(TAG, "TAKE RECV %d", at.link_id);
+    // Take DTE mutex before issuing receive on this link
+    ESP_LOGD(TAG, "TAKE RECV %d", at.link_id);
     xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
-    ESP_LOGE(TAG, "TAKE RECV %d", at.link_id);
+    ESP_LOGD(TAG, "TAKEN RECV %d", at.link_id);
     state = status::RECEIVING;
     at.start_receiving(at.get_buf_len());
     return true;
@@ -190,9 +193,10 @@ bool DCE::sock_to_at()
         close_sock();
         return false;
     }
-    ESP_LOGI(TAG, "TAKE SEND %d", at.link_id);
+    // Take DTE mutex before issuing send on this link
+    ESP_LOGD(TAG, "TAKE SEND %d", at.link_id);
     xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
-    ESP_LOGE(TAG, "TAKE SEND %d", at.link_id);
+    ESP_LOGD(TAG, "TAKEN SEND %d", at.link_id);
     state = status::SENDING;
     int len = ::recv(sock, at.get_buf(), at.get_buf_len(), 0);
     if (len < 0) {
@@ -245,7 +249,7 @@ void DCE::start_listening(int port)
     }
     int opt = 1;
     setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-    ESP_LOGI(TAG, "Socket created");
+    ESP_LOGD(TAG, "Socket created");
     struct sockaddr_in addr = { };
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
@@ -257,7 +261,7 @@ void DCE::start_listening(int port)
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
         return;
     }
-    ESP_LOGI(TAG, "Socket bound, port %d", 1883);
+    ESP_LOGD(TAG, "Socket bound, port %d", 1883);
     err = listen(listen_sock, 1);
     if (err != 0) {
         ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
@@ -270,15 +274,10 @@ bool DCE::connect(std::string host, int port)
 {
     data_ready_fd = eventfd(0, EFD_SUPPORT_ISR);
     assert(data_ready_fd > 0);
-    // dte->on_read(nullptr);
-    // tcp_close();
-    // dte->on_read([](uint8_t *data, size_t len) {
-    //     read_callback(data, len);
-    //     return esp_modem::command_result::TIMEOUT;
-    // });
-    ESP_LOGI(TAG, "TAKE CONNECT %d", at.link_id);
+    // Take DTE mutex before starting connect for this link
+    ESP_LOGD(TAG, "TAKE CONNECT %d", at.link_id);
     xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
-    ESP_LOGE(TAG, "TAKE CONNECT %d", at.link_id);
+    ESP_LOGD(TAG, "TAKEN CONNECT %d", at.link_id);
     if (!at.start_connecting(host, port)) {
         ESP_LOGE(TAG, "Unable to start connecting");
         dte->on_read(nullptr);

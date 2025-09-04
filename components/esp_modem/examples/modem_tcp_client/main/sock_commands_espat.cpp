@@ -64,21 +64,13 @@ command_result net_open(CommandableIf *t)
         ESP_LOGE(TAG, "Failed to enable multiple connections mode");
         return ret;
     }
-    ESP_LOGI(TAG, "Multiple connections mode enabled");
+    ESP_LOGD(TAG, "Multiple connections mode enabled");
 
     // Set passive receive mode (1) for better control
     for (int i = 0; i < 2; i++) {
         std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(i) + ",1\r\n";
         dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
     }
-    // std::string cmd = "AT+CIPRECVTYPE=" + std::to_string(link_id) + "," + std::to_string(mode) + "\r\n";
-    // return dce_commands::generic_command(t, cmd, "OK", "ERROR", 1000);
-    //
-    // ret = set_rx_mode(t, 1);
-    // if (ret != command_result::OK) {
-    //     ESP_LOGE(TAG, "Failed to set preferred Rx mode");
-    //     return ret;
-    // }
     return command_result::OK;
 }
 
@@ -92,29 +84,6 @@ command_result net_close(CommandableIf *t)
     }
     return command_result::OK;
 }
-
-// command_result tcp_open(CommandableIf *t, const std::string &host, int port, int timeout)
-// {
-//     ESP_LOGV(TAG, "%s", __func__);
-//
-//     // Use link ID 0 for now (can be extended to support multiple concurrent connections)
-//     const int link_id = 0;
-//
-//     // Establish TCP connection with link ID for multiple connections mode
-//     std::string tcp_cmd = "AT+CIPSTART=" + std::to_string(link_id) + ",\"TCP\",\"" + host + "\"," + std::to_string(port) + "\r\n";
-//
-//     // In multiple connections mode, response format is: <link ID>,CONNECT
-//     std::string expected_response = std::to_string(link_id) + ",CONNECT";
-//
-//     auto ret = dce_commands::generic_command(t, tcp_cmd, expected_response, "ERROR", timeout);
-//     if (ret != command_result::OK) {
-//         ESP_LOGE(TAG, "Failed to establish TCP connection to %s:%d on link %d", host.c_str(), port, link_id);
-//         return ret;
-//     }
-//
-//     ESP_LOGI(TAG, "TCP connection established to %s:%d on link %d", host.c_str(), port, link_id);
-//     return command_result::OK;
-// }
 
 command_result tcp_close(CommandableIf *t)
 {
@@ -353,14 +322,14 @@ Responder::ret Responder::check_async_replies(status state, std::string_view &re
     if (response.find("WIFI CONNECTED") != std::string::npos) {
         ESP_LOGI(TAG, "WiFi connected");
     } else if (response.find("WIFI DISCONNECTED") != std::string::npos) {
-        ESP_LOGW(TAG, "WiFi disconnected");
+        ESP_LOGD(TAG, "WiFi disconnected");
     }
 
     // Handle TCP status messages (multiple connections format: <link ID>,CONNECT or <link ID>,CLOSED)
     if (response.find("CONNECT") != std::string::npos && state == status::CONNECTING) {
         return connect(response);
     } else if (response.find("CLOSED") != std::string::npos) {
-        ESP_LOGW(TAG, "TCP connection closed");
+        ESP_LOGD(TAG, "TCP connection closed");
         return ret::FAIL;
     }
 

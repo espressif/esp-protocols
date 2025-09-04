@@ -192,7 +192,7 @@ again:
         last_pos = (char *)memchr(recv_data + 1 + actual_len, 'O', MIN_MESSAGE);
         if (last_pos == nullptr || last_pos[1] != 'K') {
             data_to_recv = 0;
-            ESP_LOGE(TAG, "no OK after data");
+            ESP_LOGD(TAG, "no OK after data");
             return ret::FAIL;
         }
     }
@@ -278,7 +278,7 @@ Responder::ret Responder::send(std::string_view response)
             if (ack < total) {
                 ESP_LOGD(TAG, "all sending data are not ack (missing %d bytes acked)", (total - ack));
                 if (total - ack > 64) {
-                    ESP_LOGW(TAG, "Need a pause: missing %d bytes acked", (total - ack));
+                    ESP_LOGD(TAG, "Need a pause: missing %d bytes acked", (total - ack));
                     return ret::NEED_MORE_TIME;
                 }
             }

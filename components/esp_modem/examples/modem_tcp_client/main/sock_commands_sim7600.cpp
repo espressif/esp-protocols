@@ -86,10 +86,10 @@ command_result tcp_send(CommandableIf *term, uint8_t *data, size_t len)
         return ret;
     }
     ret = command_result::TIMEOUT;
-    ESP_LOGW(TAG, "Before setting...");
+    ESP_LOGD(TAG, "Before setting...");
     term->on_read([&ret](uint8_t *cmd_data, size_t cmd_len) {
         std::string_view response((char *)cmd_data, cmd_len);
-        ESP_LOGW(TAG, "CIPSEND response %.*s", static_cast<int>(response.size()), response.data());
+        ESP_LOGD(TAG, "CIPSEND response %.*s", static_cast<int>(response.size()), response.data());
 
         if (response.find("+CIPSEND:") != std::string::npos) {
             ret = command_result::OK;
@@ -98,7 +98,7 @@ command_result tcp_send(CommandableIf *term, uint8_t *data, size_t len)
         }
         return ret;
     });
-    ESP_LOGW(TAG, "Before writing...");
+    ESP_LOGD(TAG, "Before writing...");
     auto written = term->write(data, len);
     if (written != len) {
         ESP_LOGE(TAG, "written %d (%d)...", written, len);

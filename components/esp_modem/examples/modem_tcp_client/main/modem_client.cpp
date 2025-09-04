@@ -91,6 +91,7 @@ extern "C" void app_main(void)
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // Default to INFO; individual modules use DEBUG for verbose tracing
     esp_log_level_set("*", ESP_LOG_INFO);
 
     event_group = xEventGroupCreate();
@@ -124,8 +125,6 @@ extern "C" void app_main(void)
 
     xTaskCreate(perform, "perform", 4096, dce.get(), 4, nullptr);
 
-    // vTaskDelay(pdMS_TO_TICKS(5000));
-    // vTaskDelay(portMAX_DELAY);
     /* create another DCE to serve a new connection */
     auto dce1 = sock_dce::create(&dce_config, dte);
     if (!dce1->init()) {
@@ -179,7 +178,7 @@ static void perform(void* ctx)
         while (dce->perform_sock()) {
             ESP_LOGV(TAG, "...performing");
         }
-        ESP_LOGE(TAG, "Loop exit.. retrying");
+        ESP_LOGD(TAG, "Loop exit.. retrying");
         // handle disconnections errors
         if (!dce->init()) {
             ESP_LOGE(TAG, "Failed to reinit network");

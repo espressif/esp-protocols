@@ -64,7 +64,9 @@ public:
         return total_len;
     }
 
+    // Unique link identifier used to target multi-connection AT commands
     int link_id{s_link_id++};
+    // Shared mutex guarding DTE access across concurrent DCE instances
     static SemaphoreHandle_t s_dte_mutex;
 private:
     static int s_link_id;
@@ -148,9 +150,10 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
             return 0;
         }
         at.clear_offsets();
-        ESP_LOGI("TAG", "TAKE RECV %d", at.link_id);
+        // Take DTE mutex before issuing receive on this link
+        ESP_LOGD("TAG", "TAKE RECV %d", at.link_id);
         xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
-        ESP_LOGE("TAG", "TAKE RECV %d", at.link_id);
+        ESP_LOGD("TAG", "TAKEN RECV %d", at.link_id);
         state = status::RECEIVING;
         uint64_t data;
         read(data_ready_fd, &data, sizeof(data));
@@ -173,9 +176,10 @@ esp_modem::return_type name(ESP_MODEM_COMMAND_PARAMS(__VA_ARGS__));
         if (!wait_to_idle(timeout_ms)) {
             return -1;
         }
-        ESP_LOGI("TAG", "TAKE SEND %d", at.link_id);
+        // Take DTE mutex before issuing send on this link
+        ESP_LOGD("TAG", "TAKE SEND %d", at.link_id);
         xSemaphoreTake(at.s_dte_mutex, portMAX_DELAY);
-        ESP_LOGE("TAG", "TAKE SEND %d", at.link_id);
+        ESP_LOGD("TAG", "TAKEN SEND %d", at.link_id);
         state = status::SENDING;
         memcpy(at.get_buf(), buffer, len_to_send);
         ESP_LOG_BUFFER_HEXDUMP("dce", at.get_buf(), len, ESP_LOG_VERBOSE);
