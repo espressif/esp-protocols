@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -115,6 +115,42 @@ public:
     {
         command_cb.urc_handler = std::move(line_cb);
     }
+
+    /**
+     * @brief Enhanced URC handler with buffer consumption control
+     * @param buffer_info Information about the current buffer state
+     * @return Information about how much of the buffer to consume
+     */
+    struct UrcBufferInfo {
+        const uint8_t* buffer_start;        // Start of entire buffer
+        size_t buffer_total_size;           // Total buffer size
+        size_t processed_offset;            // Offset of already processed data
+        size_t new_data_size;               // Size of new data since last call
+        const uint8_t* new_data_start;      // Pointer to start of new data
+        bool is_command_active;             // Whether a command is currently waiting for response
+    };
+
+    enum class UrcConsumeResult {
+        CONSUME_NONE,           // Don't consume anything, continue waiting
+        CONSUME_PARTIAL,        // Consume only part of the buffer
+        CONSUME_ALL             // Consume entire buffer
+    };
+
+    struct UrcConsumeInfo {
+        UrcConsumeResult result;
+        size_t consume_size;    // How many bytes to consume (0 = none, SIZE_MAX = all)
+    };
+
+    typedef std::function<UrcConsumeInfo(const UrcBufferInfo &)> enhanced_urc_cb;
+
+    /**
+     * @brief Set enhanced URC callback with buffer consumption control
+     * @param enhanced_cb Enhanced callback that can control buffer consumption
+     */
+    void set_enhanced_urc_cb(enhanced_urc_cb enhanced_cb)
+    {
+        command_cb.enhanced_urc_handler = std::move(enhanced_cb);
+    }
 #endif
 
     /**
@@ -216,6 +252,7 @@ private:
     struct command_cb {
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
         got_line_cb urc_handler {};                             /*!< URC callback if enabled */
+        enhanced_urc_cb enhanced_urc_handler {};                /*!< Enhanced URC callback with consumption control */
 #endif
         static const size_t GOT_LINE = SignalGroup::bit0;       /*!< Bit indicating response available */
         got_line_cb got_line;                                   /*!< Supplied command callback */

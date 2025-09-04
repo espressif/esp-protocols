@@ -527,3 +527,77 @@ The enhanced buffer management approach addresses the critical issues of tight c
 4. **Command Safety**: URC processing cannot interfere with active commands
 
 This approach provides a clean migration path to modem v2.0 while solving the fundamental buffer management issues that currently limit URC handler flexibility.
+
+## Implementation Plan
+
+### Phase 1: Enhanced Interface Implementation
+
+#### Step 1: Add Enhanced URC Interface
+- [x] **Add enhanced URC types to DTE header** (`esp_modem_dte.hpp`)
+  - [x] `UrcBufferInfo` struct with buffer state information
+  - [x] `UrcConsumeResult` enum for consumption control
+  - [x] `UrcConsumeInfo` struct for consumption details
+  - [x] `enhanced_urc_cb` typedef for new callback signature
+  - [x] `set_enhanced_urc_cb()` method in DTE class
+  - [x] `enhanced_urc_handler` member in `command_cb` structure
+
+- [x] **Add enhanced URC interface to DCE template** (`esp_modem_dce_template.hpp`)
+  - [x] `set_enhanced_urc()` method in DCE_T class
+
+- [ ] **Implement buffer state tracking in DTE**
+  - [ ] Add `BufferState` struct to track processing state
+  - [ ] Add `create_urc_info()` method to build buffer information
+  - [ ] Add `update_buffer_state()` method to track state changes
+
+- [ ] **Implement enhanced processing pipeline**
+  - [ ] Modify `process_line()` to call enhanced URC handler
+  - [ ] Add consumption control logic
+  - [ ] Add buffer pointer adjustment for command processing
+
+- [ ] **Add backward compatibility**
+  - [ ] Ensure existing `urc_handler` still works
+  - [ ] Add fallback logic when only legacy handler is set
+
+#### Step 2: Testing and Validation
+- [ ] **Create test cases for enhanced URC interface**
+  - [ ] Test partial buffer consumption
+  - [ ] Test full buffer consumption
+  - [ ] Test no consumption (waiting)
+  - [ ] Test command/URC interaction scenarios
+
+- [ ] **Update existing examples**
+  - [ ] Convert `urc_test.cpp` to use enhanced interface
+  - [ ] Update modem console example
+  - [ ] Add new examples demonstrating consumption control
+
+#### Step 3: Documentation and Examples
+- [ ] **Update API documentation**
+  - [ ] Document new enhanced URC interface
+  - [ ] Add usage examples and best practices
+  - [ ] Document migration path from legacy interface
+
+### Phase 2: Gradual Migration
+- [ ] **Performance testing**
+  - [ ] Benchmark enhanced interface vs legacy
+  - [ ] Test memory usage and overhead
+  - [ ] Validate thread safety
+
+- [ ] **Community feedback**
+  - [ ] Gather feedback on new interface
+  - [ ] Refine API based on usage patterns
+  - [ ] Address any performance concerns
+
+### Phase 3: Cleanup (Modem v2.0)
+- [ ] **Deprecate legacy interface**
+  - [ ] Add deprecation warnings
+  - [ ] Provide clear migration documentation
+  - [ ] Set removal timeline
+
+- [ ] **Remove legacy code**
+  - [ ] Remove old `urc_handler` callback
+  - [ ] Clean up legacy processing logic
+  - [ ] Update all internal references
+
+### Current Status
+- **Phase 1, Step 1**: ✅ **COMPLETED** - Enhanced URC interface added to headers
+- **Next**: Implement buffer state tracking and processing pipeline
