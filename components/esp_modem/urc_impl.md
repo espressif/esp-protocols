@@ -549,10 +549,10 @@ This approach provides a clean migration path to modem v2.0 while solving the fu
   - [x] Add `create_urc_info()` method to build buffer information
   - [x] Add `update_buffer_state()` method to track state changes
 
-- [ ] **Implement enhanced processing pipeline**
-  - [ ] Modify `process_line()` to call enhanced URC handler
-  - [ ] Add consumption control logic
-  - [ ] Add buffer pointer adjustment for command processing
+- [x] **Implement enhanced processing pipeline**
+  - [x] Modify `process_line()` to call enhanced URC handler
+  - [x] Add consumption control logic
+  - [x] Add buffer pointer adjustment for command processing
 
 - [ ] **Add backward compatibility**
   - [ ] Ensure existing `urc_handler` still works

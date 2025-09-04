@@ -287,7 +287,7 @@ private:
         char separator{};                                       /*!< Command reply separator (end of line/processing unit) */
         command_result result{};                                /*!< Command return code */
         SignalGroup signal;                                     /*!< Event group used to signal request-response operations */
-        bool process_line(uint8_t *data, size_t consumed, size_t len);  /*!< Lets the processing callback handle one line (processing unit) */
+        bool process_line(uint8_t *data, size_t consumed, size_t len, DTE* dte = nullptr);  /*!< Lets the processing callback handle one line (processing unit) */
         bool wait_for_line(uint32_t time_ms)                    /*!< Waiting for command processing */
         {
             return signal.wait_any(command_cb::GOT_LINE, time_ms);
