@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -97,10 +97,21 @@ void wakeup_modem(void)
 }
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-command_result handle_urc(uint8_t *data, size_t len)
+esp_modem::DTE::UrcConsumeInfo handle_enhanced_urc(const esp_modem::DTE::UrcBufferInfo &info)
 {
-    ESP_LOG_BUFFER_HEXDUMP("on_read", data, len, ESP_LOG_INFO);
-    return command_result::TIMEOUT;
+    // Log buffer information for debugging
+    ESP_LOGI(TAG, "URC Buffer Info: total_size=%zu, processed_offset=%zu, new_data_size=%zu, command_active=%s",
+             info.buffer_total_size, info.processed_offset, info.new_data_size,
+             info.is_command_active ? "true" : "false");
+
+    // Log the new data content
+    if (info.new_data_size > 0) {
+        ESP_LOG_BUFFER_HEXDUMP("on_read", info.new_data_start, info.new_data_size, ESP_LOG_INFO);
+    }
+
+    // For console example, we just log and don't consume anything
+    // This allows the data to be processed by command handlers
+    return {esp_modem::DTE::UrcConsumeResult::CONSUME_NONE, 0};
 }
 #endif
 
@@ -381,14 +392,14 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-    const ConsoleCommand HandleURC("urc", "toggle urc handling", no_args, [&](ConsoleCommand * c) {
+    const ConsoleCommand HandleURC("urc", "toggle enhanced urc handling", no_args, [&](ConsoleCommand * c) {
         static int cnt = 0;
         if (++cnt % 2) {
-            ESP_LOGI(TAG, "Adding URC handler");
-            dce->set_urc(handle_urc);
+            ESP_LOGI(TAG, "Adding enhanced URC handler");
+            dce->set_enhanced_urc(handle_enhanced_urc);
         } else {
-            ESP_LOGI(TAG, "URC removed");
-            dce->set_urc(nullptr);
+            ESP_LOGI(TAG, "Enhanced URC removed");
+            dce->set_enhanced_urc(nullptr);
         }
         return 0;
     });
