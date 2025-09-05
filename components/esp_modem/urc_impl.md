@@ -567,7 +567,7 @@ This approach provides a clean migration path to modem v2.0 while solving the fu
 
 - [x] **Update existing examples**
   - [x] Convert `urc_test.cpp` to use enhanced interface
-  - [ ] Update modem console example
+  - [x] Update modem console example
   - [ ] Add new examples demonstrating consumption control
 
 #### Step 3: Documentation and Examples
