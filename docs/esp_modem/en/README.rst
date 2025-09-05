@@ -176,6 +176,41 @@ Component Kconfig
 Compile-time configuration is provided using menuconfig. Please check
 the description for the CMUX mode configuration options.
 
+Development Mode
+~~~~~~~~~~~~~~~~
+
+ESP-MODEM supports two different modes for handling AT command definitions:
+
+**Production Mode (Default)**
+    Uses pre-generated headers and sources with common AT commands from the ``command/`` directory.
+    This mode provides better IDE navigation and code completion, making it ideal for:
+
+    - Application development using existing AT commands
+    - Better code navigation and IntelliSense support
+    - Faster compilation times
+    - Stable, tested command implementations
+
+**Development Mode**
+    Uses in-place macro expansion with AT commands from the ``generate/`` directory.
+    This mode is designed for ESP-MODEM library developers who need to:
+
+    - Modify or add new AT command definitions in ``esp_modem_command_declare.inc``
+    - Work directly with the source definitions of AT commands
+    - Debug command implementations
+    - Contribute to the core ESP-MODEM library development
+
+.. note::
+    For adding support for new modem modules, you typically don't need development mode.
+    Instead, create a custom module class inheriting from ``GenericModule`` and add your
+    commands directly in your project's headers/sources. See the ``pppos_client`` example
+    for a demonstration of this approach.
+
+To enable development mode, set ``CONFIG_ESP_MODEM_ENABLE_DEVELOPMENT_MODE=y`` in your project configuration.
+
+.. note::
+    Development mode requires the C preprocessor to expand command definitions at compile time,
+    which may result in longer compilation times and larger binary sizes compared to production mode.
+
 Runtime configuration
 ~~~~~~~~~~~~~~~~~~~~~
 
