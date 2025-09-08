@@ -157,6 +157,8 @@ static void process_packet(esp_netif_t *netif, uart_port_t uart_port, size_t ava
             esp_netif_receive(netif, in_buf + buf_start + sizeof(struct header), payload_size, NULL);
         } else {
 #ifdef CONFIG_EPPP_LINK_CHANNELS_SUPPORT
+            struct eppp_handle *handle = esp_netif_get_io_driver(netif);
+            struct eppp_uart *h = __containerof(handle, struct eppp_uart, parent);
             if (h->parent.channel_rx) {
                 h->parent.channel_rx(netif, channel, in_buf + buf_start + sizeof(struct header), payload_size);
             }
