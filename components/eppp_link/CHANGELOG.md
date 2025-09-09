@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.1)
+
+### Bug Fixes
+
+- Fix getting context for channel API ([94563cdc](https://github.com/espressif/esp-protocols/commit/94563cdc))
+- Cover more combinations in build tests ([e0b8de8f](https://github.com/espressif/esp-protocols/commit/e0b8de8f))
+
 ## [1.1.0](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.0)
 
 ### Features
