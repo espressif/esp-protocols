@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -99,6 +99,7 @@ static struct {
     struct arg_int *count;
     struct arg_int *tos;
     struct arg_int *ttl;
+    struct arg_int *interface;
     struct arg_str *host;
     struct arg_end *end;
 } ping_args;
@@ -137,6 +138,10 @@ static int do_ping_cmd(int argc, char **argv)
         config.ttl = (uint32_t)(ping_args.ttl->ival[0]);
     }
 
+    if (ping_args.interface->count > 0) {
+        config.interface = (uint32_t)(ping_args.interface->ival[0]);
+    }
+
     // parse IP address
     struct sockaddr_in6 sock_addr6;
     ip_addr_t target_addr = {0};
@@ -155,12 +160,12 @@ static int do_ping_cmd(int argc, char **argv)
         }
         if (res->ai_family == AF_INET) {
 #if CONFIG_LWIP_IPV4
-            struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
+            struct in_addr addr4 = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
             inet_addr_to_ip4addr(ip_2_ip4(&target_addr), &addr4);
 #endif
         } else {
 #if CONFIG_LWIP_IPV6
-            struct in6_addr addr6 = ((struct sockaddr_in6 *) (res->ai_addr))->sin6_addr;
+            struct in6_addr addr6 = ((struct sockaddr_in6 *)(res->ai_addr))->sin6_addr;
             inet6_addr_to_ip6addr(ip_2_ip6(&target_addr), &addr6);
 #endif
         }
@@ -204,6 +209,7 @@ esp_err_t console_cmd_ping_register(void)
     ping_args.count = arg_int0("c", "count", "<n>", "Stop after sending count packets");
     ping_args.tos = arg_int0("Q", "tos", "<n>", "Set Type of Service related bits in IP datagrams");
     ping_args.ttl = arg_int0("T", "ttl", "<n>", "Set Time to Live related bits in IP datagrams");
+    ping_args.interface = arg_int0("I", "interface", "<n>", "Set Interface number");
     ping_args.host = arg_str1(NULL, NULL, "<host>", "Host address");
     ping_args.end = arg_end(1);
     const esp_console_cmd_t ping_cmd = {
