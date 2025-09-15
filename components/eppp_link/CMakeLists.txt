@@ -1,5 +1,5 @@
 if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER "5.3")
-    set(driver_deps esp_driver_gpio esp_driver_spi)
+    set(driver_deps esp_driver_gpio esp_driver_spi esp_driver_uart esp_driver_sdio)
 else()
     set(driver_deps driver)
 endif()

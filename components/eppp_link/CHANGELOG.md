@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.2)
+
+### Bug Fixes
+
+- Update uart driver deps per IDF > v5.3 ([92e14607](https://github.com/espressif/esp-protocols/commit/92e14607))
+
 ## [1.1.1](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.1)
 
 ### Bug Fixes
