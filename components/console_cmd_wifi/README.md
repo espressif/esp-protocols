@@ -35,7 +35,7 @@ The component offers a console with a command that enables runtime wifi configur
 
 Note: Auto-registration of a specific plugin command can be disabled from menuconfig.
 
-## Suported command:
+## Supported command:
 
 ### wifi:
 ```
