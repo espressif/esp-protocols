@@ -16,7 +16,7 @@ menu "Example Configuration"
     config WEBSOCKET_URI
         string "Websocket endpoint URI"
         depends on WEBSOCKET_URI_FROM_STRING
-        default "wss://echo.websocket.events"
+        default "wss://echo.websocket.org"
         help
             URL of websocket endpoint this example connects to and sends echo
 
