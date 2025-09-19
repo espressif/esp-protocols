@@ -1,0 +1,4 @@
+# Enable SLIP in lwIP (CSLIP currently pass-through)
+CONFIG_LWIP_SLIP_SUPPORT=y
+# Workaround: Enable PPP so esp_netif accounts for lwIP netif->state usage
+CONFIG_LWIP_PPP_SUPPORT=y
