@@ -14,7 +14,7 @@
  */
 extern int __real_mbedtls_ssl_handshake_step(mbedtls_ssl_context *ssl);
 
-int  __wrap_mbedtls_ssl_handshake_step( mbedtls_ssl_context *ssl )
+int  __wrap_mbedtls_ssl_handshake_step(mbedtls_ssl_context *ssl)
 {
     int ret = 0;
 

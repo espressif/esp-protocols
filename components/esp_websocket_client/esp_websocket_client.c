@@ -74,6 +74,7 @@ static const char *TAG = "websocket_client";
 const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
 // and we are waiting for the server to continue with clean close
+const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop has been requested
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
@@ -477,6 +478,7 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     }
 
     client->run = false;
+    xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
@@ -1199,8 +1201,8 @@ static void esp_websocket_client_task(void *pv)
                 }
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
-            // waiting for reconnecting...
-            vTaskDelay(client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            // waiting for reconnection or a request to stop the client...
+            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
         } else if (WEBSOCKET_STATE_CLOSING == client->state &&
                    (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
             ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
@@ -1262,7 +1264,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
-    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT);
     ESP_LOGI(TAG, "Started");
     return ESP_OK;
 }
@@ -1331,6 +1333,7 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
 
     // If could not close gracefully within timeout, stop the client and disconnect
     client->run = false;
+    xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;

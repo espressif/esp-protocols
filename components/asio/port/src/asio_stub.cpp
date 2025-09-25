@@ -28,7 +28,7 @@ posix_event::posix_event()
 }
 } // namespace asio::detail
 
-extern "C" int pause (void)
+extern "C" int pause(void)
 {
     while (true) {
         ::sleep(UINT_MAX);
