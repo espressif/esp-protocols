@@ -66,6 +66,9 @@ public:
         if (rx_semaphore) {
             vSemaphoreDelete(rx_semaphore);
         }
+        if (rx_mutex) {
+            vSemaphoreDelete(rx_mutex);
+        }
     }
 
     void start() override
@@ -128,6 +131,7 @@ private:
     bool use_dma;
     size_t dma_buffer_size;
     SemaphoreHandle_t rx_semaphore;
+    SemaphoreHandle_t rx_mutex;  // Mutex for protecting shared DMA state
     size_t received_size;
     bool rx_complete;
 };
@@ -160,6 +164,10 @@ void UartDmaTerminal::initialize_uhci()
     rx_semaphore = xSemaphoreCreateBinary();
     ESP_MODEM_THROW_IF_FALSE(rx_semaphore != nullptr, "Failed to create RX semaphore");
 
+    // Create mutex for protecting shared DMA state
+    rx_mutex = xSemaphoreCreateMutex();
+    ESP_MODEM_THROW_IF_FALSE(rx_mutex != nullptr, "Failed to create RX mutex");
+
     // Register callbacks
     uhci_event_callbacks_t uhci_cbs = {
         .on_rx_trans_event = uhci_rx_event_callback,
@@ -176,13 +184,18 @@ bool UartDmaTerminal::uhci_rx_event_callback(uhci_controller_handle_t uhci_ctrl,
 {
     UartDmaTerminal *terminal = static_cast<UartDmaTerminal*>(user_ctx);
 
-    terminal->received_size = edata->recv_size;
-    terminal->rx_complete = edata->flags.totally_received;
+    // Protect shared state with mutex (ISR-safe)
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    if (xSemaphoreTakeFromISR(terminal->rx_mutex, &xHigherPriorityTaskWoken) == pdTRUE) {
+        terminal->received_size = edata->recv_size;
+        terminal->rx_complete = edata->flags.totally_received;
+        xSemaphoreGiveFromISR(terminal->rx_mutex, &xHigherPriorityTaskWoken);
+    }
 
     // Notify the task that data is available
-    xSemaphoreGive(terminal->rx_semaphore);
+    xSemaphoreGiveFromISR(terminal->rx_semaphore, &xHigherPriorityTaskWoken);
 
-    return false; // No high priority task woken
+    return xHigherPriorityTaskWoken; // Return whether a higher priority task was woken
 }
 
 bool UartDmaTerminal::uhci_tx_done_callback(uhci_controller_handle_t uhci_ctrl, const uhci_tx_done_event_data_t *edata, void *user_ctx)
@@ -222,13 +235,22 @@ void UartDmaTerminal::task()
         if (use_dma) {
             // Wait for DMA data or timeout
             if (xSemaphoreTake(rx_semaphore, pdMS_TO_TICKS(100)) == pdTRUE) {
-                if (on_read && received_size > 0) {
-                    on_read(rx_buffer, received_size);
-                }
+                // Protect shared state access
+                if (xSemaphoreTake(rx_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    size_t current_received_size = received_size;
+                    bool current_rx_complete = rx_complete;
+                    xSemaphoreGive(rx_mutex);
 
-                // Restart receive if not complete
-                if (!rx_complete) {
-                    uhci_receive(uhci_ctrl, rx_buffer, rx_buffer_size);
+                    if (on_read && current_received_size > 0) {
+                        on_read(rx_buffer, current_received_size);
+                    }
+
+                    // Always restart receive for continuous operation
+                    // The UHCI driver will handle the case where receive is already active
+                    esp_err_t ret = uhci_receive(uhci_ctrl, rx_buffer, rx_buffer_size);
+                    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+                        ESP_LOGE(TAG, "Failed to restart UHCI receive: %s", esp_err_to_name(ret));
+                    }
                 }
             }
         } else {
@@ -290,20 +312,25 @@ void UartDmaTerminal::task()
 int UartDmaTerminal::read(uint8_t *data, size_t len)
 {
     if (use_dma) {
-        // For DMA mode, data is already in rx_buffer
-        // Copy the requested amount
-        size_t copy_len = std::min(len, received_size);
-        if (copy_len > 0) {
-            memcpy(data, rx_buffer, copy_len);
-            // Move remaining data to beginning of buffer
-            if (received_size > copy_len) {
-                memmove(rx_buffer, rx_buffer + copy_len, received_size - copy_len);
-                received_size -= copy_len;
-            } else {
-                received_size = 0;
+        // Protect shared state access
+        if (xSemaphoreTake(rx_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // For DMA mode, data is already in rx_buffer
+            // Copy the requested amount
+            size_t copy_len = std::min(len, received_size);
+            if (copy_len > 0) {
+                memcpy(data, rx_buffer, copy_len);
+                // Move remaining data to beginning of buffer
+                if (received_size > copy_len) {
+                    memmove(rx_buffer, rx_buffer + copy_len, received_size - copy_len);
+                    received_size -= copy_len;
+                } else {
+                    received_size = 0;
+                }
             }
+            xSemaphoreGive(rx_mutex);
+            return copy_len;
         }
-        return copy_len;
+        return 0; // Timeout or error
     } else {
         // Traditional UART read
         size_t length = 0;
