@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,6 +13,7 @@
 #include "cxx_include/esp_modem_dce_factory.hpp"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
+#include "esp_modem_uart_dma.h"
 
 namespace esp_modem {
 
@@ -24,6 +25,14 @@ std::shared_ptr<DTE> create_uart_dte(const dte_config *config)
 {
     TRY_CATCH_RET_NULL(
         auto term = create_uart_terminal(config);
+        return std::make_shared<DTE>(config, std::move(term));
+    )
+}
+
+std::shared_ptr<DTE> create_uart_dma_dte(const dte_config *config)
+{
+    TRY_CATCH_RET_NULL(
+        auto term = create_uart_dma_terminal(config);
         return std::make_shared<DTE>(config, std::move(term));
     )
 }

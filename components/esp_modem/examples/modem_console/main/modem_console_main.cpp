@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -21,6 +21,7 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
+#include "esp_modem_uart_dma.h"
 #include "esp_idf_version.h"
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
 #include "esp_modem_usb_config.h"
@@ -135,7 +136,23 @@ extern "C" void app_main(void)
     dte_config.task_stack_size = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_STACK_SIZE;
     dte_config.task_priority = CONFIG_EXAMPLE_MODEM_UART_EVENT_TASK_PRIORITY;
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
+
+    // Configure DMA options if enabled
+#ifdef CONFIG_EXAMPLE_MODEM_UART_USE_DMA
+    dte_config.uart_config.use_dma = true;
+    dte_config.uart_config.dma_buffer_size = CONFIG_EXAMPLE_MODEM_UART_DMA_BUFFER_SIZE;
+    ESP_LOGI(TAG, "UART DMA enabled with buffer size: %zu", dte_config.uart_config.dma_buffer_size);
+#else
+    dte_config.uart_config.use_dma = false;
+    ESP_LOGI(TAG, "UART DMA disabled, using traditional UART mode");
+#endif
+
+    // Create DTE with appropriate terminal type
+#ifdef CONFIG_EXAMPLE_MODEM_UART_USE_DMA
+    auto uart_dte = create_uart_dma_dte(&dte_config);
+#else
     auto uart_dte = create_uart_dte(&dte_config);
+#endif
 
 #if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
     ESP_LOGI(TAG, "Initializing esp_modem for the SHINY module...");
