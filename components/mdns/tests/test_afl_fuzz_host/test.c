@@ -78,30 +78,20 @@ static int mdns_test_service_txt_set(const char *service, const char *proto,  ui
 static int mdns_test_sub_service_add(const char *sub_name, const char *service_name, const char *proto, uint32_t port)
 {
     if (mdns_service_add(NULL, service_name, proto, port, NULL, 0)) {
-        // This is expected failure as the service thread is not running
+        return ESP_FAIL;
     }
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
 
     if (mdns_test_mdns_get_service_item(service_name, proto) == NULL) {
         return ESP_FAIL;
     }
-    int ret = mdns_service_subtype_add_for_host(NULL, service_name, proto, NULL, sub_name);
-    a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
-    return ret;
+    return mdns_service_subtype_add_for_host(NULL, service_name, proto, NULL, sub_name);
 }
 
 static int mdns_test_service_add(const char *service_name, const char *proto, uint32_t port)
 {
     if (mdns_service_add(NULL, service_name, proto, port, NULL, 0)) {
-        // This is expected failure as the service thread is not running
+        return ESP_FAIL;
     }
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
 
     if (mdns_test_mdns_get_service_item(service_name, proto) == NULL) {
         return ESP_FAIL;
@@ -266,9 +256,6 @@ int main(int argc, char **argv)
     }
 #ifndef MDNS_NO_SERVICES
     mdns_service_remove_all();
-    mdns_action_t *a = NULL;
-    GetLastItem(&a);
-    mdns_test_execute_action(a);
 #endif
     ForceTaskDelete();
     mdns_free();
