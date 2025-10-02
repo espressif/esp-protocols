@@ -1,7 +1,9 @@
+#INSTR=off
 TEST_NAME=test
 FUZZ=afl-fuzz
 COMPONENTS_DIR=$(IDF_PATH)/components
-COMPILER_ICLUDE_DIR=$(shell echo `which xtensa-esp32-elf-gcc | xargs dirname | xargs dirname`/xtensa-esp32-elf)
+# Use ESP32 toolchain include path if available, otherwise fall back to system includes for host-based compilation
+COMPILER_INCLUDE_DIR=$(shell if command -v xtensa-esp32-elf-gcc >/dev/null 2>&1; then echo `which xtensa-esp32-elf-gcc | xargs dirname | xargs dirname`/xtensa-esp32-elf; else echo /usr; fi)
 
 CFLAGS=-g -Wno-unused-value -Wno-missing-declarations -Wno-pointer-bool-conversion -Wno-macro-redefined -Wno-int-to-void-pointer-cast -DHOOK_MALLOC_FAILED -DESP_EVENT_H_ -D__ESP_LOG_H__ \
                  -I. -I../.. -I../../include -I../../private_include -I ./build/config  \
@@ -35,7 +37,7 @@ CFLAGS=-g -Wno-unused-value -Wno-missing-declarations -Wno-pointer-bool-conversi
                  -I$(COMPONENTS_DIR)/xtensa/include \
                  -I$(COMPONENTS_DIR)/xtensa/esp32/include \
                  -I$(COMPONENTS_DIR)/esp_hw_support/etm/include \
-                 -I$(COMPILER_ICLUDE_DIR)/include
+                 -I$(COMPILER_INCLUDE_DIR)/include
 
 
 MDNS_C_DEPENDENCY_INJECTION=-include mdns_di.h
@@ -77,7 +79,18 @@ $(TEST_NAME): $(OBJECTS)
 	@$(LD)  $(OBJECTS) -o $@ $(LDLIBS)
 
 fuzz: $(TEST_NAME)
-	@$(FUZZ) -i "in" -o "out" -- ./$(TEST_NAME)
+	# timeout returns 124 if time limit is reached, original return code otherwise
+	# pass only if: fuzzing was running smoothly until timeout AND no crash found
+	@timeout 10m $(FUZZ) -i "in" -o "out" -- ./$(TEST_NAME) || \
+	if [ $$? -eq 124 ]; then \
+		if [ -n "$$(find out/default/crashes -type f 2>/dev/null)" ]; then \
+			echo "Crashes found!"; \
+			tar -czf out/default/crashes.tar.gz -C out/default crashes; \
+			exit 1; \
+		fi \
+	else \
+		exit 1; \
+	fi
 
 clean:
 	@rm -rf *.o *.SYM $(TEST_NAME) out

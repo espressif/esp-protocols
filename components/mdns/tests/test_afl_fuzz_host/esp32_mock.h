@@ -55,8 +55,7 @@
 
 #define pdMS_TO_TICKS(a) a
 #define xSemaphoreTake(s,d)        true
-#define xTaskDelete(a)
-#define vTaskDelete(a)             free(a)
+#define vTaskDelete(a)             free(NULL)
 #define xSemaphoreGive(s)
 #define xQueueCreateMutex(s)
 #define _mdns_pcb_init(a,b)         true
@@ -66,7 +65,7 @@
 #define vSemaphoreDelete(s)         free(s)
 #define queueQUEUE_TYPE_MUTEX       ( ( uint8_t ) 1U
 #define xTaskCreatePinnedToCore(a,b,c,d,e,f,g)     *(f) = malloc(1)
-#define xTaskCreateStaticPinnedToCore(a,b,c,d,e,f,g,h)     true
+#define xTaskCreateStaticPinnedToCore(a,b,c,d,e,f,g,h)     ((void*)1)
 #define vTaskDelay(m)               usleep((m)*0)
 #define esp_random()                (rand()%UINT32_MAX)
 
@@ -138,5 +137,9 @@ esp_err_t esp_event_handler_unregister(const char *event_base, int32_t event_id,
 TaskHandle_t xTaskGetCurrentTaskHandle(void);
 void xTaskNotifyGive(TaskHandle_t task);
 BaseType_t xTaskNotifyWait(uint32_t bits_entry_clear, uint32_t bits_exit_clear, uint32_t *value, TickType_t wait_time);
+
+static inline void xTaskGetStaticBuffers(void *pvTaskBuffer, void *pvStackBuffer, void *pvTaskTCB)
+{
+}
 
 #endif //_ESP32_COMPAT_H_
