@@ -1,0 +1,6 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) 6.0.0 Project Minimal Configuration
+#
+CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
+CONFIG_MDNS_MAX_SERVICES=40
+CONFIG_MDNS_ENABLE_DEBUG_PRINTS=y
