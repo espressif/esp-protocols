@@ -34,6 +34,7 @@ typedef enum {
     WEBSOCKET_EVENT_CONNECTED,      /*!< Once the Websocket has been connected to the server, no data exchange has been performed */
     WEBSOCKET_EVENT_DISCONNECTED,   /*!< The connection has been disconnected */
     WEBSOCKET_EVENT_DATA,           /*!< When receiving data from the server, possibly multiple portions of the packet */
+    WEBSOCKET_EVENT_PONG,           /*!< When receiving a PONG control frame from the server, Pong events might carry payload when present. */
     WEBSOCKET_EVENT_CLOSED,         /*!< The connection has been closed cleanly */
     WEBSOCKET_EVENT_BEFORE_CONNECT, /*!< The event occurs before connecting */
     WEBSOCKET_EVENT_BEGIN,          /*!< The event occurs once after thread creation, before event loop */
