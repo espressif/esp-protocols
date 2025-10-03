@@ -52,14 +52,14 @@ I (18208) lws-client: LWS minimal ws client echo
 216516: __lws_lc_tag:  ++ [vh|0|default||-1] (1)
 I (18248) lws-client: connect_cb: connecting
 
-210112: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/echo.websocket.events] (1)
-204800: [wsicli|0|WS/h1/default/echo.websocket.events]: lws_client_connect_3_connect: trying 13.248.241.119
+210112: __lws_lc_tag:  ++ [wsicli|0|WS/h1/default/echo.websocket.org] (1)
+204800: [wsicli|0|WS/h1/default/echo.websocket.org]: lws_client_connect_3_connect: trying 13.248.241.119
 180776: lws_ssl_client_bio_create: allowing selfsigned
 I (19998) wifi:<ba-add>idx:0 (ifx:0, b4:89:01:63:9d:08), tid:0, ssn:321, winSize:64
 I (20768) lws-client: WEBSOCKET_EVENT_CONNECTED
 I (20768) lws-client: Sending hello 0000
 I (20778) lws-client: WEBSOCKET_EVENT_DATA
-W (20778) lws-client: Received=echo.websocket.events sponsored by Lob.com
+W (20778) lws-client: Received=echo.websocket.org sponsored by Lob.com
 
 
 I (20968) lws-client: WEBSOCKET_EVENT_DATA
