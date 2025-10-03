@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,11 +14,19 @@
 #include "freertos/FreeRTOS.h"
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_idf_version.h"
 #include <sys/socket.h>
 #include "esp_transport_ws.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+// Features supported in 6.0.0
+#define WS_TRANSPORT_HEADER_CALLBACK_SUPPORT    1
+#else
+#define WS_TRANSPORT_HEADER_CALLBACK_SUPPORT    0
 #endif
 
 typedef struct esp_websocket_client *esp_websocket_client_handle_t;
@@ -31,6 +39,9 @@ ESP_EVENT_DECLARE_BASE(WEBSOCKET_EVENTS);         // declaration of the task eve
 typedef enum {
     WEBSOCKET_EVENT_ANY = -1,
     WEBSOCKET_EVENT_ERROR = 0,      /*!< This event occurs when there are any errors during execution */
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+    WEBSOCKET_EVENT_HEADER_RECEIVED,/*!< This event occurs for each pre-upgrade HTTP header */
+#endif
     WEBSOCKET_EVENT_CONNECTED,      /*!< Once the Websocket has been connected to the server, no data exchange has been performed */
     WEBSOCKET_EVENT_DISCONNECTED,   /*!< The connection has been disconnected */
     WEBSOCKET_EVENT_DATA,           /*!< When receiving data from the server, possibly multiple portions of the packet */
