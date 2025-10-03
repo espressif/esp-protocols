@@ -68,3 +68,43 @@ jobs:
             diff -q $file /tmp/$file || exit 1
             echo "OK"
           done
+
+  fuzz_test:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns-fuzz') || github.event_name == 'push'
+    name: Fuzzer tests for mdns lib
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+
+    runs-on: ubuntu-22.04
+    container: aflplusplus/aflplusplus
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+
+      - name: Checkout ESP-IDF
+        uses: actions/checkout@v4
+        with:
+          repository: espressif/esp-idf
+          path: idf
+          submodules: recursive
+
+      - name: Install Necessary Libs
+        run: |
+          apt-get update -y
+          apt-get install -y libbsd-dev
+
+      - name: Run AFL++
+        shell: bash
+        run: |
+          export IDF_PATH=$GITHUB_WORKSPACE/idf
+          cd components/mdns/tests/test_afl_fuzz_host/
+          make fuzz
+
+      - name: Upload Crash Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: components/mdns/tests/test_afl_fuzz_host/out/default/crashes.tar.gz
+          if-no-files-found: ignore
