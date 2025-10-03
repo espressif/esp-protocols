@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,6 +39,15 @@ using dte_config = ::esp_modem_dte_config;
  *         if exceptions are disabled the API abort()'s on error
  */
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
+
+/**
+ * @brief Create UART DTE with DMA support
+ * @param config DTE configuration
+ * @return shared ptr to DTE on success
+ *         nullptr on failure (either due to insufficient memory or wrong dte configuration)
+ *         if exceptions are disabled the API abort()'s on error
+ */
+std::shared_ptr<DTE> create_uart_dma_dte(const dte_config *config);
 
 /**
  * @brief Create VFS DTE

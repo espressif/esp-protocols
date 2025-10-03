@@ -51,6 +51,8 @@ struct esp_modem_uart_term_config {
     int rx_buffer_size;             /*!< UART RX Buffer Size */
     int tx_buffer_size;             /*!< UART TX Buffer Size */
     int event_queue_size;           /*!< UART Event Queue Size, set to 0 if no event queue needed */
+    bool use_dma;                   /*!< Enable UHCI DMA for high-speed transfers */
+    size_t dma_buffer_size;         /*!< DMA buffer size for UHCI transfers */
 };
 
 // Forward declare the resource struct
@@ -114,6 +116,8 @@ struct esp_modem_dte_config {
             .rx_buffer_size = 4096,                 \
             .tx_buffer_size = 512,                  \
             .event_queue_size = 30,                 \
+            .use_dma = false,                       \
+            .dma_buffer_size = 8192,               \
        },                                           \
     }
 
