@@ -1,84 +1,12 @@
-# SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import json
 import random
 import re
-import socket
-import ssl
 import string
 import sys
-from threading import Event, Thread
 
-from SimpleWebSocketServer import (SimpleSSLWebSocketServer,
-                                   SimpleWebSocketServer, WebSocket)
-
-
-def get_my_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('8.8.8.8', 1))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
-    return IP
-
-
-class WebsocketTestEcho(WebSocket):
-    def handleMessage(self):
-        if isinstance(self.data, bytes):
-            print(f'\n Server received binary data: {self.data.hex()}\n')
-            self.sendMessage(self.data, binary=True)
-        else:
-            print(f'\n Server received: {self.data}\n')
-            self.sendMessage(self.data)
-
-    def handleConnected(self):
-        print('Connection from: {}'.format(self.address))
-
-    def handleClose(self):
-        print('{} closed the connection'.format(self.address))
-
-
-# Simple Websocket server for testing purposes
-class Websocket(object):
-
-    def send_data(self, data):
-        for nr, conn in self.server.connections.items():
-            conn.sendMessage(data)
-
-    def run(self):
-        if self.use_tls is True:
-            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ssl_context.load_cert_chain(certfile='main/certs/server/server_cert.pem', keyfile='main/certs/server/server_key.pem')
-            if self.client_verify is True:
-                ssl_context.load_verify_locations(cafile='main/certs/ca_cert.pem')
-                ssl_context.verify_mode = ssl.CERT_REQUIRED
-            ssl_context.check_hostname = False
-            self.server = SimpleSSLWebSocketServer('', self.port, WebsocketTestEcho, ssl_context=ssl_context)
-        else:
-            self.server = SimpleWebSocketServer('', self.port, WebsocketTestEcho)
-        while not self.exit_event.is_set():
-            self.server.serveonce()
-
-    def __init__(self, port, use_tls, verify):
-        self.port = port
-        self.use_tls = use_tls
-        self.client_verify = verify
-        self.exit_event = Event()
-        self.thread = Thread(target=self.run)
-        self.thread.start()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.exit_event.set()
-        self.thread.join(10)
-        if self.thread.is_alive():
-            print('Thread cannot be joined', 'orange')
+from websocket_server import WebsocketServer, get_my_ip
 
 
 def test_examples_protocol_websocket(dut):
@@ -228,13 +156,13 @@ def test_examples_protocol_websocket(dut):
 
     if uri_from_stdin:
         server_port = 8080
-        with Websocket(server_port, use_tls, client_verify) as ws:
+        with WebsocketServer(server_port, use_tls, client_verify) as ws:
             if use_tls is True:
                 uri = 'wss://{}:{}'.format(get_my_ip(), server_port)
             else:
                 uri = 'ws://{}:{}'.format(get_my_ip(), server_port)
             print('DUT connecting to {}'.format(uri))
-            dut.expect('Please enter uri of websocket endpoint', timeout=30)
+            dut.expect("Please enter WebSocket endpoint URI", timeout=30)
             dut.write(uri)
             test_echo(dut)
             test_recv_long_msg(dut, ws, 2000, 3)
