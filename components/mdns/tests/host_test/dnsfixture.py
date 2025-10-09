@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import logging
 import re
@@ -92,9 +92,57 @@ class DnsPythonWrapper:
         if expect is None:
             expect = name
         if expected:
-            assert any(expect in answer for answer in answers), f"Expected record '{expect}' not found in answer section"
+            assert any(expect in answer for answer in answers), f"Expected record '{expect}' not in answer section"
         else:
             assert not any(expect in answer for answer in answers), f"Unexpected record '{expect}' found in answer section"
+
+    def parse_section(self, response, section: str, rdtype_text: str):
+        """Parse a specific response section (answer, authority, additional) for given rdtype.
+
+        Returns list of textual records for that rdtype.
+        """
+        out = []
+        if not response:
+            return out
+        rrsets = []
+        if section == 'answer':
+            rrsets = response.answer
+        elif section == 'authority':
+            rrsets = response.authority
+        elif section == 'additional':
+            rrsets = response.additional
+        else:
+            raise ValueError('invalid section')
+        for rr in rrsets:
+            if dns.rdatatype.to_text(rr.rdtype) != rdtype_text:
+                continue
+            for item in rr.items:
+                full = (
+                    f'{rr.name} {rr.ttl} '
+                    f'{dns.rdataclass.to_text(rr.rdclass)} '
+                    f'{dns.rdatatype.to_text(rr.rdtype)} '
+                    f'{item.to_text()}'
+                )
+                out.append(full)
+        return out
+
+    def check_additional(self, response, rdtype_text: str, owner_contains: str, expected: bool = True, expect_substr: str | None = None):
+        """Check Additional section for an RR of type rdtype_text whose owner includes owner_contains.
+
+        If expect_substr is provided, also require it to appear in the textual RR.
+        """
+        records = self.parse_section(response, 'additional', rdtype_text)
+        logger.info(f'additional({rdtype_text}): {records}')
+
+        def _matches(line: str) -> bool:
+            in_owner = owner_contains in line
+            has_val = (expect_substr in line) if expect_substr else True
+            return in_owner and has_val
+        found = any(_matches(r) for r in records)
+        if expected:
+            assert found, f"Expected {rdtype_text} for {owner_contains} in Additional not found"
+        else:
+            assert not found, f"Unexpected {rdtype_text} for {owner_contains} found in Additional"
 
 
 if __name__ == '__main__':
