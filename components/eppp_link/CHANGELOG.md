@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.3)
+
+### Bug Fixes
+
+- Fix test dependency issue on driver ([1ace92c2](https://github.com/espressif/esp-protocols/commit/1ace92c2))
+- Fix tun netif to (optionally) return errors ([7a6cf0f9](https://github.com/espressif/esp-protocols/commit/7a6cf0f9))
+
 ## [1.1.2](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.2)
 
 ### Bug Fixes
