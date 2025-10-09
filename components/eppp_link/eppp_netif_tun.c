@@ -17,9 +17,17 @@
 #include "esp_check.h"
 #include "esp_idf_version.h"
 
+#if defined(CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS)
+typedef esp_err_t esp_netif_recv_ret_t;
+#define ESP_NETIF_OPTIONAL_RETURN_CODE(expr) expr
+#else
+typedef void esp_netif_recv_ret_t;
+#define ESP_NETIF_OPTIONAL_RETURN_CODE(expr)
+#endif // CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS
+
 static const char *TAG = "eppp_tun_netif";
 
-static void tun_input(void *h, void *buffer, unsigned int len, void *eb)
+static esp_netif_recv_ret_t tun_input(void *h, void *buffer, unsigned int len, void *eb)
 {
     __attribute__((unused)) esp_err_t ret = ESP_OK;
     struct netif *netif = h;
@@ -31,11 +39,12 @@ static void tun_input(void *h, void *buffer, unsigned int len, void *eb)
     ESP_GOTO_ON_FALSE(pbuf_remove_header(p, SIZEOF_ETH_HDR) == 0, ESP_FAIL, err, TAG, "pbuf_remove_header failed");
     memcpy(p->payload, buffer, len);
     ESP_GOTO_ON_FALSE(netif->input(p, netif) == ERR_OK, ESP_FAIL, err, TAG, "failed to input packet to lwip");
-    return;
+    return ESP_NETIF_OPTIONAL_RETURN_CODE(ESP_OK);
 err:
     if (p) {
         pbuf_free(p);
     }
+    return ESP_NETIF_OPTIONAL_RETURN_CODE(ret);
 }
 
 static err_t tun_output(struct netif *netif, struct pbuf *p)
