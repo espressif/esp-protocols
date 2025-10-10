@@ -49,6 +49,8 @@ if __name__ == '__main__':
         SUPPORTED_TARGETS.append('linux')
         ignore_warning = 'warning: '  # Ignore all common warnings on linux builds
     setup_logging(2)
+    for i in ignore_warning:
+        print(i)
     apps = find_apps(
         args.paths,
         recursive=args.recursive,
@@ -56,7 +58,7 @@ if __name__ == '__main__':
         build_dir='build_@t_@w',
         config_rules_str=args.rules,
         build_log_filename='build_log.txt',
-        size_json_filename='size.json' if not args.linux else None,
+        size_json_filename=None,
         check_warnings=True,
         manifest_files=args.manifests,
         default_build_targets=SUPPORTED_TARGETS,
@@ -65,6 +67,7 @@ if __name__ == '__main__':
 
     sys.exit(
         build_apps(apps,
+                   verbose=2,
                    dry_run=False,
                    keep_going=False,
                    no_preserve=args.delete,

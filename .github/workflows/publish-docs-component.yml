@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - release-modem-v1.4
 
 env:
   DOCS_DEPLOY_URL_BASE: ${{ secrets.DOCS_DEPLOY_URL_BASE }}
@@ -55,9 +56,6 @@ jobs:
                 if [[ "${{ env.BUMP_COMPONENT }}" == "${comp}" ]]; then
                   echo "Building specific version of ${comp} (${{ env.BUMP_VERSION }})"
                   ./generate_docs ${{ env.BUMP_VERSION }}
-                else
-                  echo "Building latest version of ${comp}"
-                  ./generate_docs
                 fi
               fi
             done
@@ -67,16 +65,6 @@ jobs:
             source $GITHUB_WORKSPACE/docs/utils.sh
             add_doc_server_ssh_keys $DOCS_DEPLOY_KEY $DOCS_DEPLOY_SERVER $DOCS_DEPLOY_SERVER_USER
             export GIT_VER=$(git describe --always)
-            export GITHUB_REF_NAME=latest
-            for comp in  `ls components`; do
-              if [[ -d $GITHUB_WORKSPACE/docs/${comp} ]]; then
-                echo "Deploying latest of ${comp}"
-                export DOCS_BUILD_DIR=$GITHUB_WORKSPACE/docs/${comp}
-                export DOCS_DEPLOY_PATH=$DOCS_DEPLOY_PATH_ORIG/${comp}
-                cd $GITHUB_WORKSPACE/docs/${comp}
-                deploy-docs
-              fi
-            done;
             # Deploy docs with version path
             if [[ "${{ env.BUMP_VERSION }}" != "" ]] && [[ -d $GITHUB_WORKSPACE/docs/${{ env.BUMP_COMPONENT }} ]]; then
                 echo "Deploying specific version of ${{ env.BUMP_COMPONENT }} (${{ env.BUMP_VERSION }})"

@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1](https://github.com/espressif/esp-protocols/commits/modem-v1.4.1)
+
+### Bug Fixes
+
+- Fix driver dependency issue on v6.0 ([0c2d7091](https://github.com/espressif/esp-protocols/commit/0c2d7091))
+
 ## [1.4.0](https://github.com/espressif/esp-protocols/commits/modem-v1.4.0)
 
 ### Features
