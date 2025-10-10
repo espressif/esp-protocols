@@ -49,6 +49,8 @@ if __name__ == '__main__':
         SUPPORTED_TARGETS.append('linux')
         ignore_warning = 'warning: '  # Ignore all common warnings on linux builds
     setup_logging(2)
+    for i in ignore_warning:
+        print(i)
     apps = find_apps(
         args.paths,
         recursive=args.recursive,
