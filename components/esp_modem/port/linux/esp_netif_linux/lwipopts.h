@@ -89,7 +89,7 @@
 
 #define MPPE_SUPPORT                    0
 
-#define PPP_MAXIDLEFLAG                 0
+#define PPP_MAXIDLEFLAG                 100
 
 #define PRINTPKT_SUPPORT                1
 #define PPP_PROTOCOLNAME                1
