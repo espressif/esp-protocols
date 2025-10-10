@@ -14,6 +14,32 @@ that sets up the DCE based on a custom module implemented in the `my_module_dce.
 `get_module_name()` method supplying a user defined name, but keeps all other commands the same as defined in the `GenericModule`
 class.
 
+### UART DMA Support
+
+This example now supports UART DMA for high-speed data transfers using the ESP-IDF UHCI driver. DMA mode is automatically enabled for ESP32-S3 targets by default, providing:
+
+- **Higher Throughput**: DMA handles data transfer without CPU intervention
+- **Better CPU Utilization**: CPU can perform other tasks during data transfer
+- **Lower Latency**: Reduced interrupt overhead for large transfers
+- **Efficient Memory Usage**: Direct memory access reduces copying
+
+#### Configuration Options
+
+- **Enable UART DMA Support**: `CONFIG_EXAMPLE_MODEM_UART_USE_DMA` (default: y for ESP32-S3)
+- **DMA Buffer Size**: `CONFIG_EXAMPLE_MODEM_UART_DMA_BUFFER_SIZE` (default: 8192 bytes)
+
+#### Performance Benefits
+
+DMA mode is most beneficial for:
+- High baud rates (> 500 kbps)
+- Large data transfers
+- Applications requiring high throughput
+
+Traditional UART mode is suitable for:
+- Low baud rates
+- Small, infrequent transfers
+- Power-sensitive applications
+
 ### USB DTE support
 
 For USB enabled targets (ESP32-S2, ESP32-S3, or ESP32-P4), it is possible to connect to the modem device via USB.
