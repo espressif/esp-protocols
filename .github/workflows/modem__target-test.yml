@@ -38,6 +38,7 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           rm -rf sdkconfig build
+          export EXPECTED_WARNING="warning: unknown kconfig symbol 'ESP32_PANIC_PRINT_HALT'"
           [ -f ${SDKCONFIG} ] && cp ${SDKCONFIG} sdkconfig.defaults
           idf.py set-target ${{ matrix.idf_target }}
           idf.py build
