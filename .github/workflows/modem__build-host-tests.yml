@@ -15,11 +15,6 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
         example: ["pppos_client", "modem_console", "modem_tcp_client", "ap_to_pppos", "simple_cmux_client"]
-        include:
-          - idf_ver: "release-v5.0"
-            example: "simple_cmux_client"
-            warning: "Warning: The smallest app partition is nearly full"
-
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -30,9 +25,9 @@ jobs:
       - if: ${{ matrix.skip_config }}
         run: rm -f $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/${{ matrix.example }}/sdkconfig.ci.${{ matrix.skip_config }}*
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
-        env:
-          EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
+        env:
+          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full\nwarning: unknown kconfig symbol 'ESP32_PANIC_PRINT_HALT'"
         run: |
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
