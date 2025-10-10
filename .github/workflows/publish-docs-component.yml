@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - release-modem-v1.4
 
 env:
   DOCS_DEPLOY_URL_BASE: ${{ secrets.DOCS_DEPLOY_URL_BASE }}
