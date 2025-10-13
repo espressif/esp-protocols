@@ -2656,13 +2656,18 @@ static mdns_txt_linked_item_t *_mdns_allocate_txt(size_t num_items, mdns_txt_ite
                 mdns_mem_free(new_item);
                 break;
             }
-            new_item->value = mdns_mem_strdup(txt[i].value);
-            if (!new_item->value) {
-                mdns_mem_free((char *)new_item->key);
-                mdns_mem_free(new_item);
-                break;
+            if (txt[i].value) {
+                new_item->value = mdns_mem_strdup(txt[i].value);
+                if (!new_item->value) {
+                    mdns_mem_free((char *)new_item->key);
+                    mdns_mem_free(new_item);
+                    break;
+                }
+                new_item->value_len = strlen(new_item->value);
+            } else {
+                new_item->value = NULL;
+                new_item->value_len = 0;
             }
-            new_item->value_len = strlen(new_item->value);
             new_item->next = new_txt;
             new_txt = new_item;
         }
