@@ -1338,7 +1338,6 @@ static void esp_websocket_client_task(void *pv)
                 xSemaphoreTakeRecursive(client->lock, lock_timeout);
                 if (esp_websocket_client_recv(client) == ESP_FAIL) {
                     ESP_LOGE(TAG, "Error receive data");
-                    // Note: Already holding client->lock from line above
                     esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                 }
                 xSemaphoreGiveRecursive(client->lock);
