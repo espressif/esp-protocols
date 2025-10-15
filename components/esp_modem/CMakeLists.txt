@@ -11,7 +11,7 @@ else()
                       src/esp_modem_uart.cpp
                       src/esp_modem_term_uart.cpp
                       src/esp_modem_netif.cpp)
-    set(dependencies driver esp_event esp_netif)
+    set(dependencies driver esp_driver_uart esp_event esp_netif)
 endif()
 
 
