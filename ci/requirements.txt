@@ -6,3 +6,4 @@ dpkt
 pytest
 idf_build_apps
 netifaces
+esptool>=5.1.0
