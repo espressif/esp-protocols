@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -142,7 +142,11 @@ static void websocket_app_start(void)
 #if CONFIG_WEBSOCKET_URI_FROM_STDIN
     char line[128];
 
-    ESP_LOGI(TAG, "Please enter uri of websocket endpoint");
+    ESP_LOGI(TAG, "Please enter WebSocket endpoint URI");
+    ESP_LOGI(TAG, "Examples:");
+    ESP_LOGI(TAG, "  ws://192.168.1.100:8080     (plain WebSocket)");
+    ESP_LOGI(TAG, "  wss://192.168.1.100:8080    (secure WebSocket)");
+    ESP_LOGI(TAG, "  wss://echo.websocket.org    (public test server)");
     get_string(line, sizeof(line));
 
     websocket_cfg.uri = line;
