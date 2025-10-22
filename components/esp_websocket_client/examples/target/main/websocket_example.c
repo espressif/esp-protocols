@@ -77,6 +77,11 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
     case WEBSOCKET_EVENT_BEGIN:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_BEGIN");
         break;
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+    case WEBSOCKET_EVENT_HEADER_RECEIVED:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_HEADER_RECEIVED: %.*s", data->data_len, data->data_ptr);
+        break;
+#endif
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         break;
