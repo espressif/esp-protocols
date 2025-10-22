@@ -14,13 +14,14 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        example: ["slip_custom_netif", "cslip_custom_netif"]
         include:
           - idf_ver: "latest"
             warning: "Warning: The smallest app partition is nearly full"
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
-      TARGET_TEST: examples/esp_netif/slip_custom_netif/
+      TARGET_TEST: examples/esp_netif/${{ matrix.example }}/
       TARGET_TEST_DIR: build_esp32c3_target
     steps:
       - name: Checkout esp-protocols
@@ -41,7 +42,7 @@ jobs:
           zip -qur artifacts.zip ${TARGET_TEST_DIR}
       - uses: actions/upload-artifact@v4
         with:
-          name: slip_target_${{ matrix.idf_ver }}
+          name: ${{ matrix.example }}_target_${{ matrix.idf_ver }}
           path: ${{ env.TARGET_TEST }}/artifacts.zip
           if-no-files-found: error
 
@@ -71,22 +72,23 @@ jobs:
     if: |
       github.repository == 'espressif/esp-protocols' &&
       ( contains(github.event.pull_request.labels.*.name, 'examples') || github.event_name == 'push' )
-    name: Slip example target test
+    name: Netif example target test
     needs: build_all_examples
     strategy:
       matrix:
         idf_ver: ["release-v5.4", "latest"]
+        example: ["slip_custom_netif", "cslip_custom_netif"]
     runs-on:
       - self-hosted
       - modem
     env:
-      TARGET_TEST: examples/esp_netif/slip_custom_netif/
+      TARGET_TEST: examples/esp_netif/${{ matrix.example }}/
       TARGET_TEST_DIR: build_esp32c3_target
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: slip_target_${{ matrix.idf_ver }}
+          name: ${{ matrix.example }}_target_${{ matrix.idf_ver }}
           path: ${{ env.TARGET_TEST }}/ci/
       - name: Run Test
         working-directory: ${{ env.TARGET_TEST }}
