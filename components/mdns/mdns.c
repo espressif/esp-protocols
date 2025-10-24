@@ -2128,10 +2128,10 @@ static mdns_tx_packet_t *_mdns_create_probe_packet(mdns_if_t tcpip_if, mdns_ip_p
         q->unicast = first;
         q->type = MDNS_TYPE_ANY;
         q->host = _mdns_get_service_instance_name(services[i]->service);
-        q->service = services[i]->service->service;
-        q->proto = services[i]->service->proto;
+        q->service = mdns_mem_strdup(services[i]->service->service);
+        q->proto = mdns_mem_strdup(services[i]->service->proto);
         q->domain = MDNS_DEFAULT_DOMAIN;
-        q->own_dynamic_memory = false;
+        q->own_dynamic_memory = true;
         if (!q->host || _mdns_question_exists(q, packet->questions)) {
             mdns_mem_free(q);
             continue;
@@ -2290,6 +2290,11 @@ static void _mdns_init_pcb_probe_new_service(mdns_if_t tcpip_if, mdns_ip_protoco
     mdns_tx_packet_t *packet = _mdns_create_probe_packet(tcpip_if, ip_protocol, _services, services_final_len, true, probe_ip);
     if (!packet) {
         mdns_mem_free(_services);
+        // Reset PCB state to prevent use-after-free
+        pcb->probe_ip = false;
+        pcb->probe_services = NULL;
+        pcb->probe_services_len = 0;
+        pcb->probe_running = false;
         return;
     }
 

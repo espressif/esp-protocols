@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -117,10 +117,45 @@ static void mdns_test_app(esp_netif_t *interface)
     xEventGroupWaitBits(s_exit_signal, 1, pdTRUE, pdFALSE, portMAX_DELAY);
     repl->del(repl);
 #else
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    query_mdns_host("david-work");
+
+    // Test the reported memory leak scenario - multiple iterations to trigger the leak
+    ESP_LOGI(TAG, "Testing memory leak scenario with multiple iterations...");
+
+    for (int i = 0; i < 10; i++) {
+        ESP_LOGI(TAG, "Iteration %d", i + 1);
+
+        // Add service
+        ESP_LOGI(TAG, "Adding service _bane._tcp");
+        mdns_service_add(NULL, "_bane", "_tcp", 80, NULL, 0);
+
+        // Wait a few ms as mentioned in the issue
+        vTaskDelay(pdMS_TO_TICKS(50));
+
+        // Remove service - this is where the leak is reported
+        ESP_LOGI(TAG, "Removing service _bane._tcp");
+        mdns_service_remove("_bane", "_tcp");
+
+        // Wait a few ms
+        vTaskDelay(pdMS_TO_TICKS(50));
+
+        // Add service again
+        ESP_LOGI(TAG, "Adding service _bane._tcp again");
+        mdns_service_add(NULL, "_bane", "_tcp", 80, NULL, 0);
+
+        // Wait a bit more
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    // Test the scenario that doesn't leak (just updating TXT)
+    ESP_LOGI(TAG, "Testing TXT update (should not leak)");
+    mdns_txt_item_t serviceTxtData[] = {
+        {"test", "value"}
+    };
+    mdns_service_txt_set("_bane", "_tcp", serviceTxtData, 1);
+
     vTaskDelay(pdMS_TO_TICKS(1000));
+
 #endif
-    mdns_free();
+    // mdns_free();
     ESP_LOGI(TAG, "Exit");
 }
