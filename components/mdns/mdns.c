@@ -2287,17 +2287,13 @@ static void _mdns_init_pcb_probe_new_service(mdns_if_t tcpip_if, mdns_ip_protoco
 
     probe_ip = pcb->probe_ip || probe_ip;
 
-    pcb->probe_ip = false;
-    pcb->probe_services = NULL;
-    pcb->probe_services_len = 0;
-    pcb->probe_running = false;
-
     mdns_tx_packet_t *packet = _mdns_create_probe_packet(tcpip_if, ip_protocol, _services, services_final_len, true, probe_ip);
     if (!packet) {
         mdns_mem_free(_services);
         return;
     }
 
+    // Only clear the PCB state after we know the packet creation succeeded
     pcb->probe_ip = probe_ip;
     pcb->probe_services = _services;
     pcb->probe_services_len = services_final_len;
