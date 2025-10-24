@@ -20,4 +20,11 @@ menu "ESP WebSocket client"
         default 2000
         help
             Timeout for acquiring the TX lock when using separate TX lock.
+
+    config ESP_WS_CLIENT_ENABLE_COMPRESSION
+        bool "Enable per-message compression support (RFC7692)"
+        default n
+        help
+            Enable this option will build with zlib, and support RFC7692 per-message DEFLATE compression.
+
 endmenu

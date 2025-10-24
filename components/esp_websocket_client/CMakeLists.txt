@@ -8,14 +8,20 @@ if(NOT CONFIG_WS_TRANSPORT AND NOT CMAKE_BUILD_EARLY_EXPANSION)
     return()
 endif()
 
+set(PRIV_INCLUDE_LIST esp_timer)
+
+if(CONFIG_ESP_WS_CLIENT_ENABLE_COMPRESSION AND NOT CMAKE_BUILD_EARLY_EXPANSION)
+    set(PRIV_INCLUDE_LIST ${PRIV_INCLUDE_LIST} zlib)
+endif ()
+
 if(${IDF_TARGET} STREQUAL "linux")
 	idf_component_register(SRCS "esp_websocket_client.c"
                     INCLUDE_DIRS "include"
                     REQUIRES esp-tls tcp_transport http_parser esp_event nvs_flash esp_stubs json
-                    PRIV_REQUIRES esp_timer)
+                    PRIV_REQUIRES ${PRIV_INCLUDE_LIST})
 else()
     idf_component_register(SRCS "esp_websocket_client.c"
                     INCLUDE_DIRS "include"
                     REQUIRES lwip esp-tls tcp_transport http_parser esp_event
-                    PRIV_REQUIRES esp_timer)
+                    PRIV_REQUIRES ${PRIV_INCLUDE_LIST})
 endif()

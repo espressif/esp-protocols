@@ -60,7 +60,10 @@ typedef enum {
     WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT,
     WEBSOCKET_ERROR_TYPE_PONG_TIMEOUT,
     WEBSOCKET_ERROR_TYPE_HANDSHAKE,
-    WEBSOCKET_ERROR_TYPE_SERVER_CLOSE
+    WEBSOCKET_ERROR_TYPE_SERVER_CLOSE,
+#ifdef CONFIG_ESP_WS_CLIENT_ENABLE_COMPRESSION
+    WEBSOCKET_ERROR_TYPE_COMPRESSION,
+#endif
 } esp_websocket_error_type_t;
 
 /**
@@ -147,6 +150,19 @@ typedef struct {
     size_t                      ping_interval_sec;          /*!< Websocket ping interval, defaults to 10 seconds if not set */
     struct ifreq                *if_name;                   /*!< The name of interface for data to go through. Use the default interface without setting */
     esp_transport_handle_t      ext_transport;              /*!< External WebSocket tcp_transport handle to the client; or if null, the client will create its own transport handle. */
+
+#ifdef CONFIG_ESP_WS_CLIENT_ENABLE_COMPRESSION
+    bool                        per_msg_compress;                   /*!< Enable per-message compression (RFC7692) */
+    int                         per_msg_client_deflate_window_bit;  /*!< Hint the server Per-message deflate window bit 8 to 15; or leave 0 to let server decide */
+    int                         per_msg_server_deflate_window_bit;  /*!< Hint the server Per-message deflate window bit 8 to 15; or leave 0 to let server decide */
+    bool                        per_msg_server_no_ctx_takeover;     /*!< Hint the server to reset the compression stream on every WS frame on server side
+                                                                     *   True for a safer transfer, false for better performance */
+    bool                        per_msg_client_no_ctx_takeover;     /*!< Hint the server to reset the compression stream on every WS frame on client side
+                                                                     *   True for a safer transfer, false for better performance */
+    int                         per_msg_compress_level;             /*!< Compression level for zlib DEFLATE, from 0 to 9
+                                                                     *   0 means no compression (just copy), 1 means fastest compression, 9 means best compression */
+#endif
+
 } esp_websocket_client_config_t;
 
 /**
