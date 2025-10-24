@@ -6,10 +6,15 @@ This example demonstrates the ESP websocket client using the `linux` target. It 
 
 To compile and execute this example on Linux need to set target `linux`
 
+* Debian/Ubuntu: `sudo apt-get install -y libbsd-dev`
+* Fedora/RHEL: `sudo dnf install libbsd-devel`
+* Arch: `sudo pacman -S libbsd`
+* Alpine: `sudo apk add libbsd-dev`
+
 ```
 idf.py --preview set-target linux
 idf.py build
-./websocket.elf
+./build/websocket.elf
 ```
 
 ## Example Output
