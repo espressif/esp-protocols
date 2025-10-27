@@ -641,6 +641,8 @@ command_result get_network_registration_state(CommandableIf *t, int &state)
         return command_result::FAIL;
     }
 
+    state_pos_start += 1; // move past the comma
+
     if (out.find(pattern) == std::string::npos || (state_pos_end = out.find(',', state_pos_start)) == std::string::npos) {
         if (std::from_chars(out.data() + state_pos_start, out.data() + out.size(), state).ec == std::errc::invalid_argument) {
             return command_result::FAIL;
