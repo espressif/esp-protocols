@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.2.0)
+
+### Features
+
+- Add support for interface argument ([90ddb04e](https://github.com/espressif/esp-protocols/commit/90ddb04e))
+
 ## [1.1.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.1.0)
 
 ### Features
