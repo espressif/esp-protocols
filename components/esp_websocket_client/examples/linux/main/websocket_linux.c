@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <esp_log.h>
-#include "nvs_flash.h"
 #include "protocol_examples_common.h"
 
 #include "esp_websocket_client.h"
@@ -160,7 +159,6 @@ int main(void)
     esp_log_level_set("transport_ws", ESP_LOG_DEBUG);
     esp_log_level_set("trans_tcp", ESP_LOG_DEBUG);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
