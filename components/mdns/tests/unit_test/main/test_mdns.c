@@ -61,6 +61,45 @@ TEST(mdns, init_deinit)
     esp_event_loop_delete_default();
 }
 
+TEST(mdns, boolean_txt_null_value)
+{
+    mdns_result_t *results = NULL;
+    test_case_uses_tcpip();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_init());
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_add(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT, NULL, 0));
+
+    mdns_txt_item_t txt_data[] = {
+        {"bool", NULL},
+        {"key", "value"},
+    };
+    const size_t txt_data_count = sizeof(txt_data) / sizeof(txt_data[0]);
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_txt_set(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, txt_data, txt_data_count));
+    yield_to_all_priorities();
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_lookup_selfhosted_service(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, 1, &results));
+    TEST_ASSERT_NOT_EQUAL(NULL, results);
+    TEST_ASSERT_NOT_EQUAL(NULL, results->txt);
+    TEST_ASSERT_EQUAL(txt_data_count, results->txt_count);
+
+    bool found_bool = false;
+    for (size_t i = 0; i < results->txt_count; ++i) {
+        if (strcmp(results->txt[i].key, "bool") == 0) {
+            TEST_ASSERT_NOT_EQUAL(NULL, results->txt_value_len);
+            TEST_ASSERT_EQUAL_UINT8(0, results->txt_value_len[i]);
+            found_bool = true;
+        }
+    }
+    TEST_ASSERT_TRUE(found_bool);
+    mdns_query_results_free(results);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_remove(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO));
+    mdns_free();
+    esp_event_loop_delete_default();
+}
+
 TEST(mdns, api_fails_with_expected_err)
 {
     mdns_txt_item_t serviceTxtData[CONFIG_MDNS_MAX_SERVICES] = { {NULL, NULL},
@@ -290,6 +329,7 @@ TEST_GROUP_RUNNER(mdns)
     RUN_TEST_CASE(mdns, init_deinit)
     RUN_TEST_CASE(mdns, add_remove_service)
     RUN_TEST_CASE(mdns, add_remove_deleg_service)
+    RUN_TEST_CASE(mdns, boolean_txt_null_value)
 
 }
 
