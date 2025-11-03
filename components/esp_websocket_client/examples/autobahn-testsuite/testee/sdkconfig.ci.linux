@@ -1,0 +1,26 @@
+# Linux target configuration for CI
+CONFIG_IDF_TARGET="linux"
+CONFIG_IDF_TARGET_LINUX=y
+CONFIG_ESP_EVENT_POST_FROM_ISR=n
+CONFIG_ESP_EVENT_POST_FROM_IRAM_ISR=n
+
+# Autobahn server URI from stdin (set at runtime)
+CONFIG_WEBSOCKET_URI_FROM_STDIN=y
+CONFIG_WEBSOCKET_URI_FROM_STRING=n
+
+# WebSocket configuration
+CONFIG_WS_TRANSPORT=y
+CONFIG_WS_BUFFER_SIZE=8192
+
+# Enable separate TX lock
+CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK=y
+CONFIG_ESP_WS_CLIENT_TX_LOCK_TIMEOUT_MS=100
+
+# Main task stack
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# Logging
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# For Linux host builds, allow warnings (do not treat default warnings as errors)
+CONFIG_COMPILER_DISABLE_DEFAULT_ERRORS=y
