@@ -1,0 +1,11 @@
+dependencies:
+  ## Required IDF version
+  idf: ">=5.0"
+  # WebSocket client component from parent directory
+  espressif/esp_websocket_client:
+    version: "^1.0.0"
+    override_path: "../../../../"
+  # WiFi connection helper from ESP-IDF examples
+  protocol_examples_common:
+    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+
