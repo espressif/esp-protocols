@@ -38,6 +38,8 @@ include_directories(
     ${IDF_COMPONENTS_DIR}/esp_common/include
     ${IDF_COMPONENTS_DIR}/esp_system/include
     ${IDF_COMPONENTS_DIR}/log/include
+    ${IDF_COMPONENTS_DIR}/esp_hw_support/etm/include
+    ${IDF_COMPONENTS_DIR}/soc/linux/include
     ${IDF_COMPONENTS_DIR}/esp_rom/include
     ${IDF_COMPONENTS_DIR}/heap/include
     ${IDF_COMPONENTS_DIR}/esp_rom/linux/include/linux/
