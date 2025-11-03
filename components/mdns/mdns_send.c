@@ -261,10 +261,8 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
         // According to RFC6763-section12.1, for DNS-SD, SRV, TXT and all address records
         // should be included in additional records.
         if (!mdns_priv_create_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
-                !mdns_priv_create_answer(is_delegated ? &packet->additional : &packet->answers, MDNS_TYPE_SRV, service,
-                                         NULL, send_flush, false) ||
-                !mdns_priv_create_answer(is_delegated ? &packet->additional : &packet->answers, MDNS_TYPE_TXT, service,
-                                         NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
                 !mdns_priv_create_answer((shared || is_delegated) ? &packet->additional : &packet->answers, MDNS_TYPE_A,
                                          service, host, send_flush,
                                          false) ||
