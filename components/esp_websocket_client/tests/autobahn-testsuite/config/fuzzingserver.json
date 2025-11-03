@@ -1,0 +1,15 @@
+{
+   "url": "ws://0.0.0.0:9001",
+   "options": {
+      "failByDrop": false
+   },
+   "outdir": "/reports",
+   "webport": 8080,
+   "cases": ["*"],
+   "exclude-cases": [
+      "9.*",
+      "12.*",
+      "13.*"
+   ],
+   "exclude-agent-cases": {}
+}
