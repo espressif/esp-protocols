@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.9.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.0)
+
+### Features
+
+- support null value for boolean txt records ([fa96de3b](https://github.com/espressif/esp-protocols/commit/fa96de3b))
+
+### Bug Fixes
+
+- Add test case for bool/NULL txt handling ([5068f221](https://github.com/espressif/esp-protocols/commit/5068f221))
+- Temporary fix for build issues on IDF master ([0197c994](https://github.com/espressif/esp-protocols/commit/0197c994))
+- Add tests for delegated answers ([487a746d](https://github.com/espressif/esp-protocols/commit/487a746d))
+- Add fuzzing into mdns CI ([af6bb1b5](https://github.com/espressif/esp-protocols/commit/af6bb1b5))
+- Host test to use hw_support include dir ([8bba3a97](https://github.com/espressif/esp-protocols/commit/8bba3a97))
+- Fixes case where we create our own malloc/free allocators, therefore we need to call mdns_mem_free and not free ([63bf7091](https://github.com/espressif/esp-protocols/commit/63bf7091))
+- put srv/txt records in additional section for ptr queries ([b7b8c5db](https://github.com/espressif/esp-protocols/commit/b7b8c5db))
+
+### Updated
+
+- ci(common): Update test component dir for IDFv6.0 ([18418c83](https://github.com/espressif/esp-protocols/commit/18418c83))
+
 ## [1.8.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.2)
 
 ### Bug Fixes
