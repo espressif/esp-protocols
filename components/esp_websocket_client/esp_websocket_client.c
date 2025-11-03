@@ -1174,7 +1174,6 @@ static void esp_websocket_client_task(void *pv)
                 ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_read()...");
                 break;
             }
-            client->ping_tick_ms = _tick_get_ms();
             break;
         case WEBSOCKET_STATE_WAIT_TIMEOUT:
 
