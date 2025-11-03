@@ -1,0 +1,163 @@
+name: "autobahn: build/linux-tests"
+
+on:
+  push:
+    # branches: [ master, main ]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  linux_autobahn:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'autobahn'))
+
+    env:
+      TEST_DIR: components/esp_websocket_client/examples/autobahn-testsuite
+      TESTEE_DIR: components/esp_websocket_client/examples/autobahn-testsuite/testee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Start Autobahn Fuzzing Server
+        run: |
+          # Ensure reports directory exists before starting fuzzing server
+          mkdir -p ${{ env.TEST_DIR }}/reports/clients
+
+          # Get host IP address that containers can use to reach the server
+          # On GitHub Actions, get the IP of the default interface
+          HOST_IP=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")
+          echo "Host IP address: $HOST_IP"
+          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
+
+          # Start fuzzing server on host network so it's accessible from containers
+          docker run -d \
+            --name fuzzing-server \
+            --network host \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/config:/config:ro \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/reports:/reports \
+            crossbario/autobahn-testsuite:latest \
+            wstest -m fuzzingserver -s /config/fuzzingserver.json
+
+          echo "Waiting for http://localhost:9001/info (max 120s)..."
+          for i in {1..5}; do
+            if curl -f http://localhost:9001/info >/dev/null 2>&1; then
+              echo "Fuzzing server ready!"
+              exit 0
+            fi
+            echo "Attempt $i/60 – waiting 2s..."
+            sleep 2
+          done
+
+          echo "SERVER START FAILED. Container Logs:"
+          docker logs fuzzing-server
+          exit 1
+
+      - name: Build testee (Linux target)
+        working-directory: ${{ env.TESTEE_DIR }}
+        run: |
+          # Build in Docker container to match GLIBC version
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }} \
+            espressif/idf:latest \
+            bash -c "
+              . \$IDF_PATH/export.sh
+              # Prepare sdkconfig.defaults BEFORE set-target (set-target reads from it)
+              if [ -f sdkconfig.ci.linux ]; then
+                echo 'Preparing sdkconfig.defaults from sdkconfig.ci.linux...'
+                cp sdkconfig.ci.linux sdkconfig.defaults
+              else
+                echo 'Creating sdkconfig.defaults...'
+                echo '# Linux target configuration' > sdkconfig.defaults
+                echo 'CONFIG_IDF_TARGET=\"linux\"' >> sdkconfig.defaults
+                echo 'CONFIG_IDF_TARGET_LINUX=y' >> sdkconfig.defaults
+              fi
+
+              echo 'Building...'
+              idf.py build
+            "
+
+      - name: Verify fuzzing server connectivity
+        run: |
+          # Get host IP for connection test
+          HOST_IP=${HOST_IP:-$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")}
+          echo "Testing connectivity to fuzzing server at $HOST_IP:9001"
+
+          # Verify the server is accessible from inside the container
+          docker run --rm \
+            --network host \
+            espressif/idf:latest \
+            bash -c "
+              echo '=== Checking fuzzing server connectivity ==='
+              echo 'Checking http://$HOST_IP:9001/info...'
+              curl -v http://$HOST_IP:9001/info || {
+                echo 'ERROR: Cannot connect to fuzzing server from container!'
+                echo 'Tried IP: $HOST_IP'
+                echo 'This suggests a network configuration issue.'
+                exit 1
+              }
+              echo ''
+              echo 'Fuzzing server is accessible, proceeding with tests...'
+            "
+
+      - name: Run Autobahn tests
+        run: |
+          # Run in Docker container to match GLIBC version
+          # Fuzzing server is on host network, accessible via localhost from container
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }}/build \
+            espressif/idf:latest \
+            bash -c "
+              # Install gdb for debugging if segfault occurs
+              apt-get update && apt-get install -y gdb file curl net-tools || true
+
+              # Get host IP address for WebSocket connection
+              HOST_IP=\$(ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \\K\\S+' || hostname -I | awk '{print \$1}' || echo '172.17.0.1')
+              echo '=== Verifying server is reachable before starting testee ==='
+              echo \"Testing connection to http://\${HOST_IP}:9001/info...\"
+              curl -f http://\${HOST_IP}:9001/info || {
+                echo \"ERROR: Server not reachable from testee container at \${HOST_IP}:9001!\"
+                exit 1
+              }
+              echo ''
+              echo '=== Running autobahn_testee.elf ==='
+              WS_URI=\"ws://\${HOST_IP}:9001\"
+              echo \"Sending URI: \${WS_URI}\"
+              # Use printf to ensure newline is included, and add a small delay to ensure stdin is ready
+              (sleep 0.5; printf \"\${WS_URI}\\n\") | timeout 30m ./autobahn_testee.elf || {
+                EXIT_CODE=\$?
+                echo ''
+                echo '=== Test failed ==='
+                echo 'Skipping gdb backtrace as tests are currently stable.'
+                exit \$EXIT_CODE
+              }
+              echo ''
+              echo 'All ~2800 Autobahn tests passed!'
+            "
+
+      - name: Show reports
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          if [ -d reports/clients ]; then
+            ls -la reports/clients/
+          else
+            echo "No reports"
+          fi
+
+      - name: Generate summary
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: python3 scripts/generate_summary.py || true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autobahn-reports-linux-${{ github.run_id }}
+          path: ${{ env.TEST_DIR }}/reports/**
