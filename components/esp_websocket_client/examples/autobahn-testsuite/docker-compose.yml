@@ -1,0 +1,12 @@
+services:
+  fuzzing-server:
+    image: crossbario/autobahn-testsuite:latest
+    container_name: ws-fuzzing-server
+    platform: linux/amd64      # <— enforce amd64, use QEMU on Apple Silicon
+    ports:
+      - "9001:9001"
+      - "8080:8080"
+    volumes:
+      - ./config:/config
+      - ./reports:/reports
+    command: wstest -m fuzzingserver -s /config/fuzzingserver.json

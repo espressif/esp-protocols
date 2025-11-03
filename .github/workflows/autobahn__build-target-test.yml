@@ -1,0 +1,228 @@
+name: "autobahn: build/target-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_autobahn:
+    # Run on push to master or if PR has 'websocket' label
+    if: contains(github.event.pull_request.labels.*.name, 'autobahn') || github.event_name == 'push'
+    name: Build
+    strategy:
+      matrix:
+        #idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "latest"]
+        idf_ver: [ "latest"]
+        idf_target: ["esp32"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/esp_websocket_client/examples/autobahn-testsuite/testee
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build autobahn testee with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        working-directory: ${{ env.TEST_DIR }}
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          test -f sdkconfig.ci.plain_tcp && cat sdkconfig.ci.plain_tcp >> sdkconfig.defaults || echo "No sdkconfig.ci.plain_tcp"
+          idf.py set-target ${{ matrix.idf_target }}
+          idf.py build
+      - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
+        working-directory: ${{ env.TEST_DIR }}/build
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autobahn_testee_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+          path: |
+            ${{ env.TEST_DIR }}/build/bootloader/bootloader.bin
+            ${{ env.TEST_DIR }}/build/partition_table/partition-table.bin
+            ${{ env.TEST_DIR }}/build/*.bin
+            ${{ env.TEST_DIR }}/build/*.elf
+            ${{ env.TEST_DIR }}/build/flasher_args.json
+            ${{ env.TEST_DIR }}/build/config/sdkconfig.h
+            ${{ env.TEST_DIR }}/build/config/sdkconfig.json
+          if-no-files-found: error
+
+  run-target-autobahn:
+    # Skip running on forks since it won't have access to secrets
+    if: |
+      github.repository == 'espressif/esp-protocols' &&
+      ( contains(github.event.pull_request.labels.*.name, 'autobahn') || github.event_name == 'push' )
+    name: Target test
+    needs: build_autobahn
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["latest"]
+        idf_target: ["esp32"]
+    runs-on:
+      - self-hosted
+      - ESP32-ETHERNET-KIT
+    env:
+      TEST_DIR: components/esp_websocket_client/examples/autobahn-testsuite
+      TESTEE_DIR: components/esp_websocket_client/examples/autobahn-testsuite/testee
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+        with:
+          name: autobahn_testee_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+          path: ${{ env.TESTEE_DIR }}/build
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin || sudo apt-get install -y docker-compose
+          # Ensure user has permission to use Docker (if not already in docker group)
+          sudo usermod -aG docker $USER || true
+          # Start Docker service if not running
+          sudo systemctl start docker || true
+      - name: Start Autobahn Fuzzing Server
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          # Get host IP address for ESP32 to connect to
+          HOST_IP=$(hostname -I | awk '{print $1}')
+          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
+          echo "Autobahn server will be accessible at ws://$HOST_IP:9001"
+          
+          # Start the fuzzing server using pre-built image
+          # For CI, we may need to specify platform if architecture differs
+          echo "Starting Autobahn fuzzing server..."
+          # Set platform for CI if needed (uncomment if you get exec format error)
+          # export DOCKER_DEFAULT_PLATFORM=linux/amd64
+          docker compose up -d || docker-compose up -d
+          
+          # Wait for server to be ready
+          echo "Waiting for fuzzing server to start..."
+          sleep 10
+          
+          # Check if container is running and healthy
+          if ! docker ps | grep -q ws-fuzzing-server; then
+            echo "Error: Fuzzing server failed to start"
+            echo "Container logs:"
+            docker compose logs || docker-compose logs
+            echo "Checking available Python executables in container:"
+            docker compose run --rm fuzzing-server which python python3 || true
+            exit 1
+          fi
+          
+          # Verify the server is actually responding
+          echo "Checking if server is responding..."
+          sleep 5
+          if ! curl -s http://localhost:8080 > /dev/null 2>&1; then
+            echo "Warning: Server may not be fully ready, but container is running"
+            docker compose logs --tail=20 || docker-compose logs --tail=20
+          fi
+          
+          echo "✓ Fuzzing server started successfully"
+      - name: Flash ESP32 Testee
+        working-directory: ${{ env.TESTEE_DIR }}/build
+        env:
+          IDF_TARGET: ${{ matrix.idf_target }}
+        run: |
+          python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 flash_image.bin
+      - name: Run Autobahn Tests
+        working-directory: ${{ env.TESTEE_DIR }}
+        env:
+          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
+        run: |
+          # Detect ESP32 port if not set in environment
+          if [ -z "${ESP_PORT:-}" ]; then
+            for port in /dev/ttyUSB* /dev/ttyACM*; do
+              if [ -e "$port" ]; then
+                export ESP_PORT="$port"
+                echo "Detected ESP32 port: $ESP_PORT"
+                break
+              fi
+            done
+          fi
+          
+          # Default to /dev/ttyUSB0 if still not found
+          export ESP_PORT="${ESP_PORT:-/dev/ttyUSB0}"
+          
+          if [ ! -e "$ESP_PORT" ]; then
+            echo "Error: ESP32 port not found. Please set ESP_PORT environment variable."
+            echo "Available ports:"
+            ls -la /dev/tty* || true
+            exit 1
+          fi
+          
+          echo "Using ESP32 port: $ESP_PORT"
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
+          pip install --prefer-binary pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool pyserial
+          pip install --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
+          
+          echo "Starting Autobahn test suite on ESP32..."
+          echo "Tests may take 15-30 minutes to complete..."
+          
+          # Send server URI via serial (stdin) and monitor for completion
+          # Script is in the parent directory (TEST_DIR) from TESTEE_DIR
+          SERVER_URI="ws://$HOST_IP:9001"
+          echo "Sending server URI to ESP32: $SERVER_URI"
+          python3 ../scripts/monitor_serial.py --port "$ESP_PORT" --uri "$SERVER_URI" --timeout 2400
+      - name: Collect Test Reports
+        working-directory: ${{ env.TEST_DIR }}
+        if: always()
+        run: |
+          # Stop the fuzzing server
+          docker compose down || docker-compose down
+          
+          # Check if reports were generated
+          if [ -d "reports/clients" ]; then
+            echo "✓ Test reports found"
+            ls -la reports/clients/
+          else
+            echo "⚠ No test reports found in reports/clients/"
+          fi
+      - name: Generate Test Summary
+        working-directory: ${{ env.TEST_DIR }}
+        if: always()
+        run: |
+          # Generate summary from test results
+          # Check for JSON files in both reports/ and reports/clients/
+          if [ -d "reports" ] && ( [ -n "$(ls -A reports/*.json 2>/dev/null)" ] || [ -n "$(ls -A reports/clients/*.json 2>/dev/null)" ] ); then
+            echo "Generating test summary..."
+            python3 scripts/generate_summary.py
+            echo ""
+            echo "Summary generated successfully!"
+            if [ -f "reports/summary.html" ]; then
+              echo "HTML summary available at: reports/summary.html"
+            fi
+          else
+            echo "⚠ No JSON test results found, skipping summary generation"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autobahn_reports_${{ matrix.idf_target }}_${{ matrix.idf_ver }}
+          path: |
+            ${{ env.TEST_DIR }}/reports/**
+          if-no-files-found: warn
+

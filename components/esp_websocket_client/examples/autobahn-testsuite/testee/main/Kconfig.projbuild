@@ -1,0 +1,37 @@
+menu "Autobahn Testsuite Configuration"
+
+    choice WEBSOCKET_URI_SOURCE
+        prompt "Autobahn Server URI Source"
+        default WEBSOCKET_URI_FROM_STRING
+        help
+            Choose how the Autobahn server URI is provided:
+            - From string: Use CONFIG_AUTOBAHN_SERVER_URI (compile-time)
+            - From stdin: Read URI from serial console at runtime
+
+        config WEBSOCKET_URI_FROM_STRING
+            bool "From string (CONFIG_AUTOBAHN_SERVER_URI)"
+            help
+                Use the URI defined in CONFIG_AUTOBAHN_SERVER_URI.
+                This is set at compile time.
+
+        config WEBSOCKET_URI_FROM_STDIN
+            bool "From stdin (serial console)"
+            help
+                Read the URI from stdin (serial console) at runtime.
+                Useful for CI/CD where the server IP is only known at runtime.
+                The application will wait for a line containing the URI.
+
+    endchoice
+
+    config AUTOBAHN_SERVER_URI
+        string "Autobahn Fuzzing Server URI"
+        default "ws://192.168.1.100:9001"
+        depends on WEBSOCKET_URI_FROM_STRING
+        help
+            URI of the Autobahn fuzzing server.
+            Replace with your Docker host IP address.
+            Example: ws://192.168.1.100:9001
+            Only used when WEBSOCKET_URI_FROM_STRING is selected.
+
+endmenu
+
