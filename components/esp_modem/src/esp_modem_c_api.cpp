@@ -163,6 +163,15 @@ extern "C" esp_err_t esp_modem_read_pin(esp_modem_dce_t *dce_wrap, bool *pin)
     return command_response_to_esp_err(dce_wrap->dce->read_pin(*pin));
 }
 
+extern "C" esp_err_t esp_modem_set_echo(esp_modem_dce_t *dce_wrap, const bool echo_on)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    return command_response_to_esp_err(dce_wrap->dce->set_echo(echo_on));
+}
+
 extern "C" esp_err_t esp_modem_sms_txt_mode(esp_modem_dce_t *dce_wrap, bool txt)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
