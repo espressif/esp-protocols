@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.2](https://github.com/espressif/esp-protocols/commits/modem-v1.4.2)
+
+### Bug Fixes
+
+- CEREG parsing fails due to incorrect state index ([a80a3cbb](https://github.com/espressif/esp-protocols/commit/a80a3cbb))
+
 ## [1.4.1](https://github.com/espressif/esp-protocols/commits/modem-v1.4.1)
 
 ### Bug Fixes
