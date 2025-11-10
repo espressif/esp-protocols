@@ -90,6 +90,10 @@ if (CONFIG_MOSQ_ENABLE_SYS)
 endif()
 target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 
+# Enable linker wrapping for mosquitto_unpwd_check to allow connection callback interception
+# without modifying upstream code
+target_link_options(${COMPONENT_LIB} PRIVATE "-Wl,--wrap=mosquitto_unpwd_check")
+
 # Some mosquitto source unconditionally define `_GNU_SOURCE` which collides with IDF build system
 # producing warning: "_GNU_SOURCE" redefined
 # This workarounds this issue by undefining the macro for the selected files

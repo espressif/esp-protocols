@@ -102,6 +102,7 @@ void mosq_broker_stop(void)
 }
 
 extern mosq_message_cb_t g_mosq_message_callback;
+extern mosq_connect_cb_t g_mosq_connect_callback;
 
 int mosq_broker_run(struct mosq_broker_config *broker_config)
 {
@@ -129,6 +130,9 @@ int mosq_broker_run(struct mosq_broker_config *broker_config)
     }
     if (broker_config->handle_message_cb) {
         g_mosq_message_callback = broker_config->handle_message_cb;
+    }
+    if (broker_config->handle_connect_cb) {
+        g_mosq_connect_callback = broker_config->handle_connect_cb;
     }
 
     db.config = &config;
