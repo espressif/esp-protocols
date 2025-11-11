@@ -26,7 +26,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         async_results.push_back(std::move(ret));
         return len;
     }
-    if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+') ) { // Simple AT responder
+    if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+')) {  // Simple AT responder
         std::string command((char *)data, len);
         std::string response;
         if (command == "+++") {

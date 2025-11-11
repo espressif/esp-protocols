@@ -274,14 +274,14 @@ void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, unsigned int type
         case sw_quoted:
 
             if (ch >= '0' && ch <= '9') {
-                decoded = (u_char) (ch - '0');
+                decoded = (u_char)(ch - '0');
                 state = sw_quoted_second;
                 break;
             }
 
-            c = (u_char) (ch | 0x20);
+            c = (u_char)(ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                decoded = (u_char) (c - 'a' + 10);
+                decoded = (u_char)(c - 'a' + 10);
                 state = sw_quoted_second;
                 break;
             }
@@ -299,7 +299,7 @@ void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, unsigned int type
             state = sw_usual;
 
             if (ch >= '0' && ch <= '9') {
-                ch = (u_char) ((decoded << 4) + (ch - '0'));
+                ch = (u_char)((decoded << 4) + (ch - '0'));
 
                 if (type & NGX_UNESCAPE_REDIRECT) {
                     if (ch > '%' && ch < 0x7f) {
@@ -317,9 +317,9 @@ void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, unsigned int type
                 break;
             }
 
-            c = (u_char) (ch | 0x20);
+            c = (u_char)(ch | 0x20);
             if (c >= 'a' && c <= 'f') {
-                ch = (u_char) ((decoded << 4) + (c - 'a') + 10);
+                ch = (u_char)((decoded << 4) + (c - 'a') + 10);
 
                 if (type & NGX_UNESCAPE_URI) {
                     if (ch == '?') {

@@ -30,7 +30,7 @@ static void eth_stop(void);
 /** Event handler for Ethernet events */
 
 static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
-                      int32_t event_id, void *event_data)
+                          int32_t event_id, void *event_data)
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_ETH, event->esp_netif)) {
@@ -43,7 +43,7 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
 #if CONFIG_NET_CONNECT_CONNECT_IPV6
 
 static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
-                        int32_t event_id, void *event_data)
+                            int32_t event_id, void *event_data)
 {
     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
     if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_ETH, event->esp_netif)) {

@@ -59,8 +59,8 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
 }
 
 static esp_netif_driver_ifconfig_t driver_cfg = {
-        .handle = (void *)1,    // singleton driver, just to != NULL
-        .transmit = transmit,
+    .handle = (void *)1,    // singleton driver, just to != NULL
+    .transmit = transmit,
 };
 const esp_netif_driver_ifconfig_t *ppp_driver_cfg = &driver_cfg;
 
@@ -180,29 +180,29 @@ esp_err_t net_connect_ppp_connect(void)
 #if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
     ESP_LOGI(TAG, "USB initialization");
     const tinyusb_config_t tusb_cfg = {
-            .device_descriptor = NULL,
-            .string_descriptor = NULL,
-            .external_phy = false,
-            .configuration_descriptor = NULL,
+        .device_descriptor = NULL,
+        .string_descriptor = NULL,
+        .external_phy = false,
+        .configuration_descriptor = NULL,
     };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 
     tinyusb_config_cdcacm_t acm_cfg = {
-            .usb_dev = TINYUSB_USBDEV_0,
-            .cdc_port = TINYUSB_CDC_ACM_0,
-            .callback_rx = &cdc_rx_callback,
-            .callback_rx_wanted_char = NULL,
-            .callback_line_state_changed = NULL,
-            .callback_line_coding_changed = NULL
+        .usb_dev = TINYUSB_USBDEV_0,
+        .cdc_port = TINYUSB_CDC_ACM_0,
+        .callback_rx = &cdc_rx_callback,
+        .callback_rx_wanted_char = NULL,
+        .callback_line_state_changed = NULL,
+        .callback_line_coding_changed = NULL
     };
 
     ESP_ERROR_CHECK(tusb_cdc_acm_init(&acm_cfg));
     /* the second way to register a callback */
     ESP_ERROR_CHECK(tinyusb_cdcacm_register_callback(
-            TINYUSB_CDC_ACM_0,
-            CDC_EVENT_LINE_STATE_CHANGED,
-            &line_state_changed));
+                        TINYUSB_CDC_ACM_0,
+                        CDC_EVENT_LINE_STATE_CHANGED,
+                        &line_state_changed));
 #endif // CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
 
     s_event_group = xEventGroupCreate();
@@ -212,9 +212,9 @@ esp_err_t net_connect_ppp_connect(void)
     esp_netif_inherent_config_t base_netif_cfg = ESP_NETIF_INHERENT_DEFAULT_PPP();
     base_netif_cfg.if_desc = NET_CONNECT_NETIF_DESC_PPP;
     esp_netif_config_t netif_ppp_config = { .base = &base_netif_cfg,
-            .driver = ppp_driver_cfg,
-            .stack = ESP_NETIF_NETSTACK_DEFAULT_PPP
-    };
+                                            .driver = ppp_driver_cfg,
+                                            .stack = ESP_NETIF_NETSTACK_DEFAULT_PPP
+                                          };
 
     s_netif = esp_netif_new(&netif_ppp_config);
     assert(s_netif);

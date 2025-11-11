@@ -74,7 +74,7 @@ void net_register_wifi_connect_commands(void)
         .func = &cmd_do_wifi_connect,
         .argtable = &connect_args
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&wifi_connect_cmd) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&wifi_connect_cmd));
 
 
     const esp_console_cmd_t wifi_disconnect_cmd = {
@@ -83,5 +83,5 @@ void net_register_wifi_connect_commands(void)
         .hint = NULL,
         .func = &cmd_do_wifi_disconnect,
     };
-    ESP_ERROR_CHECK( esp_console_cmd_register(&wifi_disconnect_cmd) );
+    ESP_ERROR_CHECK(esp_console_cmd_register(&wifi_disconnect_cmd));
 }

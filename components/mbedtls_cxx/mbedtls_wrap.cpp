@@ -93,8 +93,8 @@ int Tls::handshake()
     int ret = 0;
     mbedtls_ssl_set_bio(&ssl_, this, bio_write, bio_read, is_dtls_ ? bio_read_tout : nullptr);
 
-    while ( ( ret = mbedtls_ssl_handshake( &ssl_ ) ) != 0 ) {
-        if ( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
+    while ((ret = mbedtls_ssl_handshake(&ssl_)) != 0) {
+        if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
 #if CONFIG_MBEDTLS_SSL_PROTO_DTLS
             if (is_server_ && is_dtls_ && ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
                 // hello verification requested -> restart the session with this client_id
@@ -104,7 +104,7 @@ int Tls::handshake()
                 continue;
             }
 #endif // MBEDTLS_SSL_PROTO_DTLS
-            print_error( "mbedtls_ssl_handshake returned", ret );
+            print_error("mbedtls_ssl_handshake returned", ret);
             return -1;
         }
         delay();
@@ -132,12 +132,12 @@ int Tls::bio_read_tout(void *ctx, unsigned char *buf, size_t len, uint32_t timeo
 
 int Tls::write(const unsigned char *buf, size_t len)
 {
-    return mbedtls_ssl_write( &ssl_, buf, len );
+    return mbedtls_ssl_write(&ssl_, buf, len);
 }
 
 int Tls::read(unsigned char *buf, size_t len)
 {
-    return mbedtls_ssl_read( &ssl_, buf, len );
+    return mbedtls_ssl_read(&ssl_, buf, len);
 }
 
 bool Tls::set_own_cert(const_buf crt, const_buf key)

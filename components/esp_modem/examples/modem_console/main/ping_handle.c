@@ -101,10 +101,10 @@ static int do_ping_cmd(int argc, char **argv)
         return 1;
     }
     if (res->ai_family == AF_INET) {
-        struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
+        struct in_addr addr4 = ((struct sockaddr_in *)(res->ai_addr))->sin_addr;
         inet_addr_to_ip4addr(ip_2_ip4(&target_addr), &addr4);
     } else {
-        struct in6_addr addr6 = ((struct sockaddr_in6 *) (res->ai_addr))->sin6_addr;
+        struct in6_addr addr6 = ((struct sockaddr_in6 *)(res->ai_addr))->sin6_addr;
         inet6_addr_to_ip6addr(ip_2_ip6(&target_addr), &addr6);
     }
     freeaddrinfo(res);

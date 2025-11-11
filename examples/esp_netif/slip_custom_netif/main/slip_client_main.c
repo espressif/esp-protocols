@@ -169,7 +169,7 @@ static bool slip_rx_filter(slip_modem_handle slip, uint8_t *data, uint32_t len)
 
 #if CONFIG_EXAMPLE_IPV4
 static const esp_netif_ip_info_t s_slip_ip4 = {
-    .ip = { .addr = ESP_IP4TOADDR( 10, 0, 0, 2) },
+    .ip = { .addr = ESP_IP4TOADDR(10, 0, 0, 2) },
 };
 #endif
 

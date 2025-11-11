@@ -226,7 +226,7 @@ int TlsTransport::preread(size_t len, int timeout_ms)
     while (len != read_len) {
         int l = esp_transport_read(transport_, buf.data() + read_len, len - read_len, timeout_ms);
         ESP_LOGD(TAG, "need %d read %d already %d", len, l, read_len);
-        if ((l == ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN || l == ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT ) && read_len > 0) {
+        if ((l == ERR_TCP_TRANSPORT_CONNECTION_CLOSED_BY_FIN || l == ERR_TCP_TRANSPORT_CONNECTION_TIMEOUT) && read_len > 0) {
             return read_len;
         }
         if (l <= 0) {

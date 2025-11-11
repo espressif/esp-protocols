@@ -143,7 +143,10 @@ esp_eth_handle_t net_get_eth_handle(void);
 #endif // CONFIG_NET_CONNECT_ETHERNET
 
 #else
-static inline esp_err_t net_connect(void) {return ESP_OK;}
+static inline esp_err_t net_connect(void)
+{
+    return ESP_OK;
+}
 #endif // !CONFIG_IDF_TARGET_LINUX
 
 #ifdef __cplusplus

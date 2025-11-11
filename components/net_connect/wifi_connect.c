@@ -21,7 +21,7 @@ static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
 static int s_retry_num = 0;
 
 static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event_base,
-                               int32_t event_id, void *event_data)
+                                               int32_t event_id, void *event_data)
 {
     s_retry_num++;
     if (s_retry_num > CONFIG_NET_CONNECT_WIFI_CONN_MAX_RETRY) {
@@ -52,7 +52,7 @@ static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event
 }
 
 static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t event_base,
-                            int32_t event_id, void *event_data)
+                                            int32_t event_id, void *event_data)
 {
 #if CONFIG_NET_CONNECT_CONNECT_IPV6
     esp_netif_create_ip6_linklocal(esp_netif);
@@ -60,7 +60,7 @@ static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t ev
 }
 
 static void example_handler_on_sta_got_ip(void *arg, esp_event_base_t event_base,
-                      int32_t event_id, void *event_data)
+                                          int32_t event_id, void *event_data)
 {
     s_retry_num = 0;
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
@@ -77,7 +77,7 @@ static void example_handler_on_sta_got_ip(void *arg, esp_event_base_t event_base
 
 #if CONFIG_NET_CONNECT_CONNECT_IPV6
 static void example_handler_on_sta_got_ipv6(void *arg, esp_event_base_t event_base,
-                        int32_t event_id, void *event_data)
+                                            int32_t event_id, void *event_data)
 {
     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
     if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_STA, event->esp_netif)) {
@@ -214,11 +214,11 @@ esp_err_t net_connect_wifi_connect(void)
     };
 #if CONFIG_NET_CONNECT_WIFI_SSID_PWD_FROM_STDIN
     net_configure_stdin_stdout();
-    char buf[sizeof(wifi_config.sta.ssid)+sizeof(wifi_config.sta.password)+2] = {0};
+    char buf[sizeof(wifi_config.sta.ssid) + sizeof(wifi_config.sta.password) + 2] = {0};
     ESP_LOGI(TAG, "Please input ssid password:");
     fgets(buf, sizeof(buf), stdin);
     int len = strlen(buf);
-    buf[len-1] = '\0'; /* removes '\n' */
+    buf[len - 1] = '\0'; /* removes '\n' */
     memset(wifi_config.sta.ssid, 0, sizeof(wifi_config.sta.ssid));
 
     char *rest = NULL;

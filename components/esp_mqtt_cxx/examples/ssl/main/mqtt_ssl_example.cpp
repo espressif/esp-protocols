@@ -85,6 +85,6 @@ extern "C" void app_main(void)
     MyClient client{broker, credentials, config};
     while (true) {
         constexpr TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-        vTaskDelay( xDelay );
+        vTaskDelay(xDelay);
     }
 }

@@ -80,7 +80,7 @@ public:
      * @param f Function callback for the command
      */
     template<typename T> explicit ConsoleCommand(const char *command, const char *help, const T *arg_struct, size_t srg_struct_size,
-            std::function<bool(ConsoleCommand *)> f):   func(std::move(f))
+                                                 std::function<bool(ConsoleCommand *)> f):   func(std::move(f))
     {
         size_t args_plain_size = srg_struct_size / sizeof(CommandArgs);
         auto first_arg = reinterpret_cast<const CommandArgs *>(arg_struct);

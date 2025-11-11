@@ -52,7 +52,7 @@ static esp_err_t hostname_to_fd(const char *host, int port, int *fd)
         auto *p = reinterpret_cast<struct sockaddr_in *>(address_info->ai_addr);
         p->sin_port = htons(port);
         ESP_LOGI(TAG, "[sock=%d] Resolved IPv4 address: %s", *fd, inet_ntoa(p->sin_addr));
-        memcpy(&address, p, sizeof(struct sockaddr ));
+        memcpy(&address, p, sizeof(struct sockaddr));
     } else {
         ESP_LOGE(TAG, "Unsupported protocol family %d", address_info->ai_family);
         close(*fd);

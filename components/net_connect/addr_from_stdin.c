@@ -32,20 +32,20 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
     do {
         fgets(host_ip, HOST_IP_SIZE, stdin);
         len = strlen(host_ip);
-    } while (len<=1 && host_ip[0] == '\n');
+    } while (len <= 1 && host_ip[0] == '\n');
     host_ip[len - 1] = '\0';
 
     struct addrinfo hints, *addr_list, *cur;
-    memset( &hints, 0, sizeof( hints ) );
+    memset(&hints, 0, sizeof(hints));
 
     // run getaddrinfo() to decide on the IP protocol
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = sock_type;
     hints.ai_protocol = IPPROTO_TCP;
-    if( getaddrinfo( host_ip, NULL, &hints, &addr_list ) != 0 ) {
+    if (getaddrinfo(host_ip, NULL, &hints, &addr_list) != 0) {
         return ESP_FAIL;
     }
-    for( cur = addr_list; cur != NULL; cur = cur->ai_next ) {
+    for (cur = addr_list; cur != NULL; cur = cur->ai_next) {
         memcpy(dest_addr, cur->ai_addr, sizeof(*dest_addr));
 #if CONFIG_NET_CONNECT_CONNECT_IPV4
         if (cur->ai_family == AF_INET) {
@@ -53,7 +53,7 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
             *addr_family = AF_INET;
             // add port number and return on first IPv4 match
             ((struct sockaddr_in*)dest_addr)->sin_port = htons(port);
-            freeaddrinfo( addr_list );
+            freeaddrinfo(addr_list);
             return ESP_OK;
         }
 #endif // IPV4
@@ -64,12 +64,12 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
             // add port and interface number and return on first IPv6 match
             ((struct sockaddr_in6*)dest_addr)->sin6_port = htons(port);
             ((struct sockaddr_in6*)dest_addr)->sin6_scope_id = esp_netif_get_netif_impl_index(NET_CONNECT_INTERFACE);
-            freeaddrinfo( addr_list );
+            freeaddrinfo(addr_list);
             return ESP_OK;
         }
 #endif // IPV6
     }
     // no match found
-    freeaddrinfo( addr_list );
+    freeaddrinfo(addr_list);
     return ESP_FAIL;
 }

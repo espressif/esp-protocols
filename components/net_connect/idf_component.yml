@@ -4,4 +4,3 @@ description: Network connection component providing WiFi, Ethernet, Thread, and 
 dependencies:
   idf:
     version: '>=5.0'
-

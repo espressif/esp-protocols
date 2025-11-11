@@ -11,18 +11,18 @@
 #include "mdns.h"
 #include "mdns_private.h"
 
-void              (*mdns_test_static_execute_action)(mdns_action_t *) = NULL;
+void (*mdns_test_static_execute_action)(mdns_action_t *) = NULL;
 mdns_srv_item_t *(*mdns_test_static_mdns_get_service_item)(const char *service, const char *proto, const char *hostname) = NULL;
 mdns_search_once_t *(*mdns_test_static_search_init)(const char *name, const char *service, const char *proto, uint16_t type, bool unicast,
-        uint32_t timeout, uint8_t max_results,
-        mdns_query_notify_t notifier) = NULL;
-esp_err_t         (*mdns_test_static_send_search_action)(mdns_action_type_t type, mdns_search_once_t *search) = NULL;
-void              (*mdns_test_static_search_free)(mdns_search_once_t *search) = NULL;
+                                                    uint32_t timeout, uint8_t max_results,
+                                                    mdns_query_notify_t notifier) = NULL;
+esp_err_t (*mdns_test_static_send_search_action)(mdns_action_type_t type, mdns_search_once_t *search) = NULL;
+void (*mdns_test_static_search_free)(mdns_search_once_t *search) = NULL;
 
 static void _mdns_execute_action(mdns_action_t *action);
 static mdns_srv_item_t *_mdns_get_service_item(const char *service, const char *proto, const char *hostname);
 static mdns_search_once_t *_mdns_search_init(const char *name, const char *service, const char *proto, uint16_t type, bool unicast,
-        uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier);
+                                             uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier);
 static esp_err_t _mdns_send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 static void _mdns_search_free(mdns_search_once_t *search);
 

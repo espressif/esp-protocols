@@ -17,7 +17,7 @@ constexpr const char *TAG = "uart_resource";
 
 uart_resource::uart_resource(const esp_modem_uart_term_config *config, QueueHandle_t *event_queue, int fd): port(-1)
 {
-    ESP_LOGD(TAG, "Creating uart resource" );
+    ESP_LOGD(TAG, "Creating uart resource");
     struct termios tty = {};
     ESP_MODEM_THROW_IF_FALSE(tcgetattr(fd, &tty) == 0, "Failed to tcgetattr()");
 
