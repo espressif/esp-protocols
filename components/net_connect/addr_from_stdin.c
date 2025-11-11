@@ -1,8 +1,14 @@
+/*
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <string.h>
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_netif.h"
-#include "protocol_examples_common.h"
+#include "net_connect.h"
 
 #include "lwip/sockets.h"
 #include <lwip/netdb.h>
@@ -18,7 +24,7 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
 
     // this function could be called multiple times -> make sure UART init runs only once
     if (!already_init) {
-        example_configure_stdin_stdout();
+        net_configure_stdin_stdout();
         already_init = true;
     }
 
@@ -41,7 +47,7 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
     }
     for( cur = addr_list; cur != NULL; cur = cur->ai_next ) {
         memcpy(dest_addr, cur->ai_addr, sizeof(*dest_addr));
-#if CONFIG_EXAMPLE_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_CONNECT_IPV4
         if (cur->ai_family == AF_INET) {
             *ip_protocol = IPPROTO_IP;
             *addr_family = AF_INET;
@@ -51,13 +57,13 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
             return ESP_OK;
         }
 #endif // IPV4
-#if CONFIG_EXAMPLE_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_CONNECT_IPV6
         if (cur->ai_family == AF_INET6) {
             *ip_protocol = IPPROTO_IPV6;
             *addr_family = AF_INET6;
             // add port and interface number and return on first IPv6 match
             ((struct sockaddr_in6*)dest_addr)->sin6_port = htons(port);
-            ((struct sockaddr_in6*)dest_addr)->sin6_scope_id = esp_netif_get_netif_impl_index(EXAMPLE_INTERFACE);
+            ((struct sockaddr_in6*)dest_addr)->sin6_scope_id = esp_netif_get_netif_impl_index(NET_CONNECT_INTERFACE);
             freeaddrinfo( addr_list );
             return ESP_OK;
         }

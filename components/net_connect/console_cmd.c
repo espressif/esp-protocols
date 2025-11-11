@@ -1,13 +1,13 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 
 #include <string.h>
-#include "protocol_examples_common.h"
-#include "example_common_private.h"
+#include "net_connect.h"
+#include "net_connect_private.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "esp_console.h"
@@ -48,20 +48,20 @@ static int cmd_do_wifi_connect(int argc, char **argv)
     if (pass) {
         strlcpy((char *) wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
     }
-    example_wifi_sta_do_connect(wifi_config, false);
+    net_connect_wifi_sta_do_connect(wifi_config, false);
     return 0;
 }
 
 static int cmd_do_wifi_disconnect(int argc, char **argv)
 {
-    example_wifi_sta_do_disconnect();
+    net_connect_wifi_sta_do_disconnect();
     return 0;
 }
 
-void example_register_wifi_connect_commands(void)
+void net_register_wifi_connect_commands(void)
 {
     ESP_LOGI(TAG, "Registering WiFi connect commands.");
-    example_wifi_start();
+    net_connect_wifi_start();
 
     connect_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
     connect_args.password = arg_str0(NULL, NULL, "<pass>", "password of AP");

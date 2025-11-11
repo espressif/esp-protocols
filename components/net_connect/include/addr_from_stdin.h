@@ -1,13 +1,7 @@
-/*  Common utilities for socket address input interface:
-    The API get_addr_from_stdin() is mainly used by socket client examples which read IP address from stdin (if configured).
-    This option is typically used in the CI, but could be enabled in the project configuration.
-    In that case this component is used to receive a string that is evaluated and processed to output
-    socket structures to open a connectio
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once

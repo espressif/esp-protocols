@@ -3,10 +3,9 @@
  *
  * SPDX-FileCopyrightText: 2002-2021 Igor Sysoev
  *                         2011-2022 Nginx, Inc.
+ *                         2023-2025 Espressif Systems (Shanghai) CO LTD
  *
- * SPDX-License-Identifier: BSD-2-Clause
- *
- * SPDX-FileContributor: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-License-Identifier: Apache-2.0
  */
 /*
  * Copyright (C) 2002-2021 Igor Sysoev

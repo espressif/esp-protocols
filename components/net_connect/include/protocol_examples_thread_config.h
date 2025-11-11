@@ -1,9 +1,9 @@
 /*
  * Thread configurations for protocol examples
  *
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 #pragma once
 
@@ -23,10 +23,10 @@
       .radio_mode = RADIO_MODE_UART_RCP,                                       \
       .radio_uart_config =                                                     \
           {                                                                    \
-              .port = CONFIG_EXAMPLE_THREAD_UART_PORT,                         \
+              .port = CONFIG_NET_CONNECT_THREAD_UART_PORT,                         \
               .uart_config =                                                   \
                   {                                                            \
-                      .baud_rate = CONFIG_EXAMPLE_THREAD_UART_BAUD,            \
+                      .baud_rate = CONFIG_NET_CONNECT_THREAD_UART_BAUD,            \
                       .data_bits = UART_DATA_8_BITS,                           \
                       .parity = UART_PARITY_DISABLE,                           \
                       .stop_bits = UART_STOP_BITS_1,                           \
@@ -34,8 +34,8 @@
                       .rx_flow_ctrl_thresh = 0,                                \
                       .source_clk = UART_SCLK_DEFAULT,                         \
                   },                                                           \
-              .rx_pin = CONFIG_EXAMPLE_THREAD_UART_RX_PIN,                     \
-              .tx_pin = CONFIG_EXAMPLE_THREAD_UART_TX_PIN,                     \
+              .rx_pin = CONFIG_NET_CONNECT_THREAD_UART_RX_PIN,                     \
+              .tx_pin = CONFIG_NET_CONNECT_THREAD_UART_TX_PIN,                     \
           },                                                                   \
   }
 #elif defined(CONFIG_OPENTHREAD_RADIO_SPINEL_SPI)
@@ -48,9 +48,9 @@
               .dma_channel = 2,                                                \
               .spi_interface =                                                 \
                   {                                                            \
-                      .mosi_io_num = CONFIG_EXAMPLE_THREAD_SPI_MOSI_PIN,       \
-                      .miso_io_num = CONFIG_EXAMPLE_THREAD_SPI_MISO_PIN,       \
-                      .sclk_io_num = CONFIG_EXAMPLE_THREAD_SPI_SCLK_PIN,       \
+                      .mosi_io_num = CONFIG_NET_CONNECT_THREAD_SPI_MOSI_PIN,       \
+                      .miso_io_num = CONFIG_NET_CONNECT_THREAD_SPI_MISO_PIN,       \
+                      .sclk_io_num = CONFIG_NET_CONNECT_THREAD_SPI_SCLK_PIN,       \
                       .quadwp_io_num = -1,                                     \
                       .quadhd_io_num = -1,                                     \
                   },                                                           \
@@ -60,10 +60,10 @@
                       .input_delay_ns = 100,                                   \
                       .mode = 0,                                               \
                       .clock_speed_hz = 2500 * 1000,                           \
-                      .spics_io_num = CONFIG_EXAMPLE_THREAD_SPI_CS_PIN,        \
+                      .spics_io_num = CONFIG_NET_CONNECT_THREAD_SPI_CS_PIN,        \
                       .queue_size = 5,                                         \
                   },                                                           \
-              .intr_pin = CONFIG_EXAMPLE_THREAD_SPI_INTR_PIN,                  \
+              .intr_pin = CONFIG_NET_CONNECT_THREAD_SPI_INTR_PIN,                  \
           },                                                                   \
   }
 #else

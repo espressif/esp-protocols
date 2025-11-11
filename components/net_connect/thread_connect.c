@@ -1,15 +1,15 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "esp_err.h"
 #include "esp_event.h"
 #include "esp_event_base.h"
 #include "esp_vfs_eventfd.h"
-#include "example_common_private.h"
-#include "protocol_examples_common.h"
+#include "net_connect_private.h"
+#include "net_connect.h"
 #include "protocol_examples_thread_config.h"
 #include "esp_log.h"
 #include <string.h>
@@ -49,7 +49,7 @@ static void ot_task_worker(void *aContext)
     };
 
     esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_OPENTHREAD();
-    esp_netif_config.if_desc = EXAMPLE_NETIF_DESC_THREAD;
+    esp_netif_config.if_desc = NET_CONNECT_NETIF_DESC_THREAD;
     esp_netif_config_t cfg = {
         .base = &esp_netif_config,
         .stack = &g_esp_netif_netstack_default_openthread,
@@ -84,7 +84,7 @@ static void ot_task_worker(void *aContext)
 }
 
 /* tear down connection, release resources */
-void example_thread_shutdown(void)
+void net_connect_thread_shutdown(void)
 {
     vTaskDelete(s_ot_task_handle);
     esp_openthread_netif_glue_deinit();
@@ -94,7 +94,7 @@ void example_thread_shutdown(void)
     vSemaphoreDelete(s_semph_thread_attached);
 }
 
-esp_err_t example_thread_connect(void)
+esp_err_t net_connect_thread_connect(void)
 {
     s_semph_thread_attached = xSemaphoreCreateBinary();
     if (s_semph_thread_attached == NULL) {
@@ -115,7 +115,7 @@ esp_err_t example_thread_connect(void)
     };
     esp_vfs_eventfd_register(&eventfd_config);
     ESP_ERROR_CHECK(esp_event_handler_register(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler, NULL));
-    if (xTaskCreate(ot_task_worker, "ot_br_main", CONFIG_EXAMPLE_THREAD_TASK_STACK_SIZE, NULL, 5, &s_ot_task_handle) != pdPASS) {
+    if (xTaskCreate(ot_task_worker, "ot_br_main", CONFIG_NET_CONNECT_THREAD_TASK_STACK_SIZE, NULL, 5, &s_ot_task_handle) != pdPASS) {
         vSemaphoreDelete(s_semph_thread_attached);
         vSemaphoreDelete(s_semph_thread_set_dns_server);
         ESP_LOGE(TAG, "Failed to create openthread task");
