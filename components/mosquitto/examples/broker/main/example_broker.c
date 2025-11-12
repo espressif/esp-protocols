@@ -1,9 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 #include <stdio.h>
+#include <string.h>
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_netif.h"
@@ -13,6 +14,45 @@
 #include "protocol_examples_common.h"
 
 const static char *TAG = "mqtt_broker";
+
+/* Basic auth credentials for the example */
+#define EXAMPLE_USERNAME "testuser"
+#define EXAMPLE_PASSWORD "testpass"
+
+#if CONFIG_EXAMPLE_BROKER_USE_BASIC_AUTH
+/* Connection callback to validate username/password */
+static int example_connect_callback(const char *client_id, const char *username, const char *password, int password_len)
+{
+    ESP_LOGI(TAG, "Connection attempt from client_id='%s', username='%s'", client_id, username ? username : "(none)");
+
+    /* Check if username is provided */
+    if (!username) {
+        ESP_LOGW(TAG, "Connection rejected: no username provided");
+        return 1; /* Reject connection */
+    }
+
+    /* Check if password is provided */
+    if (!password) {
+        ESP_LOGW(TAG, "Connection rejected: no password provided");
+        return 1; /* Reject connection */
+    }
+
+    /* Validate username */
+    if (strcmp(username, EXAMPLE_USERNAME) != 0) {
+        ESP_LOGW(TAG, "Connection rejected: invalid username '%s'", username);
+        return 1; /* Reject connection */
+    }
+
+    /* Validate password */
+    if (strcmp(password, EXAMPLE_PASSWORD) != 0) {
+        ESP_LOGW(TAG, "Connection rejected: invalid password");
+        return 1; /* Reject connection */
+    }
+
+    ESP_LOGI(TAG, "Connection accepted for client_id='%s', username='%s'", client_id, username);
+    return 0; /* Accept connection */
+}
+#endif /* CONFIG_EXAMPLE_BROKER_USE_BASIC_AUTH */
 
 #if CONFIG_EXAMPLE_BROKER_WITH_TLS
 extern const unsigned char servercert_start[] asm("_binary_servercert_pem_start");
@@ -81,6 +121,10 @@ static void mqtt_app_start(struct mosq_broker_config *config)
         .broker.address.transport = MQTT_TRANSPORT_OVER_TCP,
 #endif
         .broker.address.port = config->port,
+#if CONFIG_EXAMPLE_BROKER_USE_BASIC_AUTH
+        .credentials.username = "EXAMPLE_USERNAME",
+        .credentials.authentication.password = EXAMPLE_PASSWORD,
+#endif
     };
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
@@ -95,7 +139,16 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(example_connect());
 
-    struct mosq_broker_config config = { .host = CONFIG_EXAMPLE_BROKER_HOST, .port = CONFIG_EXAMPLE_BROKER_PORT, .tls_cfg = NULL };
+    struct mosq_broker_config config = {
+        .host = CONFIG_EXAMPLE_BROKER_HOST,
+        .port = CONFIG_EXAMPLE_BROKER_PORT,
+        .tls_cfg = NULL,
+#if CONFIG_EXAMPLE_BROKER_USE_BASIC_AUTH
+        .handle_connect_cb = example_connect_callback,
+#else
+        .handle_connect_cb = NULL,
+#endif
+    };
 
 #if CONFIG_EXAMPLE_BROKER_RUN_LOCAL_MQTT_CLIENT
     mqtt_app_start(&config);
