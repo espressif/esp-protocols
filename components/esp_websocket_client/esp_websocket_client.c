@@ -1168,12 +1168,6 @@ static void esp_websocket_client_task(void *pv)
                     }
                 }
             }
-
-
-            if (read_select == 0) {
-                ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_read()...");
-                break;
-            }
             break;
         case WEBSOCKET_STATE_WAIT_TIMEOUT:
 
@@ -1226,6 +1220,8 @@ static void esp_websocket_client_task(void *pv)
                     esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                     xSemaphoreGiveRecursive(client->lock);
                 }
+            } else {
+                ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_poll_read().");
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
             // waiting for reconnection or a request to stop the client...
