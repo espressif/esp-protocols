@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.6.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.0)
+
+### Features
+
+- add WEBSOCKET_EVENT_HEADER_RECEIVED (#827) ([18f0d028](https://github.com/espressif/esp-protocols/commit/18f0d028), [#715](https://github.com/espressif/esp-protocols/issues/715))
+- enhance example with docs, pytest setup, and standalone test server     - Add comprehensive README with TOC and quick start     - Add pytest setup and certificate generation scripts     - Add standalone WebSocket test server with TLS support     - Add troubleshooting and multiple testing approaches ([cad527d2](https://github.com/espressif/esp-protocols/commit/cad527d2))
+- Add websocket HTTP redirect ([ce1560ac](https://github.com/espressif/esp-protocols/commit/ce1560ac))
+
+### Bug Fixes
+
+- remove redundant timeout check in client task loop ([1e83bee4](https://github.com/espressif/esp-protocols/commit/1e83bee4))
+- fix PING timing - enable periodic PING during active traffic ([7f424325](https://github.com/espressif/esp-protocols/commit/7f424325))
+- Update linux build docs on required libs ([e52a5757](https://github.com/espressif/esp-protocols/commit/e52a5757))
+- clean up component dependencies - Remove unused 'json', 'nvs_flash', 'esp_stubs', dependency from Linux build configuration - Add cJSON dependency to target example's idf_component.yml ([d665e6f1](https://github.com/espressif/esp-protocols/commit/d665e6f1))
+- fix relying on asprintf() to NULL strp on failure ([54eb0027](https://github.com/espressif/esp-protocols/commit/54eb0027))
+- Update Remaining Websocket Echo Server (#893) ([18faeb3d](https://github.com/espressif/esp-protocols/commit/18faeb3d))
+- avoid long stopping time when waiting to auto-reconnect ([2432e41d](https://github.com/espressif/esp-protocols/commit/2432e41d))
+- Update Websocket Echo Server ([94bd5b07](https://github.com/espressif/esp-protocols/commit/94bd5b07))
+
+### Updated
+
+- ci(common): Update test component dir for IDFv6.0 ([18418c83](https://github.com/espressif/esp-protocols/commit/18418c83))
+
 ## [1.5.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.5.0)
 
 ### Features
