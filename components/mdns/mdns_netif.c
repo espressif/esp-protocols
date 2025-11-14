@@ -28,7 +28,7 @@ static const char *TAG = "mdns_netif";
 #if ESP_IDF_VERSION <= ESP_IDF_VERSION_VAL(5, 1, 0)
 #define MDNS_ESP_WIFI_ENABLED CONFIG_SOC_WIFI_SUPPORTED
 #else
-#define MDNS_ESP_WIFI_ENABLED CONFIG_ESP_WIFI_ENABLED
+#define MDNS_ESP_WIFI_ENABLED (CONFIG_ESP_WIFI_ENABLED || CONFIG_ESP_WIFI_REMOTE_ENABLED)
 #endif
 
 #if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
@@ -206,9 +206,9 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
         return;
     }
 
-    esp_netif_dhcp_status_t dcst;
 #if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     if (event_base == WIFI_EVENT) {
+        esp_netif_dhcp_status_t dcst;
         switch (event_id) {
         case WIFI_EVENT_STA_CONNECTED:
             if (!esp_netif_dhcpc_get_status(netif_from_preset(MDNS_IF_STA), &dcst)) {
@@ -235,6 +235,7 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
 #endif
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
         if (event_base == ETH_EVENT) {
+            esp_netif_dhcp_status_t dcst;
             switch (event_id) {
             case ETHERNET_EVENT_CONNECTED:
                 if (!esp_netif_dhcpc_get_status(netif_from_preset(MDNS_IF_ETH), &dcst)) {
