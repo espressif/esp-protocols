@@ -921,14 +921,13 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
 
 /**
  * @brief   Stop the `_service._proto` browse.
- * @param service  Pointer to the `_service` which will be browsed.
- * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param browse  Pointer to the browse object created by mdns_browse_new().
  * @return
  *     - ESP_OK                 success.
  *     - ESP_ERR_FAIL           mDNS is not running or the browsing of `_service._proto` is never started.
  *     - ESP_ERR_NO_MEM         memory error.
  */
-esp_err_t mdns_browse_delete(const char *service, const char *proto);
+esp_err_t mdns_browse_delete(mdns_browse_t *browse);
 
 #ifdef __cplusplus
 }

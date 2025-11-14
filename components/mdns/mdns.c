@@ -7363,24 +7363,13 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
     return browse;
 }
 
-esp_err_t mdns_browse_delete(const char *service, const char *proto)
+esp_err_t mdns_browse_delete(mdns_browse_t *browse)
 {
-    mdns_browse_t *browse = NULL;
-
-    if (!_mdns_server || _str_null_or_empty(service) || _str_null_or_empty(proto)) {
+    if (!_mdns_server || !browse) {
         return ESP_FAIL;
     }
 
-    browse = _mdns_browse_init(service, proto, NULL);
-    if (!browse) {
-        return ESP_ERR_NO_MEM;
-    }
-
-    if (_mdns_send_browse_action(ACTION_BROWSE_END, browse)) {
-        _mdns_browse_item_free(browse);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
+    return _mdns_send_browse_action(ACTION_BROWSE_END, browse);
 }
 
 /**
