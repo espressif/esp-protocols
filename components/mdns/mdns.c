@@ -4493,7 +4493,7 @@ void mdns_preset_if_handle_system_event(void *arg, esp_event_base_t event_base,
         return;
     }
 
-    #if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
+#if MDNS_ESP_WIFI_ENABLED && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP)
     if (event_base == WIFI_EVENT) {
         esp_netif_dhcp_status_t dcst;
         switch (event_id) {
