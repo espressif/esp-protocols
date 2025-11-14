@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.1)
+
+### Bug Fixes
+
+- Fix to use tagged AFL image + minor format fix ([2b2f009a](https://github.com/espressif/esp-protocols/commit/2b2f009a))
+- Fix unused variable `dcst` warning for wifi-remote chips ([081eef88](https://github.com/espressif/esp-protocols/commit/081eef88))
+
 ## [1.9.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.0)
 
 ### Features
