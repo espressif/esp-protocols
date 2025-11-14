@@ -19,6 +19,15 @@ menu "Example Configuration"
             If enabled, it runs a local mqtt client connecting
             to the same endpoint ans the broker listens to
 
+    config EXAMPLE_BROKER_USE_BASIC_AUTH
+        bool "Use basic authentication (username/password)"
+        default n
+        help
+            If enabled, the broker will require username and password
+            authentication. The example uses "testuser" / "testpass" as
+            credentials. The client will also use these credentials when
+            connecting to the broker.
+
     config EXAMPLE_BROKER_WITH_TLS
         bool "Use TLS"
         default y

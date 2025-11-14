@@ -14,6 +14,8 @@ extern "C" {
 struct mosquitto__config;
 
 typedef void (*mosq_message_cb_t)(char *client, char *topic, char *data, int len, int qos, int retain);
+
+typedef int (*mosq_connect_cb_t)(const char *client_id, const char *username, const char *password, int password_len);
 /**
  * @brief Mosquitto configuration structure
  *
@@ -32,6 +34,11 @@ struct mosq_broker_config {
     void (*handle_message_cb)(char *client, char *topic, char *data, int len, int qos, int retain); /*!<
                                      * On message callback. If configured, user function is called
                                      * whenever mosquitto processes a message.
+                                     */
+    mosq_connect_cb_t handle_connect_cb; /*!< On connect callback. If configured, user function is called
+                                     * whenever a client attempts to connect. The callback receives
+                                     * client_id, username, password, and password length. Return 0 to
+                                     * accept the connection, non-zero to reject it.
                                      */
 };
 

@@ -15,6 +15,7 @@
 | Type | Name |
 | ---: | :--- |
 | struct | [**mosq\_broker\_config**](#struct-mosq_broker_config) <br>_Mosquitto configuration structure._ |
+| typedef int(\* | [**mosq\_connect\_cb\_t**](#typedef-mosq_connect_cb_t)  <br> |
 | typedef void(\* | [**mosq\_message\_cb\_t**](#typedef-mosq_message_cb_t)  <br> |
 
 ## Functions
@@ -35,6 +36,8 @@ ESP port of mosquittto supports only the options in this configuration structure
 
 Variables:
 
+-  mosq\_connect\_cb\_t handle_connect_cb  <br>On connect callback. If configured, user function is called whenever a client attempts to connect. The callback receives client\_id, username, password, and password length. Return 0 to accept the connection, non-zero to reject it.
+
 -  void(\* handle_message_cb  <br>On message callback. If configured, user function is called whenever mosquitto processes a message.
 
 -  const char \* host  <br>Address on which the broker is listening for connections
@@ -42,6 +45,12 @@ Variables:
 -  int port  <br>Port number of the broker to listen to
 
 -  esp\_tls\_cfg\_server\_t \* tls_cfg  <br>ESP-TLS configuration (if TLS transport used) Please refer to the ESP-TLS official documentation for more details on configuring the TLS options. You can open the respective docs with this idf.py command: `idf.py docs -sp api-reference/protocols/esp_tls.html`
+
+### typedef `mosq_connect_cb_t`
+
+```c
+typedef int(* mosq_connect_cb_t) (const char *client_id, const char *username, const char *password, int password_len);
+```
 
 ### typedef `mosq_message_cb_t`
 

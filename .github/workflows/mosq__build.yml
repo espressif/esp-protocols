@@ -77,6 +77,20 @@ jobs:
       - name: Run Test
         working-directory: ${{ env.TEST_DIR }}
         run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
           python -m pip install pytest-embedded-serial-esp pytest-embedded-idf pytest-rerunfailures pytest-timeout pytest-ignore-test-results
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
@@ -180,6 +194,20 @@ jobs:
       - name: Run Test
         working-directory: ${{ env.TEST_DIR }}
         run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
           python -m pip install pytest-embedded-serial-esp pytest-embedded-idf pytest-rerunfailures pytest-timeout pytest-ignore-test-results "paho-mqtt<2"  --upgrade
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
