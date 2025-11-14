@@ -44,6 +44,18 @@ menu "Example Configuration"
         help
             Set APN (Access Point Name), a logical name to choose data network
 
+    config EXAMPLE_USE_TLS
+        bool "Use TLS for MQTT broker"
+        default n
+        help
+            Enable TLS for connection to the MQTT broker.
+
+    config EXAMPLE_BROKER_HOST
+        string "MQTT broker host"
+        default "test.mosquitto.org"
+        help
+            Hostname or IP address of the MQTT broker.
+
     menu "UART Configuration"
         config EXAMPLE_MODEM_UART_TX_PIN
             int "TXD Pin Number"
