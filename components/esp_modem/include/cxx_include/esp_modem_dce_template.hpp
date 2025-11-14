@@ -103,6 +103,11 @@ public:
     {
         dte->set_urc_cb(on_read_cb);
     }
+
+    void set_enhanced_urc(esp_modem::DTE::enhanced_urc_cb enhanced_cb)
+    {
+        dte->set_enhanced_urc_cb(enhanced_cb);
+    }
 #endif
 
     /**

@@ -65,6 +65,10 @@ void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {
         Scoped<Lock> l(command_cb.line_lock);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+        // Update buffer state when new data arrives
+        update_buffer_state(len);
+#endif
 #ifndef CONFIG_ESP_MODEM_URC_HANDLER
         if (command_cb.got_line == nullptr || command_cb.result != command_result::TIMEOUT) {
             return false;   // this line has been processed already (got OK or FAIL previously)
@@ -80,7 +84,7 @@ void DTE::set_command_callbacks()
                 std::memcpy(inflatable.current(), data, len);
                 data = inflatable.begin();
             }
-            if (command_cb.process_line(data, inflatable.consumed, len)) {
+            if (command_cb.process_line(data, inflatable.consumed, len, this)) {
                 return true;
             }
             // at this point we're sure that the data processing hasn't finished,
@@ -92,7 +96,7 @@ void DTE::set_command_callbacks()
             inflatable.consumed += len;
             return false;
 #else
-            if (command_cb.process_line(data, 0, len)) {
+            if (command_cb.process_line(data, 0, len, this)) {
                 return true;
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
@@ -105,7 +109,7 @@ void DTE::set_command_callbacks()
         if (buffer.size > buffer.consumed) {
             data = buffer.get();
             len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
-            if (command_cb.process_line(data, buffer.consumed, len)) {
+            if (command_cb.process_line(data, buffer.consumed, len, this)) {
                 return true;
             }
             buffer.consumed += len;
@@ -121,7 +125,7 @@ void DTE::set_command_callbacks()
             inflatable.grow(inflatable.consumed + len);
         }
         len = primary_term->read(inflatable.current(), len);
-        if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len)) {
+        if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len, this)) {
             return true;
         }
         inflatable.consumed += len;
@@ -150,10 +154,19 @@ void DTE::set_command_callbacks()
 command_result DTE::command(const std::string &command, got_line_cb got_line, uint32_t time_ms, const char separator)
 {
     Scoped<Lock> l1(internal_lock);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    // Track command start
+    buffer_state.command_waiting = true;
+    buffer_state.command_start_offset = buffer_state.total_processed;
+#endif
     command_cb.set(got_line, separator);
     primary_term->write((uint8_t *)command.c_str(), command.length());
     command_cb.wait_for_line(time_ms);
     command_cb.set(nullptr);
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    // Track command end
+    buffer_state.command_waiting = false;
+#endif
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
     inflatable.deflate();
@@ -365,18 +378,54 @@ void DTE::on_read(got_line_cb on_read_cb)
     });
 }
 
-bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len)
+bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, DTE* dte)
 {
     // returning true indicates that the processing finished and lower layers can destroy the accumulated buffer
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-    bool consume_buffer = false;
-    if (urc_handler) {
-        consume_buffer = urc_handler(data, consumed + len) != command_result::TIMEOUT;
+    // Call enhanced URC handler if registered
+    if (enhanced_urc_handler && dte) {
+        // Create buffer info for enhanced URC handler
+        UrcBufferInfo buffer_info = dte->create_urc_info(data, consumed, len);
+
+        // Call enhanced URC handler
+        UrcConsumeInfo consume_info = enhanced_urc_handler(buffer_info);
+
+        // Handle consumption control
+        switch (consume_info.result) {
+        case UrcConsumeResult::CONSUME_NONE:
+            // Don't consume anything, continue with command processing
+            break;
+
+        case UrcConsumeResult::CONSUME_PARTIAL:
+            // Consume only specified amount
+            dte->buffer_state.last_urc_processed += consume_info.consume_size;
+            // Adjust data pointers for command processing
+            data += consume_info.consume_size;
+            consumed = (consumed + len) - consume_info.consume_size;
+            len = 0;
+            break;
+
+        case UrcConsumeResult::CONSUME_ALL:
+            // Consume entire buffer
+            dte->buffer_state.last_urc_processed = consumed + len;
+            return true;  // Signal buffer consumption
+        }
     }
-    if (result != command_result::TIMEOUT || got_line == nullptr) {
-        return consume_buffer;   // this line has been processed already (got OK or FAIL previously)
+
+    // Fallback to legacy URC handler if enhanced handler not set
+    if (urc_handler) {
+        bool consume_buffer = urc_handler(data, consumed + len) != command_result::TIMEOUT;
+        if (result != command_result::TIMEOUT || got_line == nullptr) {
+            return consume_buffer;   // this line has been processed already (got OK or FAIL previously)
+        }
     }
 #endif
+
+    // Continue with normal command processing
+    if (result != command_result::TIMEOUT || got_line == nullptr) {
+        return false;  // Command processing continues
+    }
+
     if (memchr(data + consumed, separator, len)) {
         result = got_line(data, consumed + len);
         if (result == command_result::OK || result == command_result::FAIL) {
@@ -423,3 +472,22 @@ void DTE::extra_buffer::grow(size_t need_size)
  */
 unique_buffer::unique_buffer(size_t size):
     data(std::make_unique<uint8_t[]>(size)), size(size), consumed(0) {}
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+void DTE::update_buffer_state(size_t new_data_size)
+{
+    buffer_state.total_processed += new_data_size;
+}
+
+DTE::UrcBufferInfo DTE::create_urc_info(uint8_t* data, size_t consumed, size_t len)
+{
+    return {
+        .buffer_start = data,
+        .buffer_total_size = consumed + len,
+        .processed_offset = buffer_state.last_urc_processed,
+        .new_data_size = (consumed + len) - buffer_state.last_urc_processed,
+        .new_data_start = data + buffer_state.last_urc_processed,
+        .is_command_active = buffer_state.command_waiting
+    };
+}
+#endif
