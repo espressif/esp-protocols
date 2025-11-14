@@ -77,7 +77,7 @@ jobs:
         idf_ver: ["latest"]
 
     runs-on: ubuntu-22.04
-    container: aflplusplus/aflplusplus
+    container: aflplusplus/aflplusplus:v4.34c
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
