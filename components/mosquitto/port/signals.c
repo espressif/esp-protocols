@@ -7,7 +7,7 @@
  */
 #include "signal.h"
 
-int sigprocmask (int, const sigset_t *, sigset_t *)
+int sigprocmask(int, const sigset_t *, sigset_t *)
 {
     return 0;
 }

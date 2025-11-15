@@ -14,7 +14,7 @@ namespace esp_modem {
  */
 struct unique_buffer {
     explicit unique_buffer(size_t size);
-    unique_buffer (unique_buffer const &) = delete;
+    unique_buffer(unique_buffer const &) = delete;
     unique_buffer &operator=(unique_buffer const &) = delete;
     unique_buffer(unique_buffer &&other) noexcept
     {

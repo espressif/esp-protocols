@@ -39,11 +39,11 @@ public:
     int recv_timeout(unsigned char *buf, size_t len, int timeout) override
     {
         struct timeval tv {
-            timeout / 1000, (timeout % 1000 ) * 1000
+            timeout / 1000, (timeout % 1000) * 1000
         };
         fd_set read_fds;
-        FD_ZERO( &read_fds );
-        FD_SET( sock, &read_fds );
+        FD_ZERO(&read_fds);
+        FD_SET(sock, &read_fds);
 
         int ret = select(sock + 1, &read_fds, nullptr, nullptr, timeout == 0 ? nullptr : &tv);
         if (ret == 0) {

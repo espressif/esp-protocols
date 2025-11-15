@@ -131,7 +131,7 @@ extern "C" {
         ESP_LOGE(TAG, "Signal handler %d", nr);
     }
 
-    _sig_func_ptr signal (int nr, _sig_func_ptr)
+    _sig_func_ptr signal(int nr, _sig_func_ptr)
     {
         return handle;
     }
