@@ -1,10 +1,14 @@
 ## IDF Component Manager Manifest File
 dependencies:
   espressif/esp_modem:
-    version: "*"
+    version: '*'
     override_path: ../../..
   espressif/mbedtls_cxx:
-    version: "*"
+    version: '*'
     override_path: ../../../../mbedtls_cxx
   idf:
-    version: ">=4.1.0"
+    version: '>=4.1.0'
+  espressif/mqtt:
+    rules:
+    - if: idf_version >=6.0
+      version: ^1.0.0
