@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         idf_target: ["esp32"]
         test: [ { app: ping-basic, path: "components/console_cmd_ping/examples" }]
     runs-on: ubuntu-22.04
