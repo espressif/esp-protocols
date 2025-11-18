@@ -9,4 +9,8 @@ dependencies:
     override_path: '../console_simple_init'
     public: true
   espressif/ethernet_init:
-    version: '>=0.0.7'
+    matches:
+    - if: idf_version >=6.0
+      version: ^1.0.0
+    - if: idf_version <6.0
+      version: '==0.3.0'
