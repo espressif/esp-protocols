@@ -18,6 +18,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "iface_info.h"
+#include "esp_idf_version.h"
 
 static const char *TAG = "ethernet_connect";
 
@@ -109,7 +110,11 @@ iface_info_t *example_eth_init(int prio)
     // Use internal ESP32's ethernet
     eth_esp32_emac_config_t esp32_emac_config = ETH_ESP32_EMAC_DEFAULT_CONFIG();
     eth_info->mac = esp_eth_mac_new_esp32(&esp32_emac_config, &mac_config);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+    eth_info->phy = esp_eth_phy_new_generic(&phy_config);
+#else
     eth_info->phy = esp_eth_phy_new_ip101(&phy_config);
+#endif
     // Init Ethernet driver to default and install it
     esp_eth_config_t config = ETH_DEFAULT_CONFIG(eth_info->mac, eth_info->phy);
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &eth_info->eth_handle));
