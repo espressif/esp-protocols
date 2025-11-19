@@ -65,27 +65,23 @@ jobs:
         with:
           name: websocket_bin_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/ci/
+      - name: Prepare Python environment
+        uses: ./.github/actions/setup-pyenv-venv
+        with:
+          python-version: "3.12.6"
+          venv-name: "target-pytest"
+          pip-extra-index-url: "https://www.piwheels.org/simple"
+          pip-extra-args: "--prefer-binary --extra-index-url https://dl.espressif.com/pypi/"
+          requirements: |
+            cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
+          requirements-file: |
+            $GITHUB_WORKSPACE/ci/requirements.txt
       - name: Run Example Test on target
         working-directory: ${{ env.TEST_DIR }}
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
-          export PYENV_ROOT="$HOME/.pyenv"
-          export PATH="$PYENV_ROOT/bin:$PATH"
-          eval "$(pyenv init --path)"
-          eval "$(pyenv init -)"
-          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
-            echo "Installing Python 3.12.6..."
-            pyenv install -s 3.12.6
-          fi
-          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
-            echo "Creating pyenv virtualenv 'myenv'..."
-            pyenv virtualenv 3.12.6 myenv
-          fi
-          pyenv activate myenv
           python --version
-          pip install --prefer-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
-          pip install --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
           rm -rf build sdkconfig.defaults
