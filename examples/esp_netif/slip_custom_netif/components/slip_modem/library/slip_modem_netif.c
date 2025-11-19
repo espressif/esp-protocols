@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2019-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2019-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -53,10 +53,18 @@ esp_err_t slip_modem_netif_start(esp_netif_t *esp_netif, esp_ip6_addr_t *addr)
     return ESP_OK;
 }
 
+#if defined(CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS)
+typedef esp_err_t esp_netif_recv_ret_t;
+#define ESP_NETIF_OPTIONAL_RETURN_CODE(expr) expr
+#else
+typedef void esp_netif_recv_ret_t;
+#define ESP_NETIF_OPTIONAL_RETURN_CODE(expr)
+#endif // CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS
+
 /**
  * @brief Write incoming serial data to the SLIP interface
  */
-void esp_netif_lwip_slip_input(void *h, void *buffer, unsigned int len, void *eb)
+esp_netif_recv_ret_t esp_netif_lwip_slip_input(void *h, void *buffer, unsigned int len, void *eb)
 {
     struct netif *netif = h;
 
@@ -76,6 +84,7 @@ void esp_netif_lwip_slip_input(void *h, void *buffer, unsigned int len, void *eb
     for (int i = 0; i < len; i++) {
         slipif_process_rxqueue(netif);
     }
+    return ESP_NETIF_OPTIONAL_RETURN_CODE(ESP_OK);
 }
 
 /**
