@@ -81,18 +81,24 @@ jobs:
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
           path: ${{ env.TEST_DIR }}/${{ matrix.example }}/build
-      - name: Install Python packages
-        env:
-          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
-        run: |
-            sudo apt-get install -y dnsutils
-      - name: Download Example Test to target ${{ matrix.config }}
-        run: |
-            python -m esptool --chip ${{ matrix.idf_target }} write_flash 0x0 ${{ env.TEST_DIR }}/${{ matrix.example }}/build/flash_image.bin
       - name: Run Example Test ${{ matrix.example }} on target
         working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}
         run: |
-            python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
+          python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
