@@ -13,10 +13,7 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
-        include:
-          - idf_ver: "latest"
-            warning: "Warning: The smallest app partition is nearly full"
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -27,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
         env:
-          EXPECTED_WARNING: ${{ matrix.warning }}
+          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full"
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
@@ -75,7 +72,7 @@ jobs:
     needs: build_all_examples
     strategy:
       matrix:
-        idf_ver: ["release-v5.4", "latest"]
+        idf_ver: ["release-v5.5", "latest"]
     runs-on:
       - self-hosted
       - modem
