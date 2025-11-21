@@ -13,13 +13,15 @@ jobs:
     name: Mosquitto build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.5", "release-v5.4", "release-v5.3", "release-v5.2", "release-v5.1"]
-        example: ["broker", "serverless_mqtt"]
-        exclude:
-          # serverless_mqtt is not supported on v5.1 and master (esp-peer dependency)
-          - idf_ver: "release-v5.1"
+        idf_ver: ["latest", "release-v6.0", "release-v5.5", "release-v5.4", "release-v5.3", "release-v5.2", "release-v5.1"]
+        example: ["broker"]
+        include:
+          # serverless_mqtt is not supported on >=v6.0 (esp-peer dependency)
+          - idf_ver: "release-v5.3"
             example: "serverless_mqtt"
-          - idf_ver: "latest"
+          - idf_ver: "release-v5.4"
+            example: "serverless_mqtt"
+          - idf_ver: "release-v5.5"
             example: "serverless_mqtt"
 
     runs-on: ubuntu-22.04
@@ -61,7 +63,7 @@ jobs:
     needs: build_mosq
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.3"]
+        idf_ver: ["release-v5.4", "release-v5.5", "release-v6.0", "latest"]
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
@@ -134,7 +136,7 @@ jobs:
     name: Build IDF tests
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["release-v5.5"]   # TODO: add release-v6.0/latest with esp-mqtt directly
         idf_target: ["esp32"]
         test: [ { app: publish, path: "tools/test_apps/protocols/mqtt/publish_connect_test" }]
     runs-on: ubuntu-22.04
@@ -179,7 +181,7 @@ jobs:
     needs: build_idf_tests_with_mosq
     strategy:
       matrix:
-        idf_ver: ["latest"]
+        idf_ver: ["release-v5.5"]
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
