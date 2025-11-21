@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -21,11 +21,13 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
-#include "simple_mqtt_client.hpp"
 #include "esp_vfs_dev.h"        // For optional VFS support
 #include "esp_https_ota.h"      // For potential OTA configuration
 #include "vfs_resource/vfs_create.hpp"
 #include "SIM7070_gnss.hpp"
+#include "esp_console.h"
+#include "console_ping.h"
+#include "esp_event.h"
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
@@ -35,18 +37,13 @@
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_HW
 #endif
 
-#define BROKER_URL CONFIG_BROKER_URI
-
-
 using namespace esp_modem;
 
 static const char *TAG = "cmux_example";
 
 class StatusHandler {
 public:
-    static constexpr auto IP_Event      = SignalGroup::bit0;
-    static constexpr auto MQTT_Connect  = SignalGroup::bit1;
-    static constexpr auto MQTT_Data     = SignalGroup::bit2;
+    static constexpr auto IP_Event = SignalGroup::bit0;
 
     StatusHandler()
     {
@@ -56,12 +53,6 @@ public:
     ~StatusHandler()
     {
         esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_event);
-    }
-
-    void handle_mqtt(MqttClient *client)
-    {
-        mqtt_client = client;
-        client->register_handler(ESP_EVENT_ANY_ID, on_event, this);
     }
 
     esp_err_t wait_for(decltype(IP_Event) event, int milliseconds)
@@ -80,8 +71,6 @@ private:
         auto *handler = static_cast<StatusHandler *>(arg);
         if (base == IP_EVENT) {
             handler->ip_event(event, data);
-        } else {
-            handler->mqtt_event(event, data);
         }
     }
 
@@ -92,27 +81,16 @@ private:
             ESP_LOGI(TAG, "IP          : " IPSTR, IP2STR(&event->ip_info.ip));
             ESP_LOGI(TAG, "Netmask     : " IPSTR, IP2STR(&event->ip_info.netmask));
             ESP_LOGI(TAG, "Gateway     : " IPSTR, IP2STR(&event->ip_info.gw));
+            ip_event_type = static_cast<ip_event_t>(id);
             signal.set(IP_Event);
         } else if (id == IP_EVENT_PPP_LOST_IP) {
+            ip_event_type = static_cast<ip_event_t>(id);
             signal.set(IP_Event);
-        }
-        ip_event_type = static_cast<ip_event_t>(id);
-    }
-
-    void mqtt_event(int32_t event, void *data)
-    {
-        if (mqtt_client && event == mqtt_client->get_event(MqttClient::Event::CONNECT)) {
-            signal.set(MQTT_Connect);
-        } else if (mqtt_client && event == mqtt_client->get_event(MqttClient::Event::DATA)) {
-            ESP_LOGI(TAG, " TOPIC: %s", mqtt_client->get_topic(data).c_str());
-            ESP_LOGI(TAG, " DATA: %s", mqtt_client->get_data(data).c_str());
-            signal.set(MQTT_Data);
         }
     }
 
     esp_modem::SignalGroup signal{};
-    MqttClient *mqtt_client{nullptr};
-    ip_event_t ip_event_type;
+    ip_event_t ip_event_type{};
 };
 
 
@@ -121,6 +99,11 @@ extern "C" void app_main(void)
     /* Init and register system/core components */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_netif_init());
+
+    // Initialize console REPL, register ping and start it
+    ESP_ERROR_CHECK(console_cmd_init());
+    ESP_ERROR_CHECK(console_cmd_ping_register());
+    ESP_ERROR_CHECK(console_cmd_start());
 
     /* Configure and create the DTE */
     esp_modem_dte_config_t dte_config = ESP_MODEM_DTE_DEFAULT_CONFIG();
@@ -175,7 +158,7 @@ extern "C" void app_main(void)
 #endif
     assert(dce);
 
-    /* Try to connect to the network and publish an mqtt topic */
+    /* Try to connect to the network */
     StatusHandler handler;
 
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
@@ -224,24 +207,14 @@ extern "C" void app_main(void)
     } else if (handler.get_ip_event_type() == IP_EVENT_PPP_GOT_IP) {
         std::cout << "Got IP address" << std::endl;
 
-        /* When connected to network, subscribe and publish some MQTT data */
-        MqttClient mqtt(BROKER_URL);
-        handler.handle_mqtt(&mqtt);
-        mqtt.connect();
-        if (!handler.wait_for(StatusHandler::MQTT_Connect, 60000)) {
-            ESP_LOGE(TAG, "Cannot connect to %s within specified timeout... exiting", BROKER_URL);
+        /* When connected to network, we can ping the internet */
+        int ping_ret_val;
+        ESP_ERROR_CHECK(esp_console_run("ping www.espressif.com", &ping_ret_val));
+        ESP_LOGI(TAG, "Ping command finished with return value: %d", ping_ret_val);
+        if (ping_ret_val != 0) {
+            ESP_LOGE(TAG, "Ping command failed with return value: %d", ping_ret_val);
             return;
         }
-        std::cout << "Connected" << std::endl;
-
-        mqtt.subscribe(CONFIG_EXAMPLE_MQTT_TEST_TOPIC);
-        mqtt.publish(CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA);
-        if (!handler.wait_for(StatusHandler::MQTT_Data, 60000)) {
-            ESP_LOGE(TAG, "Didn't receive published data within specified timeout... exiting");
-            return;
-        }
-        std::cout << "Received MQTT data" << std::endl;
-
     } else if (handler.get_ip_event_type() == IP_EVENT_PPP_LOST_IP) {
         ESP_LOGE(TAG, "PPP client has lost connection... exiting");
         return;

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -16,8 +16,10 @@
 #include "freertos/event_groups.h"
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
-#include "mqtt_client.h"
 #include "esp_modem_api.h"
+#include "esp_console.h"
+#include "console_ping.h"
+#include "esp_event.h"
 #include "esp_log.h"
 #include "sdkconfig.h"
 
@@ -35,7 +37,6 @@ static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int DISCONNECT_BIT = BIT1;
-static const int GOT_DATA_BIT = BIT2;
 static const int USB_DISCONNECTED_BIT = BIT3; // Used only with USB DTE but we define it unconditionally, to avoid too many #ifdefs in the code
 
 #ifdef CONFIG_EXAMPLE_MODEM_DEVICE_CUSTOM
@@ -63,47 +64,6 @@ if ((xEventGroupGetBits(event_group) & USB_DISCONNECTED_BIT) == USB_DISCONNECTED
 #else
 #define CHECK_USB_DISCONNECTION(event_group)
 #endif
-
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
-{
-    ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIu32, base, event_id);
-    esp_mqtt_event_handle_t event = event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
-    switch ((esp_mqtt_event_id_t)event_id) {
-    case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        msg_id = esp_mqtt_client_subscribe(client, CONFIG_EXAMPLE_MQTT_TEST_TOPIC, 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        break;
-    case MQTT_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-        break;
-    case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA, 0, 0, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-        break;
-    case MQTT_EVENT_UNSUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-        break;
-    case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        xEventGroupSetBits(event_group, GOT_DATA_BIT);
-        break;
-    case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
-        break;
-    default:
-        ESP_LOGI(TAG, "MQTT other event id: %d", event->event_id);
-        break;
-    }
-}
 
 static void on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
@@ -159,6 +119,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &on_ip_event, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, NULL));
+
+    // Initialize console REPL, register ping and start it
+    ESP_ERROR_CHECK(console_cmd_init());
+    ESP_ERROR_CHECK(console_cmd_ping_register());
+    ESP_ERROR_CHECK(console_cmd_start());
 
     /* Configure the PPP netif */
     esp_err_t err;
@@ -251,7 +216,7 @@ void app_main(void)
 #endif
 
 #if CONFIG_EXAMPLE_DETECT_MODE_BEFORE_CONNECT
-    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
+    xEventGroupClearBits(event_group, CONNECT_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
 
     err = esp_modem_set_mode(dce, ESP_MODEM_MODE_DETECT);
     if (err != ESP_OK) {
@@ -270,7 +235,7 @@ void app_main(void)
     }
 #endif // CONFIG_EXAMPLE_DETECT_MODE_BEFORE_CONNECT
 
-    xEventGroupClearBits(event_group, CONNECT_BIT | GOT_DATA_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
+    xEventGroupClearBits(event_group, CONNECT_BIT | USB_DISCONNECTED_BIT | DISCONNECT_BIT);
 
     /* Run the modem demo app */
 #if CONFIG_EXAMPLE_NEED_SIM_PIN == 1
@@ -340,15 +305,11 @@ void app_main(void)
     }
 
     /* Config MQTT */
-    esp_mqtt_client_config_t mqtt_config = {
-        .broker.address.uri = CONFIG_EXAMPLE_MQTT_BROKER_URI,
-    };
-    esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
-    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    esp_mqtt_client_start(mqtt_client);
+    int ping_ret_val;
+    ESP_ERROR_CHECK(esp_console_run("ping www.espressif.com", &ping_ret_val));
+    ESP_LOGI(TAG, "Ping command finished with return value: %d", ping_ret_val);
 
 #if CONFIG_EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
-    xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdFALSE, portMAX_DELAY);
     esp_modem_pause_net(dce, true);
     err = esp_modem_get_signal_quality(dce, &rssi, &ber);
     if (err != ESP_OK) {
@@ -357,14 +318,15 @@ void app_main(void)
     }
     ESP_LOGI(TAG, "Signal quality: rssi=%d, ber=%d", rssi, ber);
     esp_modem_pause_net(dce, false);
-    esp_mqtt_client_publish(mqtt_client, CONFIG_EXAMPLE_MQTT_TEST_TOPIC, CONFIG_EXAMPLE_MQTT_TEST_DATA, 0, 0, 0);
+    ESP_ERROR_CHECK(esp_console_run("ping www.espressif.com", &ping_ret_val));
+    ESP_LOGI(TAG, "Ping command finished with return value: %d", ping_ret_val);
 #endif // CONFIG_EXAMPLE_PAUSE_NETIF_TO_CHECK_SIGNAL
 
-    ESP_LOGI(TAG, "Waiting for MQTT data");
-    xEventGroupWaitBits(event_group, GOT_DATA_BIT | USB_DISCONNECTED_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    if (ping_ret_val != 0) {
+        ESP_LOGE(TAG, "Ping command failed with return value: %d", ping_ret_val);
+    }
     CHECK_USB_DISCONNECTION(event_group);
 
-    esp_mqtt_client_destroy(mqtt_client);
     err = esp_modem_set_mode(dce, ESP_MODEM_MODE_COMMAND);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);

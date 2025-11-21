@@ -10,7 +10,5 @@ dependencies:
     rules:
     - if: idf_version >=4.4
     - if: target in [esp32s2, esp32s3, esp32p4]
-  espressif/mqtt:
-    rules:
-    - if: idf_version >=6.0
-      version: ^1.0.0
+  console_cmd_ping:
+    version: '*'
