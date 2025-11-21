@@ -1,0 +1,21 @@
+services:
+  fuzzing-server:
+    image: crossbario/autobahn-testsuite:latest
+    # Platform specification for CI compatibility
+    # Remove this if running on the same architecture as the image
+    platform: linux/amd64
+    container_name: ws-fuzzing-server
+    ports:
+      - "9001:9001"  # WebSocket test port
+      - "8080:8080"  # Web interface for reports
+    volumes:
+      - ./config:/config
+      - ./reports:/reports
+    command: wstest -m fuzzingserver -s /config/fuzzingserver.json
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+

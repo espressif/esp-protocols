@@ -1,0 +1,13 @@
+# Autobahn testsuite generated files
+reports/
+
+# ESP-IDF build artifacts
+testee/build/
+testee/sdkconfig
+testee/sdkconfig.old
+testee/dependencies.lock
+
+# Python
+__pycache__/
+*.pyc
+
