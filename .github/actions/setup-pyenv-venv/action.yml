@@ -1,0 +1,59 @@
+name: Setup pyenv virtualenv
+description: Ensure a specific Python version and virtualenv via pyenv, optionally installing dependencies.
+inputs:
+  python-version:
+    description: Python version to install via pyenv.
+    default: "3.12.6"
+  venv-name:
+    description: Name of the pyenv virtualenv to create/use.
+    default: "pytest-embedded"
+  requirements:
+    description: |
+      New-line separated argument lists passed to `pip install`. Each non-empty line
+      is appended to `python -m pip install <line>`.
+    default: ""
+  requirements-file:
+    description: |
+      New-line separated list of requirement file paths to pass with `-r`.
+    default: ""
+  pip-extra-args:
+    description: Additional arguments passed to every `pip install` invocation.
+    default: ""
+  pip-extra-index-url:
+    description: Value exported as PIP_EXTRA_INDEX_URL and appended as --extra-index-url.
+    default: ""
+  pyenv-root:
+    description: Override path to pyenv root (defaults to $HOME/.pyenv).
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Prepare pyenv virtualenv
+      shell: bash
+      env:
+        PYENV_PYTHON_VERSION: ${{ inputs.python-version }}
+        PYENV_VENV_NAME: ${{ inputs.venv-name }}
+        PYENV_REQUIREMENTS: ${{ inputs.requirements }}
+        PYENV_REQUIREMENTS_FILE: ${{ inputs.requirements-file }}
+        PYENV_PIP_EXTRA_ARGS: ${{ inputs.pip-extra-args }}
+        PYENV_PIP_EXTRA_INDEX_URL: ${{ inputs.pip-extra-index-url }}
+        PYENV_ROOT_OVERRIDE: ${{ inputs.pyenv-root }}
+      run: |
+        bash "${{ github.workspace }}/ci/scripts/setup_pyenv.sh"
+    - name: Export pyenv environment
+      shell: bash
+      env:
+        PYENV_VENV_NAME: ${{ inputs.venv-name }}
+        PYENV_ROOT_INPUT: ${{ inputs.pyenv-root }}
+        PIP_EXTRA_INDEX_URL_INPUT: ${{ inputs.pip-extra-index-url }}
+      run: |
+        PYENV_ROOT_VALUE="${PYENV_ROOT_INPUT:-$HOME/.pyenv}"
+        {
+          echo "PYENV_ROOT=${PYENV_ROOT_VALUE}"
+          echo "PYENV_VERSION=${PYENV_VENV_NAME}"
+        } >> "$GITHUB_ENV"
+        if [[ -n "${PIP_EXTRA_INDEX_URL_INPUT}" ]]; then
+          echo "PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL_INPUT}" >> "$GITHUB_ENV"
+        fi
+        echo "${PYENV_ROOT_VALUE}/bin" >> "$GITHUB_PATH"
+        echo "${PYENV_ROOT_VALUE}/shims" >> "$GITHUB_PATH"
