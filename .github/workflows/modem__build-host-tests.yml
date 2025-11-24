@@ -13,7 +13,7 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         example: ["pppos_client", "modem_console", "modem_tcp_client", "ap_to_pppos", "simple_cmux_client"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -39,7 +39,7 @@ jobs:
     name: Build tests
     strategy:
       matrix:
-        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
+        idf_ver: ["latest","release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         test: ["target", "target_ota", "target_iperf", "target_urc"]
 
     runs-on: ubuntu-22.04
