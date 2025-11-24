@@ -14,6 +14,10 @@ set(srcs "stdin_out.c"
          "wifi_connect.c"
          "protocol_examples_utils.c")
 
+if(CONFIG_NET_CONNECT_CONNECT_WIFI)
+    list(APPEND srcs "wifi_connect_config.c")
+endif()
+
 if(CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD)
     list(APPEND srcs "console_cmd.c")
 endif()

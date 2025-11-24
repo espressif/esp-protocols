@@ -149,6 +149,10 @@ static inline esp_err_t net_connect(void)
 }
 #endif // !CONFIG_IDF_TARGET_LINUX
 
+#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#include "net_connect_wifi_config.h"
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -8,6 +8,9 @@
 #include "net_connect.h"
 #include "net_connect_private.h"
 #include "sdkconfig.h"
+#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#include "net_connect_wifi_config.h"
+#endif
 #include "esp_event.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
@@ -96,8 +99,16 @@ esp_err_t net_connect(void)
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ethernet_shutdown));
 #endif
 #if CONFIG_NET_CONNECT_CONNECT_WIFI
-    if (net_connect_wifi_connect() != ESP_OK) {
-        return ESP_FAIL;
+    if (net_connect_wifi_is_configured()) {
+        /* Use new API if WiFi was configured via net_configure_wifi_sta() */
+        if (net_connect_wifi() != ESP_OK) {
+            return ESP_FAIL;
+        }
+    } else {
+        /* Use existing API for backward compatibility */
+        if (net_connect_wifi_connect() != ESP_OK) {
+            return ESP_FAIL;
+        }
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_wifi_shutdown));
 #endif

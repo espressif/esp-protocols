@@ -192,6 +192,7 @@ esp_err_t net_connect_wifi_sta_do_disconnect(void)
 
 void net_connect_wifi_shutdown(void)
 {
+    ESP_LOGI(TAG, "WiFi shutdown handler called");
     net_connect_wifi_sta_do_disconnect();
     net_connect_wifi_stop();
 }
