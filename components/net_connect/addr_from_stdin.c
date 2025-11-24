@@ -47,7 +47,7 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
     }
     for (cur = addr_list; cur != NULL; cur = cur->ai_next) {
         memcpy(dest_addr, cur->ai_addr, sizeof(*dest_addr));
-#if CONFIG_NET_CONNECT_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_IPV4
         if (cur->ai_family == AF_INET) {
             *ip_protocol = IPPROTO_IP;
             *addr_family = AF_INET;
@@ -57,7 +57,7 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
             return ESP_OK;
         }
 #endif // IPV4
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
         if (cur->ai_family == AF_INET6) {
             *ip_protocol = IPPROTO_IPV6;
             *addr_family = AF_INET6;

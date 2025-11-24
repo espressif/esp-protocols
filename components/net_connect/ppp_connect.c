@@ -10,14 +10,14 @@
 #include "net_connect.h"
 #include "net_connect_private.h"
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
 #include "tinyusb.h"
 #include "tusb_cdc_acm.h"
 
@@ -39,7 +39,7 @@ static EventGroupHandle_t s_event_group = NULL;
 static esp_netif_t *s_netif;
 static const int GOT_IPV4 = BIT0;
 static const int CONNECTION_FAILED = BIT1;
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 static const int GOT_IPV6 = BIT2;
 #define CONNECT_BITS (GOT_IPV4|GOT_IPV6|CONNECTION_FAILED)
 #else
@@ -49,7 +49,7 @@ static const int GOT_IPV6 = BIT2;
 static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
     ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
     tinyusb_cdcacm_write_queue(s_itf, buffer, len);
     tinyusb_cdcacm_write_flush(s_itf, 0);
 #else // DEVICE_UART
@@ -79,7 +79,7 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
         esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns_info);
         ESP_LOGI(TAG, "Main DNS server : " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
         xEventGroupSetBits(s_event_group, GOT_IPV4);
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     } else if (event_id == IP_EVENT_GOT_IP6) {
         ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
         if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_PPP, event->esp_netif)) {
@@ -107,7 +107,7 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
     }
 }
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
 static void cdc_rx_callback(int itf, cdcacm_event_t *event)
 {
     size_t rx_size = 0;
@@ -135,7 +135,7 @@ static void line_state_changed(int itf, cdcacm_event_t *event)
 static void ppp_task(void *args)
 {
     uart_config_t uart_config = {};
-    uart_config.baud_rate = CONFIG_NET_CONNECT_CONNECT_UART_BAUDRATE;
+    uart_config.baud_rate = CONFIG_NET_CONNECT_UART_BAUDRATE;
     uart_config.data_bits = UART_DATA_8_BITS;
     uart_config.parity    = UART_PARITY_DISABLE;
     uart_config.stop_bits = UART_STOP_BITS_1;
@@ -145,7 +145,7 @@ static void ppp_task(void *args)
     QueueHandle_t event_queue;
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM_1, BUF_SIZE, 0, 16, &event_queue, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_NUM_1, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, CONFIG_NET_CONNECT_CONNECT_UART_TX_PIN, CONFIG_NET_CONNECT_CONNECT_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_1, CONFIG_NET_CONNECT_UART_TX_PIN, CONFIG_NET_CONNECT_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_set_rx_timeout(UART_NUM_1, 1));
 
     char *buffer = (char*)malloc(BUF_SIZE);
@@ -177,7 +177,7 @@ esp_err_t net_connect_ppp_connect(void)
 {
     ESP_LOGI(TAG, "Start example_connect.");
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
     ESP_LOGI(TAG, "USB initialization");
     const tinyusb_config_t tusb_cfg = {
         .device_descriptor = NULL,
@@ -203,7 +203,7 @@ esp_err_t net_connect_ppp_connect(void)
                         TINYUSB_CDC_ACM_0,
                         CDC_EVENT_LINE_STATE_CHANGED,
                         &line_state_changed));
-#endif // CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#endif // CONFIG_NET_CONNECT_PPP_DEVICE_USB
 
     s_event_group = xEventGroupCreate();
 
@@ -218,7 +218,7 @@ esp_err_t net_connect_ppp_connect(void)
 
     s_netif = esp_netif_new(&netif_ppp_config);
     assert(s_netif);
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_USB
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
     esp_netif_action_start(s_netif, 0, 0, 0);
     esp_netif_action_connected(s_netif, 0, 0, 0);
 #else // DEVICE is UART
@@ -243,7 +243,7 @@ esp_err_t net_connect_ppp_connect(void)
 void net_connect_ppp_shutdown(void)
 {
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event));
-#if CONFIG_NET_CONNECT_CONNECT_PPP_DEVICE_UART
+#if CONFIG_NET_CONNECT_PPP_DEVICE_UART
     s_stop_task = true;
     vTaskDelay(pdMS_TO_TICKS(1000)); // wait for the ppp task to stop
 #endif
@@ -257,4 +257,4 @@ void net_connect_ppp_shutdown(void)
     s_event_group = NULL;
 }
 
-#endif // CONFIG_NET_CONNECT_CONNECT_PPP
+#endif // CONFIG_NET_CONNECT_PPP

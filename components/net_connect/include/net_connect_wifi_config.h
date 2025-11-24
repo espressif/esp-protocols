@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
 
 /* Forward declaration for interface handle */
 typedef void* net_iface_handle_t;
@@ -111,9 +111,8 @@ esp_err_t net_disconnect_wifi(void);
  */
 bool net_connect_wifi_is_configured(void);
 
-#endif /* CONFIG_NET_CONNECT_CONNECT_WIFI */
+#endif /* CONFIG_NET_CONNECT_WIFI */
 
 #ifdef __cplusplus
 }
 #endif
-

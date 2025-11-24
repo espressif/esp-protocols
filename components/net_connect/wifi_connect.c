@@ -9,12 +9,12 @@
 #include "net_connect_private.h"
 #include "esp_log.h"
 
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
 
 static const char *TAG = "example_connect";
 static esp_netif_t *s_example_sta_netif = NULL;
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
 #endif
 
@@ -30,7 +30,7 @@ static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event
         if (s_semph_get_ip_addrs) {
             xSemaphoreGive(s_semph_get_ip_addrs);
         }
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
         if (s_semph_get_ip6_addrs) {
             xSemaphoreGive(s_semph_get_ip6_addrs);
         }
@@ -54,9 +54,9 @@ static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event
 static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t event_base,
                                             int32_t event_id, void *event_data)
 {
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     esp_netif_create_ip6_linklocal(esp_netif);
-#endif // CONFIG_NET_CONNECT_CONNECT_IPV6
+#endif // CONFIG_NET_CONNECT_IPV6
 }
 
 static void example_handler_on_sta_got_ip(void *arg, esp_event_base_t event_base,
@@ -75,7 +75,7 @@ static void example_handler_on_sta_got_ip(void *arg, esp_event_base_t event_base
     }
 }
 
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 static void example_handler_on_sta_got_ipv6(void *arg, esp_event_base_t event_base,
                                             int32_t event_id, void *event_data)
 {
@@ -95,7 +95,7 @@ static void example_handler_on_sta_got_ipv6(void *arg, esp_event_base_t event_ba
         }
     }
 }
-#endif // CONFIG_NET_CONNECT_CONNECT_IPV6
+#endif // CONFIG_NET_CONNECT_IPV6
 
 
 void net_connect_wifi_start(void)
@@ -137,7 +137,7 @@ esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
         if (s_semph_get_ip_addrs == NULL) {
             return ESP_ERR_NO_MEM;
         }
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
         s_semph_get_ip6_addrs = xSemaphoreCreateBinary();
         if (s_semph_get_ip6_addrs == NULL) {
             vSemaphoreDelete(s_semph_get_ip_addrs);
@@ -149,7 +149,7 @@ esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &example_handler_on_wifi_disconnect, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &example_handler_on_sta_got_ip, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &example_handler_on_wifi_connect, s_example_sta_netif));
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &example_handler_on_sta_got_ipv6, NULL));
 #endif
 
@@ -162,12 +162,12 @@ esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
     }
     if (wait) {
         ESP_LOGI(TAG, "Waiting for IP(s)");
-#if CONFIG_NET_CONNECT_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_IPV4
         xSemaphoreTake(s_semph_get_ip_addrs, portMAX_DELAY);
         vSemaphoreDelete(s_semph_get_ip_addrs);
         s_semph_get_ip_addrs = NULL;
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
         xSemaphoreTake(s_semph_get_ip6_addrs, portMAX_DELAY);
         vSemaphoreDelete(s_semph_get_ip6_addrs);
         s_semph_get_ip6_addrs = NULL;
@@ -184,7 +184,7 @@ esp_err_t net_connect_wifi_sta_do_disconnect(void)
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &example_handler_on_wifi_disconnect));
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &example_handler_on_sta_got_ip));
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &example_handler_on_wifi_connect));
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &example_handler_on_sta_got_ipv6));
 #endif
     return esp_wifi_disconnect();
@@ -237,4 +237,4 @@ esp_err_t net_connect_wifi_connect(void)
 }
 
 
-#endif /* CONFIG_NET_CONNECT_CONNECT_WIFI */
+#endif /* CONFIG_NET_CONNECT_WIFI */

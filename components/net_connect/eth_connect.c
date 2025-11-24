@@ -19,7 +19,7 @@
 
 static const char *TAG = "ethernet_connect";
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
 #endif
 
@@ -40,7 +40,7 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
     xSemaphoreGive(s_semph_get_ip_addrs);
 }
 
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 
 static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
                             int32_t event_id, void *event_data)
@@ -70,7 +70,7 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
     }
 }
 
-#endif // CONFIG_NET_CONNECT_CONNECT_IPV6
+#endif // CONFIG_NET_CONNECT_IPV6
 
 static esp_eth_handle_t s_eth_handle = NULL;
 static esp_eth_mac_t *s_mac = NULL;
@@ -123,7 +123,7 @@ static esp_netif_t *eth_start(void)
 
     // Register user defined event handlers
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, NULL));
-#ifdef CONFIG_NET_CONNECT_CONNECT_IPV6
+#ifdef CONFIG_NET_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
 #endif
@@ -137,7 +137,7 @@ static void eth_stop(void)
 {
     esp_netif_t *eth_netif = net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_ETH);
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip));
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6));
     ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event));
 #endif
@@ -164,7 +164,7 @@ void net_connect_ethernet_shutdown(void)
     }
     vSemaphoreDelete(s_semph_get_ip_addrs);
     s_semph_get_ip_addrs = NULL;
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     vSemaphoreDelete(s_semph_get_ip6_addrs);
     s_semph_get_ip6_addrs = NULL;
 #endif
@@ -173,13 +173,13 @@ void net_connect_ethernet_shutdown(void)
 
 esp_err_t net_connect_ethernet_connect(void)
 {
-#if CONFIG_NET_CONNECT_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_IPV4
     s_semph_get_ip_addrs = xSemaphoreCreateBinary();
     if (s_semph_get_ip_addrs == NULL) {
         return ESP_ERR_NO_MEM;
     }
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     s_semph_get_ip6_addrs = xSemaphoreCreateBinary();
     if (s_semph_get_ip6_addrs == NULL) {
         vSemaphoreDelete(s_semph_get_ip_addrs);
@@ -188,10 +188,10 @@ esp_err_t net_connect_ethernet_connect(void)
 #endif
     eth_start();
     ESP_LOGI(TAG, "Waiting for IP(s).");
-#if CONFIG_NET_CONNECT_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_IPV4
     xSemaphoreTake(s_semph_get_ip_addrs, portMAX_DELAY);
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
     xSemaphoreTake(s_semph_get_ip6_addrs, portMAX_DELAY);
 #endif
     return ESP_OK;

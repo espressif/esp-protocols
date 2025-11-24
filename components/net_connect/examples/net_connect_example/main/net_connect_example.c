@@ -53,20 +53,20 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Network stack initialized");
 
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
     ESP_LOGI(TAG, "WiFi interface enabled in Kconfig");
     ESP_LOGI(TAG, "WiFi SSID: %s", CONFIG_NET_CONNECT_WIFI_SSID);
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
     ESP_LOGI(TAG, "Ethernet interface enabled in Kconfig");
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_THREAD
+#if CONFIG_NET_CONNECT_THREAD
     ESP_LOGI(TAG, "Thread interface enabled in Kconfig");
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
     ESP_LOGI(TAG, "PPP interface enabled in Kconfig");
 #endif
 
@@ -85,28 +85,28 @@ void app_main(void)
     // ===== Demonstrate getting network interface =====
     // The net_connect() function already prints IP addresses, but we can
     // also get the interface directly if needed
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
     esp_netif_t *wifi_netif = net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_STA);
     if (wifi_netif != NULL) {
         ESP_LOGI(TAG, "WiFi netif retrieved: %s", esp_netif_get_desc(wifi_netif));
     }
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
     esp_netif_t *eth_netif = net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_ETH);
     if (eth_netif != NULL) {
         ESP_LOGI(TAG, "Ethernet netif retrieved: %s", esp_netif_get_desc(eth_netif));
     }
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_THREAD
+#if CONFIG_NET_CONNECT_THREAD
     esp_netif_t *thread_netif = net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_THREAD);
     if (thread_netif != NULL) {
         ESP_LOGI(TAG, "Thread netif retrieved: %s", esp_netif_get_desc(thread_netif));
     }
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
     esp_netif_t *ppp_netif = net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_PPP);
     if (ppp_netif != NULL) {
         ESP_LOGI(TAG, "PPP netif retrieved: %s", esp_netif_get_desc(ppp_netif));

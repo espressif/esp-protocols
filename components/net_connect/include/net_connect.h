@@ -20,19 +20,19 @@ extern "C" {
 #endif
 
 #if !CONFIG_IDF_TARGET_LINUX
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
 #define NET_CONNECT_NETIF_DESC_STA "net_connect_netif_sta"
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
 #define NET_CONNECT_NETIF_DESC_ETH "net_connect_netif_eth"
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_THREAD
+#if CONFIG_NET_CONNECT_THREAD
 #define NET_CONNECT_NETIF_DESC_THREAD "net_connect_netif_thread"
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
 #define NET_CONNECT_NETIF_DESC_PPP "net_connect_netif_ppp"
 #endif
 
@@ -69,16 +69,16 @@ extern "C" {
 #endif
 
 /* Network connect default interface, prefer the ethernet one if running in example-test (CI) configuration */
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
 #define NET_CONNECT_INTERFACE net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_ETH)
 #define net_get_netif() net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_ETH)
-#elif CONFIG_NET_CONNECT_CONNECT_WIFI
+#elif CONFIG_NET_CONNECT_WIFI
 #define NET_CONNECT_INTERFACE net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_STA)
 #define net_get_netif() net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_STA)
-#elif CONFIG_NET_CONNECT_CONNECT_THREAD
+#elif CONFIG_NET_CONNECT_THREAD
 #define NET_CONNECT_INTERFACE net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_THREAD)
 #define net_get_netif() net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_THREAD)
-#elif CONFIG_NET_CONNECT_CONNECT_PPP
+#elif CONFIG_NET_CONNECT_PPP
 #define NET_CONNECT_INTERFACE net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_PPP)
 #define net_get_netif() net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_PPP)
 #endif
@@ -149,7 +149,7 @@ static inline esp_err_t net_connect(void)
 }
 #endif // !CONFIG_IDF_TARGET_LINUX
 
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
 #include "net_connect_wifi_config.h"
 #endif
 

@@ -8,7 +8,7 @@
 #include "net_connect.h"
 #include "net_connect_private.h"
 #include "sdkconfig.h"
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
 #include "net_connect_wifi_config.h"
 #endif
 #include "esp_event.h"
@@ -24,7 +24,7 @@
 
 static const char *TAG = "net_connect";
 
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
 /* types of ipv6 addresses to be displayed on ipv6 events */
 const char *net_connect_ipv6_addr_types_to_str[6] = {
     "ESP_IP6_ADDR_IS_UNKNOWN",
@@ -64,13 +64,13 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
     while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
         if (net_connect_is_our_netif(prefix, netif)) {
             ESP_LOGI(TAG, "Connected to %s", esp_netif_get_desc(netif));
-#if CONFIG_NET_CONNECT_CONNECT_IPV4
+#if CONFIG_NET_CONNECT_IPV4
             esp_netif_ip_info_t ip;
             ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
 
             ESP_LOGI(TAG, "- IPv4 address: " IPSTR ",", IP2STR(&ip.ip));
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_IPV6
+#if CONFIG_NET_CONNECT_IPV6
             esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];
             int ip6_addrs = esp_netif_get_all_ip6(netif, ip6);
             for (int j = 0; j < ip6_addrs; ++j) {
@@ -92,52 +92,51 @@ void net_connect_print_all_netif_ips(const char *prefix)
 
 esp_err_t net_connect(void)
 {
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
     if (net_connect_ethernet_connect() != ESP_OK) {
         return ESP_FAIL;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ethernet_shutdown));
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
-    if (net_connect_wifi_is_configured()) {
-        /* Use new API if WiFi was configured via net_configure_wifi_sta() */
-        if (net_connect_wifi() != ESP_OK) {
-            return ESP_FAIL;
-        }
-    } else {
-        /* Use existing API for backward compatibility */
-        if (net_connect_wifi_connect() != ESP_OK) {
+#if CONFIG_NET_CONNECT_WIFI
+    if (!net_connect_wifi_is_configured()) {
+        /* Configure WiFi with Kconfig defaults */
+        if (net_configure_wifi_sta(NULL) == NULL) {
             return ESP_FAIL;
         }
     }
+    /* Use new API for WiFi connection */
+    if (net_connect_wifi() != ESP_OK) {
+        return ESP_FAIL;
+    }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_wifi_shutdown));
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_THREAD
+#if CONFIG_NET_CONNECT_THREAD
     if (net_connect_thread_connect() != ESP_OK) {
         return ESP_FAIL;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_thread_shutdown));
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
     if (net_connect_ppp_connect() != ESP_OK) {
         return ESP_FAIL;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ppp_shutdown));
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_ETH);
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_STA);
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_THREAD
+#if CONFIG_NET_CONNECT_THREAD
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_THREAD);
 #endif
 
-#if CONFIG_NET_CONNECT_CONNECT_PPP
+#if CONFIG_NET_CONNECT_PPP
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_PPP);
 #endif
 
@@ -147,11 +146,11 @@ esp_err_t net_connect(void)
 
 esp_err_t net_disconnect(void)
 {
-#if CONFIG_NET_CONNECT_CONNECT_ETHERNET
+#if CONFIG_NET_CONNECT_ETHERNET
     net_connect_ethernet_shutdown();
     ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown));
 #endif
-#if CONFIG_NET_CONNECT_CONNECT_WIFI
+#if CONFIG_NET_CONNECT_WIFI
     net_connect_wifi_shutdown();
     ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_wifi_shutdown));
 #endif
