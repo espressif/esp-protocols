@@ -3,5 +3,5 @@ dependencies:
   ## Required IDF version
   idf: ">=4.1.0"
   espressif/esp_modem:
-    version: "^1.0.0"
+    version: "^2"
     override_path: "../../../"

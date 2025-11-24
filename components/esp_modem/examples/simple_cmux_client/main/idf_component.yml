@@ -1,6 +1,6 @@
 dependencies:
   espressif/esp_modem:
-    version: "^1.0.1"
+    version: "^2"
     override_path: "../../../"
   console_cmd_ping:
     version: '*'
