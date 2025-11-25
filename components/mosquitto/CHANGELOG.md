@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.20~5](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_5)
+
+### Features
+
+- Add support for basic MQTT authentication ([65b58aa0](https://github.com/espressif/esp-protocols/commit/65b58aa0))
+
+### Bug Fixes
+
+- Add optional mqtt deps to examples ([6f6110e3](https://github.com/espressif/esp-protocols/commit/6f6110e3))
+- Update example to optionally use basic mqtt auth ([38384852](https://github.com/espressif/esp-protocols/commit/38384852))
+- Fix unpwd-check wrap function ([ba3377b2](https://github.com/espressif/esp-protocols/commit/ba3377b2))
+- Fix the version check ([9fbb6e6d](https://github.com/espressif/esp-protocols/commit/9fbb6e6d))
+
 ## [2.0.20~4](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_4)
 
 ### Features
