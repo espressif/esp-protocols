@@ -1,2 +1,2 @@
-idf_component_register(SRCS "simple_cmux_client_main.cpp"  "simple_mqtt_client.cpp"
+idf_component_register(SRCS "simple_cmux_client_main.cpp"
                        INCLUDE_DIRS ".")

@@ -1,5 +1,41 @@
 # Changelog
 
+## [2.0.0](https://github.com/espressif/esp-protocols/commits/modem-v2.0.0)
+
+### Breaking changes
+
+- inc headers for AT command definitions are no longer used directly, but pregenerated into *.h(pp) ([Use generated AT command definitions for IDE navigation](https://github.com/espressif/esp-protocols/commit/e2fa1110))
+
+### Features
+
+- Add support for multiple connection in AT based example ([2826287d](https://github.com/espressif/esp-protocols/commit/2826287d))
+- Add enhanced URC observer API ([4889dd6f](https://github.com/espressif/esp-protocols/commit/4889dd6f))
+- Support esp-modem use without PPP ([858f8570](https://github.com/espressif/esp-protocols/commit/858f8570), [#851](https://github.com/espressif/esp-protocols/issues/851))
+- Modem simulator based on esp-at ([e5787e3d](https://github.com/espressif/esp-protocols/commit/e5787e3d))
+
+### Bug Fixes
+
+- Update tests and examples to use modem-v2.0 ([4aa0e4ba](https://github.com/espressif/esp-protocols/commit/4aa0e4ba))
+- Replace MQTT client with simple ping command ([0ccaf2c0](https://github.com/espressif/esp-protocols/commit/0ccaf2c0))
+- Replace MQTT client with simple ping command ([9b2b1f68](https://github.com/espressif/esp-protocols/commit/9b2b1f68))
+- Update example to use optional mqtt deps ([3141d6ca](https://github.com/espressif/esp-protocols/commit/3141d6ca))
+- Minor fixed in the test code ([e772ce67](https://github.com/espressif/esp-protocols/commit/e772ce67))
+- Add missing set_echo() C wrapper ([d1e67080](https://github.com/espressif/esp-protocols/commit/d1e67080), [#926](https://github.com/espressif/esp-protocols/issues/926))
+- Fix modem console dependencies ([453be4cd](https://github.com/espressif/esp-protocols/commit/453be4cd))
+- Address build issues ([018ba58e](https://github.com/espressif/esp-protocols/commit/018ba58e))
+- Fix driver dependency issue on v6.0 ([67c682d9](https://github.com/espressif/esp-protocols/commit/67c682d9))
+- Fix CI build issues with IDFv6.0 ([15140e04](https://github.com/espressif/esp-protocols/commit/15140e04))
+- Add support for ESP-AT based tcp-client example ([14d3cb6b](https://github.com/espressif/esp-protocols/commit/14d3cb6b))
+- Use idf-build-apps for building target tests ([e9d9b3a8](https://github.com/espressif/esp-protocols/commit/e9d9b3a8))
+- Make MQTT public broker endpoint configurable ([6d541194](https://github.com/espressif/esp-protocols/commit/6d541194))
+- Fix URC handling in DTE data callback ([93029946](https://github.com/espressif/esp-protocols/commit/93029946))
+- Use another public broker for examples and tests ([fac2edbe](https://github.com/espressif/esp-protocols/commit/fac2edbe))
+- Fix incompatible iterator in std::search() in new gcc ([ed0f6334](https://github.com/espressif/esp-protocols/commit/ed0f6334))
+- Fix autodetect to support ACFC mode in PPP frames ([8b328a69](https://github.com/espressif/esp-protocols/commit/8b328a69), [#801](https://github.com/espressif/esp-protocols/issues/801))
+- Fix get_network_registration_state() to accept two params ([5f54d907](https://github.com/espressif/esp-protocols/commit/5f54d907), [#826](https://github.com/espressif/esp-protocols/issues/826))
+- Consume buffer after handled URC ([6eceb28f](https://github.com/espressif/esp-protocols/commit/6eceb28f))
+- Use generated AT command definitions for IDE navigation ([e2fa1110](https://github.com/espressif/esp-protocols/commit/e2fa1110), !BREAKING)
+
 ## [1.4.0](https://github.com/espressif/esp-protocols/commits/modem-v1.4.0)
 
 ### Features

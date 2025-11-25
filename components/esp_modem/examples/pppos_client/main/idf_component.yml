@@ -3,14 +3,12 @@ dependencies:
   ## Required IDF version
   idf: '>=4.1.0'
   espressif/esp_modem:
-    version: ^1.0.0
+    version: ^2
     override_path: ../../../
   espressif/esp_modem_usb_dte:
     version: ^1.2.0
     rules:
     - if: idf_version >=4.4
     - if: target in [esp32s2, esp32s3, esp32p4]
-  espressif/mqtt:
-    rules:
-    - if: idf_version >=6.0
-      version: ^1.0.0
+  console_cmd_ping:
+    version: '*'

@@ -1,6 +1,6 @@
 dependencies:
   espressif/esp_modem:
-    version: "^1.0.0"
+    version: "^2"
     override_path: "../../../../components/esp_modem"
   espressif/mqtt:
     rules:
