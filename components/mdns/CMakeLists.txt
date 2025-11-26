@@ -12,15 +12,18 @@ endif()
 
 set(MDNS_MEMORY "mdns_mem_caps.c")
 
+set(MDNS_CORE "mdns_responder.c" "mdns_receive.c" "mdns_utils.c" "mdns_debug.c" "mdns_browser.c" "mdns_send.c" "mdns_netif.c"
+                "mdns_querier.c" "mdns_pcb.c" "mdns_service.c")
+
 idf_build_get_property(target IDF_TARGET)
 if(${target} STREQUAL "linux")
     set(dependencies esp_netif_linux esp_event)
     set(private_dependencies esp_timer console esp_system)
-    set(srcs "mdns.c" ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
+    set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 else()
     set(dependencies lwip console esp_netif)
     set(private_dependencies esp_timer esp_wifi)
-    set(srcs "mdns.c" ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
+    set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 endif()
 
 idf_component_register(
