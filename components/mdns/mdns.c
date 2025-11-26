@@ -1791,7 +1791,21 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
 {
     mdns_host_item_t *host = mdns_get_host_item(service->hostname);
     bool is_delegated = (host != &_mdns_self_host);
-    if (question->type == MDNS_TYPE_PTR || question->type == MDNS_TYPE_ANY) {
+    bool is_instance_question = !_str_null_or_empty(question->host);
+    bool is_any_instance_question = (question->type == MDNS_TYPE_ANY) && is_instance_question;
+
+    /*
+     * Treat pure service-browse questions (PTR, or ANY without an instance label)
+     * as discovery: PTR in the Answer section, SRV/TXT (and address records) in
+     * the Additional section, per RFC 6763 section 12.1 and the Thread cert
+     * expectations.
+     *
+     * For instance-specific ANY questions (QNAME == instance._service._proto.local),
+     * behave more like a direct SRV/TXT query: put SRV/TXT in the Answer section
+     * and only addresses in the Additional section. This keeps Bonjour-style
+     * Q/A semantics while preserving the desired discovery behaviour.
+     */
+    if (question->type == MDNS_TYPE_PTR || (question->type == MDNS_TYPE_ANY && !is_instance_question)) {
         // According to RFC6763-section12.1, for DNS-SD, SRV, TXT and all address records
         // should be included in additional records.
         if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
@@ -1801,6 +1815,19 @@ static bool _mdns_create_answer_from_service(mdns_tx_packet_t *packet, mdns_serv
                                     false) ||
                 !_mdns_alloc_answer((shared || is_delegated) ? &packet->additional : &packet->answers, MDNS_TYPE_AAAA, service, host,
                                     send_flush, false)) {
+            return false;
+        }
+    } else if (is_any_instance_question) {
+        /*
+         * Instance-level ANY query: answer primarily with the SRV and TXT records
+         * for that specific instance, and place address records in the Additional
+         * section. This avoids returning unrelated PTRs in the Answer section for
+         * instance Q/A tests, which Bonjour Conformance Test is sensitive to.
+         */
+        if (!_mdns_alloc_answer(&packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
+                !_mdns_alloc_answer(&packet->answers, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
+                !_mdns_alloc_answer(&packet->additional, MDNS_TYPE_A, service, host, send_flush, false) ||
+                !_mdns_alloc_answer(&packet->additional, MDNS_TYPE_AAAA, service, host, send_flush, false)) {
             return false;
         }
     } else if (question->type == MDNS_TYPE_SRV) {
