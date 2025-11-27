@@ -257,7 +257,9 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
 {
     mdns_host_item_t *host = get_host_item(service->hostname);
     bool is_delegated = (host != mdns_priv_get_self_host());
-    if (question->type == MDNS_TYPE_PTR || question->type == MDNS_TYPE_ANY) {
+    bool is_instance_question = !mdns_utils_str_null_or_empty(question->host);
+    bool is_any_instance_question = (question->type == MDNS_TYPE_ANY) && is_instance_question;
+    if (question->type == MDNS_TYPE_PTR || (question->type == MDNS_TYPE_ANY && !is_instance_question)) {
         // According to RFC6763-section12.1, for DNS-SD, SRV, TXT and all address records
         // should be included in additional records.
         if (!mdns_priv_create_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
@@ -269,6 +271,13 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
                 !mdns_priv_create_answer((shared || is_delegated) ? &packet->additional : &packet->answers,
                                          MDNS_TYPE_AAAA, service, host,
                                          send_flush, false)) {
+            return false;
+        }
+    } else if (is_any_instance_question) {
+        if (!mdns_priv_create_answer(&packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->answers, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_A, service, host, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_AAAA, service, host, send_flush, false)) {
             return false;
         }
     } else if (question->type == MDNS_TYPE_SRV) {
