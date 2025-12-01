@@ -115,6 +115,8 @@ typedef struct {
     bool                        disable_auto_reconnect;     /*!< Disable the automatic reconnect function when disconnected */
     bool                        enable_close_reconnect;     /*!< Enable reconnect after server close */
     void                        *user_context;              /*!< HTTP user data context */
+    bool                        task_core_id_set;           /*!< Websocket task core-id chosen */
+    int                         task_core_id;               /*!< Websocket task core-id (optional)*/
     int                         task_prio;                  /*!< Websocket task priority */
     const char                 *task_name;                  /*!< Websocket task name */
     int                         task_stack;                 /*!< Websocket task stack */

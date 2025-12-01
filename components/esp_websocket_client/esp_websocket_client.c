@@ -29,6 +29,7 @@ static const char *TAG = "websocket_client";
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
 #define WEBSOCKET_BUFFER_SIZE_BYTE      (1024)
 #define WEBSOCKET_RECONNECT_TIMEOUT_MS  (10*1000)
+#define WEBSOCKET_TASK_CORE_ID          (tskNO_AFFINITY)
 #define WEBSOCKET_TASK_PRIORITY         (5)
 #define WEBSOCKET_TASK_STACK            (4*1024)
 #define WEBSOCKET_NETWORK_TIMEOUT_MS    (10*1000)
@@ -79,6 +80,7 @@ const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
 typedef struct {
+    BaseType_t                  task_core_id;
     const char                 *task_name;
     int                         task_stack;
     int                         task_prio;
@@ -320,6 +322,13 @@ static char *http_auth_basic(const char *username, const char *password)
 static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t client, const esp_websocket_client_config_t *config)
 {
     websocket_config_storage_t *cfg = client->config;
+
+    if (config->task_core_id_set) {
+        cfg->task_core_id = config->task_core_id;
+    } else {
+        cfg->task_core_id = WEBSOCKET_TASK_CORE_ID;
+    }
+
     cfg->task_prio = config->task_prio;
     if (cfg->task_prio <= 0) {
         cfg->task_prio = WEBSOCKET_TASK_PRIORITY;
@@ -1282,8 +1291,8 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         }
     }
 
-    if (xTaskCreate(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                    client->config->task_stack, client, client->config->task_prio, &client->task_handle) != pdTRUE) {
+    if (xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
+                                client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id) != pdTRUE) {
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
