@@ -257,9 +257,20 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
 {
     mdns_host_item_t *host = get_host_item(service->hostname);
     bool is_delegated = (host != mdns_priv_get_self_host());
-    if (question->type == MDNS_TYPE_PTR || question->type == MDNS_TYPE_ANY) {
-        // According to RFC6763-section12.1, for DNS-SD, SRV, TXT and all address records
-        // should be included in additional records.
+    bool is_instance_question = !mdns_utils_str_null_or_empty(question->host);
+    if ((question->type == MDNS_TYPE_ANY) && is_instance_question) {
+        // Instance-scoped ANY queries expect the resolved data (SRV/TXT) to be
+        // part of the answer section so that queriers can stop searching as soon
+        // as they receive this packet (RFC6762 section 6, RFC6763 section 12.1).
+        if (!mdns_priv_create_answer(&packet->answers, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->answers, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_A, service, host, send_flush, false) ||
+                !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_AAAA, service, host, send_flush, false)) {
+            return false;
+        }
+    } else if (question->type == MDNS_TYPE_PTR || (question->type == MDNS_TYPE_ANY && !is_instance_question)) {
+        // For service discovery (PTR or wildcard ANY) RFC6763 section 12.1
+        // requires SRV/TXT/address records to stay in the additional section.
         if (!mdns_priv_create_answer(&packet->answers, MDNS_TYPE_PTR, service, NULL, false, false) ||
                 !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_SRV, service, NULL, send_flush, false) ||
                 !mdns_priv_create_answer(&packet->additional, MDNS_TYPE_TXT, service, NULL, send_flush, false) ||
