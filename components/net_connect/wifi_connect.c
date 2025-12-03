@@ -185,14 +185,19 @@ void net_connect_wifi_stop(void)
 esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
 {
     if (wait) {
+#if CONFIG_NET_CONNECT_IPV4
         s_semph_get_ip_addrs = xSemaphoreCreateBinary();
         if (s_semph_get_ip_addrs == NULL) {
             return ESP_ERR_NO_MEM;
         }
+#endif
 #if CONFIG_NET_CONNECT_IPV6
         s_semph_get_ip6_addrs = xSemaphoreCreateBinary();
         if (s_semph_get_ip6_addrs == NULL) {
+#if CONFIG_NET_CONNECT_IPV4
             vSemaphoreDelete(s_semph_get_ip_addrs);
+            s_semph_get_ip_addrs = NULL;
+#endif
             return ESP_ERR_NO_MEM;
         }
 #endif
@@ -293,18 +298,29 @@ esp_err_t net_connect_wifi(void)
     net_configure_stdin_stdout();
     char buf[sizeof(wifi_config.sta.ssid) + sizeof(wifi_config.sta.password) + 2] = {0};
     ESP_LOGI(TAG, "Please input ssid password:");
-    fgets(buf, sizeof(buf), stdin);
+    if (fgets(buf, sizeof(buf), stdin) == NULL) {
+        ESP_LOGE(TAG, "Failed to read SSID/password from stdin (EOF or error)");
+        return ESP_ERR_INVALID_STATE;
+    }
     int len = strlen(buf);
-    buf[len - 1] = '\0'; /* removes '\n' */
+    if (len > 0) {
+        buf[len - 1] = '\0'; /* removes '\n' */
+    }
     memset(wifi_config.sta.ssid, 0, sizeof(wifi_config.sta.ssid));
 
     char *rest = NULL;
     char *temp = strtok_r(buf, " ", &rest);
-    strncpy((char*)wifi_config.sta.ssid, temp, sizeof(wifi_config.sta.ssid));
+    if (temp == NULL) {
+        ESP_LOGE(TAG, "SSID is empty or invalid");
+        return ESP_ERR_INVALID_ARG;
+    }
+    strncpy((char*)wifi_config.sta.ssid, temp, sizeof(wifi_config.sta.ssid) - 1);
+    wifi_config.sta.ssid[sizeof(wifi_config.sta.ssid) - 1] = '\0';
     memset(wifi_config.sta.password, 0, sizeof(wifi_config.sta.password));
     temp = strtok_r(NULL, " ", &rest);
     if (temp) {
-        strncpy((char*)wifi_config.sta.password, temp, sizeof(wifi_config.sta.password));
+        strncpy((char*)wifi_config.sta.password, temp, sizeof(wifi_config.sta.password) - 1);
+        wifi_config.sta.password[sizeof(wifi_config.sta.password) - 1] = '\0';
     } else {
         wifi_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
     }

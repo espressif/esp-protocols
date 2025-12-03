@@ -151,7 +151,10 @@ esp_err_t net_connect_ethernet_connect(void)
 #if CONFIG_NET_CONNECT_IPV6
     s_semph_get_ip6_addrs = xSemaphoreCreateBinary();
     if (s_semph_get_ip6_addrs == NULL) {
+#if CONFIG_NET_CONNECT_IPV4
         vSemaphoreDelete(s_semph_get_ip_addrs);
+        s_semph_get_ip_addrs = NULL;
+#endif
         return ESP_ERR_NO_MEM;
     }
 #endif

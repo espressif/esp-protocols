@@ -43,7 +43,10 @@ static int cmd_do_wifi_connect(int argc, char **argv)
         wifi_config.sta.channel = (uint8_t)(connect_args.channel->ival[0]);
     }
     const char *ssid = connect_args.ssid->sval[0];
-    const char *pass = connect_args.password->sval[0];
+    const char *pass = NULL;
+    if (connect_args.password->count > 0) {
+        pass = connect_args.password->sval[0];
+    }
     strlcpy((char *) wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
     if (pass) {
         strlcpy((char *) wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));

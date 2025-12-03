@@ -53,6 +53,9 @@ static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 
 esp_netif_t *net_get_netif_from_desc(const char *desc)
 {
+    if (desc == NULL) {
+        return NULL;
+    }
     return esp_netif_find_if(netif_desc_matches_with, (void*)desc);
 }
 

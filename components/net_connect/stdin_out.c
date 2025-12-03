@@ -10,7 +10,7 @@
 #include "driver/uart.h"
 #include "sdkconfig.h"
 
-esp_err_t example_configure_stdin_stdout(void)
+esp_err_t net_configure_stdin_stdout(void)
 {
     if (uart_is_driver_installed((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM)) {
         return ESP_OK;

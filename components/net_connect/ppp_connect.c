@@ -115,6 +115,10 @@ static void cdc_rx_callback(int itf, cdcacm_event_t *event)
         // Not our channel
         return;
     }
+    // Check if netif is still valid (not destroyed during shutdown)
+    if (s_netif == NULL) {
+        return;
+    }
     esp_err_t ret = tinyusb_cdcacm_read(itf, buf, CONFIG_TINYUSB_CDC_RX_BUFSIZE, &rx_size);
     if (ret == ESP_OK) {
         ESP_LOG_BUFFER_HEXDUMP(TAG, buf, rx_size, ESP_LOG_VERBOSE);
@@ -149,22 +153,29 @@ static void ppp_task(void *args)
     ESP_ERROR_CHECK(uart_set_rx_timeout(UART_NUM_1, 1));
 
     char *buffer = (char*)malloc(BUF_SIZE);
+    if (buffer == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for UART buffer");
+        uart_driver_delete(UART_NUM_1);
+        vTaskDelete(NULL);
+        return;
+    }
     uart_event_t event;
     esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, s_netif);
     esp_netif_action_start(s_netif, 0, 0, 0);
     esp_netif_action_connected(s_netif, 0, 0, 0);
     while (!s_stop_task) {
-        xQueueReceive(event_queue, &event, pdMS_TO_TICKS(1000));
-        if (event.type == UART_DATA) {
-            size_t len;
-            uart_get_buffered_data_len(UART_NUM_1, &len);
-            if (len) {
-                len = uart_read_bytes(UART_NUM_1, buffer, BUF_SIZE, 0);
-                ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
-                esp_netif_receive(s_netif, buffer, len, NULL);
+        if (xQueueReceive(event_queue, &event, pdMS_TO_TICKS(1000)) == pdTRUE) {
+            if (event.type == UART_DATA) {
+                size_t len;
+                uart_get_buffered_data_len(UART_NUM_1, &len);
+                if (len) {
+                    len = uart_read_bytes(UART_NUM_1, buffer, BUF_SIZE, 0);
+                    ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
+                    esp_netif_receive(s_netif, buffer, len, NULL);
+                }
+            } else {
+                ESP_LOGW(TAG, "Received UART event: %d", event.type);
             }
-        } else {
-            ESP_LOGW(TAG, "Received UART event: %d", event.type);
         }
     }
     free(buffer);
@@ -243,7 +254,12 @@ esp_err_t net_connect_ppp_connect(void)
 void net_connect_ppp_shutdown(void)
 {
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event));
-#if CONFIG_NET_CONNECT_PPP_DEVICE_UART
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
+    // Unregister CDC line state callback to prevent access to destroyed netif
+    // Note: RX callback is set via config and cannot be unregistered, but cdc_rx_callback
+    // has a NULL check to prevent crashes if called after shutdown
+    tinyusb_cdcacm_register_callback(TINYUSB_CDC_ACM_0, CDC_EVENT_LINE_STATE_CHANGED, NULL);
+#elif CONFIG_NET_CONNECT_PPP_DEVICE_UART
     s_stop_task = true;
     vTaskDelay(pdMS_TO_TICKS(1000)); // wait for the ppp task to stop
 #endif

@@ -86,7 +86,10 @@ static void ot_task_worker(void *aContext)
 /* tear down connection, release resources */
 void net_connect_thread_shutdown(void)
 {
-    vTaskDelete(s_ot_task_handle);
+    if (s_ot_task_handle != NULL) {
+        vTaskDelete(s_ot_task_handle);
+        s_ot_task_handle = NULL;
+    }
     esp_openthread_netif_glue_deinit();
     esp_netif_destroy(s_openthread_netif);
     esp_vfs_eventfd_unregister();

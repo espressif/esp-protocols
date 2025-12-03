@@ -30,10 +30,17 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
 
     // ignore empty or LF only string (could receive from DUT class)
     do {
-        fgets(host_ip, HOST_IP_SIZE, stdin);
+        if (fgets(host_ip, HOST_IP_SIZE, stdin) == NULL) {
+            // EOF or error occurred
+            return ESP_FAIL;
+        }
         len = strlen(host_ip);
     } while (len <= 1 && host_ip[0] == '\n');
-    host_ip[len - 1] = '\0';
+
+    // Remove trailing newline if present
+    if (len > 0 && host_ip[len - 1] == '\n') {
+        host_ip[len - 1] = '\0';
+    }
 
     struct addrinfo hints, *addr_list, *cur;
     memset(&hints, 0, sizeof(hints));
@@ -41,7 +48,8 @@ esp_err_t get_addr_from_stdin(int port, int sock_type, int *ip_protocol, int *ad
     // run getaddrinfo() to decide on the IP protocol
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = sock_type;
-    hints.ai_protocol = IPPROTO_TCP;
+    // Set protocol based on socket type, or 0 to let getaddrinfo infer it
+    hints.ai_protocol = (sock_type == SOCK_DGRAM) ? IPPROTO_UDP : IPPROTO_TCP;
     if (getaddrinfo(host_ip, NULL, &hints, &addr_list) != 0) {
         return ESP_FAIL;
     }
