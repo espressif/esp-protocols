@@ -248,8 +248,23 @@ mdns_search_once_t *mdns_priv_query_find_from(mdns_search_once_t *s, mdns_name_t
             return s;
         }
 
-        if (type == MDNS_TYPE_PTR && type == s->type && !strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
-            return s;
+        if (type == MDNS_TYPE_PTR && type == s->type) {
+            // Special handling for _services._dns-sd._udp queries
+            // When querying _services._dns-sd._udp, the search has service="_services._dns-sd" and proto="_udp"
+            // But the parsed PTR name has host="_services", service="_dns-sd", proto="_udp"
+            if ((name->host[0] && !strcasecmp(name->host, "_services"))
+                    && (name->service[0] && !strcasecmp(name->service, "_dns-sd"))
+                    && (name->proto[0] && !strcasecmp(name->proto, "_udp"))
+                    && (name->domain[0] && !strcasecmp(name->domain, MDNS_UTILS_DEFAULT_DOMAIN))) {
+                // Check if this search is for _services._dns-sd._udp
+                if (s->service && s->proto &&
+                        !strcasecmp(s->service, "_services._dns-sd") &&
+                        !strcasecmp(s->proto, "_udp")) {
+                    return s;
+                }
+            } else if (!strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
+                return s;
+            }
         }
 
         s = s->next;
@@ -288,6 +303,64 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     q->proto = search->proto;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
     q->own_dynamic_memory = false;
+
+    // Special handling for _services._dns-sd._udp queries
+    // The service parameter is "_services._dns-sd" which needs to be split into two labels:
+    // host="_services" and service="_dns-sd"
+    if (search->service && strchr(search->service, '.')) {
+        char *dot = strchr(search->service, '.');
+        if (dot && dot > search->service) {
+            // Split: first part becomes host, second part becomes service
+            size_t host_len = dot - search->service;
+            size_t service_len = strlen(dot + 1);
+            if (host_len < MDNS_NAME_BUF_LEN && service_len < MDNS_NAME_BUF_LEN && host_len > 0 && service_len > 0) {
+                // Allocate temporary buffers for all fields that will be freed
+                size_t proto_len = search->proto ? strlen(search->proto) : 0;
+                size_t domain_len = strlen(MDNS_UTILS_DEFAULT_DOMAIN);
+                char *host_part = mdns_mem_malloc(host_len + 1);
+                char *service_part = mdns_mem_malloc(service_len + 1);
+                char *proto_part = NULL;
+                char *domain_part = mdns_mem_malloc(domain_len + 1);
+
+                // Only allocate proto_part if proto exists
+                if (proto_len > 0) {
+                    proto_part = mdns_mem_malloc(proto_len + 1);
+                }
+
+                // Check if all required allocations succeeded
+                bool alloc_ok = host_part && service_part && domain_part && (!proto_len || proto_part);
+
+                if (alloc_ok) {
+                    memcpy(host_part, search->service, host_len);
+                    host_part[host_len] = '\0';
+                    memcpy(service_part, dot + 1, service_len);
+                    service_part[service_len] = '\0';
+                    if (proto_part && search->proto) {
+                        memcpy(proto_part, search->proto, proto_len);
+                        proto_part[proto_len] = '\0';
+                    }
+                    memcpy(domain_part, MDNS_UTILS_DEFAULT_DOMAIN, domain_len);
+                    domain_part[domain_len] = '\0';
+
+                    q->host = host_part;
+                    q->service = service_part;
+                    // If proto exists, we must have allocated proto_part (checked in alloc_ok)
+                    // Set to NULL if proto doesn't exist so cleanup can safely free NULL
+                    q->proto = proto_part ? proto_part : NULL;
+                    q->domain = domain_part;
+                    q->own_dynamic_memory = true;  // Mark that we need to free these
+                } else {
+                    // If allocation fails, free what we got and fall back to original strings
+                    mdns_mem_free(host_part);
+                    mdns_mem_free(service_part);
+                    mdns_mem_free(proto_part);
+                    mdns_mem_free(domain_part);
+                    // q->host, q->service, q->proto, q->domain remain pointing to original values
+                }
+            }
+        }
+    }
+
     queueToEnd(mdns_out_question_t, packet->questions, q);
 
     if (search->type == MDNS_TYPE_PTR) {
@@ -763,7 +836,9 @@ esp_err_t mdns_query_generic(const char *name, const char *service, const char *
 
 esp_err_t mdns_query(const char *name, const char *service_type, const char *proto, uint16_t type, uint32_t timeout, size_t max_results, mdns_result_t **results)
 {
-    return mdns_query_generic(name, service_type, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, results);
+    // PTR queries should be multicast, all other types should be unicast
+    mdns_query_transmission_type_t transmission_type = (type == MDNS_TYPE_PTR) ? MDNS_QUERY_MULTICAST : MDNS_QUERY_UNICAST;
+    return mdns_query_generic(name, service_type, proto, type, transmission_type, timeout, max_results, results);
 }
 
 esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results)
