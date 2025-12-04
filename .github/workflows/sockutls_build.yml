@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          pip install idf-build-apps --upgrade
           python ci/build_apps.py ${TEST_DIR}
           cd ${TEST_DIR}
           ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
