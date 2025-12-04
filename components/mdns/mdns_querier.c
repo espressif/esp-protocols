@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -248,8 +248,18 @@ mdns_search_once_t *mdns_priv_query_find_from(mdns_search_once_t *s, mdns_name_t
             return s;
         }
 
-        if (type == MDNS_TYPE_PTR && type == s->type && !strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
-            return s;
+        if (type == MDNS_TYPE_PTR && type == s->type) {
+            // Multi-label service names (e.g. "_services._dns-sd") are parsed into
+            // host + service fields; reconstruct the compound name for comparison.
+            if (name->host[0] && s->service && strchr(s->service, '.')) {
+                char compound[MDNS_NAME_BUF_LEN * 2];
+                snprintf(compound, sizeof(compound), "%s.%s", name->host, name->service);
+                if (!strcasecmp(compound, s->service) && !strcasecmp(name->proto, s->proto)) {
+                    return s;
+                }
+            } else if (s->service && s->proto && !strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
+                return s;
+            }
         }
 
         s = s->next;
@@ -288,6 +298,53 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     q->proto = search->proto;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
     q->own_dynamic_memory = false;
+
+    // Multi-label service names (e.g. "_services._dns-sd") need splitting into
+    // separate DNS labels: host="_services", service="_dns-sd"
+    if (search->service) {
+        char *dot = strchr(search->service, '.');
+        if (dot && dot > search->service) {
+            size_t host_len = dot - search->service;
+            size_t service_len = strlen(dot + 1);
+            if (host_len < MDNS_NAME_BUF_LEN && service_len < MDNS_NAME_BUF_LEN && service_len > 0) {
+                size_t proto_len = search->proto ? strlen(search->proto) : 0;
+                size_t domain_len = strlen(MDNS_UTILS_DEFAULT_DOMAIN);
+                char *host_part = mdns_mem_malloc(host_len + 1);
+                char *service_part = mdns_mem_malloc(service_len + 1);
+                char *proto_part = proto_len > 0 ? mdns_mem_malloc(proto_len + 1) : NULL;
+                char *domain_part = mdns_mem_malloc(domain_len + 1);
+
+                if (!host_part || !service_part || !domain_part || (proto_len && !proto_part)) {
+                    ESP_LOGW(TAG, "Failed to allocate memory for multi-label service query");
+                    mdns_mem_free(host_part);
+                    mdns_mem_free(service_part);
+                    mdns_mem_free(proto_part);
+                    mdns_mem_free(domain_part);
+                    mdns_mem_free(q);
+                    mdns_priv_free_tx_packet(packet);
+                    return NULL;
+                }
+
+                memcpy(host_part, search->service, host_len);
+                host_part[host_len] = '\0';
+                memcpy(service_part, dot + 1, service_len);
+                service_part[service_len] = '\0';
+                if (proto_part) {
+                    memcpy(proto_part, search->proto, proto_len);
+                    proto_part[proto_len] = '\0';
+                }
+                memcpy(domain_part, MDNS_UTILS_DEFAULT_DOMAIN, domain_len);
+                domain_part[domain_len] = '\0';
+
+                q->host = host_part;
+                q->service = service_part;
+                q->proto = proto_part;
+                q->domain = domain_part;
+                q->own_dynamic_memory = true;
+            }
+        }
+    }
+
     queueToEnd(mdns_out_question_t, packet->questions, q);
 
     if (search->type == MDNS_TYPE_PTR) {
@@ -763,7 +820,9 @@ esp_err_t mdns_query_generic(const char *name, const char *service, const char *
 
 esp_err_t mdns_query(const char *name, const char *service_type, const char *proto, uint16_t type, uint32_t timeout, size_t max_results, mdns_result_t **results)
 {
-    return mdns_query_generic(name, service_type, proto, type, type != MDNS_TYPE_PTR, timeout, max_results, results);
+    // PTR queries should be multicast, all other types should be unicast
+    mdns_query_transmission_type_t transmission_type = (type == MDNS_TYPE_PTR) ? MDNS_QUERY_MULTICAST : MDNS_QUERY_UNICAST;
+    return mdns_query_generic(name, service_type, proto, type, transmission_type, timeout, max_results, results);
 }
 
 esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results)
