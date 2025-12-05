@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -163,7 +163,20 @@ Client::Client(esp_mqtt_client_config_t const &config) :  handler(esp_mqtt_clien
         throw MQTTException(ESP_FAIL);
     };
     CHECK_THROW_SPECIFIC(esp_mqtt_client_register_event(handler.get(), MQTT_EVENT_ANY, mqtt_event_handler, this), mqtt::MQTTException);
+}
+
+void Client::start()
+{
+    if (started) {
+        return;
+    }
     CHECK_THROW_SPECIFIC(esp_mqtt_client_start(handler.get()), mqtt::MQTTException);
+    started = true;
+}
+
+bool Client::is_started() const noexcept
+{
+    return started;
 }
 
 void Client::mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) noexcept
@@ -245,6 +258,18 @@ void Client::on_connected(esp_mqtt_event_handle_t const event)
 }
 void Client::on_data(esp_mqtt_event_handle_t const event)
 {
+}
+
+void Client::dispatch_event_for_test(int32_t event_id, esp_mqtt_event_t *event)
+{
+    if (event == nullptr) {
+        throw MQTTException(ESP_ERR_INVALID_ARG);
+    }
+    event->event_id = static_cast<esp_mqtt_event_id_t>(event_id);
+    auto err = esp_mqtt_dispatch_custom_event(handler.get(), event);
+    if (err != ESP_OK) {
+        throw MQTTException(err);
+    }
 }
 
 std::optional<MessageID> Client::subscribe(std::string const &topic, QoS qos)

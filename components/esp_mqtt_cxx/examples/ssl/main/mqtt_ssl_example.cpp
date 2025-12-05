@@ -83,8 +83,9 @@ extern "C" void app_main(void)
     idf::mqtt::Configuration config{};
 
     MyClient client{broker, credentials, config};
+    client.start();
     while (true) {
         constexpr TickType_t xDelay = 500 / portTICK_PERIOD_MS;
-        vTaskDelay( xDelay );
+        vTaskDelay(xDelay);
     }
 }
