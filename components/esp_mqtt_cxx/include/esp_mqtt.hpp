@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -166,6 +166,19 @@ public:
     Client(const esp_mqtt_client_config_t &config);
 
     /**
+     * @brief Start the underlying esp-mqtt client
+     *
+     * Must be called after the derived class has finished constructing to avoid
+     * events being dispatched to partially constructed objects.
+     */
+    void start();
+
+    /**
+     * @brief Check whether start() has been called
+     */
+    [[nodiscard]] bool is_started() const noexcept;
+
+    /**
      * @brief Subscribe to topic
      *
      * @param topic_filter MQTT topic filter
@@ -215,6 +228,14 @@ public:
     }
 
     virtual ~Client() = default;
+
+    /**
+    * @brief Test helper to dispatch events without a broker connection
+    *
+    * Intended for unit tests; forwards directly to the internal event handler.
+    */
+    void dispatch_event_for_test(int32_t event_id, esp_mqtt_event_t *event);
+
 
 protected:
     /**
@@ -292,5 +313,6 @@ private:
     static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id,
                                    void *event_data) noexcept;
     void init(const esp_mqtt_client_config_t &config);
+    bool started{false};
 };
 } // namespace idf::mqtt
