@@ -229,14 +229,6 @@ public:
 
     virtual ~Client() = default;
 
-    /**
-    * @brief Test helper to dispatch events without a broker connection
-    *
-    * Intended for unit tests; forwards directly to the internal event handler.
-    */
-    void dispatch_event_for_test(int32_t event_id, esp_mqtt_event_t *event);
-
-
 protected:
     /**
      * @brief Helper type to be used as custom deleter for std::unique_ptr.
@@ -266,13 +258,13 @@ protected:
     */
     virtual void on_error(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an disconnection event
+    * @brief Called if there is a disconnection event
     *
     * @param event mqtt event data
     */
     virtual void on_disconnected(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an subscribed event
+    * @brief Called if there is a subscribed event
     *
     * @param event mqtt event data
     */
@@ -284,26 +276,26 @@ protected:
     */
     virtual void on_unsubscribed(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an published event
+    * @brief Called if there is a published event
     *
     * @param event mqtt event data
     */
     virtual void on_published(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an before connect event
+    * @brief Called if there is a before connect event
     *
     * @param event mqtt event data
     */
     virtual void on_before_connect(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an connected event
+    * @brief Called if there is a connected event
     *
     * @param event mqtt event data
     *
     */
     virtual void on_connected(const esp_mqtt_event_handle_t event) = 0;
     /**
-    * @brief Called if there is an data event
+    * @brief Called if there is a data event
     *
     * @param event mqtt event data
     *

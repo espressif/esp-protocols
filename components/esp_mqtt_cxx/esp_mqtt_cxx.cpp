@@ -260,18 +260,6 @@ void Client::on_data(esp_mqtt_event_handle_t const event)
 {
 }
 
-void Client::dispatch_event_for_test(int32_t event_id, esp_mqtt_event_t *event)
-{
-    if (event == nullptr) {
-        throw MQTTException(ESP_ERR_INVALID_ARG);
-    }
-    event->event_id = static_cast<esp_mqtt_event_id_t>(event_id);
-    auto err = esp_mqtt_dispatch_custom_event(handler.get(), event);
-    if (err != ESP_OK) {
-        throw MQTTException(err);
-    }
-}
-
 std::optional<MessageID> Client::subscribe(std::string const &topic, QoS qos)
 {
     auto res = esp_mqtt_client_subscribe(handler.get(), topic.c_str(),
