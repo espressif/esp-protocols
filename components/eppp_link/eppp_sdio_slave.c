@@ -8,6 +8,8 @@
 #include "sdkconfig.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "driver/sdio_slave.h"
 #include "eppp_link.h"
 #include "eppp_transport.h"

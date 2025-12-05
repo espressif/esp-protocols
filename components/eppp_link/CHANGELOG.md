@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.4)
+
+### Bug Fixes
+
+- Fixed missing freertos deps ([f1e35977](https://github.com/espressif/esp-protocols/commit/f1e35977))
+- Add optional mqtt dependency ([911c2dbe](https://github.com/espressif/esp-protocols/commit/911c2dbe))
+
 ## [1.1.3](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.3)
 
 ### Bug Fixes
