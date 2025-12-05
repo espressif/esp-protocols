@@ -1,0 +1,10 @@
+dependencies:
+  idf:
+    version: ">=5.0"
+  net_connect:
+    version: "*"
+    override_path: '../../../'
+  espressif/ethernet_init:
+    version: "~1.2.0"
+    rules:
+     - if: "target != linux"
