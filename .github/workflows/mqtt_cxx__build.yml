@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3"]
+        idf_ver: ["release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5"]
         idf_target: ["esp32"]
         test: [ { app: mqtt-basic, path: "components/esp_mqtt_cxx/examples" }]
     runs-on: ubuntu-22.04
@@ -25,8 +25,7 @@ jobs:
           submodules: recursive
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
         shell: bash
-        working-directory: ${{matrix.test.path}}
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
-          python ../../../ci/build_apps.py ./${{ matrix.test.app }} --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
+          python ./ci/build_apps.py ./${{ matrix.test.path }} --target ${{ matrix.idf_target }} -vv --preserve-all -c
