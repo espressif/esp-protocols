@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.5", "release-v5.4", "release-v5.3"]
+        idf_ver: ["latest", "release-v6.0", "release-v5.5", "release-v5.4", "release-v5.3"]
         test: [ { app: host, path: "examples/host" }, { app: slave, path: "examples/slave" }, { app: test_app, path: "test/test_app" }]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
