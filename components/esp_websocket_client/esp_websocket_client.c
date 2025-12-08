@@ -730,8 +730,9 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
 #endif
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
+                const char *error_name = esp_err_to_name(error_handle->last_error);
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                           ret, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                           ret, error_name, error_handle->esp_tls_error_code,
                                            error_handle->esp_tls_flags, errno);
             } else {
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
@@ -1067,8 +1068,9 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             esp_websocket_free_buf(client, false);
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
+                const char *error_name = esp_err_to_name(error_handle->last_error);
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                           rlen, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                           rlen, error_name, error_handle->esp_tls_error_code,
                                            error_handle->esp_tls_flags, errno);
             } else {
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, errno=%d", rlen, errno);
@@ -1181,9 +1183,10 @@ static void esp_websocket_client_task(void *pv)
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
                 if (error_handle) {
+                    const char *error_name = esp_err_to_name(error_handle->last_error);
                     esp_websocket_client_error(client, "esp_transport_connect() failed with %d, "
                                                "transport_error=%s, tls_error_code=%i, tls_flags=%i, esp_ws_handshake_status_code=%d, errno=%d",
-                                               result, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                               result, error_name, error_handle->esp_tls_error_code,
                                                error_handle->esp_tls_flags, client->error_handle.esp_ws_handshake_status_code, errno);
                 } else {
                     esp_websocket_client_error(client, "esp_transport_connect() failed with %d, esp_ws_handshake_status_code=%d, errno=%d",
@@ -1341,8 +1344,9 @@ static void esp_websocket_client_task(void *pv)
                 xSemaphoreTakeRecursive(client->lock, lock_timeout);
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 if (error_handle) {
+                    const char *error_name = esp_err_to_name(error_handle->last_error);
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                               read_select, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                               read_select, error_name, error_handle->esp_tls_error_code,
                                                error_handle->esp_tls_flags, errno);
                 } else {
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, errno=%d", read_select, errno);
