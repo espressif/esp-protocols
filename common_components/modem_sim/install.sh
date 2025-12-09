@@ -2,9 +2,10 @@
 set -e
 
 # Create directory "modem_sim_esp32", go inside it
-# Usage: ./install.sh [platform] [module]
+# Usage: ./install.sh [platform] [module] [uart_tx_pin] [uart_rx_pin]
 
 SCRIPT_DIR=$(pwd)
+UPDATE_UART_PINS_SCRIPT="$(cd "$(dirname "$0")" && pwd)/update_uart_pins.py"
 mkdir -p modem_sim_esp32
 cd modem_sim_esp32
 
@@ -39,6 +40,8 @@ mkdir -p build
 # Default values for platform and module
 platform="PLATFORM_ESP32"
 module="WROOM-32"
+uart_tx_pin=""
+uart_rx_pin=""
 
 # Override defaults if parameters are provided
 if [ ! -z "$1" ]; then
@@ -47,18 +50,49 @@ fi
 if [ ! -z "$2" ]; then
     module="$2"
 fi
+if [ ! -z "$3" ]; then
+    uart_tx_pin="$3"
+fi
+if [ ! -z "$4" ]; then
+    uart_rx_pin="$4"
+fi
+
+target="${platform##*_}"
+target="${target,,}"
+
+# Use provided pins for description when present; otherwise keep defaults
+description="4MB, Wi-Fi + BLE, OTA, TX:17 RX:16"
+if [ -n "$uart_tx_pin" ] || [ -n "$uart_rx_pin" ]; then
+    desc_tx=${uart_tx_pin:-17}
+    desc_rx=${uart_rx_pin:-16}
+    description="4MB, Wi-Fi + BLE, OTA, TX:${desc_tx} RX:${desc_rx}"
+fi
 
 # Create file "build/module_info.json" with content
 cat > build/module_info.json << EOF
 {
     "platform": "$platform",
     "module": "$module",
-    "description": "4MB, Wi-Fi + BLE, OTA, TX:17 RX:16",
+    "description": "$description",
     "silence": 0
 }
 EOF
 
-cp "$SCRIPT_DIR/sdkconfig.defaults" "module_config/module_esp32_default/sdkconfig.defaults"
+# Optionally update UART pins in factory_param_data.csv for the selected module
+if [ -n "$uart_tx_pin" ] || [ -n "$uart_rx_pin" ]; then
+    csv_path="components/customized_partitions/raw_data/factory_param/factory_param_data.csv"
+    if [ ! -f "$csv_path" ]; then
+        echo "Warning: $csv_path not found; skipping UART pin update."
+    else
+        python3 "$UPDATE_UART_PINS_SCRIPT" "$platform" "$module" "$uart_tx_pin" "$uart_rx_pin" "$csv_path"
+        echo "Updated UART pins in $csv_path"
+    fi
+fi
+
+# Copy the platform-specific sdkconfig.defaults file if it exists
+if [ -f "$SCRIPT_DIR/${target}.sdkconfig.defaults" ]; then
+    cp "$SCRIPT_DIR/${target}.sdkconfig.defaults" "module_config/module_${target}_default/sdkconfig.defaults"
+fi
 
 echo "Installation completed successfully!"
 echo "Created modem_sim_esp32 directory with esp-at repository and configuration"
