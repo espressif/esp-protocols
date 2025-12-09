@@ -252,6 +252,8 @@ void net_connect_wifi_shutdown(void)
     ESP_LOGI(TAG, "WiFi shutdown handler called");
     net_connect_wifi_sta_do_disconnect();
     net_connect_wifi_stop();
+    s_wifi_sta_configured = false;
+    s_wifi_sta_handle = NULL;
 }
 
 net_iface_handle_t net_configure_wifi_sta(net_wifi_sta_config_t *config)
@@ -300,6 +302,7 @@ esp_err_t net_connect_wifi(void)
     ESP_LOGI(TAG, "Please input ssid password:");
     if (fgets(buf, sizeof(buf), stdin) == NULL) {
         ESP_LOGE(TAG, "Failed to read SSID/password from stdin (EOF or error)");
+        net_connect_wifi_stop();
         return ESP_ERR_INVALID_STATE;
     }
     int len = strlen(buf);
@@ -312,6 +315,7 @@ esp_err_t net_connect_wifi(void)
     char *temp = strtok_r(buf, " ", &rest);
     if (temp == NULL) {
         ESP_LOGE(TAG, "SSID is empty or invalid");
+        net_connect_wifi_stop();
         return ESP_ERR_INVALID_ARG;
     }
     strncpy((char*)wifi_config.sta.ssid, temp, sizeof(wifi_config.sta.ssid) - 1);

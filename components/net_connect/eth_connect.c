@@ -128,16 +128,21 @@ static void eth_stop(void)
 /* tear down connection, release resources */
 void net_connect_ethernet_shutdown(void)
 {
-    if (s_semph_get_ip_addrs == NULL) {
-        return;
+#if CONFIG_NET_CONNECT_IPV4
+    if (s_semph_get_ip_addrs != NULL) {
+        vSemaphoreDelete(s_semph_get_ip_addrs);
+        s_semph_get_ip_addrs = NULL;
     }
-    vSemaphoreDelete(s_semph_get_ip_addrs);
-    s_semph_get_ip_addrs = NULL;
-#if CONFIG_NET_CONNECT_IPV6
-    vSemaphoreDelete(s_semph_get_ip6_addrs);
-    s_semph_get_ip6_addrs = NULL;
 #endif
-    eth_stop();
+#if CONFIG_NET_CONNECT_IPV6
+    if (s_semph_get_ip6_addrs != NULL) {
+        vSemaphoreDelete(s_semph_get_ip6_addrs);
+        s_semph_get_ip6_addrs = NULL;
+    }
+#endif
+    if (s_eth_netif != NULL) {
+        eth_stop();
+    }
 }
 
 esp_err_t net_connect_ethernet_connect(void)
