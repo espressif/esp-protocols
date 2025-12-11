@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -166,6 +166,19 @@ public:
     Client(const esp_mqtt_client_config_t &config);
 
     /**
+     * @brief Start the underlying esp-mqtt client
+     *
+     * Must be called after the derived class has finished constructing to avoid
+     * events being dispatched to partially constructed objects.
+     */
+    void start();
+
+    /**
+     * @brief Check whether start() has been called
+     */
+    [[nodiscard]] bool is_started() const noexcept;
+
+    /**
      * @brief Subscribe to topic
      *
      * @param topic_filter MQTT topic filter
@@ -245,13 +258,13 @@ protected:
     */
     virtual void on_error(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an disconnection event
+    * @brief Called if there is a disconnection event
     *
     * @param event mqtt event data
     */
     virtual void on_disconnected(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an subscribed event
+    * @brief Called if there is a subscribed event
     *
     * @param event mqtt event data
     */
@@ -263,26 +276,26 @@ protected:
     */
     virtual void on_unsubscribed(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an published event
+    * @brief Called if there is a published event
     *
     * @param event mqtt event data
     */
     virtual void on_published(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an before connect event
+    * @brief Called if there is a before connect event
     *
     * @param event mqtt event data
     */
     virtual void on_before_connect(const esp_mqtt_event_handle_t event);
     /**
-    * @brief Called if there is an connected event
+    * @brief Called if there is a connected event
     *
     * @param event mqtt event data
     *
     */
     virtual void on_connected(const esp_mqtt_event_handle_t event) = 0;
     /**
-    * @brief Called if there is an data event
+    * @brief Called if there is a data event
     *
     * @param event mqtt event data
     *
@@ -292,5 +305,6 @@ private:
     static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id,
                                    void *event_data) noexcept;
     void init(const esp_mqtt_client_config_t &config);
+    bool started{false};
 };
 } // namespace idf::mqtt

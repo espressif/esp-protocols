@@ -1,0 +1,5 @@
+dependencies:
+  espressif/catch2: "^3.4.0"
+  esp_mqtt_cxx:
+    version: "*"
+    override_path: '../../../'
