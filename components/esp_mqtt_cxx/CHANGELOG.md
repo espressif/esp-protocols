@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.5.0)
+
+### Bug Fixes
+
+- Implement simple unit tests ([f41c4a0a](https://github.com/espressif/esp-protocols/commit/f41c4a0a))
+- Fix to construct in two steps ([d979e1b3](https://github.com/espressif/esp-protocols/commit/d979e1b3), [#631](https://github.com/espressif/esp-protocols/issues/631))
+- Add explicit dependency on esp-mqtt if needed ([3d5e11b8](https://github.com/espressif/esp-protocols/commit/3d5e11b8))
+
 ## [0.4.0](https://github.com/espressif/esp-protocols/commits/mqtt_cxx-v0.4.0)
 
 ### Bug Fixes
