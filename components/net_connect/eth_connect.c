@@ -91,8 +91,18 @@ static esp_netif_t *eth_start(void)
         .stack = ESP_NETIF_NETSTACK_DEFAULT_ETH
     };
     s_eth_netif = esp_netif_new(&netif_config);
+    if (s_eth_netif == NULL) {
+        ESP_LOGE(TAG, "Failed to create Ethernet netif");
+        return NULL;
+    }
 
     s_eth_glue = esp_eth_new_netif_glue(s_eth_handles[0]);
+    if (s_eth_glue == NULL) {
+        ESP_LOGE(TAG, "Failed to create Ethernet netif glue");
+        esp_netif_destroy(s_eth_netif);
+        s_eth_netif = NULL;
+        return NULL;
+    }
     esp_netif_attach(s_eth_netif, s_eth_glue);
 
     // Register user defined event handlers
@@ -163,7 +173,17 @@ esp_err_t net_connect_ethernet_connect(void)
         return ESP_ERR_NO_MEM;
     }
 #endif
-    eth_start();
+    if (eth_start() == NULL) {
+#if CONFIG_NET_CONNECT_IPV4
+        vSemaphoreDelete(s_semph_get_ip_addrs);
+        s_semph_get_ip_addrs = NULL;
+#endif
+#if CONFIG_NET_CONNECT_IPV6
+        vSemaphoreDelete(s_semph_get_ip6_addrs);
+        s_semph_get_ip6_addrs = NULL;
+#endif
+        return ESP_ERR_NO_MEM;
+    }
     ESP_LOGI(TAG, "Waiting for IP(s).");
 #if CONFIG_NET_CONNECT_IPV4
     xSemaphoreTake(s_semph_get_ip_addrs, portMAX_DELAY);

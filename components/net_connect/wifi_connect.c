@@ -333,6 +333,7 @@ esp_err_t net_connect_wifi(void)
     /* Connect using existing internal function */
     esp_err_t err = net_connect_wifi_sta_do_connect(wifi_config, true);
     if (err != ESP_OK) {
+        net_connect_wifi_stop();
         return err;
     }
 

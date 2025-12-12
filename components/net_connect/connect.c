@@ -43,7 +43,10 @@ const char *net_connect_ipv6_addr_types_to_str[6] = {
  */
 bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
 {
-    return strncmp(prefix, esp_netif_get_desc(netif), strlen(prefix) - 1) == 0;
+    if (prefix == NULL || *prefix == '\0') {
+        return false;
+    }
+    return strncmp(prefix, esp_netif_get_desc(netif), strlen(prefix)) == 0;
 }
 
 static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
@@ -95,13 +98,19 @@ void net_connect_print_all_netif_ips(const char *prefix)
 
 esp_err_t net_connect(void)
 {
+    bool eth_initialized = false;
+    bool wifi_initialized = false;
+    bool thread_initialized = false;
+    bool ppp_initialized = false;
+
 #if CONFIG_NET_CONNECT_ETHERNET
     ESP_LOGI(TAG, "Initializing Ethernet interface...");
     if (net_connect_ethernet_connect() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize Ethernet interface");
-        return ESP_FAIL;
+        goto cleanup;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ethernet_shutdown));
+    eth_initialized = true;
     ESP_LOGI(TAG, "Ethernet interface initialized successfully");
 #endif
 #if CONFIG_NET_CONNECT_WIFI
@@ -110,33 +119,36 @@ esp_err_t net_connect(void)
         /* Configure WiFi with Kconfig defaults */
         if (net_configure_wifi_sta(NULL) == NULL) {
             ESP_LOGE(TAG, "Failed to configure WiFi interface");
-            return ESP_FAIL;
+            goto cleanup;
         }
     }
     /* Use new API for WiFi connection */
     if (net_connect_wifi() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize WiFi interface");
-        return ESP_FAIL;
+        goto cleanup;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_wifi_shutdown));
+    wifi_initialized = true;
     ESP_LOGI(TAG, "WiFi interface initialized successfully");
 #endif
 #if CONFIG_NET_CONNECT_THREAD
     ESP_LOGI(TAG, "Initializing Thread interface...");
     if (net_connect_thread_connect() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize Thread interface");
-        return ESP_FAIL;
+        goto cleanup;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_thread_shutdown));
+    thread_initialized = true;
     ESP_LOGI(TAG, "Thread interface initialized successfully");
 #endif
 #if CONFIG_NET_CONNECT_PPP
     ESP_LOGI(TAG, "Initializing PPP interface...");
     if (net_connect_ppp_connect() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize PPP interface");
-        return ESP_FAIL;
+        goto cleanup;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ppp_shutdown));
+    ppp_initialized = true;
     ESP_LOGI(TAG, "PPP interface initialized successfully");
 #endif
 
@@ -157,6 +169,34 @@ esp_err_t net_connect(void)
 #endif
 
     return ESP_OK;
+
+cleanup:
+    /* Clean up previously initialized interfaces in reverse order */
+#if CONFIG_NET_CONNECT_PPP
+    if (ppp_initialized) {
+        net_connect_ppp_shutdown();
+        esp_unregister_shutdown_handler(&net_connect_ppp_shutdown);
+    }
+#endif
+#if CONFIG_NET_CONNECT_THREAD
+    if (thread_initialized) {
+        net_connect_thread_shutdown();
+        esp_unregister_shutdown_handler(&net_connect_thread_shutdown);
+    }
+#endif
+#if CONFIG_NET_CONNECT_WIFI
+    if (wifi_initialized) {
+        net_connect_wifi_shutdown();
+        esp_unregister_shutdown_handler(&net_connect_wifi_shutdown);
+    }
+#endif
+#if CONFIG_NET_CONNECT_ETHERNET
+    if (eth_initialized) {
+        net_connect_ethernet_shutdown();
+        esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown);
+    }
+#endif
+    return ESP_FAIL;
 }
 
 

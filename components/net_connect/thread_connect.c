@@ -77,6 +77,8 @@ static void ot_task_worker(void *aContext)
     esp_openthread_launch_mainloop();
 
     // Clean up
+    // Clear the task handle before cleanup to prevent double-cleanup in net_connect_thread_shutdown()
+    s_ot_task_handle = NULL;
     esp_openthread_netif_glue_deinit();
     esp_netif_destroy(s_openthread_netif);
     esp_vfs_eventfd_unregister();
@@ -89,10 +91,13 @@ void net_connect_thread_shutdown(void)
     if (s_ot_task_handle != NULL) {
         vTaskDelete(s_ot_task_handle);
         s_ot_task_handle = NULL;
+        // Only clean up resources if we deleted the task
+        // If s_ot_task_handle was NULL, the task already cleaned up
+        esp_openthread_netif_glue_deinit();
+        esp_netif_destroy(s_openthread_netif);
+        esp_vfs_eventfd_unregister();
     }
-    esp_openthread_netif_glue_deinit();
-    esp_netif_destroy(s_openthread_netif);
-    esp_vfs_eventfd_unregister();
+    esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler);
     vSemaphoreDelete(s_semph_thread_set_dns_server);
     vSemaphoreDelete(s_semph_thread_attached);
 }
@@ -119,6 +124,7 @@ esp_err_t net_connect_thread_connect(void)
     esp_vfs_eventfd_register(&eventfd_config);
     ESP_ERROR_CHECK(esp_event_handler_register(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler, NULL));
     if (xTaskCreate(ot_task_worker, "ot_br_main", CONFIG_NET_CONNECT_THREAD_TASK_STACK_SIZE, NULL, 5, &s_ot_task_handle) != pdPASS) {
+        esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler);
         vSemaphoreDelete(s_semph_thread_attached);
         vSemaphoreDelete(s_semph_thread_set_dns_server);
         ESP_LOGE(TAG, "Failed to create openthread task");

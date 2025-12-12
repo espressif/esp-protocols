@@ -178,6 +178,10 @@ static void ppp_task(void *args)
             }
         }
     }
+    // Unregister event handler to prevent events after s_netif is destroyed
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
+    // Clean up UART driver
+    uart_driver_delete(UART_NUM_1);
     free(buffer);
     vTaskDelete(NULL);
 }
