@@ -101,3 +101,5 @@ set(sources_that_define_gnu_source ${m_src_dir}/loop.c ${m_src_dir}/mux_poll.c)
 foreach(offending_src ${sources_that_define_gnu_source})
     set_source_files_properties(${offending_src} PROPERTIES COMPILE_OPTIONS "-U_GNU_SOURCE")
 endforeach()
+
+set_source_files_properties(${m_src_dir}/security_default.c PROPERTIES COMPILE_OPTIONS "-Wno-char-subscripts")
