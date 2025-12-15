@@ -7,5 +7,6 @@
 
 #include "sys/socket.h"
 #include "socketpair.h"
+#include "asio_stub.hpp"
 
 #include_next "asio/detail/config.hpp"
