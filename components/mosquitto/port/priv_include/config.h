@@ -16,8 +16,11 @@
 
 #include <ctype.h>
 #include "net/if.h"
+#include "esp_idf_version.h"
 
+#if ESP_IDF_VERSION_MAJOR < 6
 #undef  isspace
 #define isspace(__c) (__ctype_lookup((int)__c)&_S)
+#endif
 
 #define VERSION "v2.0.20~5"
