@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -12,6 +12,7 @@
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_idf_version.h"
 #include "esp_netif.h"
 #include "esp_netif_ppp.h"
 #include "freertos/FreeRTOS.h"
@@ -123,7 +124,7 @@ TEST_CASE("Disconnection test", "[esp_modem]")
     CHECK(b == 2);
 }
 
-
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
 extern "C" {
 
     static void handle(int nr)
@@ -131,10 +132,10 @@ extern "C" {
         ESP_LOGE(TAG, "Signal handler %d", nr);
     }
 
-    _sig_func_ptr signal (int nr, _sig_func_ptr)
+    _sig_func_ptr signal(int nr, _sig_func_ptr)
     {
         return handle;
     }
 
-
 }
+#endif // ESP_IDF_VERSION < v6
