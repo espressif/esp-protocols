@@ -125,6 +125,7 @@ esp_err_t net_connect_thread_connect(void)
     ESP_ERROR_CHECK(esp_event_handler_register(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler, NULL));
     if (xTaskCreate(ot_task_worker, "ot_br_main", CONFIG_NET_CONNECT_THREAD_TASK_STACK_SIZE, NULL, 5, &s_ot_task_handle) != pdPASS) {
         esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler);
+        esp_vfs_eventfd_unregister();
         vSemaphoreDelete(s_semph_thread_attached);
         vSemaphoreDelete(s_semph_thread_set_dns_server);
         ESP_LOGE(TAG, "Failed to create openthread task");

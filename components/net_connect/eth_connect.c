@@ -93,6 +93,9 @@ static esp_netif_t *eth_start(void)
     s_eth_netif = esp_netif_new(&netif_config);
     if (s_eth_netif == NULL) {
         ESP_LOGE(TAG, "Failed to create Ethernet netif");
+        ethernet_deinit_all(s_eth_handles);
+        s_eth_handles = NULL;
+        s_eth_count = 0;
         return NULL;
     }
 
@@ -101,6 +104,9 @@ static esp_netif_t *eth_start(void)
         ESP_LOGE(TAG, "Failed to create Ethernet netif glue");
         esp_netif_destroy(s_eth_netif);
         s_eth_netif = NULL;
+        ethernet_deinit_all(s_eth_handles);
+        s_eth_handles = NULL;
+        s_eth_count = 0;
         return NULL;
     }
     esp_netif_attach(s_eth_netif, s_eth_glue);

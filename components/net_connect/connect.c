@@ -56,7 +56,7 @@ static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 
 esp_netif_t *net_get_netif_from_desc(const char *desc)
 {
-    if (desc == NULL) {
+    if (desc == NULL || *desc == '\0') {
         return NULL;
     }
     return esp_netif_find_if(netif_desc_matches_with, (void*)desc);
@@ -98,10 +98,18 @@ void net_connect_print_all_netif_ips(const char *prefix)
 
 esp_err_t net_connect(void)
 {
+#if CONFIG_NET_CONNECT_ETHERNET
     bool eth_initialized = false;
+#endif
+#if CONFIG_NET_CONNECT_WIFI
     bool wifi_initialized = false;
+#endif
+#if CONFIG_NET_CONNECT_THREAD
     bool thread_initialized = false;
+#endif
+#if CONFIG_NET_CONNECT_PPP
     bool ppp_initialized = false;
+#endif
 
 #if CONFIG_NET_CONNECT_ETHERNET
     ESP_LOGI(TAG, "Initializing Ethernet interface...");

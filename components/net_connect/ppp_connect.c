@@ -78,7 +78,9 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
         esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns_info);
         ESP_LOGI(TAG, "Main DNS server : " IPSTR, IP2STR(&dns_info.ip.u_addr.ip4));
-        xEventGroupSetBits(s_event_group, GOT_IPV4);
+        if (s_event_group != NULL) {
+            xEventGroupSetBits(s_event_group, GOT_IPV4);
+        }
 #if CONFIG_NET_CONNECT_IPV6
     } else if (event_id == IP_EVENT_GOT_IP6) {
         ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
@@ -89,7 +91,9 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "Got IPv6 event: Interface \"%s\" address: " IPV6STR ", type: %s", esp_netif_get_desc(event->esp_netif),
                  IPV62STR(event->ip6_info.ip), net_connect_ipv6_addr_types_to_str[ipv6_type]);
         if (ipv6_type == NET_CONNECT_PREFERRED_IPV6_TYPE) {
-            xEventGroupSetBits(s_event_group, GOT_IPV6);
+            if (s_event_group != NULL) {
+                xEventGroupSetBits(s_event_group, GOT_IPV6);
+            }
         }
 #endif
     } else if (event_id == IP_EVENT_PPP_LOST_IP) {
@@ -97,7 +101,9 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
         s_retry_num++;
         if (s_retry_num > CONFIG_NET_CONNECT_PPP_CONN_MAX_RETRY) {
             ESP_LOGE(TAG, "PPP Connection failed %d times, stop reconnecting.", s_retry_num);
-            xEventGroupSetBits(s_event_group, CONNECTION_FAILED);
+            if (s_event_group != NULL) {
+                xEventGroupSetBits(s_event_group, CONNECTION_FAILED);
+            }
         } else {
             ESP_LOGI(TAG, "PPP Connection failed %d times, try to reconnect.", s_retry_num);
             esp_netif_action_start(s_netif, 0, 0, 0);
@@ -156,6 +162,9 @@ static void ppp_task(void *args)
     if (buffer == NULL) {
         ESP_LOGE(TAG, "Failed to allocate memory for UART buffer");
         uart_driver_delete(UART_NUM_1);
+        if (s_event_group != NULL) {
+            xEventGroupSetBits(s_event_group, CONNECTION_FAILED);
+        }
         vTaskDelete(NULL);
         return;
     }
@@ -221,6 +230,10 @@ esp_err_t net_connect_ppp_connect(void)
 #endif // CONFIG_NET_CONNECT_PPP_DEVICE_USB
 
     s_event_group = xEventGroupCreate();
+    if (s_event_group == NULL) {
+        ESP_LOGE(TAG, "Failed to create event group");
+        return ESP_ERR_NO_MEM;
+    }
 
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event, NULL));
 
@@ -270,7 +283,9 @@ void net_connect_ppp_shutdown(void)
 
     esp_netif_action_disconnected(s_netif, 0, 0, 0);
 
-    vEventGroupDelete(s_event_group);
+    if (s_event_group != NULL) {
+        vEventGroupDelete(s_event_group);
+    }
     esp_netif_action_stop(s_netif, 0, 0, 0);
     esp_netif_destroy(s_netif);
     s_netif = NULL;
