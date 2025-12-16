@@ -1,3 +1,11 @@
+idf_build_get_property(idf_target IDF_TARGET)
+
+if(${idf_target} STREQUAL "linux")
+     # This component is no-op for linux simulator
+    idf_component_register()
+    return()
+endif()
+
 idf_component_register(SRCS "src/getnameinfo.c"
                             "src/ifaddrs.c"
                             "src/gai_strerror.c"
