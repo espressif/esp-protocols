@@ -30,20 +30,16 @@ endif()
 
 idf_component_register(SRCS "${srcs}"
                        INCLUDE_DIRS "include"
-                       PRIV_REQUIRES esp_netif esp_driver_gpio esp_driver_uart esp_wifi vfs openthread)
+                       PRIV_REQUIRES esp_netif esp_driver_uart esp_wifi vfs)
 
 if(CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD)
     idf_component_optional_requires(PRIVATE console)
 endif()
 
 if(CONFIG_NET_CONNECT_ETHERNET)
-    idf_component_optional_requires(PRIVATE esp_eth)
+    idf_component_optional_requires(PRIVATE esp_eth esp_driver_gpio)
 endif()
 
 if(CONFIG_NET_CONNECT_THREAD)
     idf_component_optional_requires(PRIVATE openthread)
-endif()
-
-if(CONFIG_NET_CONNECT_PPP)
-    idf_component_optional_requires(PRIVATE esp_tinyusb espressif__esp_tinyusb)
 endif()

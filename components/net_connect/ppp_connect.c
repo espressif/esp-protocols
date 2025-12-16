@@ -258,6 +258,28 @@ esp_err_t net_connect_ppp_connect(void)
 #endif // CONNECT_PPP_DEVICE
 
     ESP_LOGI(TAG, "Waiting for IP address");
+#if CONFIG_NET_CONNECT_IPV6
+    while (true) {
+        EventBits_t bits = xEventGroupWaitBits(
+                               s_event_group,
+                               GOT_IPV4 | GOT_IPV6 | CONNECTION_FAILED,
+                               pdFALSE,
+                               pdFALSE,
+                               portMAX_DELAY
+                           );
+
+        if (bits & CONNECTION_FAILED) {
+            ESP_LOGE(TAG, "Connection failed!");
+            return ESP_FAIL;
+        }
+
+        if ((bits & (GOT_IPV4 | GOT_IPV6)) == (GOT_IPV4 | GOT_IPV6)) {
+            ESP_LOGI(TAG, "Connected!");
+            return ESP_OK;
+        }
+    }
+#else
+    // When IPv6 is disabled, wait for IPv4 only
     EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS, pdFALSE, pdFALSE, portMAX_DELAY);
     if (bits & CONNECTION_FAILED) {
         ESP_LOGE(TAG, "Connection failed!");
@@ -266,6 +288,7 @@ esp_err_t net_connect_ppp_connect(void)
     ESP_LOGI(TAG, "Connected!");
 
     return ESP_OK;
+#endif
 }
 
 void net_connect_ppp_shutdown(void)

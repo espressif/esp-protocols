@@ -49,9 +49,18 @@ bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
     return strncmp(prefix, esp_netif_get_desc(netif), strlen(prefix)) == 0;
 }
 
+/**
+ * @brief Predicate function to match network interface by description string
+ *
+ * Note: The function signature must match esp_netif_find_predicate_t typedef
+ * which requires 'void *ctx' as the second parameter, not 'char *ctx'.
+ * This is because esp_netif_find_if() uses a generic callback interface that
+ * accepts any context type as void*. We cast it to const char* internally.
+ */
 static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 {
-    return strcmp(ctx, esp_netif_get_desc(netif)) == 0;
+    const char *desc = (const char *)ctx;
+    return strcmp(desc, esp_netif_get_desc(netif)) == 0;
 }
 
 esp_netif_t *net_get_netif_from_desc(const char *desc)

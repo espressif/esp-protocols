@@ -36,31 +36,6 @@ If the Thread end-device joins a Thread network with a Thread Border Router that
 Point to point connection method creates a simple IP tunnel to the counterpart device (running PPP server), typically a Linux machine with pppd service. We currently support only PPP over Serial (using UART or USB CDC). This is useful for simple testing of networking layers, but with some additional configuration on the server side, we could simulate standard model of internet connectivity. The PPP server could be also represented by a cellular modem device with pre-configured connectivity and already switched to PPP mode (this setup is not very flexible though, so we suggest using a standard modem library implementing commands and modes, e.g. [esp_modem](https://components.espressif.com/component/espressif/esp_modem) ).
 
 > [!Note]
-> Note that if you choose USB device, you have to manually add a dependency on `esp_tinyusb` component. This step is necessary to keep the `net_connect` component simple and dependency free. Please run this command from your project location to add the dependency:
-> ```bash
-> idf.py add-dependency espressif/esp_tinyusb^1
-> ```
+> When using USB CDC device (`CONFIG_NET_CONNECT_PPP_DEVICE_USB=y`), the `esp_tinyusb` component is automatically included as a dependency. No manual steps are required.
 
-#### Setup a PPP server
-
-Connect the board using UART or USB and note the device name, which would be typically:
-* `/dev/ttyACMx` for USB devices
-* `/dev/ttyUSBx` for UART devices
-
-Run the pppd server:
-
-```bash
-sudo pppd /dev/ttyACM0 115200 192.168.11.1:192.168.11.2 ms-dns 8.8.8.8 modem local noauth debug nocrtscts nodetach +ipv6
-```
-
-Please update the parameters with the correct serial device, baud rate, IP addresses, DNS server, use `+ipv6` if `CONFIG_NET_CONNECT_IPV6=y`.
-
-#### Connection to outside
-
-In order to access other network endpoints, we have to configure some IP/translation rules. The easiest method is to setup a masquerade of the PPPD created interface (`ppp0`) to your default networking interface (`${ETH0}`). Here is an example of such rule:
-
-```bash
-sudo iptables -t nat -A POSTROUTING -o ${ETH0} -j MASQUERADE
-sudo iptables -A FORWARD -i ${ETH0} -o ppp0 -m state --state RELATED,ESTABLISHED -j ACCEPT
-sudo iptables -A FORWARD -i ppp0 -o ${ETH0} -j ACCEPT
-```
+For detailed PPP setup instructions, server configuration, and examples, see the [PPP Connection Example README](examples/ppp_connect_example/README.md).

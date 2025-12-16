@@ -16,7 +16,6 @@
 extern "C" {
 #endif
 
-#if !CONFIG_IDF_TARGET_LINUX
 #if CONFIG_NET_CONNECT_WIFI
 #define NET_CONNECT_NETIF_DESC_STA "net_connect_netif_sta"
 #endif
@@ -80,6 +79,7 @@ extern "C" {
 #define net_get_netif() net_get_netif_from_desc(NET_CONNECT_NETIF_DESC_PPP)
 #endif
 
+#if !CONFIG_IDF_TARGET_LINUX
 /**
  * @brief Configure Wi-Fi or Ethernet, connect, wait for IP
  *
@@ -120,7 +120,7 @@ esp_err_t net_configure_stdin_stdout(void);
  */
 esp_netif_t *net_get_netif_from_desc(const char *desc);
 
-#if CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD
+#if CONFIG_NET_CONNECT_WIFI && CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD
 /**
  * @brief Register wifi connect commands
  *

@@ -10,6 +10,23 @@
 #include "driver/uart.h"
 #include "sdkconfig.h"
 
+/**
+ * @brief Configure stdin and stdout to use blocking I/O via UART
+ *
+ * This function initializes the UART driver and configures the VFS layer to use
+ * it for console I/O operations. It sets up stdin/stdout to work with standard
+ * C/C++ I/O functions (e.g., scanf, printf, std::cin, std::cout).
+ *
+ * The function is idempotent - if the UART driver is already installed, it
+ * returns immediately without re-initializing.
+ *
+ * Configuration details:
+ * - Sets stdin to unbuffered mode for immediate input processing
+ * - Installs interrupt-driven UART driver with 256-byte RX buffer
+ * - Configures line endings: CR for received data, CRLF for transmitted data
+ *
+ * @return ESP_OK on success
+ */
 esp_err_t net_configure_stdin_stdout(void)
 {
     if (uart_is_driver_installed((uart_port_t)CONFIG_ESP_CONSOLE_UART_NUM)) {
