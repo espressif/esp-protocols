@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -93,6 +93,15 @@ static void mdns_test_app(esp_netif_t *interface)
     ESP_LOGI(TAG, "mdns hostname set to: [%s]", CONFIG_TEST_HOSTNAME);
     ESP_ERROR_CHECK(mdns_register_netif(interface));
     ESP_ERROR_CHECK(mdns_netif_action(interface, MDNS_EVENT_ENABLE_IP4 /*| MDNS_EVENT_ENABLE_IP6 */ | MDNS_EVENT_IP4_REVERSE_LOOKUP | MDNS_EVENT_IP6_REVERSE_LOOKUP));
+    /// here we query for _services._dns-sd._udp
+    mdns_result_t *results = NULL;
+    esp_err_t err = mdns_query_ptr("_services._dns-sd", "_udp", 2000, 1, &results);
+    if (err) {
+        ESP_LOGE(TAG, "Query Failed: %x", (err));
+        // return;
+    }
+    ESP_LOGI(TAG, "Query PTR: _services._dns-sd._udp results: %p", results);
+    mdns_query_results_free(results);
 
 #ifdef CONFIG_TEST_CONSOLE
     esp_console_repl_t *repl = NULL;
