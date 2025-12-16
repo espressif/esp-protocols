@@ -6,8 +6,6 @@
 #pragma once
 
 
-#define EAI_SYSTEM      11  /* system error returned in errno */
-
 #include "esp_log.h"
 #define LOG_EMERG  (0)
 #define LOG_ALERT  (1)
@@ -30,6 +28,5 @@
 
 #define syslog(sev, format, ... ) ESP_LOG_LEVEL_LOCAL(sev-2,   "mosquitto", format, ##__VA_ARGS__)
 
-#define gai_strerror(x) "gai_strerror() not supported"
 #define openlog(a, b, c)
 #define closelog()

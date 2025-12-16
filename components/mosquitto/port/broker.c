@@ -9,6 +9,8 @@
 #include "mosquitto_broker_internal.h"
 #include "memory_mosq.h"
 #include "mosq_broker.h"
+#include <time.h>
+#include <sys/time.h>
 
 static struct mosquitto__listener_sock *listensock = NULL;
 static int listensock_count = 0;

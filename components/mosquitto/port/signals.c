@@ -6,8 +6,11 @@
  * SPDX-FileContributor: 2024 Espressif Systems (Shanghai) CO LTD
  */
 #include "signal.h"
+#include "sdkconfig.h"
 
-int sigprocmask (int, const sigset_t *, sigset_t *)
+#ifndef CONFIG_IDF_TARGET_LINUX
+int sigprocmask(int, const sigset_t *, sigset_t *)
 {
     return 0;
 }
+#endif

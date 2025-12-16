@@ -13,7 +13,7 @@
 #include "mosq_broker.h"
 #include "protocol_examples_common.h"
 
-const static char *TAG = "mqtt_broker";
+__attribute__((unused)) const static char *TAG = "mqtt_broker";
 
 /* Basic auth credentials for the example */
 #define EXAMPLE_USERNAME "testuser"
