@@ -1,3 +1,11 @@
+idf_build_get_property(idf_target IDF_TARGET)
+
+if(${idf_target} STREQUAL "linux" AND NOT SOCK_UTILS_HOST_TESTS)
+     # This component is no-op for linux simulator
+    idf_component_register(PRIV_REQUIRES lwip esp_netif)
+    return()
+endif()
+
 idf_component_register(SRCS "src/getnameinfo.c"
                             "src/ifaddrs.c"
                             "src/gai_strerror.c"
