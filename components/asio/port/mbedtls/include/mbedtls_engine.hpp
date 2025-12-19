@@ -239,13 +239,13 @@ private:
 
         ~impl()
         {
+            mbedtls_ssl_free(&ssl_);
+            mbedtls_ssl_config_free(&conf_);
+            mbedtls_ctr_drbg_free(&ctr_drbg_);
+            mbedtls_entropy_free(&entropy_);
             mbedtls_x509_crt_free(&ca_cert_);
             mbedtls_pk_free(&pk_key_);
             mbedtls_x509_crt_free(&public_cert_);
-            mbedtls_entropy_free(&entropy_);
-            mbedtls_ctr_drbg_free(&ctr_drbg_);
-            mbedtls_ssl_config_free(&conf_);
-            mbedtls_ssl_free(&ssl_);
         }
 
         bool configure(context *ctx, bool is_client_not_server, int mbedtls_verify_mode)
