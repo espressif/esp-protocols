@@ -62,6 +62,11 @@ public:
     explicit engine(std::shared_ptr<context> ctx): ctx_(std::move(ctx)),
         bio_(bio::new_pair("mbedtls-engine")), state_(IDLE), verify_mode_(0) {}
 
+    ~engine()
+    {
+        bio::untie_pair(bio_);
+    }
+
     void set_verify_mode(asio::ssl::verify_mode mode)
     {
         verify_mode_ = mode;
@@ -232,8 +237,22 @@ private:
             mbedtls_x509_crt_init(&ca_cert_);
         }
 
+        ~impl()
+        {
+            mbedtls_ssl_free(&ssl_);
+            mbedtls_ssl_config_free(&conf_);
+            mbedtls_ctr_drbg_free(&ctr_drbg_);
+            mbedtls_entropy_free(&entropy_);
+            mbedtls_x509_crt_free(&ca_cert_);
+            mbedtls_pk_free(&pk_key_);
+            mbedtls_x509_crt_free(&public_cert_);
+        }
+
         bool configure(context *ctx, bool is_client_not_server, int mbedtls_verify_mode)
         {
+            mbedtls_x509_crt_free(&ca_cert_);
+            mbedtls_pk_free(&pk_key_);
+            mbedtls_x509_crt_free(&public_cert_);
             mbedtls_x509_crt_init(&public_cert_);
             mbedtls_pk_init(&pk_key_);
             mbedtls_x509_crt_init(&ca_cert_);
