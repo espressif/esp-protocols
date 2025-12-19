@@ -100,6 +100,17 @@ public:
         return std::make_pair(b1, b2);
     }
 
+    // untie cyclic shared_ptr references made by new_pair in preparation for destruction
+    static void untie_pair(std::pair<std::shared_ptr<bio>, std::shared_ptr<bio>>& pair)
+    {
+        if (pair.first) {
+            pair.first->peer_.reset();
+        }
+        if (pair.second) {
+            pair.second->peer_.reset();
+        }
+    }
+
 private:
     std::array<uint8_t, BIO_SIZE> data_ {};
     size_t size_ {BIO_SIZE};
