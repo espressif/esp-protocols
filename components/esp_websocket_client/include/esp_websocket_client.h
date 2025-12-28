@@ -91,6 +91,8 @@ typedef struct {
     int payload_len;                        /*!< Total payload length, payloads exceeding buffer will be posted through multiple events */
     int payload_offset;                     /*!< Actual offset for the data associated with this event */
     esp_websocket_error_codes_t error_handle; /*!< esp-websocket error handle including esp-tls errors as well as internal websocket errors */
+    const char *response_headers;           /*!< WebSocket handshake response headers */
+    size_t response_headers_len;            /*!< WebSocket handshake response headers length */
 } esp_websocket_event_data_t;
 
 /**
@@ -147,6 +149,8 @@ typedef struct {
     size_t                      ping_interval_sec;          /*!< Websocket ping interval, defaults to 10 seconds if not set */
     struct ifreq                *if_name;                   /*!< The name of interface for data to go through. Use the default interface without setting */
     esp_transport_handle_t      ext_transport;              /*!< External WebSocket tcp_transport handle to the client; or if null, the client will create its own transport handle. */
+    char                        *response_headers;          /*!< WebSocket handshake response headers */
+    size_t                       response_headers_len;      /*!< WebSocket handshake response headers length */
 } esp_websocket_client_config_t;
 
 /**
