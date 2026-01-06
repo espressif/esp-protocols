@@ -23,4 +23,4 @@
 #define isspace(__c) (__ctype_lookup((int)__c)&_S)
 #endif
 
-#define VERSION "v2.0.20~5"
+#define VERSION "v2.0.20~6"

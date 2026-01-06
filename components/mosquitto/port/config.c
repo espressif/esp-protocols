@@ -14,6 +14,7 @@
 #include "utlist.h"
 #include "lib_load.h"
 #include "syslog.h"
+#include <limits.h>
 #include "sdkconfig.h"
 
 
@@ -244,3 +245,13 @@ pid_t fork(void)
     abort();
     return 0;
 }
+
+#ifdef CONFIG_IDF_TARGET_LINUX
+extern void app_main(void);
+
+int __wrap_main(int argc, char *argv[])
+{
+    app_main();
+    return 0;
+}
+#endif

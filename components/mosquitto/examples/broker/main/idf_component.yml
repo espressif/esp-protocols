@@ -8,3 +8,6 @@ dependencies:
     rules:
     - if: idf_version >=6.0
       version: ^1.0.0
+  espressif/sock_utils:
+    version: '*'
+    override_path: '../../../../sock_utils'

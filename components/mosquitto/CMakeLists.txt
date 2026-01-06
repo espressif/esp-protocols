@@ -1,3 +1,5 @@
+idf_build_get_property(idf_target IDF_TARGET)
+
 set(m_dir mosquitto)
 set(m_src_dir ${m_dir}/src)
 set(m_incl_dir ${m_dir}/include)
@@ -93,6 +95,10 @@ target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 # Enable linker wrapping for mosquitto_unpwd_check to allow connection callback interception
 # without modifying upstream code
 target_link_options(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=mosquitto_unpwd_check")
+
+if(${idf_target} STREQUAL "linux")
+    target_link_options(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=main")
+endif()
 
 # Some mosquitto source unconditionally define `_GNU_SOURCE` which collides with IDF build system
 # producing warning: "_GNU_SOURCE" redefined
