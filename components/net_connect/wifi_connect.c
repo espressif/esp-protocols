@@ -35,7 +35,8 @@ static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event
                                                int32_t event_id, void *event_data)
 {
     s_retry_num++;
-    if (s_retry_num > CONFIG_NET_CONNECT_WIFI_CONN_MAX_RETRY) {
+    int max_retry = s_wifi_sta_configured ? s_wifi_sta_config.max_retry : CONFIG_NET_CONNECT_WIFI_CONN_MAX_RETRY;
+    if (s_retry_num > max_retry) {
         ESP_LOGI(TAG, "WiFi Connect failed %d times, stop reconnect.", s_retry_num);
         /* let net_connect_wifi_sta_do_connect() return */
         if (s_semph_get_ip_addrs) {
@@ -66,7 +67,9 @@ static void example_handler_on_wifi_connect(void *esp_netif, esp_event_base_t ev
                                             int32_t event_id, void *event_data)
 {
 #if CONFIG_NET_CONNECT_IPV6
-    esp_netif_create_ip6_linklocal(esp_netif);
+    if (esp_netif != NULL) {
+        esp_netif_create_ip6_linklocal(esp_netif);
+    }
 #endif // CONFIG_NET_CONNECT_IPV6
 }
 
@@ -150,21 +153,43 @@ static void convert_to_wifi_config(const net_wifi_sta_config_t *net_config, wifi
     wifi_config->sta.threshold.authmode = net_config->auth_mode_threshold;
 }
 
-void net_connect_wifi_start(void)
+esp_err_t net_connect_wifi_start(void)
 {
+    if (s_example_sta_netif != NULL) {
+        ESP_LOGD(TAG, "WiFi already started, skipping initialization");
+        return ESP_OK;
+    }
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    esp_err_t ret = esp_wifi_init(&cfg);
+    bool wifi_already_init = (ret == ESP_ERR_INVALID_STATE);
+
+    if (!wifi_already_init) {
+        ESP_ERROR_CHECK(ret);
+    } else {
+        ESP_LOGD(TAG, "WiFi already initialized, skipping esp_wifi_init()");
+    }
 
     esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
     // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
     esp_netif_config.if_desc = NET_CONNECT_NETIF_DESC_STA;
     esp_netif_config.route_prio = 128;
     s_example_sta_netif = esp_netif_create_wifi(WIFI_IF_STA, &esp_netif_config);
+    if (s_example_sta_netif == NULL) {
+        ESP_LOGE(TAG, "Failed to create WiFi netif (memory allocation failure)");
+        if (!wifi_already_init) {
+            esp_wifi_deinit();
+        }
+        return ESP_ERR_NO_MEM;
+    }
     esp_wifi_set_default_wifi_sta_handlers();
 
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    if (!wifi_already_init) {
+        ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_start());
+    }
+    return ESP_OK;
 }
 
 
@@ -176,11 +201,43 @@ void net_connect_wifi_stop(void)
     }
     ESP_ERROR_CHECK(err);
     ESP_ERROR_CHECK(esp_wifi_deinit());
-    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(s_example_sta_netif));
-    esp_netif_destroy(s_example_sta_netif);
-    s_example_sta_netif = NULL;
+    if (s_example_sta_netif != NULL) {
+        ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(s_example_sta_netif));
+        esp_netif_destroy(s_example_sta_netif);
+        s_example_sta_netif = NULL;
+    }
 }
 
+/**
+ * @brief Clean up event handlers and semaphores registered during WiFi connection attempt
+ * @param cleanup_semaphores If true, also delete semaphores created for waiting
+ */
+static void wifi_connect_cleanup_handlers(bool cleanup_semaphores)
+{
+    /* Unregister event handlers */
+    esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &example_handler_on_wifi_disconnect);
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &example_handler_on_sta_got_ip);
+    esp_event_handler_unregister(WIFI_EVENT, WIFI_EVENT_STA_CONNECTED, &example_handler_on_wifi_connect);
+#if CONFIG_NET_CONNECT_IPV6
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &example_handler_on_sta_got_ipv6);
+#endif
+
+    /* Clean up semaphores if requested */
+    if (cleanup_semaphores) {
+#if CONFIG_NET_CONNECT_IPV4
+        if (s_semph_get_ip_addrs) {
+            vSemaphoreDelete(s_semph_get_ip_addrs);
+            s_semph_get_ip_addrs = NULL;
+        }
+#endif
+#if CONFIG_NET_CONNECT_IPV6
+        if (s_semph_get_ip6_addrs) {
+            vSemaphoreDelete(s_semph_get_ip6_addrs);
+            s_semph_get_ip6_addrs = NULL;
+        }
+#endif
+    }
+}
 
 esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
 {
@@ -215,6 +272,7 @@ esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
     esp_err_t ret = esp_wifi_connect();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "WiFi connect failed! ret:%x", ret);
+        wifi_connect_cleanup_handlers(wait);
         return ret;
     }
     if (wait) {
@@ -229,7 +287,9 @@ esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
         vSemaphoreDelete(s_semph_get_ip6_addrs);
         s_semph_get_ip6_addrs = NULL;
 #endif
-        if (s_retry_num > CONFIG_NET_CONNECT_WIFI_CONN_MAX_RETRY) {
+        int max_retry = s_wifi_sta_configured ? s_wifi_sta_config.max_retry : CONFIG_NET_CONNECT_WIFI_CONN_MAX_RETRY;
+        if (s_retry_num > max_retry) {
+            wifi_connect_cleanup_handlers(false);
             return ESP_FAIL;
         }
     }
@@ -290,7 +350,10 @@ esp_err_t net_connect_wifi(void)
     }
 
     /* Start WiFi driver and create netif */
-    net_connect_wifi_start();
+    esp_err_t err = net_connect_wifi_start();
+    if (err != ESP_OK) {
+        return err;
+    }
 
     /* Convert stored config to wifi_config_t */
     wifi_config_t wifi_config;
@@ -305,10 +368,7 @@ esp_err_t net_connect_wifi(void)
         net_connect_wifi_stop();
         return ESP_ERR_INVALID_STATE;
     }
-    int len = strlen(buf);
-    if (len > 0) {
-        buf[len - 1] = '\0'; /* removes '\n' */
-    }
+    buf[strcspn(buf, "\n")] = '\0'; /* removes '\n' if present */
     memset(wifi_config.sta.ssid, 0, sizeof(wifi_config.sta.ssid));
 
     char *rest = NULL;
@@ -331,7 +391,7 @@ esp_err_t net_connect_wifi(void)
 #endif
 
     /* Connect using existing internal function */
-    esp_err_t err = net_connect_wifi_sta_do_connect(wifi_config, true);
+    err = net_connect_wifi_sta_do_connect(wifi_config, true);
     if (err != ESP_OK) {
         net_connect_wifi_stop();
         return err;

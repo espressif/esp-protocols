@@ -46,7 +46,11 @@ bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
     if (prefix == NULL || *prefix == '\0') {
         return false;
     }
-    return strncmp(prefix, esp_netif_get_desc(netif), strlen(prefix)) == 0;
+    const char *netif_desc = esp_netif_get_desc(netif);
+    if (netif_desc == NULL) {
+        return false;
+    }
+    return strncmp(prefix, netif_desc, strlen(prefix)) == 0;
 }
 
 /**
@@ -60,7 +64,11 @@ bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
 static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 {
     const char *desc = (const char *)ctx;
-    return strcmp(desc, esp_netif_get_desc(netif)) == 0;
+    const char *netif_desc = esp_netif_get_desc(netif);
+    if (netif_desc == NULL) {
+        return false;
+    }
+    return strcmp(desc, netif_desc) == 0;
 }
 
 esp_netif_t *net_get_netif_from_desc(const char *desc)
@@ -78,7 +86,8 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
     esp_netif_t *netif = NULL;
     while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
         if (net_connect_is_our_netif(prefix, netif)) {
-            ESP_LOGI(TAG, "Connected to %s", esp_netif_get_desc(netif));
+            const char *netif_desc = esp_netif_get_desc(netif);
+            ESP_LOGI(TAG, "Connected to %s", netif_desc != NULL ? netif_desc : "(null)");
 #if CONFIG_NET_CONNECT_IPV4
             esp_netif_ip_info_t ip;
             ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
@@ -219,29 +228,42 @@ cleanup:
 
 esp_err_t net_disconnect(void)
 {
+    esp_err_t ret;
     ESP_LOGI(TAG, "Disconnecting network interfaces...");
 #if CONFIG_NET_CONNECT_ETHERNET
     ESP_LOGI(TAG, "Deinitializing Ethernet interface...");
     net_connect_ethernet_shutdown();
-    ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown));
+    ret = esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(ret);
+    }
     ESP_LOGI(TAG, "Ethernet interface deinitialized");
 #endif
 #if CONFIG_NET_CONNECT_WIFI
     ESP_LOGI(TAG, "Deinitializing WiFi interface...");
     net_connect_wifi_shutdown();
-    ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_wifi_shutdown));
+    ret = esp_unregister_shutdown_handler(&net_connect_wifi_shutdown);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(ret);
+    }
     ESP_LOGI(TAG, "WiFi interface deinitialized");
 #endif
 #if CONFIG_NET_CONNECT_THREAD
     ESP_LOGI(TAG, "Deinitializing Thread interface...");
     net_connect_thread_shutdown();
-    ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_thread_shutdown));
+    ret = esp_unregister_shutdown_handler(&net_connect_thread_shutdown);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(ret);
+    }
     ESP_LOGI(TAG, "Thread interface deinitialized");
 #endif
 #if CONFIG_NET_CONNECT_PPP
     ESP_LOGI(TAG, "Deinitializing PPP interface...");
     net_connect_ppp_shutdown();
-    ESP_ERROR_CHECK(esp_unregister_shutdown_handler(&net_connect_ppp_shutdown));
+    ret = esp_unregister_shutdown_handler(&net_connect_ppp_shutdown);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(ret);
+    }
     ESP_LOGI(TAG, "PPP interface deinitialized");
 #endif
     ESP_LOGI(TAG, "All network interfaces disconnected");

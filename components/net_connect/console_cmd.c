@@ -14,7 +14,7 @@
 #include "argtable3/argtable3.h"
 
 
-static const char *TAG = "example_console";
+static const char *TAG = "net_connect_console";
 
 typedef struct {
     struct arg_str *ssid;
@@ -51,7 +51,11 @@ static int cmd_do_wifi_connect(int argc, char **argv)
     if (pass) {
         strlcpy((char *) wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
     }
-    net_connect_wifi_sta_do_connect(wifi_config, false);
+    esp_err_t ret = net_connect_wifi_sta_do_connect(wifi_config, false);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi connect failed: %s", esp_err_to_name(ret));
+        return 1;
+    }
     return 0;
 }
 
@@ -64,7 +68,11 @@ static int cmd_do_wifi_disconnect(int argc, char **argv)
 void net_register_wifi_connect_commands(void)
 {
     ESP_LOGI(TAG, "Registering WiFi connect commands.");
-    net_connect_wifi_start();
+    esp_err_t ret = net_connect_wifi_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(ret));
+        return;
+    }
 
     connect_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
     connect_args.password = arg_str0(NULL, NULL, "<pass>", "password of AP");

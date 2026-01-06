@@ -26,7 +26,7 @@ static TaskHandle_t s_ot_task_handle = NULL;
 static esp_netif_t *s_openthread_netif = NULL;
 static SemaphoreHandle_t s_semph_thread_attached = NULL;
 static SemaphoreHandle_t s_semph_thread_set_dns_server = NULL;
-static const char *TAG = "example_connect";
+static const char *TAG = "net_connect_thread";
 
 static void thread_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id,
                                  void* event_data)
@@ -81,6 +81,7 @@ static void ot_task_worker(void *aContext)
     s_ot_task_handle = NULL;
     esp_openthread_netif_glue_deinit();
     esp_netif_destroy(s_openthread_netif);
+    s_openthread_netif = NULL;
     esp_vfs_eventfd_unregister();
     vTaskDelete(NULL);
 }
@@ -95,11 +96,18 @@ void net_connect_thread_shutdown(void)
         // If s_ot_task_handle was NULL, the task already cleaned up
         esp_openthread_netif_glue_deinit();
         esp_netif_destroy(s_openthread_netif);
+        s_openthread_netif = NULL;
         esp_vfs_eventfd_unregister();
     }
     esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler);
-    vSemaphoreDelete(s_semph_thread_set_dns_server);
-    vSemaphoreDelete(s_semph_thread_attached);
+    if (s_semph_thread_set_dns_server != NULL) {
+        vSemaphoreDelete(s_semph_thread_set_dns_server);
+        s_semph_thread_set_dns_server = NULL;
+    }
+    if (s_semph_thread_attached != NULL) {
+        vSemaphoreDelete(s_semph_thread_attached);
+        s_semph_thread_attached = NULL;
+    }
 }
 
 esp_err_t net_connect_thread_connect(void)
@@ -111,6 +119,7 @@ esp_err_t net_connect_thread_connect(void)
     s_semph_thread_set_dns_server = xSemaphoreCreateBinary();
     if (s_semph_thread_set_dns_server == NULL) {
         vSemaphoreDelete(s_semph_thread_attached);
+        s_semph_thread_attached = NULL;
         return ESP_ERR_NO_MEM;
     }
     // 4 eventfds might be used for Thread
@@ -127,7 +136,9 @@ esp_err_t net_connect_thread_connect(void)
         esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, thread_event_handler);
         esp_vfs_eventfd_unregister();
         vSemaphoreDelete(s_semph_thread_attached);
+        s_semph_thread_attached = NULL;
         vSemaphoreDelete(s_semph_thread_set_dns_server);
+        s_semph_thread_set_dns_server = NULL;
         ESP_LOGE(TAG, "Failed to create openthread task");
         return ESP_FAIL;
     }

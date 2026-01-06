@@ -35,7 +35,7 @@ extern "C" {
 extern const char *net_connect_ipv6_addr_types_to_str[6];
 #endif
 
-void net_connect_wifi_start(void);
+esp_err_t net_connect_wifi_start(void);
 void net_connect_wifi_stop(void);
 esp_err_t net_connect_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait);
 esp_err_t net_connect_wifi_sta_do_disconnect(void);

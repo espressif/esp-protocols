@@ -18,7 +18,7 @@
 #include "freertos/event_groups.h"
 
 
-static const char *TAG = "ethernet_connect";
+static const char *TAG = "net_connect_ethernet";
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
 #if CONFIG_NET_CONNECT_IPV6
 static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
@@ -38,7 +38,9 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
         return;
     }
     ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
-    xSemaphoreGive(s_semph_get_ip_addrs);
+    if (s_semph_get_ip_addrs) {
+        xSemaphoreGive(s_semph_get_ip_addrs);
+    }
 }
 
 #if CONFIG_NET_CONNECT_IPV6
@@ -54,7 +56,9 @@ static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
     ESP_LOGI(TAG, "Got IPv6 event: Interface \"%s\" address: " IPV6STR ", type: %s", esp_netif_get_desc(event->esp_netif),
              IPV62STR(event->ip6_info.ip), net_connect_ipv6_addr_types_to_str[ipv6_type]);
     if (ipv6_type == NET_CONNECT_PREFERRED_IPV6_TYPE) {
-        xSemaphoreGive(s_semph_get_ip6_addrs);
+        if (s_semph_get_ip6_addrs) {
+            xSemaphoreGive(s_semph_get_ip6_addrs);
+        }
     }
 }
 
@@ -144,6 +148,9 @@ static void eth_stop(void)
 /* tear down connection, release resources */
 void net_connect_ethernet_shutdown(void)
 {
+    if (s_eth_netif != NULL) {
+        eth_stop();
+    }
 #if CONFIG_NET_CONNECT_IPV4
     if (s_semph_get_ip_addrs != NULL) {
         vSemaphoreDelete(s_semph_get_ip_addrs);
@@ -156,9 +163,6 @@ void net_connect_ethernet_shutdown(void)
         s_semph_get_ip6_addrs = NULL;
     }
 #endif
-    if (s_eth_netif != NULL) {
-        eth_stop();
-    }
 }
 
 esp_err_t net_connect_ethernet_connect(void)

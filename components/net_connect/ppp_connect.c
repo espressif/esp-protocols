@@ -22,7 +22,7 @@
 #include "tinyusb_cdc_acm.h"
 #include "tinyusb_default_config.h"
 
-static int s_itf;
+static int s_itf = TINYUSB_CDC_ACM_0;  // Initialize to default CDC port, updated by line_state_changed callback
 static uint8_t buf[CONFIG_TINYUSB_CDC_RX_BUFSIZE];
 
 #else // DEVICE is UART
@@ -34,7 +34,7 @@ static bool s_stop_task = false;
 #endif // CONNECT_PPP_DEVICE
 
 
-static const char *TAG = "example_connect_ppp";
+static const char *TAG = "net_connect_ppp";
 static int s_retry_num = 0;
 static EventGroupHandle_t s_event_group = NULL;
 static esp_netif_t *s_netif;
@@ -51,6 +51,7 @@ static esp_err_t transmit(void *h, void *buffer, size_t len)
 {
     ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
 #if CONFIG_NET_CONNECT_PPP_DEVICE_USB
+    // s_itf is initialized to TINYUSB_CDC_ACM_0 by default, and may be updated by line_state_changed callback
     tinyusb_cdcacm_write_queue(s_itf, buffer, len);
     tinyusb_cdcacm_write_flush(s_itf, 0);
 #else // DEVICE_UART
@@ -118,6 +119,7 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 static void cdc_rx_callback(int itf, cdcacm_event_t *event)
 {
     size_t rx_size = 0;
+    // Only process data from the interface we're using
     if (itf != s_itf) {
         // Not our channel
         return;
@@ -176,13 +178,19 @@ static void ppp_task(void *args)
     while (!s_stop_task) {
         if (xQueueReceive(event_queue, &event, pdMS_TO_TICKS(1000)) == pdTRUE) {
             if (event.type == UART_DATA) {
-                size_t len;
-                uart_get_buffered_data_len(UART_NUM_1, &len);
-                if (len) {
-                    len = uart_read_bytes(UART_NUM_1, buffer, BUF_SIZE, 0);
-                    ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
-                    esp_netif_receive(s_netif, buffer, len, NULL);
+                // Only process data when timeout occurs (end of frame)
+                // This allows accumulating more data (up to BUF_SIZE) before transfer
+                // and ensures proper PPP frame separation based on silence time
+                if (event.timeout_flag) {
+                    size_t len;
+                    uart_get_buffered_data_len(UART_NUM_1, &len);
+                    if (len) {
+                        len = uart_read_bytes(UART_NUM_1, buffer, BUF_SIZE, 0);
+                        ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, len, ESP_LOG_VERBOSE);
+                        esp_netif_receive(s_netif, buffer, len, NULL);
+                    }
                 }
+                // Ignore FIFO-full events (timeout_flag = false) to accumulate more data
             } else {
                 ESP_LOGW(TAG, "Received UART event: %d", event.type);
             }
@@ -198,8 +206,36 @@ static void ppp_task(void *args)
 
 #endif // CONNECT_PPP_DEVICE
 
+static void cleanup_on_failure(void)
+{
+    // Unregister event handler
+    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event);
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
+    // Clean up TinyUSB resources
+    tinyusb_cdcacm_register_callback(TINYUSB_CDC_ACM_0, CDC_EVENT_LINE_STATE_CHANGED, NULL);
+    tinyusb_driver_uninstall();
+#elif CONFIG_NET_CONNECT_PPP_DEVICE_UART
+    // Stop the PPP task in UART mode
+    s_stop_task = true;
+    vTaskDelay(pdMS_TO_TICKS(1000)); // wait for the ppp task to stop
+#endif
+    // Disconnect and destroy netif
+    if (s_netif != NULL) {
+        esp_netif_action_disconnected(s_netif, 0, 0, 0);
+        esp_netif_action_stop(s_netif, 0, 0, 0);
+        esp_netif_destroy(s_netif);
+        s_netif = NULL;
+    }
+    // Delete event group
+    if (s_event_group != NULL) {
+        vEventGroupDelete(s_event_group);
+        s_event_group = NULL;
+    }
+}
+
 esp_err_t net_connect_ppp_connect(void)
 {
+    s_retry_num = 0;
     ESP_LOGI(TAG, "Start example_connect.");
 
 #if CONFIG_NET_CONNECT_PPP_DEVICE_USB
@@ -227,6 +263,11 @@ esp_err_t net_connect_ppp_connect(void)
     s_event_group = xEventGroupCreate();
     if (s_event_group == NULL) {
         ESP_LOGE(TAG, "Failed to create event group");
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
+        // Clean up TinyUSB resources before returning
+        tinyusb_cdcacm_register_callback(TINYUSB_CDC_ACM_0, CDC_EVENT_LINE_STATE_CHANGED, NULL);
+        tinyusb_driver_uninstall();
+#endif // CONFIG_NET_CONNECT_PPP_DEVICE_USB
         return ESP_ERR_NO_MEM;
     }
 
@@ -248,6 +289,7 @@ esp_err_t net_connect_ppp_connect(void)
     s_stop_task = false;
     if (xTaskCreate(ppp_task, "ppp connect", 4096, NULL, 5, NULL) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to create a ppp connection task");
+        cleanup_on_failure();
         return ESP_FAIL;
     }
 #endif // CONNECT_PPP_DEVICE
@@ -265,6 +307,7 @@ esp_err_t net_connect_ppp_connect(void)
 
         if (bits & CONNECTION_FAILED) {
             ESP_LOGE(TAG, "Connection failed!");
+            cleanup_on_failure();
             return ESP_FAIL;
         }
 
@@ -278,6 +321,7 @@ esp_err_t net_connect_ppp_connect(void)
     EventBits_t bits = xEventGroupWaitBits(s_event_group, CONNECT_BITS, pdFALSE, pdFALSE, portMAX_DELAY);
     if (bits & CONNECTION_FAILED) {
         ESP_LOGE(TAG, "Connection failed!");
+        cleanup_on_failure();
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "Connected!");
@@ -299,15 +343,27 @@ void net_connect_ppp_shutdown(void)
     vTaskDelay(pdMS_TO_TICKS(1000)); // wait for the ppp task to stop
 #endif
 
-    esp_netif_action_disconnected(s_netif, 0, 0, 0);
+    // Stop netif first to allow PPP to send closing frames while TinyUSB is still active
+    if (s_netif != NULL) {
+        esp_netif_action_disconnected(s_netif, 0, 0, 0);
+        esp_netif_action_stop(s_netif, 0, 0, 0);
+        // Wait a bit for PPP close frames to be sent
+        vTaskDelay(pdMS_TO_TICKS(100));
+        esp_netif_destroy(s_netif);
+        s_netif = NULL;
+    }
+
+#if CONFIG_NET_CONNECT_PPP_DEVICE_USB
+    // Uninstall TinyUSB driver to free USB resources (after netif is stopped)
+    tinyusb_driver_uninstall();
+    // Reset interface to default after uninstall
+    s_itf = TINYUSB_CDC_ACM_0;
+#endif
 
     if (s_event_group != NULL) {
         vEventGroupDelete(s_event_group);
+        s_event_group = NULL;
     }
-    esp_netif_action_stop(s_netif, 0, 0, 0);
-    esp_netif_destroy(s_netif);
-    s_netif = NULL;
-    s_event_group = NULL;
 }
 
 #endif // CONFIG_NET_CONNECT_PPP

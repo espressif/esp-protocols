@@ -47,25 +47,65 @@ Run `idf.py menuconfig` and navigate to `Component config → Net Connect Config
 
 ### Using sdkconfig.defaults
 
-The example includes a `sdkconfig.defaults` file with default configurations. By default, **UART is selected** for maximum compatibility across all ESP32 variants.
+The example includes a `sdkconfig.defaults` file with default configurations. The configuration depends on your target board:
 
-**To use USB CDC instead of UART**:
-1. Edit `sdkconfig.defaults` and change:
-   ```
-   CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
-   # CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
-   ```
-   to:
-   ```
-   # CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
-   CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
-   ```
-2. Rebuild the project:
-   ```bash
-   idf.py build
-   ```
+#### Board-Specific Configuration
 
-   Note: The `esp_tinyusb` dependency is automatically included by the `net_connect` component when USB CDC is enabled.
+**For boards with USB OTG support** (ESP32-S3, ESP32-S2, ESP32-P4, ESP32-H4):
+- These boards support USB CDC (appears as `/dev/ttyACMx` on Linux)
+- **Configuration steps**:
+  1. Edit `sdkconfig.defaults` and ensure:
+     ```
+     CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
+     # CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
+     ```
+  2. Edit `main/idf_component.yml` and ensure the `esp_tinyusb` dependency is **uncommented**:
+     ```yaml
+     dependencies:
+       idf:
+         version: '>=5.0'
+       net_connect:
+         version: '*'
+         override_path: ../../../
+       espressif/esp_tinyusb: ^2
+     ```
+  3. Rebuild the project:
+     ```bash
+     idf.py build
+     ```
+
+**For boards without USB OTG support** (ESP32, ESP32-C3, ESP32-C6, ESP32-C61):
+- These boards require UART mode with a USB-to-Serial adapter (appears as `/dev/ttyUSBx` on Linux)
+- **Configuration steps**:
+  1. Edit `sdkconfig.defaults` and ensure:
+     ```
+     # CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
+     CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
+     ```
+  2. Edit `main/idf_component.yml` and ensure the `esp_tinyusb` dependency is **commented out**:
+     ```yaml
+     dependencies:
+       idf:
+         version: '>=5.0'
+       net_connect:
+         version: '*'
+         override_path: ../../../
+       # espressif/esp_tinyusb: ^2  # Not needed for UART mode
+     ```
+  3. Configure UART pins in `sdkconfig.defaults` (if different from defaults):
+     ```
+     CONFIG_NET_CONNECT_UART_TX_PIN=4
+     CONFIG_NET_CONNECT_UART_RX_PIN=5
+     CONFIG_NET_CONNECT_UART_BAUDRATE=115200
+     ```
+  4. Rebuild the project:
+     ```bash
+     idf.py build
+     ```
+
+> **Important**: The `esp_tinyusb` dependency must match your device selection:
+> - **USB CDC mode**: `esp_tinyusb` dependency must be **uncommented** in `idf_component.yml`
+> - **UART mode**: `esp_tinyusb` dependency must be **commented out** in `idf_component.yml`
 
 ## PPP Server Setup
 
@@ -259,21 +299,34 @@ I (42741) main_task: Returned from app_main()
 **Problem**: USB CDC device not recognized or not working.
 
 **Solutions**:
-1. Verify `CONFIG_NET_CONNECT_PPP_DEVICE_USB=y` is set in your configuration
-   - The `esp_tinyusb` dependency is automatically included by the `net_connect` component
-2. Check USB cable supports data transfer (not charge-only)
-3. Verify board supports USB OTG
-4. Check Linux USB permissions (may need to add user to `dialout` group)
+1. Verify your board supports USB OTG (ESP32-S3, ESP32-S2, ESP32-P4, ESP32-H4)
+   - If your board doesn't support USB OTG, use UART mode instead (see [Board-Specific Configuration](#board-specific-configuration))
+2. Verify `CONFIG_NET_CONNECT_PPP_DEVICE_USB=y` is set in your `sdkconfig.defaults`
+3. Ensure the `esp_tinyusb` component is **uncommented** in your application's `idf_component.yml`:
+   ```yaml
+   dependencies:
+     espressif/esp_tinyusb: ^2
+   ```
+   Or run: `idf.py add-dependency espressif/esp_tinyusb^2`
+4. Check USB cable supports data transfer (not charge-only)
+5. Verify board supports USB OTG (check `SOC_USB_OTG_SUPPORTED` capability)
+6. Check Linux USB permissions (may need to add user to `dialout` group)
+7. Verify device appears as `/dev/ttyACMx` (not `/dev/ttyUSBx`) on Linux
 
 ### UART Connection Issues
 
 **Problem**: UART-based PPP connection fails.
 
 **Solutions**:
-1. Verify TX/RX pins are correctly connected (crossed: ESP32 TX → Host RX, ESP32 RX → Host TX)
-2. Check baudrate matches on both sides
-3. Verify UART pins in menuconfig match hardware connections
-4. Check for pin conflicts with other peripherals
+1. Verify your board configuration:
+   - For boards without USB OTG (ESP32, ESP32-C3, ESP32-C6, etc.), ensure `CONFIG_NET_CONNECT_PPP_DEVICE_UART=y` is set
+   - Ensure `esp_tinyusb` dependency is **commented out** in `idf_component.yml` (see [Board-Specific Configuration](#board-specific-configuration))
+2. Verify TX/RX pins are correctly connected (crossed: ESP32 TX → Host RX, ESP32 RX → Host TX)
+3. Check baudrate matches on both sides (default: 115200)
+4. Verify UART pins in `sdkconfig.defaults` match hardware connections (default: TX=4, RX=5)
+5. Check for pin conflicts with other peripherals
+6. Verify USB-to-Serial adapter is working (device should appear as `/dev/ttyUSBx` on Linux)
+7. Ensure USB-to-Serial adapter drivers are installed on your host system
 
 ## Additional Resources
 

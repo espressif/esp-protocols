@@ -11,12 +11,14 @@ CONFIG_NET_CONNECT_THREAD=n
 CONFIG_NET_CONNECT_IPV6=y
 
 # PPP device selection
-# For ESP32-S3 with /dev/ttyACM0 on Linux, use USB CDC:
+# For ESP32-S3, S2, P4, H4 and other boards with USB OTG support:
+#   - Enable USB CDC (uncomment line below)
+#   - Ensure esp_tinyusb dependency is uncommented in idf_component.yml
 CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
-# CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
 #
-# For UART mode (requires USB-to-Serial adapter, use /dev/ttyUSBx on Linux):
-# CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
+# For UART mode (ESP32, C3, C6, etc. without USB OTG, requires USB-to-Serial adapter):
+#   - Enable UART (uncomment line below)
+#   - Comment out esp_tinyusb dependency in idf_component.yml
 # CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
 
 # UART configuration (only used if CONFIG_NET_CONNECT_PPP_DEVICE_UART=y)

@@ -27,10 +27,11 @@ if(CONFIG_NET_CONNECT_PPP)
     list(APPEND srcs "ppp_connect.c")
 endif()
 
+set(priv_requires esp_netif esp_driver_uart esp_wifi vfs)
 
 idf_component_register(SRCS "${srcs}"
                        INCLUDE_DIRS "include"
-                       PRIV_REQUIRES esp_netif esp_driver_uart esp_wifi vfs)
+                       PRIV_REQUIRES ${priv_requires})
 
 if(CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD)
     idf_component_optional_requires(PRIVATE console)
@@ -42,4 +43,8 @@ endif()
 
 if(CONFIG_NET_CONNECT_THREAD)
     idf_component_optional_requires(PRIVATE openthread)
+endif()
+
+if(CONFIG_NET_CONNECT_PPP_DEVICE_USB)
+    idf_component_optional_requires(PRIVATE esp_tinyusb espressif__esp_tinyusb)
 endif()
