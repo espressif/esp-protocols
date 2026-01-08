@@ -77,13 +77,19 @@ jobs:
         with:
           name: modem_target_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/build
+      - name: Prepare Python environment
+        uses: ./.github/actions/setup-pyenv-venv
+        with:
+          python-version: "3.12.6"
+          venv-name: "target-pytest"
+          pip-extra-index-url: "https://dl.espressif.com/pypi/"
+          pip-extra-args: "--prefer-binary"
+          requirements: |
+            cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
+          requirements-file: |
+            $GITHUB_WORKSPACE/ci/requirements.txt
       - name: Run Example Test on target
-        env:
-          PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi/"
         run: |
-            python -m venv .venv
-            source .venv/bin/activate
-            pip install --prefer-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
-            pip install -r $GITHUB_WORKSPACE/ci/requirements.txt
+            python --version
             cd ${{ env.TEST_DIR }}
             python -m pytest --log-cli-level DEBUG --target=${{ matrix.idf_target }}
