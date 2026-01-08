@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.1)
+
+### Bug Fixes
+
+- Fix race conditions, memory leak, and data loss ([23ca97d5](https://github.com/espressif/esp-protocols/commit/23ca97d5))
+    - Add state check in abort_connection to prevent double-close
+    - Fix memory leak: free errormsg_buffer on disconnect
+    - Reset connection state on reconnect to prevent stale data
+    - Implement lock ordering for separate TX lock mode
+    - Read buffered data immediately after connection to prevent data loss
+    - Added sdkconfig.ci.tx_lock config
+
 ## [1.6.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.0)
 
 ### Features
