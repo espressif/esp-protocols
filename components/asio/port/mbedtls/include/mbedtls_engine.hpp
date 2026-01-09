@@ -1,16 +1,35 @@
 //
-// SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+// SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
 //
 // SPDX-License-Identifier: BSL-1.0
 //
 #pragma once
 
+#include "mbedtls/version.h"
 #include "mbedtls/ssl.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
 #include "mbedtls/esp_debug.h"
 #include "esp_log.h"
+
+// Determine mbedTLS major version (ESP-IDF may define MBEDTLS_MAJOR_VERSION via compile flags)
+#if defined(MBEDTLS_MAJOR_VERSION)
+#define ASIO_MBEDTLS_MAJOR MBEDTLS_MAJOR_VERSION
+#elif defined(MBEDTLS_VERSION_MAJOR)
+#define ASIO_MBEDTLS_MAJOR MBEDTLS_VERSION_MAJOR
+#elif defined(MBEDTLS_VERSION_NUMBER)
+#define ASIO_MBEDTLS_MAJOR ((MBEDTLS_VERSION_NUMBER >> 24) & 0xFF)
+#else
+#define ASIO_MBEDTLS_MAJOR 0
+#endif
+
+#if ASIO_MBEDTLS_MAJOR >= 4
+// mbedTLS v4: PSA-backed RNG
+#include "psa/crypto.h"
+#else
+// mbedTLS v3: legacy entropy/CTR_DRBG
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#endif
 
 namespace asio {
 namespace ssl {
@@ -223,15 +242,29 @@ private:
 
         impl()
         {
-            const unsigned char pers[] = "asio ssl";
             mbedtls_ssl_init(&ssl_);
             mbedtls_ssl_config_init(&conf_);
-            mbedtls_ctr_drbg_init(&ctr_drbg_);
 #ifdef CONFIG_MBEDTLS_DEBUG
             mbedtls_esp_enable_debug_log(&conf_, CONFIG_MBEDTLS_DEBUG_LEVEL);
 #endif
+#if ASIO_MBEDTLS_MAJOR >= 4
+            // mbedTLS v4: Initialize PSA Crypto API
+            psa_status_t status = psa_crypto_init();
+            if (status != PSA_SUCCESS) {
+                print_error("psa_crypto_init", static_cast<int>(status));
+                // Note: We continue anyway as psa_crypto_init() is idempotent
+            }
+#else
+            // mbedTLS v3: Initialize legacy entropy and CTR_DRBG
+            const unsigned char pers[] = "asio ssl";
+            mbedtls_ctr_drbg_init(&ctr_drbg_);
             mbedtls_entropy_init(&entropy_);
-            mbedtls_ctr_drbg_seed(&ctr_drbg_, mbedtls_entropy_func, &entropy_, pers, sizeof(pers));
+            int ret_seed = mbedtls_ctr_drbg_seed(&ctr_drbg_, mbedtls_entropy_func, &entropy_, pers, sizeof(pers));
+            if (ret_seed != 0) {
+                print_error("mbedtls_ctr_drbg_seed", ret_seed);
+            }
+            rng_initialized_ = (ret_seed == 0);
+#endif
             mbedtls_x509_crt_init(&public_cert_);
             mbedtls_pk_init(&pk_key_);
             mbedtls_x509_crt_init(&ca_cert_);
@@ -241,8 +274,15 @@ private:
         {
             mbedtls_ssl_free(&ssl_);
             mbedtls_ssl_config_free(&conf_);
-            mbedtls_ctr_drbg_free(&ctr_drbg_);
-            mbedtls_entropy_free(&entropy_);
+#if ASIO_MBEDTLS_MAJOR < 4
+            // mbedTLS v3: Free legacy RNG resources
+            if (rng_initialized_) {
+                mbedtls_ctr_drbg_free(&ctr_drbg_);
+                mbedtls_entropy_free(&entropy_);
+            }
+#endif
+            // Note: mbedTLS v4 does not call mbedtls_psa_crypto_free() here
+            // to avoid breaking other code that may also be using PSA Crypto
             mbedtls_x509_crt_free(&ca_cert_);
             mbedtls_pk_free(&pk_key_);
             mbedtls_x509_crt_free(&public_cert_);
@@ -262,7 +302,10 @@ private:
                 print_error("mbedtls_ssl_config_defaults", ret);
                 return false;
             }
+#if ASIO_MBEDTLS_MAJOR < 4
+            // mbedTLS v3: TLS RNG must be configured explicitly
             mbedtls_ssl_conf_rng(&conf_, mbedtls_ctr_drbg_random, &ctr_drbg_);
+#endif
             mbedtls_ssl_conf_authmode(&conf_, mbedtls_verify_mode);
             if (ctx->cert_chain_.size() > 0 && ctx->private_key_.size() > 0) {
                 ret = mbedtls_x509_crt_parse(&public_cert_, ctx->data(container::CERT), ctx->size(container::CERT));
@@ -271,7 +314,11 @@ private:
                     return false;
                 }
                 ret = mbedtls_pk_parse_key(&pk_key_, ctx->data(container::PRIVKEY), ctx->size(container::PRIVKEY),
-                                           nullptr, 0, mbedtls_ctr_drbg_random, &ctr_drbg_);
+                                           nullptr, 0
+#if ASIO_MBEDTLS_MAJOR < 4
+                                           , mbedtls_ctr_drbg_random, &ctr_drbg_
+#endif
+                                          );
                 if (ret < 0) {
                     print_error("mbedtls_pk_parse_keyfile", ret);
                     return false;
@@ -311,10 +358,13 @@ private:
             return true;
         }
         mbedtls_ssl_context ssl_{};
-        mbedtls_entropy_context entropy_{};
-        mbedtls_ctr_drbg_context ctr_drbg_{};
         mbedtls_ssl_config conf_{};
-        mbedtls_x509_crt public_cert_{};
+#if ASIO_MBEDTLS_MAJOR < 4
+        mbedtls_entropy_context entropy_ {};
+        mbedtls_ctr_drbg_context ctr_drbg_{};
+        bool rng_initialized_{false};
+#endif
+        mbedtls_x509_crt public_cert_ {};
         mbedtls_pk_context pk_key_{};
         mbedtls_x509_crt ca_cert_{};
     };
