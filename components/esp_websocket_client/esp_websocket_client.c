@@ -1374,10 +1374,11 @@ static void esp_websocket_client_task(void *pv)
 
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_FINISH, NULL, 0);
     esp_transport_close(client->transport);
-    xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     client->state = WEBSOCKET_STATE_UNKNOW;
     if (client->selected_for_destroying == true) {
         destroy_and_free_resources(client);
+    } else {
+        xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     }
     vTaskDelete(NULL);
 }
