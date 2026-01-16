@@ -13,6 +13,7 @@ set(EXTRA_COMPONENT_DIRS
     ../components/console_cmd_wifi
     ../components/console_simple_init
     ../components/mbedtls_cxx
+    ../components/net_connect
     ../components/sock_utils
     ../components/mdns)
 
