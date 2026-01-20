@@ -13,20 +13,20 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         idf_target: ["esp32", "esp32s2"]
-        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server"]
+        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server", "unit"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
-      TEST_DIR: components/asio/examples
+      APP_DIR: ${{ matrix.example == 'unit' && 'components/asio/tests/unit' || format('components/asio/examples/{0}', matrix.example) }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }}
-        working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}
+        working-directory: ${{ env.APP_DIR }}
         env:
           IDF_TARGET: ${{ matrix.idf_target }}
         shell: bash
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
-          path: ${{ env.TEST_DIR }}/${{ matrix.example }}/artifacts.zip
+          path: ${{ env.APP_DIR }}/artifacts.zip
           if-no-files-found: error
 
   target_tests_asio:
@@ -51,15 +51,15 @@ jobs:
     name: Target tests
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        idf_ver: ["latest", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         idf_target: ["esp32"]
-        example: ["asio_chat", "tcp_echo_server", "udp_echo_server", "ssl_client_server"]
+        example: ["asio_chat", "tcp_echo_server", "udp_echo_server", "ssl_client_server", "unit"]
     needs: build_asio
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
     env:
-      TEST_DIR: components/asio/examples
+      APP_DIR: ${{ matrix.example == 'unit' && 'components/asio/tests/unit' || format('components/asio/examples/{0}', matrix.example) }}
     steps:
       - name: Clear repository
         run: sudo rm -fr $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
@@ -67,9 +67,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
-          path: ${{ env.TEST_DIR }}/${{ matrix.example }}
+          path: ${{ env.APP_DIR }}
       - name: Run Example Test ${{ matrix.example }} on target
-        working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}
+        working-directory: ${{ env.APP_DIR }}
         run: |
           export PYENV_ROOT="$HOME/.pyenv"
           export PATH="$PYENV_ROOT/bin:$PATH"
@@ -91,4 +91,4 @@ jobs:
         if: always()
         with:
           name: examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
-          path: ${{ env.TEST_DIR }}/${{ matrix.example }}/*.xml
+          path: ${{ env.APP_DIR }}/*.xml
