@@ -81,6 +81,7 @@ uint8_t CMux::fcs_crc(const uint8_t frame[6])
 
 void CMux::send_disconnect(size_t i)
 {
+    usleep(CONFIG_ESP_MODEM_CMUX_DELAY_AFTER_DLCI_DISCONNECT * 1'000);
     if (i == 0) {   // control terminal
         uint8_t frame[] = {
             SOF_MARKER, 0x3, 0xEF, 0x5, 0xC3, 0x1, 0xF2, SOF_MARKER
