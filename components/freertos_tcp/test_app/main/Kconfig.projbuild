@@ -1,0 +1,33 @@
+menu "FreeRTOS TCP Test Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the test to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the test to use.
+
+    config TEST_TCP_SERVER_IP
+        string "Test TCP Server IP"
+        default "93.184.216.34"
+        help
+            IP address of TCP server to connect to for testing (default: example.com).
+
+    config TEST_TCP_SERVER_PORT
+        int "Test TCP Server Port"
+        default 80
+        help
+            Port of TCP server to connect to for testing.
+
+    config TEST_DNS_HOSTNAME
+        string "Test DNS Hostname"
+        default "example.com"
+        help
+            Hostname to resolve for DNS testing.
+
+endmenu

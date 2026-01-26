@@ -1,0 +1,6 @@
+version: 0.1.0
+url: https://github.com/espressif/esp-protocols/tree/master/components/freertos_tcp
+description: The component provides FreeRTOS-plus-TCP port as a custom TCP/IP stack to esp-idf
+dependencies:
+  idf:
+    version: '>=5.0'
