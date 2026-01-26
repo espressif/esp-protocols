@@ -6,7 +6,7 @@
  *
  * SPDX-License-Identifier: MIT
  *
- * SPDX-FileContributor: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -69,8 +69,11 @@
 #define ipconfigUSE_MDNS                           1
 #define ipconfigSUPPORT_OUTGOING_PINGS             1
 #define ipconfigETHERNET_DRIVER_FILTERS_PACKETS    1
-#define ipconfigZERO_COPY_TX_DRIVER                1
-#define ipconfigZERO_COPY_RX_DRIVER                1
+/* esp-netif integration currently copies RX frames into FreeRTOS+TCP buffers
+ * (see port/NetworkInterface.c). Keep zero-copy disabled to match actual driver
+ * behaviour. */
+#define ipconfigZERO_COPY_TX_DRIVER                0
+#define ipconfigZERO_COPY_RX_DRIVER                0
 #define ipconfigDRIVER_INCLUDED_TX_IP_CHECKSUM     0
 #define ipconfigSOCKET_HAS_USER_SEMAPHORE          1
 #define ipconfigSELECT_USES_NOTIFY                 1
