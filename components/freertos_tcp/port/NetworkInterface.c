@@ -170,21 +170,35 @@ esp_err_t xESP32_Eth_NetworkInterfaceInput(NetworkInterface_t *pxInterface, void
         if (xSendEventStructToIPTask(&xRxEvent, xDescriptorWaitTime) == pdFAIL) {
             ESP_LOGE(TAG, "Failed to enqueue packet to network stack %p, len %d", buffer, len);
             vReleaseNetworkBufferAndDescriptor(pxNetworkBuffer);
+            esp_netif_free_rx_buffer(pxInterface->pvArgument, eb);
             return ESP_FAIL;
         }
 
         esp_netif_free_rx_buffer(pxInterface->pvArgument, eb);
         return ESP_OK;
-    } else {
-        ESP_LOGE(TAG, "Failed to get buffer descriptor");
-        return ESP_FAIL;
     }
+
+    ESP_LOGE(TAG, "Failed to get buffer descriptor");
+    esp_netif_free_rx_buffer(pxInterface->pvArgument, eb);
+    return ESP_FAIL;
 }
 
 void vNetworkNotifyIFUp(NetworkInterface_t *pxInterface)
 {
     pxInterface->bits.bInterfaceUp = 1;
+
+    /* FreeRTOS+TCP has no explicit "network up" event. Waking the IP-task with a
+     * TX event makes it re-check the interface/endpoints and start DHCP/etc. */
+    IPStackEvent_t xRxEvent = { eNetworkTxEvent, NULL };
+    xRxEvent.pvData = pxInterface;
+    (void) xSendEventStructToIPTask(&xRxEvent, 0);
+}
+
+void vNetworkNotifyIFDown(NetworkInterface_t *pxInterface)
+{
+    pxInterface->bits.bInterfaceUp = 0;
+
     IPStackEvent_t xRxEvent = { eNetworkDownEvent, NULL };
     xRxEvent.pvData = pxInterface;
-    xSendEventStructToIPTask(&xRxEvent, 0);
+    (void) xSendEventStructToIPTask(&xRxEvent, 0);
 }

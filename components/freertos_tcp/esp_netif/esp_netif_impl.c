@@ -95,6 +95,7 @@ esp_err_t esp_netif_receive(esp_netif_t *esp_netif, void *buffer, size_t len, vo
 }
 
 void vNetworkNotifyIFUp(NetworkInterface_t *pxInterface);
+void vNetworkNotifyIFDown(NetworkInterface_t *pxInterface);
 
 void esp_netif_set_ip4_addr(esp_ip4_addr_t *addr, uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 {
@@ -198,13 +199,6 @@ esp_netif_t *esp_netif_new(const esp_netif_config_t *esp_netif_config)
         return NULL;
     }
 
-    // Create ip info
-    esp_netif_ip_info_t *ip_info = calloc(1, sizeof(esp_netif_ip_info_t));
-    if (!ip_info) {
-        free(esp_netif);
-        return NULL;
-    }
-
     // Configure the created object with provided configuration
     esp_err_t ret =  esp_netif_init_configuration(esp_netif, esp_netif_config);
     if (ret != ESP_OK) {
@@ -221,6 +215,8 @@ void esp_netif_destroy(esp_netif_t *esp_netif)
     if (esp_netif) {
         free(esp_netif->if_key);
         free(esp_netif->if_desc);
+        free(esp_netif->hostname);
+        free(esp_netif->net_stack);
         free(esp_netif);
     }
 }
@@ -347,7 +343,7 @@ esp_err_t esp_netif_down(esp_netif_t *esp_netif)
 {
     ESP_LOGI(TAG, "Netif going down");
     struct esp_netif_stack *netif = esp_netif->net_stack;
-    netif->aft_netif.bits.bInterfaceUp = 0;
+    vNetworkNotifyIFDown(&netif->aft_netif);
     return ESP_OK;
 }
 
@@ -572,7 +568,7 @@ BaseType_t xApplicationDNSQueryHook_Multi(struct xNetworkEndPoint *pxEndPoint, c
      * by mainDEVICE_NICK_NAME. */
     if (strcasecmp(pcName, pcApplicationHostnameHook()) == 0) {
         xReturn = pdPASS;
-    } else if (strcasecmp(pcName, esp_netif->hostname) == 0) {
+    } else if ((esp_netif->hostname != NULL) && (strcasecmp(pcName, esp_netif->hostname) == 0)) {
         xReturn = pdPASS;
     } else {
         xReturn = pdFAIL;
