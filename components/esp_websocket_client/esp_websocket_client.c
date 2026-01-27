@@ -491,9 +491,15 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         client->transport_list = NULL;
         client->transport = NULL;
     }
-    vSemaphoreDelete(client->lock);
+    if (client->lock) {
+        vSemaphoreDelete(client->lock);
+        client->lock = NULL;
+    }
 #ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    vSemaphoreDelete(client->tx_lock);
+    if (client->tx_lock) {
+        vSemaphoreDelete(client->tx_lock);
+        client->tx_lock = NULL;
+    }
 #endif
     free(client->tx_buffer);
     free(client->rx_buffer);
@@ -532,13 +538,15 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     
     xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     if (client->task_handle) {
-        while (eTaskGetState(client->task_handle) != eSuspended) {
+        while (client->task_handle && eTaskGetState(client->task_handle) != eSuspended) {
              xSemaphoreGiveRecursive(client->lock);
              vTaskDelay(1);
              xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
-        vTaskDelete(client->task_handle);
-        client->task_handle = NULL;
+        if (client->task_handle) {
+            vTaskDelete(client->task_handle);
+            client->task_handle = NULL;
+        }
     }
 
     client->state = WEBSOCKET_STATE_UNKNOW;
@@ -921,7 +929,7 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (client->status_bits) {
+    if (client->status_bits && client->lock) {
         xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         EventBits_t bits = xEventGroupGetBits(client->status_bits);
         if (bits & DESTRUCTION_IN_PROGRESS_BIT) {
@@ -946,20 +954,24 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
     if (client->status_bits && (STOPPED_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
         stop_wait_task(client);
     } else {
-        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-        if (client->task_handle) {
-            // Task is already stopped (STOPPED_BIT set) but handle exists.
-            // It must be suspended (or transitioning to it).
-            // We must delete it before freeing memory.
-            while (eTaskGetState(client->task_handle) != eSuspended) {
-                xSemaphoreGiveRecursive(client->lock);
-                vTaskDelay(1);
-                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        if (client->lock) {
+            xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+            if (client->task_handle) {
+                // Task is already stopped (STOPPED_BIT set) but handle exists.
+                // It must be suspended (or transitioning to it).
+                // We must delete it before freeing memory.
+                while (client->task_handle && eTaskGetState(client->task_handle) != eSuspended) {
+                    xSemaphoreGiveRecursive(client->lock);
+                    vTaskDelay(1);
+                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+                }
+                if (client->task_handle) {
+                    vTaskDelete(client->task_handle);
+                    client->task_handle = NULL;
+                }
             }
-            vTaskDelete(client->task_handle);
-            client->task_handle = NULL;
+            xSemaphoreGiveRecursive(client->lock);
         }
-        xSemaphoreGiveRecursive(client->lock);
     }
 
     destroy_and_free_resources(client);
@@ -1197,13 +1209,15 @@ static void esp_websocket_client_destroy_task(void *pv)
     
     xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     if (client->task_handle) {
-        while (eTaskGetState(client->task_handle) != eSuspended) {
+        while (client->task_handle && eTaskGetState(client->task_handle) != eSuspended) {
              xSemaphoreGiveRecursive(client->lock);
              vTaskDelay(1);
              xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
-        vTaskDelete(client->task_handle);
-        client->task_handle = NULL;
+        if (client->task_handle) {
+            vTaskDelete(client->task_handle);
+            client->task_handle = NULL;
+        }
     }
     xSemaphoreGiveRecursive(client->lock);
 
@@ -1215,7 +1229,6 @@ static void esp_websocket_client_task(void *pv)
 {
     const int lock_timeout = portMAX_DELAY;
     esp_websocket_client_handle_t client = (esp_websocket_client_handle_t) pv;
-    client->run = true;
 
     //get transport by scheme
     if (client->transport == NULL && client->config->ext_transport == NULL) {
@@ -1518,14 +1531,17 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     }
 
     if (client->task_handle) {
-        while (eTaskGetState(client->task_handle) != eSuspended) {
+        while (client->task_handle && eTaskGetState(client->task_handle) != eSuspended) {
             xSemaphoreGiveRecursive(client->lock);
             vTaskDelay(1);
             xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
-        vTaskDelete(client->task_handle);
-        client->task_handle = NULL;
+        if (client->task_handle) {
+            vTaskDelete(client->task_handle);
+            client->task_handle = NULL;
+        }
     }
+    client->run = true;
     BaseType_t res = pdPASS;
 #if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
     if (client->config->task_stack > 0) {
