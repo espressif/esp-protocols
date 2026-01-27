@@ -523,19 +523,26 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     client->run = false;
     xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
+    xSemaphoreGiveRecursive(client->lock);
+
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     if (client->task_handle) {
         while (eTaskGetState(client->task_handle) != eSuspended) {
+             xSemaphoreGiveRecursive(client->lock);
              vTaskDelay(1);
+             xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
         vTaskDelete(client->task_handle);
         client->task_handle = NULL;
     }
 
     client->state = WEBSOCKET_STATE_UNKNOW;
+    xSemaphoreGiveRecursive(client->lock);
     return ESP_OK;
 }
 #if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
@@ -928,9 +935,6 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
                 ESP_LOGI(TAG, "esp_websocket_client_destroy called from task, deferring...");
                 client->run = false;
                 client->selected_for_destroying = true;
-                // Do NOT set DESTRUCTION_IN_PROGRESS_BIT here.
-                // The task will set it when it reaches the end of its loop.
-                // If we set it here, the task will think another thread is destroying it and will just suspend.
                 xSemaphoreGiveRecursive(client->lock);
                 return ESP_OK;
             }
@@ -941,15 +945,21 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
 
     if (client->status_bits && (STOPPED_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
         stop_wait_task(client);
-    } else if (client->task_handle) {
-        // Task is already stopped (STOPPED_BIT set) but handle exists.
-        // It must be suspended (or transitioning to it).
-        // We must delete it before freeing memory.
-        while (eTaskGetState(client->task_handle) != eSuspended) {
-             vTaskDelay(1);
+    } else {
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        if (client->task_handle) {
+            // Task is already stopped (STOPPED_BIT set) but handle exists.
+            // It must be suspended (or transitioning to it).
+            // We must delete it before freeing memory.
+            while (eTaskGetState(client->task_handle) != eSuspended) {
+                xSemaphoreGiveRecursive(client->lock);
+                vTaskDelay(1);
+                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+            }
+            vTaskDelete(client->task_handle);
+            client->task_handle = NULL;
         }
-        vTaskDelete(client->task_handle);
-        client->task_handle = NULL;
+        xSemaphoreGiveRecursive(client->lock);
     }
 
     destroy_and_free_resources(client);
@@ -1185,13 +1195,17 @@ static void esp_websocket_client_destroy_task(void *pv)
     esp_websocket_client_handle_t client = (esp_websocket_client_handle_t)pv;
     ESP_LOGI(TAG, "Deferred destruction of websocket client");
     
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     if (client->task_handle) {
         while (eTaskGetState(client->task_handle) != eSuspended) {
+             xSemaphoreGiveRecursive(client->lock);
              vTaskDelay(1);
+             xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
         vTaskDelete(client->task_handle);
         client->task_handle = NULL;
     }
+    xSemaphoreGiveRecursive(client->lock);
 
     destroy_and_free_resources(client);
     vTaskDelete(NULL);
@@ -1480,7 +1494,16 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    if (client->selected_for_destroying || (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT)) {
+        xSemaphoreGiveRecursive(client->lock);
+        ESP_LOGE(TAG, "Client is being destroyed");
+        return ESP_FAIL;
+    }
+
     if (client->state >= WEBSOCKET_STATE_INIT) {
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
     }
@@ -1488,6 +1511,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     client->transport = client->config->ext_transport;
     if (!client->transport) {
         if (esp_websocket_client_create_transport(client) != ESP_OK) {
+            xSemaphoreGiveRecursive(client->lock);
             ESP_LOGE(TAG, "Failed to create websocket transport");
             return ESP_FAIL;
         }
@@ -1495,7 +1519,9 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
 
     if (client->task_handle) {
         while (eTaskGetState(client->task_handle) != eSuspended) {
+            xSemaphoreGiveRecursive(client->lock);
             vTaskDelay(1);
+            xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         }
         vTaskDelete(client->task_handle);
         client->task_handle = NULL;
@@ -1551,10 +1577,12 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
 
     if (res != pdPASS || client->task_handle == NULL) {
         client->task_handle = NULL;
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT);
+    xSemaphoreGiveRecursive(client->lock);
     ESP_LOGI(TAG, "Started");
     return ESP_OK;
 }
@@ -1565,10 +1593,19 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
         return ESP_ERR_INVALID_ARG;
     }
 
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    if (client->selected_for_destroying || (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT)) {
+        xSemaphoreGiveRecursive(client->lock);
+        ESP_LOGE(TAG, "Client is being destroyed");
+        return ESP_FAIL;
+    }
+
     if (xEventGroupGetBits(client->status_bits) & STOPPED_BIT) {
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGW(TAG, "Client was not started");
         return ESP_FAIL;
     }
+    xSemaphoreGiveRecursive(client->lock);
 
     return stop_wait_task(client);
 }

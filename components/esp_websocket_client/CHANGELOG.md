@@ -13,6 +13,7 @@
 - Fix race conditions and potential use-after-free during task destruction
 - Fix task handle leak when restarting the client
 - Fix stack size calculation for static task creation (expecting words)
+- Fix race conditions between `start`, `stop`, and deferred destruction (hardening task lifecycle)
 
 ## [1.6.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.1)
 
