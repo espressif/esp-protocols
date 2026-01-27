@@ -538,6 +538,7 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
 }
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
 static void websocket_header_hook(void * client, const char * line, int line_len)
 {
     ESP_LOGD(TAG, "%s header:%.*s", __func__, line_len, line);
@@ -1492,7 +1493,13 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         }
     }
 
-    client->task_handle = NULL;
+    if (client->task_handle) {
+        while (eTaskGetState(client->task_handle) != eSuspended) {
+            vTaskDelay(1);
+        }
+        vTaskDelete(client->task_handle);
+        client->task_handle = NULL;
+    }
     BaseType_t res = pdPASS;
 #if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
     if (client->config->task_stack > 0) {
