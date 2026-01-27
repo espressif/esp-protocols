@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -38,10 +38,6 @@ static const char *TAG = "websocket_client";
 #define WEBSOCKET_KEEP_ALIVE_IDLE       (5)
 #define WEBSOCKET_KEEP_ALIVE_INTERVAL   (5)
 #define WEBSOCKET_KEEP_ALIVE_COUNT      (3)
-
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-#define WEBSOCKET_TX_LOCK_TIMEOUT_MS    (CONFIG_ESP_WS_CLIENT_TX_LOCK_TIMEOUT_MS)
-#endif
 
 #define ESP_WS_CLIENT_MEM_CHECK(TAG, a, action) if (!(a)) {                                         \
         ESP_LOGE(TAG,"%s(%d): %s", __FUNCTION__, __LINE__, "Memory exhausted");                     \
@@ -121,6 +117,7 @@ typedef enum {
     WEBSOCKET_STATE_INIT,
     WEBSOCKET_STATE_CONNECTED,
     WEBSOCKET_STATE_WAIT_TIMEOUT,
+    WEBSOCKET_STATE_WAIT_ABORT_CONNECT,
     WEBSOCKET_STATE_CLOSING,
 } websocket_client_state_t;
 
@@ -142,9 +139,6 @@ struct esp_websocket_client {
     bool                        selected_for_destroying;
     EventGroupHandle_t          status_bits;
     SemaphoreHandle_t           lock;
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    SemaphoreHandle_t           tx_lock;
-#endif
     size_t                      errormsg_size;
     char                        *errormsg_buffer;
     char                        *rx_buffer;
@@ -258,22 +252,12 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     ESP_WS_CLIENT_STATE_CHECK(TAG, client, return ESP_FAIL);
 
 
-    if (client->state == WEBSOCKET_STATE_CLOSING || client->state == WEBSOCKET_STATE_UNKNOW ||
-            client->state == WEBSOCKET_STATE_WAIT_TIMEOUT) {
+    if (client->state != WEBSOCKET_STATE_CONNECTED && client->state != WEBSOCKET_STATE_INIT) {
         ESP_LOGW(TAG, "Connection already closing/closed, skipping abort");
         goto cleanup;
     }
 
-    esp_transport_close(client->transport);
-
-    if (!client->config->auto_reconnect) {
-        client->run = false;
-        client->state = WEBSOCKET_STATE_UNKNOW;
-    } else {
-        client->reconnect_tick_ms = _tick_get_ms();
-        ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
-        client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
-    }
+    client->state = WEBSOCKET_STATE_WAIT_ABORT_CONNECT;
     client->error_handle.error_type = error_type;
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DISCONNECTED, NULL, 0);
 
@@ -489,9 +473,6 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         client->transport = NULL;
     }
     vSemaphoreDelete(client->lock);
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    vSemaphoreDelete(client->tx_lock);
-#endif
     free(client->tx_buffer);
     free(client->rx_buffer);
     free(client->errormsg_buffer);
@@ -664,27 +645,18 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
         return -1;
     }
 
-    if (!esp_websocket_client_is_connected(client)) {
-        ESP_LOGE(TAG, "Websocket client is not connected");
-        return -1;
-    }
-
     if (client->transport == NULL) {
         ESP_LOGE(TAG, "Invalid transport");
         return -1;
     }
-
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    if (xSemaphoreTakeRecursive(client->tx_lock, timeout) != pdPASS) {
-        ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
-        return -1;
-    }
-#else
     if (xSemaphoreTakeRecursive(client->lock, timeout) != pdPASS) {
         ESP_LOGE(TAG, "Could not lock ws-client within %" PRIu32 " timeout", timeout);
         return -1;
     }
-#endif
+    if (client->state != WEBSOCKET_STATE_CONNECTED) {
+        ESP_LOGE(TAG, "Websocket client is not connected");
+        goto unlock_and_return;
+    }
 
     if (esp_websocket_new_buf(client, true) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to setup tx buffer");
@@ -706,10 +678,6 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
             ret = wlen;
             esp_websocket_free_buf(client, true);
 
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-            xSemaphoreGiveRecursive(client->tx_lock);
-            xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-#endif
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
@@ -719,15 +687,9 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
             }
             ESP_LOGD(TAG, "Calling abort_connection due to send error");
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-            esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
-            xSemaphoreGiveRecursive(client->lock);
-            return ret;
-#else
             // Already holding client->lock, safe to call
             esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
             goto unlock_and_return;
-#endif
         }
         opcode = 0;
         widx += wlen;
@@ -737,11 +699,7 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
     ret = widx;
 
 unlock_and_return:
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    xSemaphoreGiveRecursive(client->tx_lock);
-#else
     xSemaphoreGiveRecursive(client->lock);
-#endif
     return ret;
 }
 
@@ -776,11 +734,6 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 
     client->lock = xSemaphoreCreateRecursiveMutex();
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->lock, goto _websocket_init_fail);
-
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    client->tx_lock = xSemaphoreCreateRecursiveMutex();
-    ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_lock, goto _websocket_init_fail);
-#endif
 
     client->config = calloc(1, sizeof(websocket_config_storage_t));
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
@@ -1041,12 +994,20 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     client->payload_offset = 0;
     if (esp_websocket_new_buf(client, false) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to setup rx buffer");
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+        xSemaphoreGiveRecursive(client->lock);
         return ESP_FAIL;
     }
     do {
         rlen = esp_transport_read(client->transport, client->rx_buffer, client->buffer_size, client->config->network_timeout_ms);
         if (rlen < 0) {
             esp_websocket_free_buf(client, false);
+            xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+            if (client->state != WEBSOCKET_STATE_CONNECTED) {
+                xSemaphoreGiveRecursive(client->lock);
+                return ESP_FAIL;
+            }
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
@@ -1055,6 +1016,8 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             } else {
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, errno=%d", rlen, errno);
             }
+            esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+            xSemaphoreGiveRecursive(client->lock);
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
@@ -1075,42 +1038,28 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     if (client->last_opcode == WS_TRANSPORT_OPCODES_PING) {
         const char *data = (client->payload_len == 0) ? NULL : client->rx_buffer;
         ESP_LOGD(TAG, "Sending PONG with payload len=%d", client->payload_len);
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-        xSemaphoreGiveRecursive(client->lock);
 
         // Now acquire tx_lock with timeout (consistent with PING/CLOSE handling)
-        if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-            ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for PONG", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
-            xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before returning
-            esp_websocket_free_buf(client, false);
-            return ESP_FAIL;
-        }
-
-        // Re-acquire client->lock to maintain consistency
         xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
 
-
         // Another thread may have closed it while we didn't hold client->lock
-        if (client->state == WEBSOCKET_STATE_CLOSING || client->state == WEBSOCKET_STATE_UNKNOW ||
-                client->state == WEBSOCKET_STATE_WAIT_TIMEOUT || client->transport == NULL) {
+        if (client->state != WEBSOCKET_STATE_CONNECTED) {
             ESP_LOGW(TAG, "Transport closed while preparing PONG, skipping send");
-            xSemaphoreGiveRecursive(client->tx_lock);
+            xSemaphoreGiveRecursive(client->lock);
             esp_websocket_free_buf(client, false);
             return ESP_OK;  // Caller expects client->lock to be held, which it is
         }
 
         esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_PONG | WS_TRANSPORT_OPCODES_FIN, data, client->payload_len,
                                   client->config->network_timeout_ms);
-        xSemaphoreGiveRecursive(client->tx_lock);
-#else
-        esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_PONG | WS_TRANSPORT_OPCODES_FIN, data, client->payload_len,
-                                  client->config->network_timeout_ms);
-#endif
+        xSemaphoreGiveRecursive(client->lock);
     } else if (client->last_opcode == WS_TRANSPORT_OPCODES_PONG) {
         client->wait_for_pong_resp = false;
     } else if (client->last_opcode == WS_TRANSPORT_OPCODES_CLOSE) {
         ESP_LOGD(TAG, "Received close frame");
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
         client->state = WEBSOCKET_STATE_CLOSING;
+        xSemaphoreGiveRecursive(client->lock);
     }
     esp_websocket_free_buf(client, false);
     return ESP_OK;
@@ -1120,7 +1069,6 @@ static int esp_websocket_client_send_close(esp_websocket_client_handle_t client,
 
 static void esp_websocket_client_task(void *pv)
 {
-    const int lock_timeout = portMAX_DELAY;
     esp_websocket_client_handle_t client = (esp_websocket_client_handle_t) pv;
     client->run = true;
 
@@ -1143,10 +1091,6 @@ static void esp_websocket_client_task(void *pv)
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_BEGIN, NULL, 0);
     int read_select = 0;
     while (client->run) {
-        if (xSemaphoreTakeRecursive(client->lock, lock_timeout) != pdPASS) {
-            ESP_LOGE(TAG, "Failed to lock ws-client tasks, exiting the task...");
-            break;
-        }
         switch ((int)client->state) {
         case WEBSOCKET_STATE_INIT:
             if (client->transport == NULL) {
@@ -1160,6 +1104,7 @@ static void esp_websocket_client_task(void *pv)
                                                client->config->port,
                                                client->config->network_timeout_ms);
             if (result < 0) {
+                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
                 if (error_handle) {
@@ -1172,6 +1117,7 @@ static void esp_websocket_client_task(void *pv)
                                                result, client->error_handle.esp_ws_handshake_status_code, errno);
                 }
                 esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
+                xSemaphoreGiveRecursive(client->lock);
                 break;
             }
 #if WS_TRANSPORT_REDIRECT_HEADER_SUPPORT
@@ -1213,16 +1159,13 @@ static void esp_websocket_client_task(void *pv)
             if (esp_transport_poll_read(client->transport, 0) > 0) {
                 esp_err_t recv_result = esp_websocket_client_recv(client);
                 if (recv_result == ESP_OK) {
-                    xSemaphoreGiveRecursive(client->lock);
                     esp_event_loop_run(client->event_handle, 0);
-                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-                    if (client->state != WEBSOCKET_STATE_CONNECTED || client->transport == NULL) {
+                    if (client->state != WEBSOCKET_STATE_CONNECTED) {
                         ESP_LOGD(TAG, "Connection state changed during handshake data processing");
                         break;
                     }
-                } else if (recv_result == ESP_FAIL) {
+                } else {
                     ESP_LOGE(TAG, "Error receive data during initial connection");
-                    esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                 }
             }
             break;
@@ -1232,31 +1175,17 @@ static void esp_websocket_client_task(void *pv)
                 if (_tick_get_ms() - client->ping_tick_ms > client->config->ping_interval_sec * 1000) {
                     client->ping_tick_ms = _tick_get_ms();
                     ESP_LOGD(TAG, "Sending PING...");
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-                    // Release client->lock first to avoid deadlock with send error path
+
+                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+                    // Another thread may have closed it while we didn't hold client->lock
+                    if (client->state != WEBSOCKET_STATE_CONNECTED) {
+                        ESP_LOGW(TAG, "Transport closed while preparing PING, skipping send");
+                        xSemaphoreGiveRecursive(client->lock);
+                        break;
+                    }
+                    esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_PING | WS_TRANSPORT_OPCODES_FIN, NULL, 0, client->config->network_timeout_ms);
                     xSemaphoreGiveRecursive(client->lock);
 
-                    // Now acquire tx_lock with timeout (consistent with PONG handling)
-                    if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-                        ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for PING", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
-                        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before break
-                        break;
-                    }
-
-                    // Re-acquire client->lock to check state
-                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-
-                    // Another thread may have closed it while we didn't hold client->lock
-                    if (client->state != WEBSOCKET_STATE_CONNECTED || client->transport == NULL) {
-                        ESP_LOGW(TAG, "Transport closed while preparing PING, skipping send");
-                        xSemaphoreGiveRecursive(client->tx_lock);
-                        break;
-                    }
-#endif
-                    esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_PING | WS_TRANSPORT_OPCODES_FIN, NULL, 0, client->config->network_timeout_ms);
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-                    xSemaphoreGiveRecursive(client->tx_lock);
-#endif
                     if (!client->wait_for_pong_resp && client->config->pingpong_timeout_sec) {
                         client->pingpong_tick_ms = _tick_get_ms();
                         client->wait_for_pong_resp = true;
@@ -1265,62 +1194,17 @@ static void esp_websocket_client_task(void *pv)
 
                 if (_tick_get_ms() - client->pingpong_tick_ms > client->config->pingpong_timeout_sec * 1000) {
                     if (client->wait_for_pong_resp) {
+                        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
                         esp_websocket_client_error(client, "Error, no PONG received for more than %d seconds after PING", client->config->pingpong_timeout_sec);
                         esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_PONG_TIMEOUT);
+                        xSemaphoreGiveRecursive(client->lock);
                         break;
                     }
                 }
             }
-            break;
-        case WEBSOCKET_STATE_WAIT_TIMEOUT:
-
-            if (_tick_get_ms() - client->reconnect_tick_ms > client->wait_timeout_ms) {
-                client->state = WEBSOCKET_STATE_INIT;
-                client->reconnect_tick_ms = _tick_get_ms();
-                ESP_LOGD(TAG, "Reconnecting...");
-            }
-            break;
-        case WEBSOCKET_STATE_CLOSING:
-            // if closing not initiated by the client echo the close message back
-            if ((CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
-                ESP_LOGD(TAG, "Closing initiated by the server, sending close frame");
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-                // Release client->lock first to avoid deadlock with send error path
-                xSemaphoreGiveRecursive(client->lock);
-
-                // Now acquire tx_lock with timeout (consistent with PONG/PING handling)
-                if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-                    ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for CLOSE", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
-                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before break
-                    break;
-                }
-
-                // Re-acquire client->lock to check state
-                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-
-                // Another thread may have closed it while we didn't hold client->lock
-                if (client->state != WEBSOCKET_STATE_CLOSING || client->transport == NULL) {
-                    ESP_LOGW(TAG, "Transport closed while preparing CLOSE frame, skipping send");
-                    xSemaphoreGiveRecursive(client->tx_lock);
-                    break;
-                }
-#endif
-                esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_CLOSE | WS_TRANSPORT_OPCODES_FIN, NULL, 0, client->config->network_timeout_ms);
-#ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-                xSemaphoreGiveRecursive(client->tx_lock);
-#endif
-                xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
-            }
-            break;
-        default:
-            ESP_LOGD(TAG, "Client run iteration in a default state: %d", client->state);
-            break;
-        }
-        xSemaphoreGiveRecursive(client->lock);
-        if (WEBSOCKET_STATE_CONNECTED == client->state) {
             read_select = esp_transport_poll_read(client->transport, 1000); //Poll every 1000ms
             if (read_select < 0) {
-                xSemaphoreTakeRecursive(client->lock, lock_timeout);
+                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 if (error_handle) {
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
@@ -1332,43 +1216,78 @@ static void esp_websocket_client_task(void *pv)
                 esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                 xSemaphoreGiveRecursive(client->lock);
             } else if (read_select > 0) {
-                xSemaphoreTakeRecursive(client->lock, lock_timeout);
                 if (esp_websocket_client_recv(client) == ESP_FAIL) {
                     ESP_LOGE(TAG, "Error receive data");
-                    esp_websocket_client_abort_connection(client, WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT);
                 }
-                xSemaphoreGiveRecursive(client->lock);
             } else {
                 ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_poll_read().");
             }
-        } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
-            // waiting for reconnection or a request to stop the client...
-            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
-        } else if (WEBSOCKET_STATE_CLOSING == client->state &&
-                   (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
-            ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
-            int ret = esp_transport_ws_poll_connection_closed(client->transport, 1000);
-            if (ret == 0) {
-                ESP_LOGW(TAG, "Did not get TCP close within expected delay");
-
-            } else if (ret < 0) {
-                ESP_LOGW(TAG, "Connection terminated while waiting for clean TCP close");
-            }
-            if (client->config->close_reconnect && xSemaphoreTakeRecursive(client->lock, lock_timeout) == pdPASS) {
-                client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
-                client->error_handle.error_type = WEBSOCKET_ERROR_TYPE_SERVER_CLOSE;
-                esp_transport_close(client->transport);
-                esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
-                client->reconnect_tick_ms = _tick_get_ms();
-                ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
-                xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
-                xSemaphoreGiveRecursive(client->lock);
-            } else {
+            break;
+        case WEBSOCKET_STATE_WAIT_ABORT_CONNECT:
+            esp_transport_close(client->transport);
+            if (!client->config->auto_reconnect) {
                 client->run = false;
                 client->state = WEBSOCKET_STATE_UNKNOW;
-                esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
+            } else {
+                client->reconnect_tick_ms = _tick_get_ms();
+                ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+                client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
+            }
+            break;
+        case WEBSOCKET_STATE_WAIT_TIMEOUT:
+            if (_tick_get_ms() - client->reconnect_tick_ms > client->wait_timeout_ms) {
+                client->state = WEBSOCKET_STATE_INIT;
+                client->reconnect_tick_ms = _tick_get_ms();
+                ESP_LOGD(TAG, "Reconnecting...");
                 break;
             }
+            // waiting for reconnection or a request to stop the client...
+            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            break;
+        case WEBSOCKET_STATE_CLOSING:
+            // if closing not initiated by the client echo the close message back
+            if ((CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
+                ESP_LOGD(TAG, "Closing initiated by the server, sending close frame");
+                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+                if (client->state != WEBSOCKET_STATE_CLOSING) {
+                    ESP_LOGW(TAG, "Transport closed while preparing CLOSE frame, skipping send");
+                    xSemaphoreGiveRecursive(client->lock);
+                    break;
+                }
+
+                esp_transport_ws_send_raw(client->transport, WS_TRANSPORT_OPCODES_CLOSE | WS_TRANSPORT_OPCODES_FIN, NULL, 0, client->config->network_timeout_ms);
+                xSemaphoreGiveRecursive(client->lock);
+                xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
+            } else {
+                ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
+                int ret = esp_transport_ws_poll_connection_closed(client->transport, 1000);
+                if (ret == 0) {
+                    ESP_LOGW(TAG, "Did not get TCP close within expected delay");
+
+                } else if (ret < 0) {
+                    ESP_LOGW(TAG, "Connection terminated while waiting for clean TCP close");
+                }
+                if (client->config->close_reconnect) {
+                    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+                    client->state = WEBSOCKET_STATE_WAIT_TIMEOUT;
+                    client->error_handle.error_type = WEBSOCKET_ERROR_TYPE_SERVER_CLOSE;
+                    esp_transport_close(client->transport);
+                    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
+                    client->reconnect_tick_ms = _tick_get_ms();
+                    ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
+                    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+                    xSemaphoreGiveRecursive(client->lock);
+                } else {
+                    client->run = false;
+                    client->state = WEBSOCKET_STATE_UNKNOW;
+                    esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
+                    break;
+                }
+            }
+            break;
+        default:
+            ESP_LOGD(TAG, "Client run iteration in a default state: %d", client->state);
+            break;
         }
     }
 
