@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.20~6](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_6)
+
+### Features
+
+- Add support for linux build ([58380585](https://github.com/espressif/esp-protocols/commit/58380585))
+
+### Bug Fixes
+
+- Fix mosquitto build on latest master ([ebc1258e](https://github.com/espressif/esp-protocols/commit/ebc1258e))
+- Fix build with the new picolibc ([dc68bf87](https://github.com/espressif/esp-protocols/commit/dc68bf87))
+
 ## [2.0.20~5](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_5)
 
 ### Features

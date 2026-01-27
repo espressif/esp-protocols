@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Build with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
@@ -60,8 +62,13 @@ jobs:
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
           python ./ci/build_apps.py examples/mqtt -l -t linux -r 'sdkconfig.ci'
+          ./ci/test_broker/run.sh
+          sleep 1
+          failed=0
           timeout 5 ./examples/mqtt/build_linux/esp_mqtt_demo.elf | tee test.log  || true
-          grep 'MQTT_EVENT_DATA' test.log
+          grep 'MQTT_EVENT_DATA' test.log || failed=1
+          pkill -f 'broker.elf' || true
+          exit $failed
 
   run_on_target:
     # Skip running on forks since it won't have access to secrets
