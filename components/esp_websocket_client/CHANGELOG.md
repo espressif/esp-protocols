@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.7.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.7.0)
+
+### Features
+
+- Add Kconfig options for PSRAM allocation of task stack and client structure
+- Add Kconfig option for dynamic allocation of RX/TX buffers
+
+### Bug Fixes
+
+- Fix memory leak in `esp_websocket_client_destroy` when called from the WebSocket task itself
+- Fix race conditions and potential use-after-free during task destruction
+- Fix task handle leak when restarting the client
+- Fix stack size calculation for static task creation (expecting words)
+- Fix race conditions between `start`, `stop`, and deferred destruction (hardening task lifecycle)
+- Fix concurrency issues in task handle cleanup (avoiding task suicide if handle cleared externally)
+- Fix potential crash in `destroy` if initialization failed early
+- Fix race condition where `stop` could be ignored if called immediately after `start`
+- Fix inconsistent `run` state if task creation fails in `start`
+
 ## [1.6.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.1)
 
 ### Bug Fixes
