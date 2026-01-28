@@ -17,6 +17,7 @@
 - Fix concurrency issues in task handle cleanup (avoiding task suicide if handle cleared externally)
 - Fix potential crash in `destroy` if initialization failed early
 - Fix race condition where `stop` could be ignored if called immediately after `start`
+- Fix inconsistent `run` state if task creation fails in `start`
 
 ## [1.6.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.1)
 

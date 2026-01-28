@@ -1593,6 +1593,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
 
     if (res != pdPASS || client->task_handle == NULL) {
         client->task_handle = NULL;
+        client->run = false;
         xSemaphoreGiveRecursive(client->lock);
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
