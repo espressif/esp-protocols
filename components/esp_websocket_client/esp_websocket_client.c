@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1467,6 +1467,11 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
 
     // Set closing bit to prevent from sending PING frames while connected
     xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
+
+    if (client->config->auto_reconnect && client->config->close_reconnect) {
+        // Client does not stop(STOPPED_BIT) with auto-reconnect-on-close
+        return ESP_OK;
+    }
 
     if (STOPPED_BIT & xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, timeout)) {
         return ESP_OK;
