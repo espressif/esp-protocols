@@ -146,29 +146,14 @@ esp_err_t eppp_netif_start(esp_netif_t *netif)
 #endif
 }
 
-static int get_netif_num(esp_netif_t *netif)
-{
-    if (netif == NULL) {
-        return -1;
-    }
-    const char *ifkey = esp_netif_get_ifkey(netif);
-    if (strstr(ifkey, "EPPP") == NULL) {
-        return -1; // not our netif
-    }
-    int netif_cnt = ifkey[4] - '0';
-    if (netif_cnt < 0 || netif_cnt > 9) {
-        ESP_LOGE(TAG, "Unexpected netif key %s", ifkey);
-        return -1;
-    }
-    return  netif_cnt;
-}
+int eppp_netif_get_num(esp_netif_t *netif);
 
 #ifdef CONFIG_EPPP_LINK_USES_PPP
 static void on_ppp_event(void *arg, esp_event_base_t base, int32_t event_id, void *data)
 {
     esp_netif_t **netif = data;
     if (base == NETIF_PPP_STATUS && event_id == NETIF_PPP_ERRORUSER) {
-        ESP_LOGI(TAG, "Disconnected %d", get_netif_num(*netif));
+        ESP_LOGI(TAG, "Disconnected %d", eppp_netif_get_num(*netif));
         struct eppp_handle *h = esp_netif_get_io_driver(*netif);
         h->netif_stop = true;
     }
@@ -179,7 +164,7 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)data;
     esp_netif_t *netif = event->esp_netif;
-    int netif_cnt = get_netif_num(netif);
+    int netif_cnt = eppp_netif_get_num(netif);
     if (netif_cnt < 0) {
         return;
     }
@@ -211,16 +196,12 @@ static void ppp_task(void *args)
 }
 #endif
 
-static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
-{
-    return get_netif_num(netif) > 0;
-}
+bool eppp_have_some_netif(void);
 
 static void remove_handlers(void)
 {
-    esp_netif_t *netif = esp_netif_find_if(have_some_eppp_netif, NULL);
-    if (netif == NULL) {
-        // if EPPP netif in the system, we clean up the statics
+    if (!eppp_have_some_netif()) {
+        // if no EPPP left netif in the system, we clean up the statics
         vEventGroupDelete(s_event_group);
         s_event_group = NULL;
         esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, on_ip_event);
@@ -322,7 +303,7 @@ esp_netif_t *eppp_open(eppp_type_t role, eppp_config_t *config, int connect_time
         return NULL;
     }
 #endif
-    int netif_cnt = get_netif_num(netif);
+    int netif_cnt = eppp_netif_get_num(netif);
     if (netif_cnt < 0) {
         eppp_close(netif);
         return NULL;
