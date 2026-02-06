@@ -75,6 +75,7 @@ const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
 // and we are waiting for the server to continue with clean close
 const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop has been requested
+const static int DESTRUCTION_IN_PROGRESS_BIT = BIT3; // Indicates that the client is being destroyed
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
@@ -156,8 +157,10 @@ struct esp_websocket_client {
     int                         payload_offset;
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
     StackType_t                 *task_stack_buffer;
     StaticTask_t                *task_buffer;
+#endif
 };
 
 static uint64_t _tick_get_ms(void)
@@ -490,16 +493,24 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         client->transport_list = NULL;
         client->transport = NULL;
     }
-    vSemaphoreDelete(client->lock);
+    if (client->lock) {
+        vSemaphoreDelete(client->lock);
+        client->lock = NULL;
+    }
 #ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    vSemaphoreDelete(client->tx_lock);
+    if (client->tx_lock) {
+        vSemaphoreDelete(client->tx_lock);
+        client->tx_lock = NULL;
+    }
 #endif
     free(client->tx_buffer);
     free(client->rx_buffer);
     free(client->errormsg_buffer);
     if (client->status_bits) {
         vEventGroupDelete(client->status_bits);
+        client->status_bits = NULL;
     }
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
     if (client->task_stack_buffer) {
         heap_caps_free(client->task_stack_buffer);
         client->task_stack_buffer = NULL;
@@ -508,8 +519,31 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         heap_caps_free(client->task_buffer);
         client->task_buffer = NULL;
     }
+#endif
     free(client);
     client = NULL;
+}
+
+static void stop_and_delete_task(esp_websocket_client_handle_t client)
+{
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    if (client->task_handle) {
+        int timeout_ms = 1000;
+        while (client->task_handle && eTaskGetState(client->task_handle) != eSuspended && timeout_ms > 0) {
+             xSemaphoreGiveRecursive(client->lock);
+             vTaskDelay(pdMS_TO_TICKS(1));
+             timeout_ms--;
+             xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        }
+        if (client->task_handle) {
+            if (eTaskGetState(client->task_handle) != eSuspended) {
+                ESP_LOGW(TAG, "Task did not suspend in time, force deleting");
+            }
+            vTaskDelete(client->task_handle);
+            client->task_handle = NULL;
+        }
+    }
+    xSemaphoreGiveRecursive(client->lock);
 }
 
 static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
@@ -521,13 +555,20 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
         return ESP_FAIL;
     }
 
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     client->run = false;
     xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
+    xSemaphoreGiveRecursive(client->lock);
+
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
+    
+    stop_and_delete_task(client);
+
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
+    xSemaphoreGiveRecursive(client->lock);
     return ESP_OK;
 }
-
 #if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
 static void websocket_header_hook(void * client, const char * line, int line_len)
 {
@@ -757,8 +798,8 @@ unlock_and_return:
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
 {
-#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
-    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client), MALLOC_CAP_SPIRAM);
+    #if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #else
     esp_websocket_client_handle_t client = calloc(1, sizeof(struct esp_websocket_client));
 #endif
@@ -796,8 +837,8 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_lock, goto _websocket_init_fail);
 #endif
 
-#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
-    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t), MALLOC_CAP_SPIRAM);
+    #if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #else
     client->config = calloc(1, sizeof(websocket_config_storage_t));
 #endif
@@ -904,8 +945,32 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client)
         return ESP_ERR_INVALID_ARG;
     }
 
+    if (client->status_bits && client->lock) {
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        EventBits_t bits = xEventGroupGetBits(client->status_bits);
+        if (bits & DESTRUCTION_IN_PROGRESS_BIT) {
+            xSemaphoreGiveRecursive(client->lock);
+            ESP_LOGD(TAG, "Destruction already in progress, skipping");
+            return ESP_OK;
+        }
+
+        if ((bits & STOPPED_BIT) == 0) {
+            if (xTaskGetCurrentTaskHandle() == client->task_handle) {
+                ESP_LOGI(TAG, "esp_websocket_client_destroy called from task, deferring...");
+                client->run = false;
+                client->selected_for_destroying = true;
+                xSemaphoreGiveRecursive(client->lock);
+                return ESP_OK;
+            }
+        }
+        xEventGroupSetBits(client->status_bits, DESTRUCTION_IN_PROGRESS_BIT);
+        xSemaphoreGiveRecursive(client->lock);
+    }
+
     if (client->status_bits && (STOPPED_BIT & xEventGroupGetBits(client->status_bits)) == 0) {
         stop_wait_task(client);
+    } else {
+        stop_and_delete_task(client);
     }
 
     destroy_and_free_resources(client);
@@ -1136,11 +1201,21 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
 
 static int esp_websocket_client_send_close(esp_websocket_client_handle_t client, int code, const char *additional_data, int total_len, TickType_t timeout);
 
+static void esp_websocket_client_destroy_task(void *pv)
+{
+    esp_websocket_client_handle_t client = (esp_websocket_client_handle_t)pv;
+    ESP_LOGI(TAG, "Deferred destruction of websocket client");
+    
+    stop_and_delete_task(client);
+
+    destroy_and_free_resources(client);
+    vTaskDelete(NULL);
+}
+
 static void esp_websocket_client_task(void *pv)
 {
     const int lock_timeout = portMAX_DELAY;
     esp_websocket_client_handle_t client = (esp_websocket_client_handle_t) pv;
-    client->run = true;
 
     //get transport by scheme
     if (client->transport == NULL && client->config->ext_transport == NULL) {
@@ -1395,9 +1470,23 @@ static void esp_websocket_client_task(void *pv)
     xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     client->state = WEBSOCKET_STATE_UNKNOW;
     if (client->selected_for_destroying == true) {
-        destroy_and_free_resources(client);
+        bool already_destroying = false;
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        if (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT) {
+            already_destroying = true;
+        } else {
+            xEventGroupSetBits(client->status_bits, DESTRUCTION_IN_PROGRESS_BIT);
+        }
+        xSemaphoreGiveRecursive(client->lock);
+
+        if (!already_destroying) {
+            if (xTaskCreate(esp_websocket_client_destroy_task, "ws_destroy", 4096, client, client->config->task_prio, NULL) != pdPASS) {
+                ESP_LOGE(TAG, "Failed to create destroy task, memory will leak");
+                xEventGroupClearBits(client->status_bits, DESTRUCTION_IN_PROGRESS_BIT);
+            }
+        }
     }
-    vTaskDelete(NULL);
+    vTaskSuspend(NULL);
 }
 
 esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
@@ -1405,7 +1494,16 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    if (client->selected_for_destroying || (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT)) {
+        xSemaphoreGiveRecursive(client->lock);
+        ESP_LOGE(TAG, "Client is being destroyed");
+        return ESP_FAIL;
+    }
+
     if (client->state >= WEBSOCKET_STATE_INIT) {
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
     }
@@ -1413,17 +1511,20 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     client->transport = client->config->ext_transport;
     if (!client->transport) {
         if (esp_websocket_client_create_transport(client) != ESP_OK) {
+            xSemaphoreGiveRecursive(client->lock);
             ESP_LOGE(TAG, "Failed to create websocket transport");
             return ESP_FAIL;
         }
     }
+
+    stop_and_delete_task(client);
 
     client->run = true;
     BaseType_t res = pdPASS;
 #if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
     if (client->config->task_stack > 0) {
         if (client->task_stack_buffer == NULL) {
-            client->task_stack_buffer = (StackType_t *)heap_caps_calloc(1, client->config->task_stack, MALLOC_CAP_SPIRAM);
+            client->task_stack_buffer = (StackType_t *)heap_caps_calloc(1, client->config->task_stack, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         }
         // TCB must be in internal RAM for xTaskCreateStaticPinnedToCore
         if (client->task_buffer == NULL) {
@@ -1431,7 +1532,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         }
 
         if (client->task_stack_buffer && client->task_buffer) {
-            ESP_LOGI(TAG, "Allocated %d bytes stack in PSRAM for WebSocket task", (int)client->config->task_stack);
+            ESP_LOGI(TAG, "Allocated %d bytes stack in PSRAM for WebSocket task", client->config->task_stack);
             client->task_handle = xTaskCreateStaticPinnedToCore(
                 esp_websocket_client_task,
                 client->config->task_name ? client->config->task_name : "websocket_task",
@@ -1446,18 +1547,8 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
                 res = pdFAIL;
             }
         } else {
-            ESP_LOGW(TAG, "Failed to allocate PSRAM stack, falling back to internal RAM");
-            if (client->task_stack_buffer) {
-                heap_caps_free(client->task_stack_buffer);
-                client->task_stack_buffer = NULL;
-            }
-            if (client->task_buffer) {
-                heap_caps_free(client->task_buffer);
-                client->task_buffer = NULL;
-            }
-
-            res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                                        client->config->task_stack, client, client->config->task_prio, &client->task_handle, tskNO_AFFINITY);
+            ESP_LOGE(TAG, "Failed to allocate PSRAM stack for WebSocket task");
+            res = pdFAIL;
         }
     } else {
         res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
@@ -1471,10 +1562,12 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     if (res != pdPASS || client->task_handle == NULL) {
         client->task_handle = NULL;
         client->run = false;
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT);
+    xSemaphoreGiveRecursive(client->lock);
     ESP_LOGI(TAG, "Started");
     return ESP_OK;
 }
@@ -1485,10 +1578,19 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
         return ESP_ERR_INVALID_ARG;
     }
 
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+    if (client->selected_for_destroying || (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT)) {
+        xSemaphoreGiveRecursive(client->lock);
+        ESP_LOGE(TAG, "Client is being destroyed");
+        return ESP_FAIL;
+    }
+
     if (xEventGroupGetBits(client->status_bits) & STOPPED_BIT) {
+        xSemaphoreGiveRecursive(client->lock);
         ESP_LOGW(TAG, "Client was not started");
         return ESP_FAIL;
     }
+    xSemaphoreGiveRecursive(client->lock);
 
     return stop_wait_task(client);
 }
