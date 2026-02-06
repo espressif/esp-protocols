@@ -236,6 +236,7 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client);
  *
  *  Notes:
  *  - Cannot be called from the websocket event handler
+ *  - This function cannot be called if `esp_websocket_client_destroy_on_exit` was used for the same handle.
  *
  * @param[in]  client  The client
  *
@@ -248,6 +249,7 @@ esp_err_t esp_websocket_client_destroy(esp_websocket_client_handle_t client);
  *
  *  Notes:
  *  - After event loop finished, client handle would be dangling and should never be used
+ *  - This function is mutually exclusive with `esp_websocket_client_destroy`. Do not call `esp_websocket_client_destroy` manually if this API is used.
  *
  * @param[in]  client      The client
  *
