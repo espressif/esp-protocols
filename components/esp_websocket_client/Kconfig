@@ -35,5 +35,4 @@ menu "ESP WebSocket client"
         help
             Enable this option to allocate the WebSocket task stack in external RAM (PSRAM).
             This requires the task to be created using xTaskCreateStaticPinnedToCore.
-            If allocation fails at runtime, the client will fall back to internal RAM.
 endmenu
