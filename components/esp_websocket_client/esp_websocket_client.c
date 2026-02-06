@@ -478,9 +478,11 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
 {
     if (client->event_handle) {
         esp_event_loop_delete(client->event_handle);
+        client->event_handle = NULL;
     }
     if (client->if_name) {
         free(client->if_name);
+        client->if_name = NULL;
     }
     esp_websocket_client_destroy_config(client);
     if (client->transport_list) {
@@ -488,15 +490,31 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         client->transport_list = NULL;
         client->transport = NULL;
     }
-    vSemaphoreDelete(client->lock);
+    if (client->lock) {
+        vSemaphoreDelete(client->lock);
+        client->lock = NULL;
+    }
 #ifdef CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK
-    vSemaphoreDelete(client->tx_lock);
+    if (client->tx_lock) {
+        vSemaphoreDelete(client->tx_lock);
+        client->tx_lock = NULL;
+    }
 #endif
-    free(client->tx_buffer);
-    free(client->rx_buffer);
-    free(client->errormsg_buffer);
+    if (client->tx_buffer) {
+        free(client->tx_buffer);
+        client->tx_buffer = NULL;
+    }
+    if (client->rx_buffer) {
+        free(client->rx_buffer);
+        client->rx_buffer = NULL;
+    }
+    if (client->errormsg_buffer) {
+        free(client->errormsg_buffer);
+        client->errormsg_buffer = NULL;
+    }
     if (client->status_bits) {
         vEventGroupDelete(client->status_bits);
+        client->status_bits = NULL;
     }
     free(client);
     client = NULL;
