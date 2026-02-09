@@ -101,7 +101,7 @@ public:
     }
 
     // untie cyclic shared_ptr references made by new_pair in preparation for destruction
-    static void untie_pair(std::pair<std::shared_ptr<bio>, std::shared_ptr<bio>>& pair)
+    static void untie_pair(std::pair<std::shared_ptr<bio>, std::shared_ptr<bio>> &pair)
     {
         if (pair.first) {
             pair.first->peer_.reset();
