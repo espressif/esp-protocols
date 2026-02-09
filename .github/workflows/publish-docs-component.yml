@@ -104,5 +104,6 @@ jobs:
             components/sock_utils;
             components/libwebsockets;
             components/esp_dns;
+            components/net_connect;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
