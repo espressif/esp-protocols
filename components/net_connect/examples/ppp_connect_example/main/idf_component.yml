@@ -1,0 +1,9 @@
+dependencies:
+  idf:
+    version: '>=5.0'
+  net_connect:
+    version: '*'
+    override_path: ../../../
+  # Required for USB CDC mode (ESP32-S3, S2, P4, H4 and other boards with USB OTG)
+  # Comment out this line if using UART mode (ESP32, C3, C6, etc. without USB OTG)
+  espressif/esp_tinyusb: ^2

@@ -1,0 +1,30 @@
+# PPP Connection Example Configuration
+# Enable PPP connection
+CONFIG_NET_CONNECT_PPP=y
+
+# Disable other interfaces to focus on PPP
+CONFIG_NET_CONNECT_WIFI=n
+CONFIG_NET_CONNECT_ETHERNET=n
+CONFIG_NET_CONNECT_THREAD=n
+
+# Enable IPv6 support
+CONFIG_NET_CONNECT_IPV6=y
+
+# PPP device selection
+# For ESP32-S3, S2, P4, H4 and other boards with USB OTG support:
+#   - Enable USB CDC (uncomment line below)
+#   - Ensure esp_tinyusb dependency is uncommented in idf_component.yml
+CONFIG_NET_CONNECT_PPP_DEVICE_USB=y
+#
+# For UART mode (ESP32, C3, C6, etc. without USB OTG, requires USB-to-Serial adapter):
+#   - Enable UART (uncomment line below)
+#   - Comment out esp_tinyusb dependency in idf_component.yml
+# CONFIG_NET_CONNECT_PPP_DEVICE_UART=y
+
+# UART configuration (only used if CONFIG_NET_CONNECT_PPP_DEVICE_UART=y)
+CONFIG_NET_CONNECT_UART_TX_PIN=4
+CONFIG_NET_CONNECT_UART_RX_PIN=5
+CONFIG_NET_CONNECT_UART_BAUDRATE=115200
+
+# PPP connection retry configuration
+CONFIG_NET_CONNECT_PPP_CONN_MAX_RETRY=6
