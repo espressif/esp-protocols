@@ -35,4 +35,4 @@ jobs:
         run: |
           . ${IDF_PATH}/export.sh
           pip install idf-component-manager idf-build-apps --upgrade
-          python ../../../ci/build_apps.py . --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
+          python ../../../../ci/build_apps.py . --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
