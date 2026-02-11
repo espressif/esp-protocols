@@ -687,6 +687,7 @@ esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
     }
 
     mdns_priv_service_lock();
+    queueDetach(mdns_search_once_t, s_search_once, search);
     search_free(search);
     mdns_priv_service_unlock();
 
