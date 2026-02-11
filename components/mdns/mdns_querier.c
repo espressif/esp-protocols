@@ -58,6 +58,16 @@ void mdns_priv_query_results_free(mdns_result_t *results)
  */
 static void search_finish(mdns_search_once_t *search)
 {
+    /* Verify search is still in the linked list before touching it.
+     * Race: mdns_query_async_delete() may have already detached+freed
+     * this search while an ACTION_SEARCH_END was still queued. */
+    mdns_search_once_t *s = s_search_once;
+    while (s && s != search) {
+        s = s->next;
+    }
+    if (!s) {
+        return;  /* Already freed by async_delete */
+    }
     search->state = SEARCH_OFF;
     queueDetach(mdns_search_once_t, s_search_once, search);
     if (search->notifier) {
