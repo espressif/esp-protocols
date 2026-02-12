@@ -35,25 +35,12 @@ jobs:
           test -f sdkconfig.ci && cat sdkconfig.ci >> sdkconfig.defaults || echo "No sdkconfig.ci"
           idf.py set-target ${{ matrix.idf_target }}
           idf.py build
-      - name: Merge binaries with IDF-${{ matrix.idf_ver }} for ${{ matrix.idf_target }} for ${{ matrix.example }}
-        working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}/build
-        env:
-          IDF_TARGET: ${{ matrix.idf_target }}
-        shell: bash
-        run: |
-          . ${IDF_PATH}/export.sh
-          esptool.py --chip ${{ matrix.idf_target }} merge_bin --fill-flash-size 4MB -o flash_image.bin @flash_args
+          $GITHUB_WORKSPACE/ci/clean_build_artifacts.sh `pwd`/build
+          zip -qur artifacts.zip build
       - uses: actions/upload-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
-          path: |
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/bootloader/bootloader.bin
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build//partition_table/partition-table.bin
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/*.bin
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/*.elf
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/flasher_args.json
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/config/sdkconfig.h
-            ${{ env.TEST_DIR }}/${{ matrix.example }}/build/config/sdkconfig.json
+          path: ${{ env.TEST_DIR }}/${{ matrix.example }}/artifacts.zip
           if-no-files-found: error
 
   target_tests_asio:
@@ -80,7 +67,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: examples_app_bin_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.example }}
-          path: ${{ env.TEST_DIR }}/${{ matrix.example }}/build
+          path: ${{ env.TEST_DIR }}/${{ matrix.example }}
       - name: Run Example Test ${{ matrix.example }} on target
         working-directory: ${{ env.TEST_DIR }}/${{ matrix.example }}
         run: |
@@ -98,6 +85,7 @@ jobs:
           fi
           pyenv activate myenv
           python --version
+          unzip artifacts.zip -d .
           python -m pytest --log-cli-level DEBUG --junit-xml=./examples_results_${{ matrix.idf_target }}_${{ matrix.idf_ver }}_${{ matrix.config }}.xml --target=${{ matrix.idf_target }}
       - uses: actions/upload-artifact@v4
         if: always()
