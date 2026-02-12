@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -76,9 +76,10 @@ static void mqtt5_event_handler(void *handler_args, esp_event_base_t base, int32
     switch ((esp_mqtt_event_id_t)event_id) {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        print_user_property(event->property->user_property);
-        msg_id = esp_mqtt_client_subscribe(client, "sensor/data", 0);
-        ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
+        esp_mqtt_client_disconnect(client);
+        // print_user_property(event->property->user_property);
+        // msg_id = esp_mqtt_client_subscribe(client, "sensor/data", 0);
+        // ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -148,7 +149,7 @@ static void mqtt5_app_start(void)
     };
     const esp_mqtt_client_config_t mqtt5_cfg = {
         .broker = {
-            .address.uri = "mqtt://192.168.33.99:1884",
+            .address.uri = "mqtt://127.0.0.1:1883",
         },
         .session = {
             .protocol_ver = MQTT_PROTOCOL_V_5,
@@ -187,13 +188,13 @@ void app_main(void)
     ESP_LOGI(TAG, "[APP] Free memory: %" PRIu32 " bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
 
-    esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
-    esp_log_level_set("mqtt5_example", ESP_LOG_VERBOSE);
-    esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
-    esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
-    esp_log_level_set("transport", ESP_LOG_VERBOSE);
-    esp_log_level_set("outbox", ESP_LOG_VERBOSE);
+    // esp_log_level_set("*", ESP_LOG_INFO);
+    // esp_log_level_set("mqtt_client", ESP_LOG_VERBOSE);
+    // esp_log_level_set("mqtt5_example", ESP_LOG_VERBOSE);
+    // esp_log_level_set("transport_base", ESP_LOG_VERBOSE);
+    // esp_log_level_set("esp-tls", ESP_LOG_VERBOSE);
+    // esp_log_level_set("transport", ESP_LOG_VERBOSE);
+    // esp_log_level_set("outbox", ESP_LOG_VERBOSE);
 
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());

