@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.32.0~1](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0_1)
+
+### Features
+
+- Add mbedtls specific APIs to use TLS stack specific features ([ad94cc95](https://github.com/espressif/esp-protocols/commit/ad94cc95))
+
+### Bug Fixes
+
+- Add a simple unit test to check the leaks ([c3b01688](https://github.com/espressif/esp-protocols/commit/c3b01688))
+- Use mbedtls-v4 API (PSA-crypto support) ([a465ad41](https://github.com/espressif/esp-protocols/commit/a465ad41))
+- memory leaks over ssl::stream lifetime ([d33cb616](https://github.com/espressif/esp-protocols/commit/d33cb616))
+- Fix picolib missing pthread_sigmask() declaration ([25d54efd](https://github.com/espressif/esp-protocols/commit/25d54efd))
+- Fixed TLS server-client example failure per cert expiry ([4885d282](https://github.com/espressif/esp-protocols/commit/4885d282))
+
+### Updated
+
+- change mbedtls_*_free destruction order ([9590aecc](https://github.com/espressif/esp-protocols/commit/9590aecc))
+- chore(asio): Fixed formatting ([ff5d6021](https://github.com/espressif/esp-protocols/commit/ff5d6021))
+
 ## [1.32.0](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0)
 
 ### Features
