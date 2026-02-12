@@ -1,6 +1,7 @@
-version: 0.1.0
+version: 0.1.1
 url: https://github.com/espressif/esp-protocols/tree/master/components/net_connect
 description: Network connection component providing WiFi, Ethernet, Thread, and PPP connection methods for ESP32 boards.
+license: Apache-2.0
 dependencies:
   idf:
     version: '>=5.4.3,!=5.5.0,!=5.5.1'

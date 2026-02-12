@@ -6,4 +6,7 @@ dependencies:
     override_path: ../../../
   # Required for USB CDC mode (ESP32-S3, S2, P4, H4 and other boards with USB OTG)
   # Comment out this line if using UART mode (ESP32, C3, C6, etc. without USB OTG)
-  espressif/esp_tinyusb: ^2
+  espressif/esp_tinyusb:
+      version: "^2.1.0"
+      rules:
+        - if: "target in [esp32s2, esp32s3, esp32p4]"
