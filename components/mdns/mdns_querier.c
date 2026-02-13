@@ -54,14 +54,41 @@ void mdns_priv_query_results_free(mdns_result_t *results)
 }
 
 /**
- * @brief  Mark search as finished and remove it from search chain
+ * @brief  Check if a search is still in the search_once linked list.
+ *         Must be called with service lock held.
+ */
+static bool search_is_in_list(mdns_search_once_t *search)
+{
+    mdns_search_once_t *s = s_search_once;
+    while (s) {
+        if (s == search) {
+            return true;
+        }
+        s = s->next;
+    }
+    return false;
+}
+
+/**
+ * @brief  Mark search as finished and remove it from search chain.
+ *
+ * Guards against stale pointers: mdns_query_async_delete() may have already
+ * detached and freed this search while an ACTION_SEARCH_END was still queued.
+ * The notifier is cleared before calling to prevent double-invocation if
+ * search_finish() is reached from both mdns_priv_query_done() (max results)
+ * and ACTION_SEARCH_END (timeout) for the same search.
  */
 static void search_finish(mdns_search_once_t *search)
 {
+    if (!search_is_in_list(search)) {
+        return;  /* Already freed by mdns_query_async_delete() */
+    }
     search->state = SEARCH_OFF;
     queueDetach(mdns_search_once_t, s_search_once, search);
     if (search->notifier) {
-        search->notifier(search);
+        mdns_query_notify_t notifier = search->notifier;
+        search->notifier = NULL;
+        notifier(search);
     }
     xSemaphoreGive(search->done_semaphore);
 }
@@ -123,7 +150,13 @@ void mdns_priv_query_action(mdns_action_t *action, mdns_action_subtype_t type)
         return;
     }
     if (type == ACTION_CLEANUP) {
-        search_free(action->data.search_add.search);
+        /* ADD actions hold searches not yet in the list — always safe to free.
+         * SEND/END actions reference searches that may have been removed and
+         * freed by mdns_query_async_delete(). Only free if still in the list. */
+        if (action->type == ACTION_SEARCH_ADD ||
+                search_is_in_list(action->data.search_add.search)) {
+            search_free(action->data.search_add.search);
+        }
     }
 }
 
@@ -682,11 +715,19 @@ esp_err_t mdns_query_async_delete(mdns_search_once_t *search)
     if (!search) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (search->state != SEARCH_OFF) {
-        return ESP_ERR_INVALID_STATE;
-    }
 
     mdns_priv_service_lock();
+    if (search->state != SEARCH_OFF) {
+        mdns_priv_service_unlock();
+        return ESP_ERR_INVALID_STATE;
+    }
+    /* Defensively detach from the search list before freeing.
+     * Normally search_finish() already called queueDetach, but in the race
+     * window (timer set SEARCH_OFF, ACTION_SEARCH_END not yet processed)
+     * the search may still be in the list. Without this, search_finish()
+     * or the CLEANUP handler would access freed memory. */
+    queueDetach(mdns_search_once_t, s_search_once, search);
+    search->notifier = NULL;
     search_free(search);
     mdns_priv_service_unlock();
 
