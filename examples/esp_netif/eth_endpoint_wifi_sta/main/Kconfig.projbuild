@@ -1,0 +1,36 @@
+menu "Example Configuration"
+
+    config EXAMPLE_ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config EXAMPLE_ESP_WIFI_PASS
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    choice EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD
+        prompt "WiFi STA scan authentication threshold"
+        default EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA2_PSK
+        help
+            Minimum authentication mode accepted when scanning and connecting as a station.
+            Lower this to connect to older networks (WEP/WPA).
+
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_OPEN
+            bool "Open"
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WEP
+            bool "WEP"
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_PSK
+            bool "WPA PSK"
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA2_PSK
+            bool "WPA2 PSK"
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_WPA2_PSK
+            bool "WPA/WPA2 PSK"
+        config EXAMPLE_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA3_PSK
+            bool "WPA3 PSK"
+    endchoice
+
+endmenu
