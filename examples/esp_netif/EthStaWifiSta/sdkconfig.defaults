@@ -1,0 +1,10 @@
+# This file was generated using idf.py save-defconfig. It can be edited manually.
+# Espressif IoT Development Framework (ESP-IDF) Project Minimal Configuration
+#
+# WiFi Station Configuration
+CONFIG_EXAMPLE_ESP_WIFI_SSID="myssid"
+CONFIG_EXAMPLE_ESP_WIFI_PASS="mypassword"
+#
+# NAPT Configuration (optional)
+CONFIG_LWIP_IP_FORWARD=y
+CONFIG_LWIP_IPV4_NAPT=y

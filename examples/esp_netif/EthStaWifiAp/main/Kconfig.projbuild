@@ -1,0 +1,91 @@
+menu "Example Configuration"
+
+    # WiFi AP Configuration
+    config EXAMPLE_WIFI_AP_SSID
+        string "WiFi AP SSID"
+        default "myssid-ext"
+        help
+            SSID (network name) for the WiFi Access Point.
+
+    config EXAMPLE_WIFI_AP_PASS
+        string "WiFi AP Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the Access Point.
+
+    config EXAMPLE_WIFI_AP_CHANNEL
+        int "WiFi AP Channel"
+        range 1 13
+        default 1
+        help
+            WiFi channel for the Access Point (1-13).
+
+    config EXAMPLE_WIFI_AP_IP_ADDR
+        string "WiFi AP IP Address"
+        default "192.168.5.1"
+        help
+            IP address for the WiFi Access Point (DHCP server).
+            This is the static IP address assigned to the WiFi AP interface.
+
+    config EXAMPLE_WIFI_AP_NETMASK
+        string "WiFi AP Netmask"
+        default "255.255.255.0"
+        help
+            Subnet mask for the WiFi Access Point network.
+
+    config EXAMPLE_WIFI_AP_GW
+        string "WiFi AP Gateway"
+        default "192.168.5.1"
+        help
+            Default gateway IP address for the WiFi Access Point network.
+            Typically set to the same IP as the AP itself.
+
+    config EXAMPLE_WIFI_AP_DHCP_LEASE_TIME
+        int "DHCP Lease Time"
+        default 120
+        help
+            DHCP lease time in units of LWIP_DHCPS_LEASE_UNIT (default 60 seconds).
+            Example: Setting this to 120 means a 7200-second (2 hour) lease time.
+            Setting this to 1 means a 60-second lease time.
+
+    config EXAMPLE_WIFI_AP_DHCP_START_ADDR
+        string "DHCP IP Pool Start Address"
+        default "192.168.5.2"
+        help
+            Starting IP address of the DHCP address pool.
+            This is the first IP address that will be assigned to DHCP clients.
+
+    config EXAMPLE_WIFI_AP_DHCP_END_ADDR
+        string "DHCP IP Pool End Address"
+        default "192.168.5.100"
+        help
+            Ending IP address of the DHCP address pool.
+            This is the last IP address that will be assigned to DHCP clients.
+            Maximum pool size is 100 addresses (DHCPS_MAX_LEASE).
+
+    config EXAMPLE_WIFI_AP_DHCP_ENABLE_DNS
+        bool "Enable DNS in DHCP Offers"
+        default y
+        help
+            Enable DNS server information in DHCP offers.
+            When enabled, DHCP clients will receive DNS server addresses.
+            If enabled, DNS can be configured to use Ethernet Station's DNS servers.
+
+    config EXAMPLE_WIFI_AP_DHCP_DNS_MAIN
+        string "Primary DNS Server"
+        default "192.168.5.1"
+        depends on EXAMPLE_WIFI_AP_DHCP_ENABLE_DNS
+        help
+            Primary DNS server IP address to be provided to DHCP clients.
+            Typically set to the AP IP address or a public DNS server.
+            Can be overridden to use Ethernet Station's DNS if available.
+
+    config EXAMPLE_WIFI_AP_DHCP_DNS_BACKUP
+        string "Backup DNS Server"
+        default "8.8.8.8"
+        depends on EXAMPLE_WIFI_AP_DHCP_ENABLE_DNS
+        help
+            Backup DNS server IP address to be provided to DHCP clients.
+            Typically set to a public DNS server like 8.8.8.8 (Google DNS).
+
+endmenu
