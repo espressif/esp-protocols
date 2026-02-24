@@ -1457,7 +1457,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
             client->task_handle = xTaskCreateStaticPinnedToCore(
                 esp_websocket_client_task,
                 client->config->task_name ? client->config->task_name : "websocket_task",
-                client->config->task_stack / sizeof(StackType_t),
+                client->config->task_stack,
                 client,
                 client->config->task_prio,
                 client->task_stack_buffer,
