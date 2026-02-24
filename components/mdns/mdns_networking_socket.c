@@ -123,6 +123,7 @@ esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
         // if the interface for both protocols uninitialized, close the interface socket
         if (s_interfaces[tcpip_if].sock >= 0) {
             delete_socket(s_interfaces[tcpip_if].sock);
+            s_interfaces[tcpip_if].sock = -1;
         }
     }
 
