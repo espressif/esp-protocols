@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.10.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.0)
+
+### Features
+
+- support null value for boolean txt records ([63082b99](https://github.com/espressif/esp-protocols/commit/63082b99))
+- Refactor mdns library (stage #1) ([bed116d9](https://github.com/espressif/esp-protocols/commit/bed116d9))
+
+### Bug Fixes
+
+- Fix the bug where closing the socket did not update to -1. ([6b9c5128](https://github.com/espressif/esp-protocols/commit/6b9c5128))
+- Fix to keep TXT/SRV in answers to queries ([0f6235f1](https://github.com/espressif/esp-protocols/commit/0f6235f1))
+- Create a test to check answer section for PTR/ANY ([6c2c2cd2](https://github.com/espressif/esp-protocols/commit/6c2c2cd2))
+- Fix unused variable `dcst` warning for wifi-remote chips ([f20a234f](https://github.com/espressif/esp-protocols/commit/f20a234f))
+- put srv/txt records in additional section for ptr queries ([27d43277](https://github.com/espressif/esp-protocols/commit/27d43277))
+- Host test to use hw_support include dir ([4d8d25a3](https://github.com/espressif/esp-protocols/commit/4d8d25a3))
+
 ## [1.9.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.1)
 
 ### Bug Fixes
