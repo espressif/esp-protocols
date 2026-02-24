@@ -483,9 +483,11 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
 {
     if (client->event_handle) {
         esp_event_loop_delete(client->event_handle);
+        client->event_handle = NULL;
     }
     if (client->if_name) {
         free(client->if_name);
+        client->if_name = NULL;
     }
     esp_websocket_client_destroy_config(client);
     if (client->transport_list) {
@@ -503,9 +505,18 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         client->tx_lock = NULL;
     }
 #endif
-    free(client->tx_buffer);
-    free(client->rx_buffer);
-    free(client->errormsg_buffer);
+    if (client->tx_buffer) {
+        free(client->tx_buffer);
+        client->tx_buffer = NULL;
+    }
+    if (client->rx_buffer) {
+        free(client->rx_buffer);
+        client->rx_buffer = NULL;
+    }
+    if (client->errormsg_buffer) {
+        free(client->errormsg_buffer);
+        client->errormsg_buffer = NULL;
+    }
     if (client->status_bits) {
         vEventGroupDelete(client->status_bits);
         client->status_bits = NULL;
@@ -1467,24 +1478,11 @@ static void esp_websocket_client_task(void *pv)
 
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_FINISH, NULL, 0);
     esp_transport_close(client->transport);
-    xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     client->state = WEBSOCKET_STATE_UNKNOW;
     if (client->selected_for_destroying == true) {
-        bool already_destroying = false;
-        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
-        if (xEventGroupGetBits(client->status_bits) & DESTRUCTION_IN_PROGRESS_BIT) {
-            already_destroying = true;
-        } else {
-            xEventGroupSetBits(client->status_bits, DESTRUCTION_IN_PROGRESS_BIT);
-        }
-        xSemaphoreGiveRecursive(client->lock);
-
-        if (!already_destroying) {
-            if (xTaskCreate(esp_websocket_client_destroy_task, "ws_destroy", 4096, client, client->config->task_prio, NULL) != pdPASS) {
-                ESP_LOGE(TAG, "Failed to create destroy task, memory will leak");
-                xEventGroupClearBits(client->status_bits, DESTRUCTION_IN_PROGRESS_BIT);
-            }
-        }
+        destroy_and_free_resources(client);
+    } else {
+        xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     }
     vTaskSuspend(NULL);
 }
