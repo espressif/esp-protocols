@@ -113,6 +113,8 @@ typedef struct {
     const char                  *cert_common_name;
     esp_err_t (*crt_bundle_attach)(void *conf);
     esp_transport_handle_t      ext_transport;
+    char                        *response_headers;
+    size_t                      response_headers_len;
 } websocket_config_storage_t;
 
 typedef enum {
@@ -230,6 +232,9 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
     event_data.error_handle.error_type = client->error_handle.error_type;
     event_data.error_handle.esp_ws_handshake_status_code = client->error_handle.esp_ws_handshake_status_code;
 
+    // Add response headers to event data
+    event_data.response_headers = client->config->response_headers;
+    event_data.response_headers_len = client->config->response_headers_len;
 
     if ((err = esp_event_post_to(client->event_handle,
                                  WEBSOCKET_EVENTS, event,
@@ -468,6 +473,7 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     free(cfg->subprotocol);
     free(cfg->user_agent);
     free(cfg->headers);
+    free(cfg->response_headers);
     memset(cfg, 0, sizeof(websocket_config_storage_t));
     free(client->config);
     client->config = NULL;
@@ -558,7 +564,11 @@ static esp_err_t set_websocket_transport_optional_settings(esp_websocket_client_
             .header_user_context = client,
 #endif
             .auth = client->config->auth,
-            .propagate_control_frames = true
+            .propagate_control_frames = true,
+#if WS_TRANSPORT_STORE_RESPONSE_HEADERS
+            .response_headers = client->config->response_headers,
+            .response_headers_len = client->config->response_headers_len
+#endif
         };
         return esp_transport_ws_set_config(trans, &config);
     }
@@ -842,6 +852,17 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     client->config->cert_common_name = config->cert_common_name;
     client->config->crt_bundle_attach = config->crt_bundle_attach;
     client->config->ext_transport = config->ext_transport;
+
+    // Allocate memory for response_headers if length is specified
+    if (config->response_headers_len > 0) {
+        client->config->response_headers = malloc(config->response_headers_len);
+        ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->response_headers, goto _websocket_init_fail);
+        memset(client->config->response_headers, 0, config->response_headers_len);
+        client->config->response_headers_len = config->response_headers_len;
+    } else {
+        client->config->response_headers = NULL;
+        client->config->response_headers_len = 0;
+    }
 
     if (config->uri) {
         if (esp_websocket_client_set_uri(client, config->uri) != ESP_OK) {
