@@ -9,7 +9,7 @@ else()
     set(test_component_dir $ENV{IDF_PATH}/tools/unit-test-app/components)
 endif()
 
-set(EXTRA_COMPONENT_DIRS    ../../esp_websocket_client
+set(EXTRA_COMPONENT_DIRS    ../../../esp_websocket_client
                             ${test_component_dir})
 
 project(websocket_unit_test)

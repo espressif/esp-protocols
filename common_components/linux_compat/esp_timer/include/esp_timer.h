@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "bsd/string.h"
+#include "esp_err.h"
 
 #ifdef __cplusplus
 extern "C" {

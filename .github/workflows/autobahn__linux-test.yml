@@ -1,0 +1,254 @@
+name: "websocket-autobahn: build/linux-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  linux_websocket_autobahn:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'websocket-autobahn'))
+
+    env:
+      TEST_DIR: components/esp_websocket_client/tests/autobahn-testsuite
+      TESTEE_DIR: components/esp_websocket_client/tests/autobahn-testsuite/testee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start Autobahn Fuzzing Server
+        run: |
+          mkdir -p ${{ env.TEST_DIR }}/reports/clients
+
+          HOST_IP=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")
+          echo "Host IP address: $HOST_IP"
+          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
+
+          docker run -d \
+            --name fuzzing-server \
+            --network host \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/config:/config:ro \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/reports:/reports \
+            crossbario/autobahn-testsuite:latest \
+            wstest -m fuzzingserver -s /config/fuzzingserver.json
+
+          echo "Waiting for fuzzing server..."
+          for i in {1..5}; do
+            if curl -f http://localhost:9001/info >/dev/null 2>&1; then
+              echo "Fuzzing server ready!"
+              exit 0
+            fi
+            echo "Attempt $i/5 – waiting 2s..."
+            sleep 2
+          done
+
+          echo "Server start failed. Container logs:"
+          docker logs fuzzing-server
+          exit 1
+
+      - name: Build test (Linux target)
+        working-directory: ${{ env.TESTEE_DIR }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }} \
+            espressif/idf:latest \
+            bash -c "
+              . \$IDF_PATH/export.sh
+              cp sdkconfig.ci.linux sdkconfig.defaults
+              echo 'Building...'
+              idf.py build
+            "
+
+      - name: Verify fuzzing server connectivity
+        run: |
+          HOST_IP=${HOST_IP:-$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")}
+          echo "Testing connectivity to $HOST_IP:9001"
+
+          docker run --rm \
+            --network host \
+            espressif/idf:latest \
+            bash -c "
+              curl -f http://$HOST_IP:9001/info || {
+                echo 'ERROR: Cannot connect to fuzzing server at $HOST_IP:9001'
+                exit 1
+              }
+              echo 'Fuzzing server is accessible'
+            "
+
+      - name: Run Autobahn tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }}/build \
+            espressif/idf:latest \
+            bash -c "
+              apt-get update && apt-get install -y file curl net-tools || true
+
+              HOST_IP=\$(ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \\K\\S+' || hostname -I | awk '{print \$1}' || echo '172.17.0.1')
+              curl -f http://\${HOST_IP}:9001/info || {
+                echo \"ERROR: Server not reachable at \${HOST_IP}:9001\"
+                exit 1
+              }
+
+              echo 'Running autobahn_testee.elf'
+              WS_URI=\"ws://\${HOST_IP}:9001\"
+              echo \"WebSocket URI: \${WS_URI}\"
+              (sleep 0.5; printf \"\${WS_URI}\\n\") | timeout 30m ./autobahn_testee.elf || {
+                EXIT_CODE=\$?
+                echo 'Test failed'
+                exit \$EXIT_CODE
+              }
+              echo 'All Autobahn tests passed!'
+            "
+
+      - name: Show reports
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          if [ -d reports/clients ]; then
+            ls -la reports/clients/
+          else
+            echo "No reports"
+          fi
+
+      - name: Generate summary
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: python3 scripts/generate_summary.py || true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autobahn-reports-linux-${{ github.run_id }}
+          path: ${{ env.TEST_DIR }}/reports/**
+          if-no-files-found: warn
+
+  linux_websocket_autobahn_perf:
+    runs-on: ubuntu-22.04
+    # Run only if the specific label is present
+    if: contains(github.event.pull_request.labels.*.name, 'websocket-autobahn-perf')
+
+    env:
+      TEST_DIR: components/esp_websocket_client/tests/autobahn-testsuite
+      TESTEE_DIR: components/esp_websocket_client/tests/autobahn-testsuite/testee
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start Autobahn Fuzzing Server (Performance)
+        run: |
+          mkdir -p ${{ env.TEST_DIR }}/reports/clients
+
+          HOST_IP=$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")
+          echo "Host IP address: $HOST_IP"
+          echo "HOST_IP=$HOST_IP" >> $GITHUB_ENV
+
+          docker run -d \
+            --name fuzzing-server-perf \
+            --network host \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/config:/config:ro \
+            -v ${{ github.workspace }}/${{ env.TEST_DIR }}/reports:/reports \
+            crossbario/autobahn-testsuite:latest \
+            wstest -m fuzzingserver -s /config/fuzzingserver-perf.json
+
+          echo "Waiting for fuzzing server..."
+          for i in {1..5}; do
+            if curl -f http://localhost:9001/info >/dev/null 2>&1; then
+              echo "Fuzzing server ready!"
+              exit 0
+            fi
+            echo "Attempt $i/5 – waiting 2s..."
+            sleep 2
+          done
+
+          echo "Server start failed. Container logs:"
+          docker logs fuzzing-server-perf
+          exit 1
+
+      - name: Build test (Linux target)
+        working-directory: ${{ env.TESTEE_DIR }}
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }} \
+            espressif/idf:latest \
+            bash -c "
+              . \$IDF_PATH/export.sh
+              cp sdkconfig.ci.linux sdkconfig.defaults
+              echo 'Building...'
+              idf.py build
+            "
+
+      - name: Verify fuzzing server connectivity
+        run: |
+          HOST_IP=${HOST_IP:-$(ip route get 8.8.8.8 | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}' || echo "172.17.0.1")}
+          echo "Testing connectivity to $HOST_IP:9001"
+
+          docker run --rm \
+            --network host \
+            espressif/idf:latest \
+            bash -c "
+              curl -f http://$HOST_IP:9001/info || {
+                echo 'ERROR: Cannot connect to fuzzing server at $HOST_IP:9001'
+                exit 1
+              }
+              echo 'Fuzzing server is accessible'
+            "
+
+      - name: Run Autobahn Performance tests
+        run: |
+          docker run --rm \
+            --network host \
+            -v ${{ github.workspace }}:/work \
+            -w /work/${{ env.TESTEE_DIR }}/build \
+            espressif/idf:latest \
+            bash -c "
+              apt-get update && apt-get install -y file curl net-tools || true
+
+              HOST_IP=\$(ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \\K\\S+' || hostname -I | awk '{print \$1}' || echo '172.17.0.1')
+              curl -f http://\${HOST_IP}:9001/info || {
+                echo \"ERROR: Server not reachable at \${HOST_IP}:9001\"
+                exit 1
+              }
+
+              echo 'Running autobahn_testee.elf'
+              WS_URI=\"ws://\${HOST_IP}:9001\"
+              echo \"WebSocket URI: \${WS_URI}\"
+              (sleep 0.5; printf \"\${WS_URI}\\n\") | timeout 60m ./autobahn_testee.elf || {
+                EXIT_CODE=\$?
+                echo 'Test failed'
+                exit \$EXIT_CODE
+              }
+              echo 'All Autobahn performance tests passed!'
+            "
+
+      - name: Show reports
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: |
+          if [ -d reports/clients ]; then
+            ls -la reports/clients/
+          else
+            echo "No reports"
+          fi
+
+      - name: Generate summary
+        if: always()
+        working-directory: ${{ env.TEST_DIR }}
+        run: python3 scripts/generate_summary.py || true
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autobahn-perf-reports-linux-${{ github.run_id }}
+          path: ${{ env.TEST_DIR }}/reports/**
+          if-no-files-found: warn
