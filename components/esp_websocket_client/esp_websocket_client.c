@@ -1467,6 +1467,7 @@ static int esp_websocket_client_send_close(esp_websocket_client_handle_t client,
 
 static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_client_handle_t client, bool send_body, int code, const char *data, int len, TickType_t timeout)
 {
+    int err = ESP_OK;
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
@@ -1483,9 +1484,13 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
     }
 
     if (send_body) {
-        esp_websocket_client_send_close(client, code, data, len + 2, portMAX_DELAY); // len + 2 -> always sending the code
+        err = esp_websocket_client_send_close(client, code, data, len + 2, portMAX_DELAY); // len + 2 -> always sending the code
     } else {
-        esp_websocket_client_send_close(client, 0, NULL, 0, portMAX_DELAY); // only opcode frame
+        err = esp_websocket_client_send_close(client, 0, NULL, 0, portMAX_DELAY); // only opcode frame
+    }
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Client was not connected");
+        return ESP_FAIL;
     }
 
     // Set closing bit to prevent from sending PING frames while connected
