@@ -24,7 +24,7 @@ if(NOT CONFIG_EPPP_LINK_USES_PPP)
     set(netif_src eppp_netif_tun.c)
 endif()
 
-idf_component_register(SRCS eppp_link.c ${transport_src} ${netif_src}
+idf_component_register(SRCS eppp_link.c eppp_link_netif.cpp ${transport_src} ${netif_src}
                     INCLUDE_DIRS "include"
                     PRIV_REQUIRES esp_netif esp_timer esp_eth ${driver_deps})
 
