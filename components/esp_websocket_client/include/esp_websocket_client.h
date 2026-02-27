@@ -112,8 +112,18 @@ typedef struct {
     const char                  *username;                  /*!< Using for Http authentication, only support basic auth now */
     const char                  *password;                  /*!< Using for Http authentication */
     const char                  *path;                      /*!< HTTP Path, if not set, default is `/` */
-    bool                        disable_auto_reconnect;     /*!< Disable the automatic reconnect function when disconnected */
-    bool                        enable_close_reconnect;     /*!< Enable reconnect after server close */
+    bool                        disable_auto_reconnect;     /*!< Disable automatic reconnect on unexpected disconnection (transport errors, poll failures).
+                                                                 Default: false (auto-reconnect is enabled). Reconnect delay is controlled by `reconnect_timeout_ms`.
+                                                                 Note: this flag does not affect behaviour after a clean WebSocket CLOSE handshake;
+                                                                 use `enable_close_reconnect` for that. */
+    bool                        enable_close_reconnect;     /*!< Reconnect after a clean WebSocket CLOSE handshake (RFC 6455 close frame exchange),
+                                                                 whether the close was initiated by the server or by calling esp_websocket_client_close().
+                                                                 Default: false (client stops after a clean close).
+                                                                 When true, esp_websocket_client_close() returns immediately (non-blocking) after sending
+                                                                 the CLOSE frame; the task handles the handshake and reconnects autonomously.
+                                                                 Requires `disable_auto_reconnect` to be false; setting this flag while
+                                                                 `disable_auto_reconnect` is true has no effect on error-triggered disconnections and
+                                                                 may result in a single reconnect attempt that stops on any subsequent error. */
     void                        *user_context;              /*!< HTTP user data context */
     int                         task_prio;                  /*!< Websocket task priority */
     const char                 *task_name;                  /*!< Websocket task name */
