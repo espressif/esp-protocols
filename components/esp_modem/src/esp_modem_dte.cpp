@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -166,6 +166,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Track command end
     buffer_state.command_waiting = false;
+    buffer_state.last_urc_processed = 0;
 #endif
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
@@ -398,6 +399,11 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
 
         case UrcConsumeResult::CONSUME_PARTIAL:
             // Consume only specified amount
+            if (consume_info.consume_size > consumed + len) {
+                ESP_LOGW("esp_modem_dte", "URC consume_size %zu exceeds buffer %zu, treating as CONSUME_NONE",
+                         (size_t)consume_info.consume_size, (size_t)(consumed + len));
+                break;
+            }
             dte->buffer_state.last_urc_processed += consume_info.consume_size;
             // Adjust data pointers for command processing
             data += consume_info.consume_size;
