@@ -1228,6 +1228,8 @@ static void esp_websocket_client_task(void *pv)
             client->last_fin = false;
             client->last_opcode = WS_TRANSPORT_OPCODES_NONE;
 
+            // Clear CLOSE_FRAME_SENT_BIT to allow PINGs to be sent after reconnect
+            xEventGroupClearBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
             esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CONNECTED, NULL, 0);
 
             // Check if there is data pending to be read (e.g. piggybacked with handshake)
@@ -1482,15 +1484,26 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
         return ESP_FAIL;
     }
 
+    int close_ret;
     if (send_body) {
-        esp_websocket_client_send_close(client, code, data, len + 2, portMAX_DELAY); // len + 2 -> always sending the code
+        close_ret = esp_websocket_client_send_close(client, code, data, len + 2, portMAX_DELAY); // len + 2 -> always sending the code
     } else {
-        esp_websocket_client_send_close(client, 0, NULL, 0, portMAX_DELAY); // only opcode frame
+        close_ret = esp_websocket_client_send_close(client, 0, NULL, 0, portMAX_DELAY); // only opcode frame
+    }
+
+    if (close_ret < 0) {
+        // Send failed; transport error already triggered abort_connection which will reconnect
+        // if auto_reconnect is set. Do not set CLOSE_FRAME_SENT_BIT as the reconnected connection
+        // must be able to send PINGs normally.
+        return ESP_FAIL;
     }
 
     // Set closing bit to prevent from sending PING frames while connected
     xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
 
+    // When auto_reconnect and close_reconnect are both enabled, the task thread owns the
+    // close handshake and will reconnect autonomously. Return immediately; do not wait for
+    // STOPPED_BIT which will never be set in this configuration.
     if (client->config->auto_reconnect && client->config->close_reconnect) {
         // Client does not stop(STOPPED_BIT) with auto-reconnect-on-close
         return ESP_OK;
