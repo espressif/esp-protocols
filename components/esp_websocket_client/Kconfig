@@ -20,4 +20,19 @@ menu "ESP WebSocket client"
         default 2000
         help
             Timeout for acquiring the TX lock when using separate TX lock.
+
+    config ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+        bool "Allocate esp_websocket_client structure and config storage in PSRAM"
+        default n
+        help
+            Enable this option to allocate the esp_websocket_client structure and its
+            internal configuration storage in external RAM (PSRAM). This is useful for
+            freeing up internal RAM in memory-constrained applications.
+
+    config ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+        bool "Allocate websocket task stack in PSRAM"
+        default n
+        help
+            Enable this option to allocate the WebSocket task stack in external RAM (PSRAM).
+            This requires the task to be created using xTaskCreateStaticPinnedToCore.
 endmenu
