@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.10.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.1)
+
+### Bug Fixes
+
+- correct server initialization condition in mdns_browse_new ([dcc33d69](https://github.com/espressif/esp-protocols/commit/dcc33d69))
+
 ## [1.10.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.0)
 
 ### Features
