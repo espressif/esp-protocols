@@ -618,7 +618,7 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
 {
     mdns_browse_t *browse = NULL;
 
-    if (mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+    if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
 
