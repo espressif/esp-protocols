@@ -70,11 +70,34 @@ TEST(websocket, websocket_set_invalid_url)
     esp_websocket_client_destroy(client);
 }
 
+TEST(websocket, websocket_pause_resume_argument_validation)
+{
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_websocket_client_pause(NULL));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, esp_websocket_client_resume(NULL, NULL));
+}
+
+TEST(websocket, websocket_pause_resume_when_not_started)
+{
+    const esp_websocket_client_config_t websocket_cfg = {
+        .uri = "ws://echo.websocket.org",
+    };
+
+    esp_websocket_client_handle_t client = esp_websocket_client_init(&websocket_cfg);
+    TEST_ASSERT_NOT_NULL(client);
+
+    TEST_ASSERT_EQUAL(ESP_FAIL, esp_websocket_client_pause(client));
+    TEST_ASSERT_EQUAL(ESP_FAIL, esp_websocket_client_resume(client, NULL));
+
+    esp_websocket_client_destroy(client);
+}
+
 TEST_GROUP_RUNNER(websocket)
 {
     RUN_TEST_CASE(websocket, websocket_init_deinit)
     RUN_TEST_CASE(websocket, websocket_init_invalid_url)
     RUN_TEST_CASE(websocket, websocket_set_invalid_url)
+    RUN_TEST_CASE(websocket, websocket_pause_resume_argument_validation)
+    RUN_TEST_CASE(websocket, websocket_pause_resume_when_not_started)
 }
 
 void app_main(void)
