@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.11.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.0)
+
+### Features
+
+- Add support for mdns service discovery ([9cc5e139](https://github.com/espressif/esp-protocols/commit/9cc5e139))
+
+### Bug Fixes
+
+- Add tests for service discovery ([043ea236](https://github.com/espressif/esp-protocols/commit/043ea236))
+
 ## [1.10.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.1)
 
 ### Bug Fixes
