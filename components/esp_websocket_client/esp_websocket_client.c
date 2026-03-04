@@ -75,6 +75,8 @@ const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
 // and we are waiting for the server to continue with clean close
 const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop has been requested
+const static int RESUME_BIT = BIT3;             // Signal to resume from PAUSED state
+const static int WAKE_BIT   = BIT4;             // Generic: wake task from any blocking event wait to re-check state
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
@@ -122,6 +124,7 @@ typedef enum {
     WEBSOCKET_STATE_CONNECTED,
     WEBSOCKET_STATE_WAIT_TIMEOUT,
     WEBSOCKET_STATE_CLOSING,
+    WEBSOCKET_STATE_PAUSED,       // Task alive but blocked; waiting for RESUME_BIT
 } websocket_client_state_t;
 
 struct esp_websocket_client {
@@ -259,8 +262,8 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
 
 
     if (client->state == WEBSOCKET_STATE_CLOSING || client->state == WEBSOCKET_STATE_UNKNOW ||
-            client->state == WEBSOCKET_STATE_WAIT_TIMEOUT) {
-        ESP_LOGW(TAG, "Connection already closing/closed, skipping abort");
+            client->state == WEBSOCKET_STATE_WAIT_TIMEOUT || client->state == WEBSOCKET_STATE_PAUSED) {
+        ESP_LOGW(TAG, "Connection already closing/closed/paused, skipping abort");
         goto cleanup;
     }
 
@@ -533,6 +536,82 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
     xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, portMAX_DELAY);
     client->state = WEBSOCKET_STATE_UNKNOW;
+    return ESP_OK;
+}
+
+esp_err_t esp_websocket_client_pause(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!client->run) {
+        ESP_LOGW(TAG, "Client was not started");
+        return ESP_FAIL;
+    }
+
+    /* Cannot pause from within the websocket task */
+    TaskHandle_t running_task = xTaskGetCurrentTaskHandle();
+    if (running_task == client->task_handle) {
+        ESP_LOGE(TAG, "Client cannot be paused from websocket task");
+        return ESP_FAIL;
+    }
+
+    xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+
+    if (client->state == WEBSOCKET_STATE_PAUSED) {
+        xSemaphoreGiveRecursive(client->lock);
+        return ESP_OK; /* already paused */
+    }
+
+    bool was_connected = (client->state == WEBSOCKET_STATE_CONNECTED);
+
+    /* Close the TCP/TLS transport (does NOT destroy the transport object) */
+    if (client->transport) {
+        esp_transport_close(client->transport);
+    }
+
+    client->state = WEBSOCKET_STATE_PAUSED;
+    xEventGroupClearBits(client->status_bits, CLOSE_FRAME_SENT_BIT | RESUME_BIT);
+
+    xSemaphoreGiveRecursive(client->lock);
+
+    /* Wake the task if it's blocked in any event-group wait (e.g. WAIT_TIMEOUT) */
+    xEventGroupSetBits(client->status_bits, WAKE_BIT);
+
+    if (was_connected) {
+        esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DISCONNECTED, NULL, 0);
+    }
+
+    ESP_LOGI(TAG, "Client paused (task kept alive)");
+    return ESP_OK;
+}
+
+esp_err_t esp_websocket_client_resume(esp_websocket_client_handle_t client, const char *headers)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!client->run) {
+        ESP_LOGW(TAG, "Client was not started");
+        return ESP_FAIL;
+    }
+    if (client->state != WEBSOCKET_STATE_PAUSED) {
+        ESP_LOGW(TAG, "Client is not paused (state=%d)", (int)client->state);
+        return ESP_FAIL;
+    }
+
+    /* Update config headers while the task is blocked (safe, no lock needed).
+     * The task will call set_websocket_transport_optional_settings() when it
+     * picks up RESUME_BIT to push these into the ws transport layer. */
+    if (headers) {
+        xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+        free(client->config->headers);
+        client->config->headers = strdup(headers);
+        xSemaphoreGiveRecursive(client->lock);
+    }
+
+    xEventGroupSetBits(client->status_bits, RESUME_BIT);
+    ESP_LOGI(TAG, "Resume requested");
     return ESP_OK;
 }
 
@@ -1333,6 +1412,9 @@ static void esp_websocket_client_task(void *pv)
                 xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
             }
             break;
+        case WEBSOCKET_STATE_PAUSED:
+            // Nothing to do — task will block on event bits below
+            break;
         default:
             ESP_LOGD(TAG, "Client run iteration in a default state: %d", client->state);
             break;
@@ -1365,7 +1447,27 @@ static void esp_websocket_client_task(void *pv)
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
             // waiting for reconnection or a request to stop the client...
-            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT | WAKE_BIT, false, false, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            xEventGroupClearBits(client->status_bits, WAKE_BIT); // consume wake signal
+        } else if (WEBSOCKET_STATE_PAUSED == client->state) {
+            // Block until resume or stop requested — zero CPU while parked
+            EventBits_t bits = xEventGroupWaitBits(client->status_bits,
+                RESUME_BIT | REQUESTED_STOP_BIT,
+                true,    /* clear on exit */
+                false,   /* any bit */
+                portMAX_DELAY);
+            if (bits & REQUESTED_STOP_BIT) {
+                client->run = false;
+            }
+            if (bits & RESUME_BIT) {
+                xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);
+                // Refresh transport WS settings (path, headers) from config
+                set_websocket_transport_optional_settings(client, client->config->scheme);
+                client->state = WEBSOCKET_STATE_INIT;
+                xEventGroupClearBits(client->status_bits, CLOSE_FRAME_SENT_BIT | STOPPED_BIT);
+                xSemaphoreGiveRecursive(client->lock);
+                ESP_LOGI(TAG, "Resumed from paused state");
+            }
         } else if (WEBSOCKET_STATE_CLOSING == client->state &&
                    (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
             ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
@@ -1531,6 +1633,13 @@ int esp_websocket_client_send_cont_msg(esp_websocket_client_handle_t client, con
 int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
 {
     return esp_websocket_client_send_with_opcode(client, WS_TRANSPORT_OPCODES_BINARY, (const uint8_t *)data, len, timeout);
+}
+
+/* Backward-compat: generic send (defaults to binary).  Removed upstream but
+ * still present in the IDF 4.4 pre-compiled archive API. */
+int esp_websocket_client_send(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
+{
+    return esp_websocket_client_send_bin(client, data, len, timeout);
 }
 
 int esp_websocket_client_send_bin_partial(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout)
