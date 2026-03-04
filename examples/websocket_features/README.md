@@ -32,6 +32,10 @@ It is designed to be a **reference app** when you want to copy/paste a productio
    - `esp_websocket_client_close()`
    - unregister events
    - `esp_websocket_client_destroy()`
+9. Heap/stability observability:
+   - heap snapshots before init and after destroy
+   - lifecycle summary logging for connect/error states
+   - cleanup path that avoids hard-failing during recovery paths
 
 ## Project Layout
 
@@ -74,6 +78,7 @@ idf.py -p /dev/ttyUSB0 flash monitor
 - Text + binary + fragmented send sequences.
 - Ping/reconnect values before and after runtime update.
 - Pause/resume flow reconnecting without destroying the task.
+- Heap snapshots and a final "Heap recovery" message after client destroy.
 
 ## Notes
 

@@ -21,11 +21,33 @@
 
 static const char *TAG = "ws_features";
 
+typedef struct {
+    bool saw_connected;
+    bool saw_error;
+} ws_runtime_state_t;
+
+static size_t log_heap_snapshot(const char *stage)
+{
+    size_t free_heap = esp_get_free_heap_size();
+    ESP_LOGI(TAG, "Heap snapshot (%s): free=%u bytes", stage, (unsigned)free_heap);
+    return free_heap;
+}
+
+static esp_err_t ws_send_checked(int sent_len, const char *api_name)
+{
+    if (sent_len < 0) {
+        ESP_LOGE(TAG, "%s failed", api_name);
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
 static void ws_event_handler(void *arg, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     (void)arg;
     (void)base;
     esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+    ws_runtime_state_t *state = (ws_runtime_state_t *)arg;
 
     switch (event_id) {
     case WEBSOCKET_EVENT_BEGIN:
@@ -41,6 +63,9 @@ static void ws_event_handler(void *arg, esp_event_base_t base, int32_t event_id,
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_BEFORE_CONNECT");
         break;
     case WEBSOCKET_EVENT_CONNECTED:
+        if (state != NULL) {
+            state->saw_connected = true;
+        }
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         break;
     case WEBSOCKET_EVENT_DATA:
@@ -49,6 +74,9 @@ static void ws_event_handler(void *arg, esp_event_base_t base, int32_t event_id,
         ESP_LOGI(TAG, "Payload chunk: %.*s", data->data_len, data->data_ptr);
         break;
     case WEBSOCKET_EVENT_ERROR:
+        if (state != NULL) {
+            state->saw_error = true;
+        }
         ESP_LOGW(TAG, "WEBSOCKET_EVENT_ERROR type=%d status=%d tls_esp_err=0x%x sock_errno=%d",
                  data->error_handle.error_type,
                  data->error_handle.esp_ws_handshake_status_code,
@@ -89,13 +117,18 @@ static void websocket_feature_showcase(void)
         .pingpong_timeout_sec = 20,
     };
 
+    ws_runtime_state_t runtime_state = { 0 };
+    bool started = false;
+
+    const size_t heap_before = log_heap_snapshot("before init");
+
     esp_websocket_client_handle_t client = esp_websocket_client_init(&ws_cfg);
     if (client == NULL) {
         ESP_LOGE(TAG, "Failed to initialize websocket client");
         return;
     }
 
-    ESP_ERROR_CHECK(esp_websocket_register_events(client, WEBSOCKET_EVENT_ANY, ws_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_websocket_register_events(client, WEBSOCKET_EVENT_ANY, ws_event_handler, &runtime_state));
 
     /* Add headers in two ways: batch set + key/value append API. */
     ESP_ERROR_CHECK(esp_websocket_client_set_headers(client,
@@ -105,6 +138,7 @@ static void websocket_feature_showcase(void)
 
     ESP_LOGI(TAG, "Connecting to %s", ws_cfg.uri);
     ESP_ERROR_CHECK(esp_websocket_client_start(client));
+    started = true;
 
     for (int retry = 0; retry < 30 && !esp_websocket_client_is_connected(client); ++retry) {
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -113,22 +147,38 @@ static void websocket_feature_showcase(void)
     if (esp_websocket_client_is_connected(client)) {
         const char *text_msg = "Feature showcase: single text frame";
         ESP_LOGI(TAG, "Sending text frame");
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_text(client, text_msg, strlen(text_msg), pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_text(client, text_msg, strlen(text_msg), pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_text"));
 
         /* Send a fragmented text message in 3 pieces. */
         ESP_LOGI(TAG, "Sending fragmented text frame");
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_text_partial(client, "fragment-1/", 11, pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_cont_msg(client, "fragment-2/", 11, pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_cont_msg(client, "fragment-3", 10, pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_fin(client, pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_text_partial(client, "fragment-1/", 11, pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_text_partial"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_cont_msg(client, "fragment-2/", 11, pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_cont_msg"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_cont_msg(client, "fragment-3", 10, pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_cont_msg"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_fin(client, pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_fin"));
 
         /* Send a fragmented binary message. */
         const char bin_a[] = {0x01, 0x02, 0x03, 0x04};
         const char bin_b[] = {0x05, 0x06, 0x07, 0x08};
         ESP_LOGI(TAG, "Sending fragmented binary frame");
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_bin_partial(client, bin_a, sizeof(bin_a), pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_cont_msg(client, bin_b, sizeof(bin_b), pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_send_fin(client, pdMS_TO_TICKS(1000)) < 0 ? ESP_FAIL : ESP_OK);
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_bin_partial(client, bin_a, sizeof(bin_a), pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_bin_partial"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_cont_msg(client, bin_b, sizeof(bin_b), pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_cont_msg"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(ws_send_checked(
+                                         esp_websocket_client_send_fin(client, pdMS_TO_TICKS(1000)),
+                                         "esp_websocket_client_send_fin"));
 
         /* Demonstrate runtime tuning for new ping/reconnect controls. */
         ESP_LOGI(TAG, "Current ping interval: %u sec", (unsigned)esp_websocket_client_get_ping_interval_sec(client));
@@ -144,18 +194,32 @@ static void websocket_feature_showcase(void)
          * It is useful when your app changes endpoint/headers at runtime.
          */
         ESP_LOGI(TAG, "Pausing client");
-        ESP_ERROR_CHECK(esp_websocket_client_pause(client));
-        ESP_ERROR_CHECK(esp_websocket_client_set_uri(client, CONFIG_WEBSOCKET_FEATURES_URI));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_pause(client));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_set_uri(client, CONFIG_WEBSOCKET_FEATURES_URI));
         ESP_LOGI(TAG, "Resuming client with new temporary header");
-        ESP_ERROR_CHECK(esp_websocket_client_resume(client, "X-Resume-Reason: config-refresh\r\n"));
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_resume(client, "X-Resume-Reason: config-refresh\r\n"));
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     ESP_LOGI(TAG, "Stopping client");
-    ESP_ERROR_CHECK(esp_websocket_client_close(client, pdMS_TO_TICKS(1000)));
-    ESP_ERROR_CHECK(esp_websocket_unregister_events(client, WEBSOCKET_EVENT_ANY, ws_event_handler));
+    if (started && esp_websocket_client_is_connected(client)) {
+        ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_client_close(client, pdMS_TO_TICKS(1000)));
+    }
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_websocket_unregister_events(client, WEBSOCKET_EVENT_ANY, ws_event_handler));
     ESP_ERROR_CHECK(esp_websocket_client_destroy(client));
+
+    const size_t heap_after = log_heap_snapshot("after destroy");
+    if (heap_after >= heap_before) {
+        ESP_LOGI(TAG, "Heap recovery OK: +%d bytes after lifecycle", (int)(heap_after - heap_before));
+    } else {
+        ESP_LOGW(TAG, "Heap recovery check: -%d bytes after lifecycle (may vary by system allocators)",
+                 (int)(heap_before - heap_after));
+    }
+
+    ESP_LOGI(TAG, "Session summary: connected=%s error_seen=%s",
+             runtime_state.saw_connected ? "yes" : "no",
+             runtime_state.saw_error ? "yes" : "no");
 }
 
 void app_main(void)
