@@ -1,0 +1,9 @@
+menu "WebSocket Feature Showcase Configuration"
+
+config WEBSOCKET_FEATURES_URI
+    string "WebSocket endpoint URI"
+    default "wss://echo.websocket.events"
+    help
+        URI used by the websocket_features example.
+
+endmenu
