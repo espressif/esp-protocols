@@ -1,0 +1,11 @@
+dependencies:
+  espressif/catch2:
+    version: "*"
+  espressif/mosquitto:
+    version: "*"
+    override_path: "../../.."
+  espressif/sock_utils:
+    version: '*'
+    override_path: '../../../../sock_utils'
+  idf:
+    version: ">=5.0"

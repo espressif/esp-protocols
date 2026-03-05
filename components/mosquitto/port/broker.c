@@ -94,6 +94,10 @@ static void listeners__stop(void)
         }
     }
     mosquitto__free(listensock);
+    /* Without this, mosquitto__realloc() will try to use freed memory on next mosq_broker_run() */
+    listensock = NULL;
+    listensock_count = 0;
+    listensock_index = 0;
 }
 
 void net__set_tls_config(esp_tls_cfg_server_t *config);
