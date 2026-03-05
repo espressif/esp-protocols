@@ -45,6 +45,8 @@ static interfaces_t s_interfaces[MDNS_MAX_INTERFACES];
 
 static const char *TAG = "mdns_networking";
 static bool s_run_sock_recv_task = false;
+static TaskHandle_t s_sock_recv_task_handle = NULL;
+static SemaphoreHandle_t s_sock_recv_task_exit_sem = NULL;
 static int create_socket(esp_netif_t *netif);
 static int join_mdns_multicast_group(int sock, esp_netif_t *netif, mdns_ip_protocol_t ip_protocol);
 
@@ -91,6 +93,12 @@ static void __attribute__((constructor)) ctor_networking_socket(void)
 
 static void delete_socket(int sock)
 {
+    if (sock < 0) {
+        return;
+    }
+
+    // Best-effort shutdown helps to unblock select()/recvfrom() on some stacks.
+    shutdown(sock, SHUT_RDWR);
     close(sock);
 }
 
@@ -120,7 +128,7 @@ esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
 {
     s_interfaces[tcpip_if].proto &= ~(ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
     if (s_interfaces[tcpip_if].proto == 0) {
-        // if the interface for both protocols uninitialized, close the interface socket
+        // If the interface for both protocols uninitialized, close the interface socket.
         if (s_interfaces[tcpip_if].sock >= 0) {
             delete_socket(s_interfaces[tcpip_if].sock);
             s_interfaces[tcpip_if].sock = -1;
@@ -134,9 +142,13 @@ esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
         }
     }
 
-    // no interface alive, stop the rx task
-    s_run_sock_recv_task = false;
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // No interface alive, stop the rx task and wait for it to exit.
+    if (s_sock_recv_task_handle != NULL) {
+        s_run_sock_recv_task = false;
+        (void)xSemaphoreTake(s_sock_recv_task_exit_sem, pdMS_TO_TICKS(2000));
+        s_sock_recv_task_handle = NULL;
+    }
+
     return ESP_OK;
 }
 
@@ -290,12 +302,14 @@ void sock_recv_task(void *arg)
         }
         if (max_sock < 0) {
             vTaskDelay(pdMS_TO_TICKS(1000));
-            ESP_LOGI(TAG, "No sock!");
             continue;
         }
 
         int s = select(max_sock + 1, &rfds, NULL, NULL, &tv);
         if (s < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
             ESP_LOGE(TAG, "Select failed. errno=%d: %s", errno, strerror(errno));
             break;
         } else if (s > 0) {
@@ -304,77 +318,95 @@ void sock_recv_task(void *arg)
                 if (sock < 0) {
                     continue;
                 }
-                if (FD_ISSET(sock, &rfds)) {
-                    static char recvbuf[MDNS_MAX_PACKET_SIZE];
-                    uint16_t port = 0;
+                if (!FD_ISSET(sock, &rfds)) {
+                    continue;
+                }
 
-                    struct sockaddr_storage raddr; // Large enough for both IPv4 or IPv6
-                    socklen_t socklen = sizeof(struct sockaddr_storage);
-                    esp_ip_addr_t addr = {0};
-                    int len = recvfrom(sock, recvbuf, sizeof(recvbuf), 0,
-                                       (struct sockaddr *) &raddr, &socklen);
-                    if (len < 0) {
-                        ESP_LOGE(TAG, "multicast recvfrom failed. errno=%d: %s", errno, strerror(errno));
-                        break;
-                    }
-                    ESP_LOGD(TAG, "[sock=%d]: Received from IP:%s", sock, get_string_address(&raddr));
-                    ESP_LOG_BUFFER_HEXDUMP(TAG, recvbuf, len, ESP_LOG_VERBOSE);
-                    inet_to_espaddr(&raddr, &addr, &port);
+                static char recvbuf[MDNS_MAX_PACKET_SIZE];
+                uint16_t port = 0;
 
-                    // Allocate the packet structure and pass it to the mdns main engine
-                    mdns_rx_packet_t *packet = (mdns_rx_packet_t *) mdns_mem_calloc(1, sizeof(mdns_rx_packet_t));
-                    struct pbuf *packet_pbuf = mdns_mem_calloc(1, sizeof(struct pbuf));
-                    uint8_t *buf = mdns_mem_malloc(len);
-                    if (packet == NULL || packet_pbuf == NULL || buf == NULL) {
-                        mdns_mem_free(buf);
-                        mdns_mem_free(packet_pbuf);
-                        mdns_mem_free(packet);
-                        HOOK_MALLOC_FAILED;
-                        ESP_LOGE(TAG, "Failed to allocate the mdns packet");
-                        continue;
-                    }
-                    memcpy(buf, recvbuf, len);
-                    packet_pbuf->next = NULL;
-                    packet_pbuf->payload = buf;
-                    packet_pbuf->tot_len = len;
-                    packet_pbuf->len = len;
-                    packet->tcpip_if = tcpip_if;
-                    packet->pb = packet_pbuf;
-                    packet->src_port = ntohs(port);
-                    memcpy(&packet->src, &addr, sizeof(esp_ip_addr_t));
-                    // TODO(IDF-3651): Add the correct dest addr -- for mdns to decide multicast/unicast
-                    // Currently it's enough to assume the packet is multicast and mdns to check the source port of the packet
-                    memset(&packet->dest, 0, sizeof(esp_ip_addr_t));
-                    packet->multicast = 1;
-                    packet->dest.type = packet->src.type;
-                    packet->ip_protocol =
-                        packet->src.type == ESP_IPADDR_TYPE_V4 ? MDNS_IP_PROTOCOL_V4 : MDNS_IP_PROTOCOL_V6;
-                    if (send_rx_action(packet) != ESP_OK) {
-                        ESP_LOGE(TAG, "send_rx_action failed!");
-                        mdns_mem_free(packet->pb->payload);
-                        mdns_mem_free(packet->pb);
-                        mdns_mem_free(packet);
-                    }
+                struct sockaddr_storage raddr; // Large enough for both IPv4 or IPv6
+                socklen_t socklen = sizeof(struct sockaddr_storage);
+                esp_ip_addr_t addr = {0};
+                int len = recvfrom(sock, recvbuf, sizeof(recvbuf), 0,
+                                   (struct sockaddr *) &raddr, &socklen);
+                if (len < 0) {
+                    // Avoid log-spinning forever if a socket becomes invalid; close and drop it.
+                    ESP_LOGW(TAG, "[sock=%d]: recvfrom failed. errno=%d: %s", sock, errno, strerror(errno));
+                    delete_socket(sock);
+                    s_interfaces[tcpip_if].sock = -1;
+                    s_interfaces[tcpip_if].proto = 0;
+                    continue;
+                }
+
+                ESP_LOGD(TAG, "[sock=%d]: Received from IP:%s", sock, get_string_address(&raddr));
+                ESP_LOG_BUFFER_HEXDUMP(TAG, recvbuf, len, ESP_LOG_VERBOSE);
+                inet_to_espaddr(&raddr, &addr, &port);
+
+                // Allocate the packet structure and pass it to the mdns main engine
+                mdns_rx_packet_t *packet = (mdns_rx_packet_t *) mdns_mem_calloc(1, sizeof(mdns_rx_packet_t));
+                struct pbuf *packet_pbuf = mdns_mem_calloc(1, sizeof(struct pbuf));
+                uint8_t *buf = mdns_mem_malloc(len);
+                if (packet == NULL || packet_pbuf == NULL || buf == NULL) {
+                    mdns_mem_free(buf);
+                    mdns_mem_free(packet_pbuf);
+                    mdns_mem_free(packet);
+                    HOOK_MALLOC_FAILED;
+                    ESP_LOGE(TAG, "Failed to allocate the mdns packet");
+                    continue;
+                }
+                memcpy(buf, recvbuf, len);
+                packet_pbuf->next = NULL;
+                packet_pbuf->payload = buf;
+                packet_pbuf->tot_len = len;
+                packet_pbuf->len = len;
+                packet->tcpip_if = tcpip_if;
+                packet->pb = packet_pbuf;
+                packet->src_port = ntohs(port);
+                memcpy(&packet->src, &addr, sizeof(esp_ip_addr_t));
+                // TODO(IDF-3651): Add the correct dest addr -- for mdns to decide multicast/unicast
+                // Currently it's enough to assume the packet is multicast and mdns to check the source port of the packet
+                memset(&packet->dest, 0, sizeof(esp_ip_addr_t));
+                packet->multicast = 1;
+                packet->dest.type = packet->src.type;
+                packet->ip_protocol =
+                    packet->src.type == ESP_IPADDR_TYPE_V4 ? MDNS_IP_PROTOCOL_V4 : MDNS_IP_PROTOCOL_V6;
+                if (send_rx_action(packet) != ESP_OK) {
+                    ESP_LOGE(TAG, "send_rx_action failed!");
+                    mdns_mem_free(packet->pb->payload);
+                    mdns_mem_free(packet->pb);
+                    mdns_mem_free(packet);
                 }
             }
         }
+    }
+
+    if (s_sock_recv_task_exit_sem != NULL) {
+        (void)xSemaphoreGive(s_sock_recv_task_exit_sem);
     }
     vTaskDelete(NULL);
 }
 
 static void networking_init(void)
 {
+    if (s_sock_recv_task_exit_sem == NULL) {
+        s_sock_recv_task_exit_sem = xSemaphoreCreateBinary();
+    }
+
     if (s_run_sock_recv_task == false) {
         s_run_sock_recv_task = true;
-        xTaskCreate(sock_recv_task, "mdns recv task", 3 * 1024, NULL, 5, NULL);
+        xTaskCreate(sock_recv_task, "mdns recv task", 3 * 1024, NULL, 5, &s_sock_recv_task_handle);
     }
 }
 
 static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    if (s_interfaces[tcpip_if].proto & (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6)) {
+    const int proto_bit = (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+
+    if (s_interfaces[tcpip_if].proto & proto_bit) {
         return true;
     }
+
     int sock = s_interfaces[tcpip_if].sock;
     esp_netif_t *netif = mdns_priv_get_esp_netif(tcpip_if);
     if (sock < 0) {
@@ -384,11 +416,18 @@ static bool create_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
         ESP_LOGE(TAG, "Failed to create the socket!");
         return false;
     }
+
     int err = join_mdns_multicast_group(sock, netif, ip_protocol);
     if (err < 0) {
-        ESP_LOGE(TAG, "Failed to add ipv6 multicast group for protocol %d", ip_protocol);
+        ESP_LOGE(TAG, "Failed to add multicast group for protocol %d", ip_protocol);
+        // If this socket is not used by any other protocol, close it.
+        if (s_interfaces[tcpip_if].sock < 0 && s_interfaces[tcpip_if].proto == 0) {
+            delete_socket(sock);
+        }
+        return false;
     }
-    s_interfaces[tcpip_if].proto |= (ip_protocol == MDNS_IP_PROTOCOL_V4 ? PROTO_IPV4 : PROTO_IPV6);
+
+    s_interfaces[tcpip_if].proto |= proto_bit;
     s_interfaces[tcpip_if].sock = sock;
     return true;
 }
@@ -453,7 +492,7 @@ static int create_socket(esp_netif_t *netif)
     return sock;
 
 err:
-    close(sock);
+    delete_socket(sock);
     return -1;
 }
 
