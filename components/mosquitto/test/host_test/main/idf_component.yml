@@ -9,3 +9,7 @@ dependencies:
     override_path: '../../../../sock_utils'
   idf:
     version: ">=5.0"
+  esp_timer:
+    path: '../../../../../common_components/linux_compat/esp_timer'
+  freertos:
+    path: '../../../../../common_components/linux_compat/freertos'
