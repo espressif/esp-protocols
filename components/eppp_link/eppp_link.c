@@ -211,7 +211,7 @@ static void ppp_task(void *args)
 }
 #endif
 
-static bool have_some_eppp_netif(esp_netif_t *netif, void *ctx)
+static bool have_some_eppp_netif(esp_netif_t *netif, const void *ctx)
 {
     return get_netif_num(netif) > 0;
 }
