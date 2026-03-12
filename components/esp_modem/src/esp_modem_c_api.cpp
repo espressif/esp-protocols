@@ -217,7 +217,7 @@ extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, cha
     std::string out;
     std::string at_str(at);
     auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out, timeout));
-    if ((p_out != NULL) && (!out.empty())) {
+    if ((p_out != NULL)) {
         strlcpy(p_out, out.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -251,7 +251,7 @@ extern "C" esp_err_t esp_modem_at_raw(esp_modem_dce_t *dce_wrap, const char *cmd
     }
     std::string out;
     auto ret = command_response_to_esp_err(dce_wrap->dce->at_raw(cmd, out, pass, fail, timeout));
-    if ((p_out != NULL) && (!out.empty())) {
+    if ((p_out != NULL)) {
         strlcpy(p_out, out.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
