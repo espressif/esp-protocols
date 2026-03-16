@@ -233,12 +233,12 @@ extern "C" esp_err_t esp_modem_get_signal_quality(esp_modem_dce_t *dce_wrap, int
 
 extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce_wrap, char *p_imsi)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_imsi == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string imsi;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_imsi(imsi));
-    if (ret == ESP_OK && !imsi.empty()) {
+    if (ret == ESP_OK) {
         strlcpy(p_imsi, imsi.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -276,12 +276,12 @@ extern "C" esp_err_t esp_modem_store_profile(esp_modem_dce_t *dce_wrap)
 
 extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_imei == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string imei;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_imei(imei));
-    if (ret == ESP_OK && !imei.empty()) {
+    if (ret == ESP_OK) {
         strlcpy(p_imei, imei.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -295,7 +295,7 @@ extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char
     std::string name;
     int act;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name, act));
-    if (ret == ESP_OK && !name.empty()) {
+    if (ret == ESP_OK) {
         strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
         *p_act = act;
     }
@@ -304,12 +304,12 @@ extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char
 
 extern "C" esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce_wrap, char *p_name)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_name == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string name;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_module_name(name));
-    if (ret == ESP_OK && !name.empty()) {
+    if (ret == ESP_OK) {
         strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
