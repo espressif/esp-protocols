@@ -245,7 +245,7 @@ command_result get_operator_name(CommandableIf *t, std::string &operator_name, i
 {
     ESP_LOGV(TAG, "%s", __func__);
     std::string out;
-    auto ret = generic_get_string(t, "AT+COPS?\r", out, 75000);
+    auto ret = generic_get_string(t, "AT+COPS?\r", out, 1000);
     if (ret != command_result::OK) {
         return ret;
     }
