@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -413,6 +413,7 @@ static bool append_host_question(mdns_out_question_t **questions, const char *ho
     q->service = NULL;
     q->proto = NULL;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
+    q->subtype = NULL;
     q->own_dynamic_memory = false;
     if (question_exists(q, *questions)) {
         mdns_mem_free(q);
@@ -636,6 +637,7 @@ void mdns_priv_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_pac
             q->proto = NULL;
             out_question->domain = q->domain;
             q->domain = NULL;
+            out_question->subtype = NULL;
             out_question->next = NULL;
             out_question->own_dynamic_memory = true;
             queueToEnd(mdns_out_question_t, packet->questions, out_question);
@@ -754,9 +756,12 @@ static uint16_t append_question(uint8_t *packet, uint16_t *index, mdns_out_quest
     } else
 #endif /* CONFIG_MDNS_RESPOND_REVERSE_QUERIES */
     {
-        const char *str[4];
+        const char *str[6];
         uint8_t str_index = 0;
-        if (q->host) {
+        if (q->subtype) {
+            str[str_index++] = q->subtype;
+            str[str_index++] = MDNS_SUB_STR;
+        } else if (q->host) {
             str[str_index++] = q->host;
         }
         if (q->service) {
@@ -1413,6 +1418,7 @@ mdns_tx_packet_t *mdns_priv_create_probe_packet(mdns_if_t tcpip_if, mdns_ip_prot
         q->service = services[i]->service->service;
         q->proto = services[i]->service->proto;
         q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
+        q->subtype = NULL;
         q->own_dynamic_memory = false;
         if (!q->host || question_exists(q, packet->questions)) {
             mdns_mem_free(q);

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -758,6 +758,47 @@ void mdns_query_results_free(mdns_result_t *results);
 esp_err_t mdns_query_ptr(const char *service_type, const char *proto, uint32_t timeout, size_t max_results, mdns_result_t **results);
 
 /**
+ * @brief  Query mDNS for service subtype (Selective Instance Enumeration per RFC 6763 Section 7.1)
+ *
+ *         Sends a PTR query for `_subtype._sub._service_type._proto.local` to discover
+ *         only the instances of a service that have the given subtype.
+ *
+ * @param  service_type service type (_http, _arduino, _ftp etc.)
+ * @param  proto        service protocol (_tcp, _udp, etc.)
+ * @param  subtype      the subtype to query for (e.g. "_printer")
+ * @param  timeout      time in milliseconds to wait for answer.
+ * @param  max_results  maximum results to be collected
+ * @param  results      pointer to the results of the query
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running
+ *     - ESP_ERR_NO_MEM         memory error
+ *     - ESP_ERR_INVALID_ARG    parameter error
+ */
+esp_err_t mdns_query_ptr_subtype(const char *service_type, const char *proto, const char *subtype,
+                                 uint32_t timeout, size_t max_results, mdns_result_t **results);
+
+/**
+ * @brief  Query mDNS for service subtype asynchronously (Selective Instance Enumeration per RFC 6763 Section 7.1)
+ *
+ *         Sends a PTR query for `_subtype._sub._service_type._proto.local`.
+ *         The search object must be checked for progress and deleted manually.
+ *
+ * @param  service_type service type (_http, _arduino, _ftp etc.)
+ * @param  proto        service protocol (_tcp, _udp, etc.)
+ * @param  subtype      the subtype to query for (e.g. "_printer")
+ * @param  timeout      time in milliseconds during which mDNS query is active
+ * @param  max_results  maximum results to be collected
+ * @param  notifier     Notification function to be called when the result is ready, can be NULL
+ *
+ * @return mdns_search_once_s pointer to new search object if query initiated successfully.
+ *         NULL otherwise.
+ */
+mdns_search_once_t *mdns_query_async_new_subtype(const char *service_type, const char *proto, const char *subtype,
+                                                 uint32_t timeout, size_t max_results, mdns_query_notify_t notifier);
+
+/**
  * @brief  Query mDNS for SRV record
  *
  * @param  instance_name    service instance name
@@ -920,6 +961,20 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
 
 /**
+ * @brief   Browse mDNS for a service subtype `_subtype._sub._service._proto`
+ *          (Selective Instance Enumeration per RFC 6763 Section 7.1).
+ *
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param subtype  Pointer to the `_subtype` to restrict browsing to. Can be NULL for standard browse.
+ * @param notifier The callback which will be called when the browsing service changed.
+ * @return mdns_browse_t pointer to new browse object if initiated successfully.
+ *         NULL otherwise.
+ */
+mdns_browse_t *mdns_browse_new_subtype(const char *service, const char *proto, const char *subtype,
+                                       mdns_browse_notify_t notifier);
+
+/**
  * @brief   Stop the `_service._proto` browse.
  * @param service  Pointer to the `_service` which will be browsed.
  * @param proto    Pointer to the `_proto` which will be browsed.
@@ -929,6 +984,18 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  *     - ESP_ERR_NO_MEM         memory error.
  */
 esp_err_t mdns_browse_delete(const char *service, const char *proto);
+
+/**
+ * @brief   Stop the `_subtype._sub._service._proto` browse.
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param subtype  Pointer to the `_subtype`. Can be NULL to match a browse without subtype.
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_FAIL           mDNS is not running or the browsing was never started.
+ *     - ESP_ERR_NO_MEM         memory error.
+ */
+esp_err_t mdns_browse_delete_subtype(const char *service, const char *proto, const char *subtype);
 
 #ifdef __cplusplus
 }

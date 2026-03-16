@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -50,6 +50,7 @@ static void browse_item_free(mdns_browse_t *browse)
 {
     mdns_mem_free(browse->service);
     mdns_mem_free(browse->proto);
+    mdns_mem_free(browse->subtype);
     if (browse->result) {
         mdns_priv_query_results_free(browse->result);
     }
@@ -79,12 +80,12 @@ static void browse_sync(mdns_browse_sync_t *browse_sync)
  */
 static void browse_send(mdns_browse_t *browse, mdns_if_t interface)
 {
-    // Using search once for sending the PTR query
     mdns_search_once_t search = {0};
 
     search.instance = NULL;
     search.service = browse->service;
     search.proto = browse->proto;
+    search.subtype = browse->subtype;
     search.type = MDNS_TYPE_PTR;
     search.unicast = false;
     search.result = NULL;
@@ -113,6 +114,23 @@ void mdns_priv_browse_free(void)
     }
 }
 
+static bool browse_match(const mdns_browse_t *a, const mdns_browse_t *b)
+{
+    if (strlen(a->service) != strlen(b->service) || memcmp(a->service, b->service, strlen(a->service)) != 0) {
+        return false;
+    }
+    if (strlen(a->proto) != strlen(b->proto) || memcmp(a->proto, b->proto, strlen(a->proto)) != 0) {
+        return false;
+    }
+    if (a->subtype == NULL && b->subtype == NULL) {
+        return true;
+    }
+    if (a->subtype == NULL || b->subtype == NULL) {
+        return false;
+    }
+    return strlen(a->subtype) == strlen(b->subtype) && memcmp(a->subtype, b->subtype, strlen(a->subtype)) == 0;
+}
+
 /**
  * @brief  Mark browse as finished, remove and free it from browse chain
  */
@@ -122,8 +140,7 @@ static void browse_finish(mdns_browse_t *browse)
     mdns_browse_t *b = s_browse;
     mdns_browse_t *target_free = NULL;
     while (b) {
-        if (strlen(b->service) == strlen(browse->service) && memcmp(b->service, browse->service, strlen(b->service)) == 0 &&
-                strlen(b->proto) == strlen(browse->proto) && memcmp(b->proto, browse->proto, strlen(b->proto)) == 0) {
+        if (browse_match(b, browse)) {
             target_free = b;
             b = b->next;
             queueDetach(mdns_browse_t, s_browse, target_free);
@@ -138,7 +155,8 @@ static void browse_finish(mdns_browse_t *browse)
 /**
  * @brief  Allocate new browse structure
  */
-static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_browse_notify_t notifier)
+static mdns_browse_t *browse_init(const char *service, const char *proto, const char *subtype,
+                                  mdns_browse_notify_t notifier)
 {
     mdns_browse_t *browse = (mdns_browse_t *)mdns_mem_malloc(sizeof(mdns_browse_t));
 
@@ -166,6 +184,14 @@ static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_b
         }
     }
 
+    if (!mdns_utils_str_null_or_empty(subtype)) {
+        browse->subtype = mdns_mem_strndup(subtype, MDNS_NAME_BUF_LEN - 1);
+        if (!browse->subtype) {
+            browse_item_free(browse);
+            return NULL;
+        }
+    }
+
     browse->notifier = notifier;
     return browse;
 }
@@ -178,10 +204,8 @@ static void browse_add(mdns_browse_t *browse)
     browse->state = BROWSE_RUNNING;
     mdns_browse_t *queue = s_browse;
     bool found = false;
-    // looking for this browse in active browses
     while (queue) {
-        if (strlen(queue->service) == strlen(browse->service) && memcmp(queue->service, browse->service, strlen(queue->service)) == 0 &&
-                strlen(queue->proto) == strlen(browse->proto) && memcmp(queue->proto, browse->proto, strlen(queue->proto)) == 0) {
+        if (browse_match(queue, browse)) {
             found = true;
             break;
         }
@@ -616,13 +640,19 @@ esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync)
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier)
 {
+    return mdns_browse_new_subtype(service, proto, NULL, notifier);
+}
+
+mdns_browse_t *mdns_browse_new_subtype(const char *service, const char *proto, const char *subtype,
+                                       mdns_browse_notify_t notifier)
+{
     mdns_browse_t *browse = NULL;
 
     if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
 
-    browse = browse_init(service, proto, notifier);
+    browse = browse_init(service, proto, subtype, notifier);
     if (!browse) {
         return NULL;
     }
@@ -637,13 +667,18 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
 
 esp_err_t mdns_browse_delete(const char *service, const char *proto)
 {
+    return mdns_browse_delete_subtype(service, proto, NULL);
+}
+
+esp_err_t mdns_browse_delete_subtype(const char *service, const char *proto, const char *subtype)
+{
     mdns_browse_t *browse = NULL;
 
     if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return ESP_FAIL;
     }
 
-    browse = browse_init(service, proto, NULL);
+    browse = browse_init(service, proto, subtype, NULL);
     if (!browse) {
         return ESP_ERR_NO_MEM;
     }
