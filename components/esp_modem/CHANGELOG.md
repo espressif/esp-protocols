@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.1](https://github.com/espressif/esp-protocols/commits/modem-v2.0.1)
+
+### Bug Fixes
+
+- Fix inconsistent error checks in C-API wrappers ([de02d8a3](https://github.com/espressif/esp-protocols/commit/de02d8a3))
+- null terminate output buffers when modem sends empty response & check output buffers are not null ([6124b7ee](https://github.com/espressif/esp-protocols/commit/6124b7ee))
+- null terminate output buffer if no response in esp_modem_at functions ([17d82dea](https://github.com/espressif/esp-protocols/commit/17d82dea))
+- Fix catch based target tests with v6.0 ([7f4e3690](https://github.com/espressif/esp-protocols/commit/7f4e3690))
+- Fix deinit function in ap2ppp example ([853e8e28](https://github.com/espressif/esp-protocols/commit/853e8e28))
+
 ## [2.0.0](https://github.com/espressif/esp-protocols/commits/modem-v2.0.0)
 
 ### Breaking changes
