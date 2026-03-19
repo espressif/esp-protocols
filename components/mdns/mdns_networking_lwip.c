@@ -109,13 +109,20 @@ static esp_err_t join_group(mdns_if_t if_inx, mdns_ip_protocol_t ip_protocol, bo
     struct netif *netif = NULL;
     esp_netif_t *tcpip_if = mdns_priv_get_esp_netif(if_inx);
 
+    if (!tcpip_if) {
+        // The interface can disappear before mDNS deinit finishes during reboot.
+        return ESP_ERR_INVALID_STATE;
+    }
+
     if (!esp_netif_is_netif_up(tcpip_if)) {
         // Network interface went down before event propagated, skipping IGMP config
         return ESP_ERR_INVALID_STATE;
     }
 
     netif = esp_netif_get_netif_impl(tcpip_if);
-    assert(netif);
+    if (!netif) {
+        return ESP_ERR_INVALID_STATE;
+    }
 
 #if LWIP_IPV4
     if (ip_protocol == MDNS_IP_PROTOCOL_V4) {
