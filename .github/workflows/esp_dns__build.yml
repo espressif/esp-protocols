@@ -37,5 +37,5 @@ jobs:
             export EXPECTED_WARNING="unknown kconfig symbol 'LWIP_USE_ESP_GETADDRINFO'"
           fi
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           python ../../../ci/build_apps.py ./${{ matrix.test.app }} --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app
