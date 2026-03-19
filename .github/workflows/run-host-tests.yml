@@ -37,7 +37,7 @@ jobs:
       runs-on: ubuntu-22.04
       permissions:
         checks: write
-        contents: write
+        contents: read
       container: espressif/idf:${{inputs.idf_version}}
       steps:
         - name: Checkout esp-protocols
