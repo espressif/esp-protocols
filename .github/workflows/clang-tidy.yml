@@ -10,6 +10,9 @@ jobs:
   build:
     name: Run clang-tidy
     runs-on: ubuntu-22.04
+    permissions:
+      security-events: write
+      contents: read
     container: espressif/idf:latest
     steps:
       - uses: actions/checkout@v4

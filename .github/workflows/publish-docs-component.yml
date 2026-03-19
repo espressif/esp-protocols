@@ -16,6 +16,8 @@ jobs:
   publish:
     name: Publish Tag, Release, Docs, Component
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
     steps:

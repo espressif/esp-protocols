@@ -12,6 +12,9 @@ jobs:
   host_test_websocket:
     if: contains(github.event.pull_request.labels.*.name, 'websocket') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "websocket"
