@@ -1,10 +1,11 @@
-# SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
+import ipaddress
+import os
 import re
 import select
 import socket
 import struct
-import subprocess
 import time
 from threading import Event, Thread
 
@@ -13,6 +14,144 @@ try:
     import dpkt.dns
 except ImportError:
     pass
+
+
+def _encode_qname(name):
+    """Encode a DNS QNAME (e.g. 'host.local' or '100.1.168.192.in-addr.arpa')."""
+    qname = b''
+    for label in name.split('.'):
+        qname += struct.pack('B', len(label)) + label.encode()
+    qname += b'\x00'
+    return qname
+
+
+def _decode_dns_name(data, offset, seen=None):
+    """Decode a DNS name from packet, handling compression. Returns (name, new_offset)."""
+    if seen is None:
+        seen = set()
+    labels = []
+    while offset < len(data):
+        if offset in seen:
+            break
+        length = data[offset]
+        if length == 0:
+            return ('.'.join(labels), offset + 1)
+        if (length & 0xC0) == 0xC0:
+            ptr = struct.unpack('!H', data[offset:offset + 2])[0] & 0x3FFF
+            if ptr < len(data) and ptr not in seen:
+                seen.add(ptr)
+                subname, _ = _decode_dns_name(data, ptr, seen)
+                return ('.'.join(labels) + ('.' + subname if labels else subname), offset + 2)
+            return ('.'.join(labels), offset + 2)
+        seen.add(offset)
+        offset += 1
+        if offset + length <= len(data):
+            labels.append(data[offset:offset + length].decode('utf-8', errors='replace'))
+        offset += length
+    return ('.'.join(labels), offset)
+
+
+def run_one_shot_query(name, qtype='A', server='224.0.0.251', port=5353, timeout=5, retries=3):
+    """
+    Pure-python single-shot DNS query to a multicast address (replaces dig +short).
+    For qtype='A': name is hostname (e.g. 'esp32.local'), returns bytes with IP(s).
+    For qtype='PTR': name is reverse format (e.g. '100.1.168.192.in-addr.arpa'), returns bytes with hostname(s).
+    """
+    qtype_val = 1 if qtype == 'A' else 12  # A=1, PTR=12
+    tx_id = struct.pack('!H', os.getpid() & 0xFFFF)
+    flags = struct.pack('!H', 0x0000)
+    counts = struct.pack('!HHHH', 1, 0, 0, 0)
+    qname = _encode_qname(name)
+    qtype_pack = struct.pack('!H', qtype_val)
+    qclass = struct.pack('!H', 1)  # IN
+    query = tx_id + flags + counts + qname + qtype_pack + qclass
+
+    print('run_one_shot_query: {} qtype={} -> {}:{}'.format(name, qtype, server, port))
+
+    for attempt in range(1, retries + 1):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.setblocking(False)
+            sock.bind(('0.0.0.0', 0))
+            sock.sendto(query, (server, port))
+
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                remaining = max(0.1, deadline - time.time())
+                ready, _, _ = select.select([sock], [], [], min(remaining, 1.0))
+                if not ready:
+                    continue
+                data, addr = sock.recvfrom(4096)
+
+                if len(data) < 12:
+                    continue
+
+                ancount = struct.unpack('!H', data[6:8])[0]
+                offset = 12
+                qdcount = struct.unpack('!H', data[4:6])[0]
+                for _ in range(qdcount):
+                    while offset < len(data):
+                        length = data[offset]
+                        if length == 0:
+                            offset += 1
+                            break
+                        if (length & 0xC0) == 0xC0:
+                            offset += 2
+                            break
+                        offset += 1 + length
+                    offset += 4
+
+                results = []
+                for _ in range(ancount):
+                    if offset >= len(data):
+                        break
+                    if (data[offset] & 0xC0) == 0xC0:
+                        offset += 2
+                    else:
+                        while offset < len(data) and data[offset] != 0:
+                            offset += 1 + data[offset]
+                        offset += 1
+
+                    if offset + 10 > len(data):
+                        break
+                    rtype = struct.unpack('!H', data[offset:offset + 2])[0]
+                    rdlength = struct.unpack('!H', data[offset + 8:offset + 10])[0]
+                    offset += 10
+
+                    if qtype == 'A' and rtype == 1 and rdlength == 4 and offset + 4 <= len(data):
+                        ip = socket.inet_ntoa(data[offset:offset + 4])
+                        results.append(ip)
+                    elif qtype == 'PTR' and rtype == 12 and offset + rdlength <= len(data):
+                        ptr_name, _ = _decode_dns_name(data, offset)
+                        results.append(ptr_name.rstrip('.'))
+                    offset += rdlength
+
+                if results:
+                    if qtype == 'A':
+                        output = '\n'.join(results) + '\n'
+                    else:
+                        output = '\n'.join(results) + '\n'
+                    print('  resolved: {}'.format(', '.join(results)))
+                    return output.encode('utf-8')
+
+            print('  attempt {} timed out after {}s'.format(attempt, timeout))
+        except Exception as e:
+            print('  attempt {} exception: {}'.format(attempt, e))
+        finally:
+            sock.close()
+
+    print('  all {} attempts failed'.format(retries))
+    return b''
+
+
+def _ip_to_reverse_name(ip_address):
+    """Convert IP address to reverse DNS query name (e.g. 192.168.1.100 -> 100.1.168.192.in-addr.arpa)."""
+    if ':' in ip_address:
+        addr = ipaddress.ip_address(ip_address)
+        rev = addr.reverse_pointer  # e.g. 0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.ip6.arpa.
+        return rev.rstrip('.')
+    parts = ip_address.split('.')
+    return '.'.join(reversed(parts)) + '.in-addr.arpa'
 
 
 def get_dns_query_for_esp(esp_host):
@@ -172,12 +311,11 @@ def test_examples_protocol_mdns(dut):
                 re.compile(
                     b'mdns-test: getaddrinfo: tinytester-lwip.local resolved to: 127.0.0.1'
                 ))
-            # 5. check the DUT answers to `dig` command
-            dig_output = subprocess.check_output([
-                'dig', '+short', '-p', '5353', '@224.0.0.251',
-                '{}.local'.format(specific_host)
-            ])
-            print('Resolving {} using "dig" succeeded with:\n{}'.format(
+            # 5. check the DUT answers to one-shot mDNS query (replaces dig)
+            dig_output = run_one_shot_query(
+                '{}.local'.format(specific_host), qtype='A'
+            )
+            print('Resolving {} using one-shot query succeeded with:\n{}'.format(
                 specific_host, dig_output))
             if not ipv4.encode('utf-8') in dig_output:
                 raise ValueError(
@@ -186,11 +324,11 @@ def test_examples_protocol_mdns(dut):
             # 6. check the DUT reverse lookup
             if dut.app.sdkconfig.get('MDNS_RESPOND_REVERSE_QUERIES') is True:
                 for ip_address in ip_addresses:
-                    dig_output = subprocess.check_output([
-                        'dig', '+short', '-p', '5353', '@224.0.0.251', '-x',
-                        '{}'.format(ip_address)
-                    ])
-                    print('Reverse lookup for {} using "dig" succeeded with:\n{}'.
+                    reverse_name = _ip_to_reverse_name(ip_address)
+                    dig_output = run_one_shot_query(
+                        reverse_name, qtype='PTR'
+                    )
+                    print('Reverse lookup for {} using one-shot query succeeded with:\n{}'.
                           format(ip_address, dig_output))
                     if specific_host not in dig_output.decode():
                         raise ValueError(
