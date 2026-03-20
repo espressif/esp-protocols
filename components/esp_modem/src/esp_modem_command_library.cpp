@@ -276,9 +276,9 @@ command_result get_restricted_usim_access(CommandableIf *t, std::string &out, in
 {
     ESP_LOGV(TAG, "%s", __func__ );
     std::string aux;
-    auto ret = generic_get_string(t, "AT+CRSM=" + std::to_string(command) +
-                              "," + std::to_string(file_id) + "," + std::to_string(p1) + "," + 
-                              std::to_string(p2) + "," + std::to_string(p3) + "\r", aux, 5000);
+    std::string cmd = "AT+CRSM=" + std::to_string(command) + "," + std::to_string(file_id) + "," + 
+                            std::to_string(p1) + "," + std::to_string(p2) + "," + std::to_string(p3) + "\r";
+    auto ret = generic_get_string(t, cmd, aux, 5000);
     if (ret != command_result::OK) {
         return ret;
     }

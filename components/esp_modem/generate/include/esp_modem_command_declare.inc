@@ -13,9 +13,9 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result)
  * @param[in] p2 param 2
  * @param[in] p3 param 3
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_restricted_usim_access, command_result, 6, STRING_OUT(p1, data), INT_IN(p2, command), INT_IN(p3, file_id), INT_IN(p4, p1), INT_IN(p5, p2), INT_IN(p6, p3)) \
-    \
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_restricted_usim_access, command_result, 6, STRING_OUT(p1, data), INT_IN(p2, command), INT_IN(p3, file_id), INT_IN(p4, p1), INT_IN(p5, p2), INT_IN(p6, p3))
+
 /**
  * @brief Write the Restricted (U)SIM Access
  * @param[in] command command to run
@@ -25,9 +25,9 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_restricted_usim_access, command_result, 6, STR
  * @param[in] p3 param 3
  * @param[in] data data to write
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(set_restricted_usim_access, command_result, 6, INT_IN(p1, command), INT_IN(p2, file_id), INT_IN(p3, p1), INT_IN(p4, p2), INT_IN(p5, p3), STRING_IN(p6, data)) \
-    \
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(set_restricted_usim_access, command_result, 6, INT_IN(p1, command), INT_IN(p2, file_id), INT_IN(p3, p1), INT_IN(p4, p2), INT_IN(p5, p3), STRING_IN(p6, data))
+
 /**
  * @brief Reads the operator name
  * @param[out] name operator name
@@ -140,9 +140,9 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, STR_OUT(imsi))
  * @brief Reads the ICCID number
  * @param[out] iccid Module's IMEI number
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_iccid, command_result, 1, STRING_OUT(p1, iccid)) \
-    \
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_iccid, command_result, 1, STRING_OUT(p1, iccid))
+
 /**
  * @brief Reads the IMEI number
  * @param[out] imei Module's IMEI number
@@ -161,9 +161,9 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, STR_OUT(name))
  * @brief Reads the module firmware
  * @param[out] name module firmware
  * @return OK, FAIL or TIMEOUT
- */ \
-ESP_MODEM_DECLARE_DCE_COMMAND(get_module_firmware, command_result, 1, STRING_OUT(p1, firmware)) \
-    \
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_module_firmware, command_result, 1, STRING_OUT(p1, firmware))
+
 /**
  * @brief Sets the modem to data mode
  * @return OK, FAIL or TIMEOUT
