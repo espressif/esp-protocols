@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           python ci/build_apps.py -c ${TEST_DIR} -m components/mosquitto/.build-test-rules.yml
           if [ "${{ matrix.example }}" == "${TARGET_TEST}" ]; then
             # upload only the target test artifacts
@@ -152,7 +152,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           export MOSQUITTO_PATH=`pwd`/components/mosquitto
           # to use the actual version of mosquitto
           sed -i '/espressif\/mosquitto:/a \ \ \ \ override_path: "${MOSQUITTO_PATH}"' ${IDF_PATH}/${{matrix.test.path}}/main/idf_component.yml

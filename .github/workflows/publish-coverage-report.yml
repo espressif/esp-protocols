@@ -11,6 +11,8 @@ on:
 jobs:
   publish_github_pages:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: github.repository == 'espressif/esp-protocols'
     steps:
       - name: Checkout repository

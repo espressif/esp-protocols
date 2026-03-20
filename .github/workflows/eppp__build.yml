@@ -26,5 +26,5 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           python ./ci/build_apps.py ./components/eppp_link/${{matrix.test.path}} -vv --preserve-all
