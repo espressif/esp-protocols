@@ -232,7 +232,7 @@ command_result Shiny::DCE::get_module_name(std::string &name)
  * @param[out] firmware module firmware version
  * @return OK, FAIL or TIMEOUT
  */
-command_result Shiny::DCE::get_module_firmware(std::string &name)
+command_result Shiny::DCE::get_module_firmware(std::string &firmware)
 {
     return esp_modem::dce_commands::get_module_firmware(this, firmware);
 }
