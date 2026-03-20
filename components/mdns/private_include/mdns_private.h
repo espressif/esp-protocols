@@ -280,6 +280,7 @@ typedef struct mdns_out_question_s {
     const char *service;
     const char *proto;
     const char *domain;
+    const char *subtype;
     bool own_dynamic_memory;
 } mdns_out_question_t;
 
@@ -348,6 +349,7 @@ typedef struct mdns_search_once_s {
     char *instance;
     char *service;
     char *proto;
+    char *subtype;
     mdns_result_t *result;
 } mdns_search_once_t;
 
@@ -359,6 +361,7 @@ typedef struct mdns_browse_s {
 
     char *service;
     char *proto;
+    char *subtype;
     mdns_result_t *result;
 } mdns_browse_t;
 

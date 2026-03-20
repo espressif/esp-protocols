@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,6 +21,9 @@ static mdns_search_once_t *s_search_once;
 
 static esp_err_t send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 static void search_free(mdns_search_once_t *search);
+static mdns_search_once_t *search_init_with_subtype(const char *name, const char *service, const char *proto,
+                                                    const char *subtype, uint16_t type, bool unicast,
+                                                    uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier);
 
 void mdns_priv_query_results_free(mdns_result_t *results)
 {
@@ -167,6 +170,7 @@ void mdns_priv_query_free(void)
         mdns_mem_free(h->instance);
         mdns_mem_free(h->service);
         mdns_mem_free(h->proto);
+        mdns_mem_free(h->subtype);
         vSemaphoreDelete(h->done_semaphore);
         if (h->result) {
             mdns_priv_query_results_free(h->result);
@@ -249,7 +253,15 @@ mdns_search_once_t *mdns_priv_query_find_from(mdns_search_once_t *s, mdns_name_t
         }
 
         if (type == MDNS_TYPE_PTR && type == s->type && !strcasecmp(name->service, s->service) && !strcasecmp(name->proto, s->proto)) {
-            return s;
+            if (name->sub) {
+                if (s->subtype && !strcasecmp(name->host, s->subtype)) {
+                    return s;
+                }
+            } else if (!s->subtype) {
+                return s;
+            }
+            s = s->next;
+            continue;
         }
 
         s = s->next;
@@ -287,6 +299,7 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     q->service = search->service;
     q->proto = search->proto;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
+    q->subtype = search->subtype;
     q->own_dynamic_memory = false;
     queueToEnd(mdns_out_question_t, packet->questions, q);
 
@@ -345,6 +358,7 @@ static void search_free(mdns_search_once_t *search)
     mdns_mem_free(search->instance);
     mdns_mem_free(search->service);
     mdns_mem_free(search->proto);
+    mdns_mem_free(search->subtype);
     vSemaphoreDelete(search->done_semaphore);
     mdns_mem_free(search);
 }
@@ -354,6 +368,13 @@ static void search_free(mdns_search_once_t *search)
  */
 static mdns_search_once_t *search_init(const char *name, const char *service, const char *proto, uint16_t type, bool unicast,
                                        uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier)
+{
+    return search_init_with_subtype(name, service, proto, NULL, type, unicast, timeout, max_results, notifier);
+}
+
+static mdns_search_once_t *search_init_with_subtype(const char *name, const char *service, const char *proto,
+                                                    const char *subtype, uint16_t type, bool unicast,
+                                                    uint32_t timeout, uint8_t max_results, mdns_query_notify_t notifier)
 {
     mdns_search_once_t *search = (mdns_search_once_t *)mdns_mem_malloc(sizeof(mdns_search_once_t));
     if (!search) {
@@ -387,6 +408,14 @@ static mdns_search_once_t *search_init(const char *name, const char *service, co
     if (!mdns_utils_str_null_or_empty(proto)) {
         search->proto = mdns_mem_strndup(proto, MDNS_NAME_BUF_LEN - 1);
         if (!search->proto) {
+            search_free(search);
+            return NULL;
+        }
+    }
+
+    if (!mdns_utils_str_null_or_empty(subtype)) {
+        search->subtype = mdns_mem_strndup(subtype, MDNS_NAME_BUF_LEN - 1);
+        if (!search->subtype) {
             search_free(search);
             return NULL;
         }
@@ -773,6 +802,72 @@ esp_err_t mdns_query_ptr(const char *service, const char *proto, uint32_t timeou
     }
 
     return mdns_query(NULL, service, proto, MDNS_TYPE_PTR, timeout, max_results, results);
+}
+
+esp_err_t mdns_query_ptr_subtype(const char *service_type, const char *proto, const char *subtype,
+                                 uint32_t timeout, size_t max_results, mdns_result_t **results)
+{
+    mdns_search_once_t *search = NULL;
+
+    if (mdns_utils_str_null_or_empty(service_type) || mdns_utils_str_null_or_empty(proto) ||
+            mdns_utils_str_null_or_empty(subtype)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!results) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *results = NULL;
+
+    if (!mdns_priv_is_server_init()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (!timeout) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    search = search_init_with_subtype(NULL, service_type, proto, subtype, MDNS_TYPE_PTR, false, timeout,
+                                      max_results, NULL);
+    if (!search) {
+        return ESP_ERR_NO_MEM;
+    }
+
+    if (send_search_action(ACTION_SEARCH_ADD, search)) {
+        search_free(search);
+        return ESP_ERR_NO_MEM;
+    }
+    xSemaphoreTake(search->done_semaphore, portMAX_DELAY);
+
+    *results = search->result;
+    search_free(search);
+
+    return ESP_OK;
+}
+
+mdns_search_once_t *mdns_query_async_new_subtype(const char *service_type, const char *proto, const char *subtype,
+                                                 uint32_t timeout, size_t max_results, mdns_query_notify_t notifier)
+{
+    mdns_search_once_t *search = NULL;
+
+    if (!mdns_priv_is_server_init() || !timeout || mdns_utils_str_null_or_empty(service_type) ||
+            mdns_utils_str_null_or_empty(proto) || mdns_utils_str_null_or_empty(subtype)) {
+        return NULL;
+    }
+
+    search = search_init_with_subtype(NULL, service_type, proto, subtype, MDNS_TYPE_PTR, false, timeout,
+                                      max_results, notifier);
+    if (!search) {
+        return NULL;
+    }
+
+    if (send_search_action(ACTION_SEARCH_ADD, search)) {
+        search_free(search);
+        return NULL;
+    }
+
+    return search;
 }
 
 esp_err_t mdns_query_srv(const char *instance, const char *service, const char *proto, uint32_t timeout, mdns_result_t **result)
