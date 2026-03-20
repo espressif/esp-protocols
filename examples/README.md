@@ -15,6 +15,9 @@ This directory showcases a variety of examples, illustrating the use of differen
 3. **MQTT Demo on Linux**: A comprehensive demonstration of an MQTT (Message Queuing Telemetry Transport) application designed to run on a Linux environment.
    Location: [mqtt](mqtt)
 
+4. **WebSocket Feature Showcase**: Demonstrates modern `esp_websocket_client` features such as header callbacks, custom headers, fragmented frames, pause/resume, and runtime ping/reconnect tuning.
+   Location: [websocket_features](websocket_features)
+
 ## Additional Resources and Examples
 
 For an extensive collection of additional examples, especially those related to specific components, please visit the upper layer directory and navigate to the respective component's example directory.
