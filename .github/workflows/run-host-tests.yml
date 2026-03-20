@@ -27,6 +27,9 @@ on:
             pre_run_script:
                 type: string
                 required: false
+            pre_run_executable_script:
+                type: string
+                required: false
             publish_unit_test_result:
                 type: boolean
                 required: false
@@ -61,6 +64,9 @@ jobs:
                 echo "Executeable wasn't run"
                 exit 0
             fi
+            if [ -f "${{ inputs.pre_run_executable_script }}" ]; then
+              source ${{ inputs.pre_run_executable_script }}
+            fi
             ./build/${{inputs.app_name}}.elf
         - name: Publish Unit Test Result
           uses: EnricoMi/publish-unit-test-result-action@v2
@@ -82,6 +88,9 @@ jobs:
              # The sdkconfig.ci.coverage specifies Linux as the build target with apropriate settings (CONFIG_GCOV_ENABLED=y).
             cp sdkconfig.ci.coverage sdkconfig.defaults
             idf.py build
+            if [ -f "${{ inputs.pre_run_executable_script }}" ]; then
+              source ${{ inputs.pre_run_executable_script }}
+            fi
             ./build/${{inputs.app_name}}.elf
         - name: Run Coverage
           shell: bash
