@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -77,6 +77,11 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
     case WEBSOCKET_EVENT_BEGIN:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_BEGIN");
         break;
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+    case WEBSOCKET_EVENT_HEADER_RECEIVED:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_HEADER_RECEIVED: %.*s", data->data_len, data->data_ptr);
+        break;
+#endif
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         break;
@@ -142,7 +147,11 @@ static void websocket_app_start(void)
 #if CONFIG_WEBSOCKET_URI_FROM_STDIN
     char line[128];
 
-    ESP_LOGI(TAG, "Please enter uri of websocket endpoint");
+    ESP_LOGI(TAG, "Please enter WebSocket endpoint URI");
+    ESP_LOGI(TAG, "Examples:");
+    ESP_LOGI(TAG, "  ws://192.168.1.100:8080     (plain WebSocket)");
+    ESP_LOGI(TAG, "  wss://192.168.1.100:8080    (secure WebSocket)");
+    ESP_LOGI(TAG, "  wss://echo.websocket.org    (public test server)");
     get_string(line, sizeof(line));
 
     websocket_cfg.uri = line;

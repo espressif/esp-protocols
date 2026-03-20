@@ -24,6 +24,11 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
+          if [[ "${{ matrix.idf_ver }}" == "latest" ]]; then
+            export EXPECTED_WARNING="warning: unknown kconfig symbol 'EXAMPLE_ETH_PHY_IP101'"
+          else
+            export EXPECTED_WARNING="warning: unknown kconfig symbol 'EXAMPLE_ETH_PHY_GENERIC'"
+          fi
           python -m pip install idf-build-apps
           # Build default configs for all targets
           python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -d
@@ -71,6 +76,22 @@ jobs:
       - name: Run ${{ matrix.test.app }} application on ${{ matrix.idf_target }}
         working-directory: components/mdns/${{ matrix.test.path }}
         run: |
+            export PYENV_ROOT="$HOME/.pyenv"
+            export PATH="$PYENV_ROOT/bin:$PATH"
+            eval "$(pyenv init --path)"
+            eval "$(pyenv init -)"
+            if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+              echo "Installing Python 3.12.6..."
+              pyenv install -s 3.12.6
+            fi
+            if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+              echo "Creating pyenv virtualenv 'myenv'..."
+              pyenv virtualenv 3.12.6 myenv
+            fi
+            pyenv activate myenv
+            python --version
+            pip install --prefer-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
+            pip install --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
             unzip ci/artifacts.zip -d ci
             for dir in `ls -d ci/build_*`; do
             rm -rf build sdkconfig.defaults

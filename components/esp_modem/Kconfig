@@ -92,4 +92,25 @@ menu "esp-modem"
             If enabled, the library dumps all transmitted and received data.
             This option is only used for debugging.
 
+    config ESP_MODEM_ENABLE_DEVELOPMENT_MODE
+        bool "Use development mode"
+        default n
+        help
+            We use pre-generated headers and sources with common AT commands.
+            This is useful for using ESP-MODEM library with IDEs and code navigation.
+            When developing ESP-MODEM library, it's usually more convenient
+            to work with sources directly, using C-preprocessor's metaprogramming.
+            Set this to 'y' if you're making changes to the actual sources of
+            the AT command definitions (typically in esp_modem_command_declare.inc)
+
+    config ESP_MODEM_USE_PPP_MODE
+        bool "Use PPP mode"
+        default y
+        select LWIP_PPP_SUPPORT
+        help
+            If enabled, the library can use PPP netif from lwip.
+            This is the default and most common setting.
+            But it's possible to disable it and use only AT commands,
+            in this case it's not required to enable LWIP_PPP_SUPPORT.
+
 endmenu

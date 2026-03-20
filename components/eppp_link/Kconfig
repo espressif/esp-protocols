@@ -1,10 +1,16 @@
 menu "eppp_link"
 
-    config EPPP_LINK_USES_LWIP
-        bool
-        default "y"
+    config EPPP_LINK_USES_PPP
+        bool "Use PPP network interface"
+        default "n"
         select LWIP_PPP_SUPPORT
         select LWIP_PPP_SERVER_SUPPORT
+        help
+            Enable this option to use PPP network interface.
+            This is useful when pairing with another PPP device,
+            e.g. pppd service on Linux.
+            By default EPPP_LINK uses plain TUN interface,
+            relying on transports to split on packet boundaries.
 
     choice EPPP_LINK_DEVICE
         prompt "Choose PPP device"
@@ -27,6 +33,16 @@ menu "eppp_link"
             depends on SOC_SDMMC_HOST_SUPPORTED || SOC_SDIO_SLAVE_SUPPORTED
             help
                 Use SDIO.
+
+        config EPPP_LINK_DEVICE_ETH
+            bool "Ethernet"
+            depends on SOC_EMAC_SUPPORTED
+            help
+                Use Ethernet.
+                This transport could employ a full fledged Ethernet connection
+                between two EPPP nodes via standard Ethernet cable.
+                It could be also effectively connected directly on PCB, EMAC to EMAC,
+                without any Ethernet PHY chips (using eth_dummy_phy driver).
 
     endchoice
 
@@ -66,5 +82,32 @@ menu "eppp_link"
                 Use SDIO slave.
 
     endchoice
+
+    config EPPP_LINK_ETHERNET_OUR_ADDRESS
+        string "MAC address our local node"
+        default "06:00:00:00:00:01"
+        depends on EPPP_LINK_DEVICE_ETH
+
+    config EPPP_LINK_ETHERNET_THEIR_ADDRESS
+        string "MAC address the remote node"
+        default "06:00:00:00:00:02"
+        depends on EPPP_LINK_DEVICE_ETH
+
+    config EPPP_LINK_CHANNELS_SUPPORT
+        bool "Enable channel support (multiple logical channels)"
+        default n
+        depends on !EPPP_LINK_DEVICE_ETH
+        help
+            Enable support for multiple logical channels in the EPPP link layer.
+            When enabled, you can configure the number of channels used for communication.
+
+    config EPPP_LINK_NR_OF_CHANNELS
+        int "Number of logical channels"
+        depends on EPPP_LINK_CHANNELS_SUPPORT && !EPPP_LINK_DEVICE_ETH
+        range 1 8
+        default 2
+        help
+            Set the number of logical channels for EPPP link communication.
+            Each channel can be used for independent data streams.
 
 endmenu

@@ -198,7 +198,7 @@ extern "C" bool modem_stop_network()
 
 extern "C" void modem_deinit_network()
 {
-    free(dce);
+    delete dce;
     dce = nullptr;
 }
 

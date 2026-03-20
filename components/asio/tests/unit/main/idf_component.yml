@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.1"
+  espressif/asio:
+    version: "^1.14.1"
+    override_path: "../../../"

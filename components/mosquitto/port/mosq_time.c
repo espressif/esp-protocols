@@ -8,7 +8,7 @@
 
 #include <time.h>
 #include "time_mosq.h"
-
+#include "esp_err.h"
 #include "esp_timer.h"
 
 void mosquitto_time_init(void)

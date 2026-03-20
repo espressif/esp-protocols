@@ -13,10 +13,7 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
-        include:
-          - idf_ver: "latest"
-            warning: "Warning: The smallest app partition is nearly full"
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -27,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
         env:
-          EXPECTED_WARNING: ${{ matrix.warning }}
+          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full"
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
@@ -56,14 +53,22 @@ jobs:
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Build with IDF-${{ matrix.idf_ver }}
         shell: bash
         run: |
+          . ${GITHUB_WORKSPACE}/ci/config_env.sh
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
-          python ./ci/build_apps.py examples/mqtt -l -t linux
-          timeout 5 ./examples/mqtt/build_linux_default/esp_mqtt_demo.elf | tee test.log  || true
-          grep 'MQTT_EVENT_DATA' test.log
+          python ./ci/build_apps.py examples/mqtt -l -t linux -r 'sdkconfig.ci'
+          ./ci/test_broker/run.sh
+          sleep 1
+          failed=0
+          timeout 5 ./examples/mqtt/build_linux/esp_mqtt_demo.elf | tee test.log  || true
+          grep 'MQTT_EVENT_DATA' test.log || failed=1
+          pkill -f 'broker.elf' || true
+          exit $failed
 
   run_on_target:
     # Skip running on forks since it won't have access to secrets
@@ -74,7 +79,7 @@ jobs:
     needs: build_all_examples
     strategy:
       matrix:
-        idf_ver: ["release-v5.4", "latest"]
+        idf_ver: ["release-v5.5", "latest"]
     runs-on:
       - self-hosted
       - modem

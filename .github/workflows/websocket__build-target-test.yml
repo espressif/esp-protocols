@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "latest"]
-        test: [ { app: example, path: "examples/target" }, { app: unit_test, path: "test" } ]
+        test: [ { app: example, path: "examples/target" }, { app: unit_test, path: "tests/unit" } ]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -53,7 +53,7 @@ jobs:
       matrix:
         idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "latest"]
         idf_target: ["esp32"]
-        test: [ { app: example, path: "examples/target" }, { app: unit_test, path: "test" } ]
+        test: [ { app: example, path: "examples/target" }, { app: unit_test, path: "tests/unit" } ]
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
@@ -65,14 +65,27 @@ jobs:
         with:
           name: websocket_bin_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/ci/
-      - name: Install Python packages
+      - name: Run Example Test on target
+        working-directory: ${{ env.TEST_DIR }}
         env:
           PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
         run: |
-          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
-      - name: Run Example Test on target
-        working-directory: ${{ env.TEST_DIR }}
-        run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
+          pip install --prefer-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pytest-custom_exit_code esptool
+          pip install --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
           rm -rf build sdkconfig.defaults

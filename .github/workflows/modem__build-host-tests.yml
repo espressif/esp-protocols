@@ -13,13 +13,8 @@ jobs:
     name: Build examples
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         example: ["pppos_client", "modem_console", "modem_tcp_client", "ap_to_pppos", "simple_cmux_client"]
-        include:
-          - idf_ver: "release-v5.0"
-            example: "simple_cmux_client"
-            warning: "Warning: The smallest app partition is nearly full"
-
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     steps:
@@ -30,9 +25,9 @@ jobs:
       - if: ${{ matrix.skip_config }}
         run: rm -f $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/${{ matrix.example }}/sdkconfig.ci.${{ matrix.skip_config }}*
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
-        env:
-          EXPECTED_WARNING: ${{ matrix.warning }}
         shell: bash
+        env:
+          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full\nwarning: unknown kconfig symbol 'ESP32_PANIC_PRINT_HALT'"
         run: |
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
@@ -44,8 +39,8 @@ jobs:
     name: Build tests
     strategy:
       matrix:
-        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "latest"]
-        test: ["target", "target_ota", "target_iperf"]
+        idf_ver: ["latest","release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
+        test: ["target", "target_ota", "target_iperf", "target_urc"]
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -68,6 +63,9 @@ jobs:
   host_test_esp_modem:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "host_modem_test"
@@ -82,6 +80,9 @@ jobs:
   build_linux_example:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "linux_modem"
@@ -91,3 +92,21 @@ jobs:
         run_executable: false
         run_coverage: false
         pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"
+
+  esp_modem_generated_commands:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    name: Generated commands compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+      - name: Compat check
+        shell: bash
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y astyle
+          cd components/esp_modem
+          find examples/ -type f -regex '.*/generate/.*\.\(hpp\|cpp\)' -exec ./scripts/generate.sh {} \;
+          ./scripts/generate.sh
+          git diff --name-only
+          git diff --quiet

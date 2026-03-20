@@ -1,0 +1,23 @@
+From 695e057000698f4897b6c5802851499842e2fe31 Mon Sep 17 00:00:00 2001
+From: David Cermak <cermak@espressif.com>
+Date: Fri, 11 Jul 2025 16:59:21 +0200
+Subject: [PATCH] fix(libpeer): Add direct dependency to libsrtp
+
+---
+ components/esp_webrtc/impl/peer_default/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/components/esp_webrtc/impl/peer_default/CMakeLists.txt b/components/esp_webrtc/impl/peer_default/CMakeLists.txt
+index 2af35cf..3fb4615 100644
+--- a/components/esp_webrtc/impl/peer_default/CMakeLists.txt
++++ b/components/esp_webrtc/impl/peer_default/CMakeLists.txt
+@@ -2,6 +2,6 @@ idf_component_register(INCLUDE_DIRS ./include)
+
+ get_filename_component(BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+ add_prebuilt_library(${BASE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/libs/${IDF_TARGET}/libpeer_default.a"
+-                     PRIV_REQUIRES ${BASE_DIR} esp_timer)
++                     PRIV_REQUIRES ${BASE_DIR} esp_timer espressif__esp_libsrtp)
+ target_link_libraries(${COMPONENT_LIB}  INTERFACE "-L ${CMAKE_CURRENT_SOURCE_DIR}/libs/${IDF_TARGET}")
+ target_link_libraries(${COMPONENT_LIB}  INTERFACE peer_default)
+--
+2.43.0

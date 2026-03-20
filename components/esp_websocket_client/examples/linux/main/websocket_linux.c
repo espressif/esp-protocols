@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <esp_log.h>
-#include "nvs_flash.h"
 #include "protocol_examples_common.h"
 
 #include "esp_websocket_client.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_netif.h"
+#include "esp_crt_bundle.h"
 
 static const char *TAG = "websocket";
 
@@ -28,6 +28,11 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
     case WEBSOCKET_EVENT_BEGIN:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_BEGIN");
         break;
+#if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
+    case WEBSOCKET_EVENT_HEADER_RECEIVED:
+        ESP_LOGI(TAG, "WEBSOCKET_EVENT_HEADER_RECEIVED: %.*s", data->data_len, data->data_ptr);
+        break;
+#endif
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         break;
@@ -74,6 +79,33 @@ static void websocket_app_start(void)
     esp_websocket_client_config_t websocket_cfg = {};
 
     websocket_cfg.uri = CONFIG_WEBSOCKET_URI;
+
+#if CONFIG_WS_OVER_TLS_MUTUAL_AUTH
+    /* Configuring client certificates for mutual authentification */
+    extern const char cacert_start[] asm("_binary_ca_cert_pem_start");
+    extern const char cert_start[] asm("_binary_client_cert_pem_start");
+    extern const char cert_end[]   asm("_binary_client_cert_pem_end");
+    extern const char key_start[] asm("_binary_client_key_pem_start");
+    extern const char key_end[]   asm("_binary_client_key_pem_end");
+
+    websocket_cfg.cert_pem = cacert_start;
+    websocket_cfg.client_cert = cert_start;
+    websocket_cfg.client_cert_len = cert_end - cert_start;
+    websocket_cfg.client_key = key_start;
+    websocket_cfg.client_key_len = key_end - key_start;
+#elif CONFIG_WS_OVER_TLS_SERVER_AUTH
+    // Using certificate bundle as default server certificate source
+    websocket_cfg.crt_bundle_attach = esp_crt_bundle_attach;
+    // If using a custom certificate it could be added to certificate bundle,
+    // added to the build similar to client certificates in this examples,
+    // or read from NVS.
+    /* extern const char cacert_start[] asm("ADDED_CERTIFICATE"); */
+    /* websocket_cfg.cert_pem = cacert_start; */
+#endif
+
+#if CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK
+    websocket_cfg.skip_cert_common_name_check = true;
+#endif
 
     ESP_LOGI(TAG, "Connecting to %s...", websocket_cfg.uri);
 
@@ -127,7 +159,6 @@ int main(void)
     esp_log_level_set("transport_ws", ESP_LOG_DEBUG);
     esp_log_level_set("trans_tcp", ESP_LOG_DEBUG);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -283,6 +283,10 @@ namespace ppp {
 // Test that we're in the PPP mode by sending an LCP protocol echo request and expecting LCP echo reply
 constexpr std::array<uint8_t, 16> lcp_echo_request = {0x7e, 0xff, 0x03, 0xc0, 0x21, 0x09, 0x01, 0x00, 0x08, 0x99, 0xd1, 0x35, 0xc1, 0x8e, 0x2c, 0x7e };
 constexpr std::array<uint8_t, 5> lcp_echo_reply_head = {0x7e, 0xff, 0x7d, 0x23, 0xc0};
+// PPP frame delimiter
+constexpr uint8_t ppp_delimiter = 0x7e;
+// LCP protocol ID
+constexpr std::array<uint8_t, 2> lcp_protocol_id = {0xc0, 0x21};
 const size_t mode = 1 << 0;
 const int timeout = 200;
 }
@@ -325,27 +329,48 @@ modem_mode DCE_Mode::guess_unsafe(DTE *dte, bool with_cmux)
         ESP_LOG_BUFFER_HEXDUMP("esp-modem: guess mode data:", reply, reply_pos, ESP_LOG_DEBUG);
 
         // Check whether the response resembles the "golden" reply (for these 3 protocols)
-        if (reply_pos >= sizeof(probe::ppp::lcp_echo_reply_head)) {
-            // check for initial 2 bytes
-            auto *ptr = static_cast<uint8_t *>(memmem(reply, reply_pos, probe::ppp::lcp_echo_reply_head.data(), 2));
-            // and check the other two bytes for protocol ID:
-            // * either LCP reply
-            if (ptr && ptr[3] == probe::ppp::lcp_echo_reply_head[3] && ptr[4] == probe::ppp::lcp_echo_reply_head[4]) {
-                if (auto signal = weak_signal.lock()) {
-                    signal->set(probe::ppp::mode);
-                }
-            }
-            // * or LCP conf request
-            if (ptr && ptr[3] == probe::ppp::lcp_echo_request[3] && ptr[4] == probe::ppp::lcp_echo_request[4]) {
-                if (auto signal = weak_signal.lock()) {
-                    signal->set(probe::ppp::mode);
+        if (reply_pos >= 3) { // Minimum size needed for basic PPP detection
+            // Check for PPP detection - look for both traditional format and alternative formats
+
+            // Look for PPP frame delimiter (0x7E)
+            auto *ppp_start = static_cast<uint8_t *>(memchr(reply, probe::ppp::ppp_delimiter, reply_pos));
+            if (ppp_start) {
+                size_t remaining = reply_pos - (ppp_start - reply);
+
+                // Look for LCP protocol ID anywhere within reasonable distance after delimiter
+                if (remaining >= 5) { // Reasonable minimum for finding protocol ID
+                    // Check for original expected pattern
+                    if (memmem(ppp_start, remaining, probe::ppp::lcp_echo_reply_head.data(), 2)) {
+                        // Check for protocol ID in original format position
+                        uint8_t *protocol_pos = ppp_start + 3;
+                        if ((protocol_pos + 1) < (reply + reply_pos) &&
+                                (protocol_pos[0] == probe::ppp::lcp_echo_reply_head[3] &&
+                                 protocol_pos[1] == probe::ppp::lcp_echo_reply_head[4])) {
+                            if (auto signal = weak_signal.lock()) {
+                                signal->set(probe::ppp::mode);
+                                return command_result::OK;
+                            }
+                        }
+                    }
+
+                    // Also check for direct LCP protocol ID after delimiter (alternative format)
+                    if (remaining >= 3 && memmem(ppp_start + 1, remaining - 1,
+                                                 probe::ppp::lcp_protocol_id.data(),
+                                                 probe::ppp::lcp_protocol_id.size())) {
+                        if (auto signal = weak_signal.lock()) {
+                            signal->set(probe::ppp::mode);
+                            return command_result::OK;
+                        }
+                    }
                 }
             }
         }
+
         if (reply_pos >= 4 && memmem(reply, reply_pos, probe::cmd::reply, sizeof(probe::cmd::reply))) {
             if (reply[0] != 0xf9) {   // double check that the reply is not wrapped in CMUX headers
                 if (auto signal = weak_signal.lock()) {
                     signal->set(probe::cmd::mode);
+                    return command_result::OK;
                 }
             }
         }
@@ -356,6 +381,7 @@ modem_mode DCE_Mode::guess_unsafe(DTE *dte, bool with_cmux)
             if (ptr && (ptr[3] >> 2) == 0) {
                 if (auto signal = weak_signal.lock()) {
                     signal->set(probe::cmux::mode);
+                    return command_result::OK;
                 }
             }
         }

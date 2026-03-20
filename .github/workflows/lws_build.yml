@@ -13,7 +13,7 @@ jobs:
     name: Libwebsockets build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.3", "release-v5.4"]
+        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5"]
         test: [ { app: example, path: "examples/client" }]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        idf_ver: ["latest", "release-v5.3", "release-v5.4"]
+        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5"]
         idf_target: ["esp32"]
         test: [ { app: example, path: "examples/client" }]
     runs-on:
@@ -65,14 +65,24 @@ jobs:
         with:
           name: lws_target_esp32_${{ matrix.idf_ver }}_${{ matrix.test.app }}
           path: ${{ env.TEST_DIR }}/ci/
-      - name: Install Python packages
-        env:
-          PIP_EXTRA_INDEX_URL: "https://www.piwheels.org/simple"
-        run: |
-          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
       - name: Run Example Test on target
         working-directory: ${{ env.TEST_DIR }}
         run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          if ! pyenv versions --bare | grep -q '^3\.12\.6$'; then
+            echo "Installing Python 3.12.6..."
+            pyenv install -s 3.12.6
+          fi
+          if ! pyenv virtualenvs --bare | grep -q '^myenv$'; then
+            echo "Creating pyenv virtualenv 'myenv'..."
+            pyenv virtualenv 3.12.6 myenv
+          fi
+          pyenv activate myenv
+          python --version
+          pip install --only-binary cryptography --extra-index-url https://dl.espressif.com/pypi/ -r $GITHUB_WORKSPACE/ci/requirements.txt
           unzip ci/artifacts.zip -d ci
           for dir in `ls -d ci/build_*`; do
           rm -rf build sdkconfig.defaults

@@ -48,7 +48,7 @@ For more details refer [IDF Component Manager](https://docs.espressif.com/projec
 
 ### ping:
 ```
-ping  [-W <t>] [-i <t>] [-s <n>] [-c <n>] [-Q <n>] [-T <n>] <host>
+ping  [-W <t>] [-i <t>] [-s <n>] [-c <n>] [-Q <n>] [-T <n>] [-I <n>] <host>
   send ICMP ECHO_REQUEST to network hosts
   -W, --timeout=<t>  Time to wait for a response, in seconds
   -i, --interval=<t>  Wait interval seconds between sending each packet
@@ -56,6 +56,7 @@ ping  [-W <t>] [-i <t>] [-s <n>] [-c <n>] [-Q <n>] [-T <n>] <host>
   -c, --count=<n>  Stop after sending count packets
   -Q, --tos=<n>  Set Type of Service related bits in IP datagrams
   -T, --ttl=<n>  Set Time to Live related bits in IP datagrams
+  -I, --interface=<n>  Set Interface number 0=no-interface selected, >0 netif number + 1 (1 is usually 'lo0')
         <host>  Host address
 
 getaddrinfo  [-f <AF>] [-F <FLAGS>]... [-p <port>] <hostname>
@@ -121,8 +122,8 @@ getaddrinfo -f AF_INET -F AI_PASSIVE www.example.com
 ping www.example.com
 ```
 
-2. To specify additional options, such as timeout, interval, packet size, etc.:
+2. To specify additional options, such as timeout, interval, packet size, interface, etc.:
 
 ```
-ping -W 5 -i 1 -s 64 -c 4 -Q 0x10 -T 64 www.example.com
+ping -W 5 -i 1 -s 64 -c 4 -Q 0x10 -T 64 -I 0 www.example.com
 ```

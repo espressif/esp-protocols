@@ -16,6 +16,8 @@ jobs:
   publish:
     name: Publish Tag, Release, Docs, Component
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     # Skip running on forks since it won't have access to secrets
     if: github.repository == 'espressif/esp-protocols'
     steps:
@@ -103,5 +105,7 @@ jobs:
             components/mosquitto;
             components/sock_utils;
             components/libwebsockets;
+            components/esp_dns;
+            components/net_connect;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}

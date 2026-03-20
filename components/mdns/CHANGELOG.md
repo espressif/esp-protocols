@@ -1,5 +1,66 @@
 # Changelog
 
+## [1.10.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.1)
+
+### Bug Fixes
+
+- correct server initialization condition in mdns_browse_new ([dcc33d69](https://github.com/espressif/esp-protocols/commit/dcc33d69))
+
+## [1.10.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.0)
+
+### Features
+
+- support null value for boolean txt records ([63082b99](https://github.com/espressif/esp-protocols/commit/63082b99))
+- Refactor mdns library (stage #1) ([bed116d9](https://github.com/espressif/esp-protocols/commit/bed116d9))
+
+### Bug Fixes
+
+- Fix the bug where closing the socket did not update to -1. ([6b9c5128](https://github.com/espressif/esp-protocols/commit/6b9c5128))
+- Fix to keep TXT/SRV in answers to queries ([0f6235f1](https://github.com/espressif/esp-protocols/commit/0f6235f1))
+- Create a test to check answer section for PTR/ANY ([6c2c2cd2](https://github.com/espressif/esp-protocols/commit/6c2c2cd2))
+- Fix unused variable `dcst` warning for wifi-remote chips ([f20a234f](https://github.com/espressif/esp-protocols/commit/f20a234f))
+- put srv/txt records in additional section for ptr queries ([27d43277](https://github.com/espressif/esp-protocols/commit/27d43277))
+- Host test to use hw_support include dir ([4d8d25a3](https://github.com/espressif/esp-protocols/commit/4d8d25a3))
+
+## [1.9.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.1)
+
+### Bug Fixes
+
+- Fix to use tagged AFL image + minor format fix ([2b2f009a](https://github.com/espressif/esp-protocols/commit/2b2f009a))
+- Fix unused variable `dcst` warning for wifi-remote chips ([081eef88](https://github.com/espressif/esp-protocols/commit/081eef88))
+
+## [1.9.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.9.0)
+
+### Features
+
+- support null value for boolean txt records ([fa96de3b](https://github.com/espressif/esp-protocols/commit/fa96de3b))
+
+### Bug Fixes
+
+- Add test case for bool/NULL txt handling ([5068f221](https://github.com/espressif/esp-protocols/commit/5068f221))
+- Temporary fix for build issues on IDF master ([0197c994](https://github.com/espressif/esp-protocols/commit/0197c994))
+- Add tests for delegated answers ([487a746d](https://github.com/espressif/esp-protocols/commit/487a746d))
+- Add fuzzing into mdns CI ([af6bb1b5](https://github.com/espressif/esp-protocols/commit/af6bb1b5))
+- Host test to use hw_support include dir ([8bba3a97](https://github.com/espressif/esp-protocols/commit/8bba3a97))
+- Fixes case where we create our own malloc/free allocators, therefore we need to call mdns_mem_free and not free ([63bf7091](https://github.com/espressif/esp-protocols/commit/63bf7091))
+- put srv/txt records in additional section for ptr queries ([b7b8c5db](https://github.com/espressif/esp-protocols/commit/b7b8c5db))
+
+### Updated
+
+- ci(common): Update test component dir for IDFv6.0 ([18418c83](https://github.com/espressif/esp-protocols/commit/18418c83))
+
+## [1.8.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.2)
+
+### Bug Fixes
+
+- Fix parsing incorrect txt records ([8fd2c99f](https://github.com/espressif/esp-protocols/commit/8fd2c99f))
+
+## [1.8.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.1)
+
+### Bug Fixes
+
+- Fix potential task delete race ([8ca45f34](https://github.com/espressif/esp-protocols/commit/8ca45f34))
+
 ## [1.8.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.8.0)
 
 ### Features

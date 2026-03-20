@@ -166,6 +166,8 @@ void vTaskDelete(TaskHandle_t *task)
 
     if (task == NULL) {
         pthread_exit(0);
+    } else {
+        pthread_cancel((pthread_t)task);
     }
     void *thread_rval = NULL;
     pthread_join((pthread_t)task, &thread_rval);

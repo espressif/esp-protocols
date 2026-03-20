@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import logging
 
@@ -63,6 +63,32 @@ def test_add_service(mdns_console, dig_app):
     mdns_console.send_input('mdns_service_lookup _http _tcp')
     mdns_console.get_output('PTR : test_service')
     dig_app.check_record('_http._tcp.local', query_type='PTR', expected=True)
+
+
+def test_ptr_additional_records_for_service(dig_app):
+    # Query PTR for the service type and ensure SRV/TXT are in Additional (RFC 6763 §12.1)
+    resp = dig_app.run_query('_http._tcp.local', query_type='PTR')
+    # Answer section should have at least one PTR to the instance
+    answers = dig_app.parse_answer_section(resp, 'PTR')
+    assert any('test_service._http._tcp.local' in a for a in answers)
+    # Additional section should include SRV and TXT for the same instance
+    dig_app.check_additional(resp, 'SRV', 'test_service._http._tcp.local', expected=True)
+    dig_app.check_additional(resp, 'TXT', 'test_service._http._tcp.local', expected=True)
+
+
+def test_instance_any_answer_records(dig_app):
+    """Query ANY for the service instance and ensure SRV/TXT are in Answer (Q/A path)."""
+    resp = dig_app.run_query('test_service._http._tcp.local', query_type='ANY')
+
+    # Answer section should contain SRV and TXT records for the instance
+    srv_answers = dig_app.parse_section(resp, 'answer', 'SRV')
+    txt_answers = dig_app.parse_section(resp, 'answer', 'TXT')
+    assert any('test_service._http._tcp.local' in a for a in srv_answers)
+    assert any('test_service._http._tcp.local' in a for a in txt_answers)
+
+    # We should not see a PTR for the generic service name in the Answer section
+    ptr_answers = dig_app.parse_section(resp, 'answer', 'PTR')
+    assert not any('_http._tcp.local' in a for a in ptr_answers)
 
 
 def test_remove_service(mdns_console, dig_app):

@@ -14,7 +14,7 @@ menu "Example Configuration"
 
     config WEBSOCKET_URI
         string "Websocket endpoint URI"
-        default "echo.websocket.events"
+        default "echo.websocket.org"
         help
             URL or IP of websocket endpoint this example connects to and sends echo
     config WEBSOCKET_PORT

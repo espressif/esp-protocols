@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -21,6 +21,7 @@
 #include "cxx_include/esp_modem_dte.hpp"
 #include "esp_modem_config.h"
 #include "cxx_include/esp_modem_api.hpp"
+#include "esp_idf_version.h"
 #if defined(CONFIG_EXAMPLE_SERIAL_CONFIG_USB)
 #include "esp_modem_usb_config.h"
 #include "cxx_include/esp_modem_usb_api.hpp"
@@ -28,6 +29,12 @@
 #include "esp_log.h"
 #include "console_helper.hpp"
 #include "my_module_dce.hpp"
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define GET_WAKEUP_CAUSE() esp_sleep_get_wakeup_causes()
+#else
+#define GET_WAKEUP_CAUSE() esp_sleep_get_wakeup_cause()
+#endif
 
 #if defined(CONFIG_EXAMPLE_FLOW_CONTROL_NONE)
 #define EXAMPLE_FLOW_CONTROL ESP_MODEM_FLOW_CONTROL_NONE
@@ -90,10 +97,21 @@ void wakeup_modem(void)
 }
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-command_result handle_urc(uint8_t *data, size_t len)
+esp_modem::DTE::UrcConsumeInfo handle_enhanced_urc(const esp_modem::DTE::UrcBufferInfo &info)
 {
-    ESP_LOG_BUFFER_HEXDUMP("on_read", data, len, ESP_LOG_INFO);
-    return command_result::TIMEOUT;
+    // Log buffer information for debugging
+    ESP_LOGI(TAG, "URC Buffer Info: total_size=%zu, processed_offset=%zu, new_data_size=%zu, command_active=%s",
+             info.buffer_total_size, info.processed_offset, info.new_data_size,
+             info.is_command_active ? "true" : "false");
+
+    // Log the new data content
+    if (info.new_data_size > 0) {
+        ESP_LOG_BUFFER_HEXDUMP("on_read", info.new_data_start, info.new_data_size, ESP_LOG_INFO);
+    }
+
+    // For console example, we just log and don't consume anything
+    // This allows the data to be processed by command handlers
+    return {esp_modem::DTE::UrcConsumeResult::CONSUME_NONE, 0};
 }
 #endif
 
@@ -208,7 +226,7 @@ extern "C" void app_main(void)
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &s_repl));
 
-    switch (esp_sleep_get_wakeup_cause()) {
+    switch (GET_WAKEUP_CAUSE()) {
     case ESP_SLEEP_WAKEUP_TIMER:
         if (esp_modem::modem_mode::CMUX_MODE == mode_rtc) {
             ESP_LOGI(TAG, "Deep sleep reset\n");
@@ -362,7 +380,8 @@ extern "C" void app_main(void)
     });
     const ConsoleCommand GetBatteryStatus("get_battery_status", "Reads voltage/battery status", no_args, [&](ConsoleCommand * c) {
         int volt, bcl, bcs;
-        CHECK_ERR(dce->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
+        CHECK_ERR(dce->get_module()->get_battery_status(volt, bcl, bcs), ESP_LOGI(TAG, "OK. volt=%d, bcl=%d, bcs=%d", volt, bcl, bcs));
+        dce->get_battery_status(volt, bcl, bcs);
     });
     const ConsoleCommand PowerDown("power_down", "power down the module", no_args, [&](ConsoleCommand * c) {
         ESP_LOGI(TAG, "Power down the module...");
@@ -373,14 +392,14 @@ extern "C" void app_main(void)
         CHECK_ERR(dce->reset(), ESP_LOGI(TAG, "OK"));
     });
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
-    const ConsoleCommand HandleURC("urc", "toggle urc handling", no_args, [&](ConsoleCommand * c) {
+    const ConsoleCommand HandleURC("urc", "toggle enhanced urc handling", no_args, [&](ConsoleCommand * c) {
         static int cnt = 0;
         if (++cnt % 2) {
-            ESP_LOGI(TAG, "Adding URC handler");
-            dce->set_urc(handle_urc);
+            ESP_LOGI(TAG, "Adding enhanced URC handler");
+            dce->set_enhanced_urc(handle_enhanced_urc);
         } else {
-            ESP_LOGI(TAG, "URC removed");
-            dce->set_urc(nullptr);
+            ESP_LOGI(TAG, "Enhanced URC removed");
+            dce->set_enhanced_urc(nullptr);
         }
         return 0;
     });
@@ -427,7 +446,7 @@ extern "C" void app_main(void)
     const ConsoleCommand SetDeepSleep("set_deep_sleep", "Put esp32 to deep sleep", &deep_sleep_args, sizeof(deep_sleep_args), [&](ConsoleCommand * c) {
         int tout = c->get_int_of(&DeepSleepArgs::timeout);
         ESP_LOGI(TAG, "Entering deep sleep for %d sec", tout);
-        ESP_LOGI(TAG, "Wakeup Cause: %d ", esp_sleep_get_wakeup_cause());
+        ESP_LOGI(TAG, "Wakeup Cause: %d ", GET_WAKEUP_CAUSE());
         esp_deep_sleep(tout * 1000000);
         return 0;
     });

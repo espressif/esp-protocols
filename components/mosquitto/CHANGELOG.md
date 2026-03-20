@@ -1,5 +1,51 @@
 # Changelog
 
+## [2.0.20~6](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_6)
+
+### Features
+
+- Add support for linux build ([58380585](https://github.com/espressif/esp-protocols/commit/58380585))
+
+### Bug Fixes
+
+- Fix mosquitto build on latest master ([ebc1258e](https://github.com/espressif/esp-protocols/commit/ebc1258e))
+- Fix build with the new picolibc ([dc68bf87](https://github.com/espressif/esp-protocols/commit/dc68bf87))
+
+## [2.0.20~5](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_5)
+
+### Features
+
+- Add support for basic MQTT authentication ([65b58aa0](https://github.com/espressif/esp-protocols/commit/65b58aa0))
+
+### Bug Fixes
+
+- Add optional mqtt deps to examples ([6f6110e3](https://github.com/espressif/esp-protocols/commit/6f6110e3))
+- Update example to optionally use basic mqtt auth ([38384852](https://github.com/espressif/esp-protocols/commit/38384852))
+- Fix unpwd-check wrap function ([ba3377b2](https://github.com/espressif/esp-protocols/commit/ba3377b2))
+- Fix the version check ([9fbb6e6d](https://github.com/espressif/esp-protocols/commit/9fbb6e6d))
+
+## [2.0.20~4](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_4)
+
+### Features
+
+- Update brokerless example to work with esp-peer ([76e45f72](https://github.com/espressif/esp-protocols/commit/76e45f72))
+
+### Bug Fixes
+
+- drop newlib from PRIV_REQUIRES ([6318022c](https://github.com/espressif/esp-protocols/commit/6318022c))
+- Make esp-peer build optional ([03df9ae9](https://github.com/espressif/esp-protocols/commit/03df9ae9))
+- Fix esp_webRTC deprecation with new FreeRTOS ([78ae2559](https://github.com/espressif/esp-protocols/commit/78ae2559))
+
+## [2.0.20~3](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_3)
+
+
+### Bug Fixes
+
+- Support build on older IDF branches ([13b90ad1](https://github.com/espressif/esp-protocols/commit/13b90ad1))
+- Fix misleading error when accepting connection ([fd410061](https://github.com/espressif/esp-protocols/commit/fd410061), [#807](https://github.com/espressif/esp-protocols/issues/807))
+- Make mosquitto component c++ compatible ([c4169765](https://github.com/espressif/esp-protocols/commit/c4169765), [#817](https://github.com/espressif/esp-protocols/issues/817))
+- include config.h before any system header ([1b1ede43](https://github.com/espressif/esp-protocols/commit/1b1ede43))
+
 ## [2.0.20~2](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_2)
 
 ### Features
