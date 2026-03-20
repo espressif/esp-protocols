@@ -113,17 +113,51 @@ esp_err_t esp_modem_set_cmux(esp_modem_dce_t *dce);
  */
 esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce, char *imsi);
 /**
+ * @brief Reads the ICCID number
+ * @param[out] iccid SIM's ICCID number
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_get_iccid(esp_modem_dce_t *dce_wrap, char *p_iccid);
+/**
  * @brief Reads the IMEI number
  * @param[out] imei Module's IMEI number
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce, char *imei);
 /**
+ * @brief Read the Restricted (U)SIM Access
+ * @param[out] data response from the command
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_get_restricted_usim_access(esp_modem_dce_t *dce_wrap, char *p_data, int command, int file_id, int p1, int p2, int p3);
+/**
+ * @brief Write the Restricted (U)SIM Access
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @param[in] data data to write
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_set_restricted_usim_access(esp_modem_dce_t *dce_wrap, int command, int file_id, int p1, int p2, int p3, const char *data);
+/**
  * @brief Reads the module name
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce, char *name);
+/**
+ * @brief Reads the module firmware version
+ * @param[out] firmware module firmware version
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_get_module_firmware(esp_modem_dce_t *dce_wrap, char *p_firmware);
 /**
  * @brief Sets the modem to data mode
  * @return OK, FAIL or TIMEOUT
