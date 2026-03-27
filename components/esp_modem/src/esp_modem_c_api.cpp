@@ -256,7 +256,7 @@ extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce_wrap, char *p_imsi)
 
 extern "C" esp_err_t esp_modem_get_iccid(esp_modem_dce_t *dce_wrap, char *p_iccid)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_iccid == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string iccid;
@@ -367,7 +367,7 @@ extern "C" esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce_wrap, char *
 
 extern "C" esp_err_t esp_modem_get_module_firmware(esp_modem_dce_t *dce_wrap, char *p_firmware)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_firmware == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
     std::string firmware;
