@@ -274,10 +274,10 @@ command_result get_operator_name(CommandableIf *t, std::string &operator_name, i
 
 command_result get_restricted_usim_access(CommandableIf *t, std::string &out, int command, int file_id, int p1, int p2, int p3)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string aux;
-    std::string cmd = "AT+CRSM=" + std::to_string(command) + "," + std::to_string(file_id) + "," + 
-                            std::to_string(p1) + "," + std::to_string(p2) + "," + std::to_string(p3) + "\r";
+    std::string cmd = "AT+CRSM=" + std::to_string(command) + "," + std::to_string(file_id) + "," +
+                      std::to_string(p1) + "," + std::to_string(p2) + "," + std::to_string(p3) + "\r";
     auto ret = generic_get_string(t, cmd, aux, 5000);
     if (ret != command_result::OK) {
         return ret;
@@ -294,10 +294,10 @@ command_result get_restricted_usim_access(CommandableIf *t, std::string &out, in
 
 command_result set_restricted_usim_access(CommandableIf *t, int command, int file_id, int p1, int p2, int p3, const std::string &data)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string aux;
-    std::string cmd = "AT+CRSM=" + std::to_string(command) + "," + std::to_string(file_id) + "," + std::to_string(p1) + "," + 
-                            std::to_string(p2) + "," + std::to_string(p3) + ",\"" + data + "\"\r";
+    std::string cmd = "AT+CRSM=" + std::to_string(command) + "," + std::to_string(file_id) + "," + std::to_string(p1) + "," +
+                      std::to_string(p2) + "," + std::to_string(p3) + ",\"" + data + "\"\r";
     return generic_command_common(t, cmd, 5000);
 }
 
@@ -363,7 +363,7 @@ command_result get_imei(CommandableIf *t, std::string &out)
 
 command_result get_iccid(CommandableIf *t, std::string &out)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     std::string aux;
     auto ret = generic_get_string(t, "AT+QCCID\r", aux, 5000);
     if (ret != command_result::OK) {
@@ -387,7 +387,7 @@ command_result get_module_name(CommandableIf *t, std::string &out)
 
 command_result get_module_firmware(CommandableIf *t, std::string &out)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     return generic_get_string(t, "AT+QGMR\r", out, 5000);
 }
 
@@ -511,11 +511,10 @@ command_result get_signal_quality(CommandableIf *t, int &rssi, int &ber)
 
 command_result set_operator(CommandableIf *t, int mode, int format, const std::string &oper)
 {
-    ESP_LOGV(TAG, "%s", __func__ );
+    ESP_LOGV(TAG, "%s", __func__);
     if (oper.length() == 0) {
         return generic_command_common(t, "AT+COPS=" + std::to_string(mode) + "\r", 90000);
-    }
-    else {
+    } else {
         return generic_command_common(t, "AT+COPS=" + std::to_string(mode) + "," + std::to_string(format) + ",\"" + oper + "\"\r", 90000);
     }
 }
