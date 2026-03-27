@@ -101,6 +101,27 @@ jobs:
           python -m pytest --log-cli-level DEBUG --junit-xml=./results_esp32_${{ matrix.idf_ver }}_${dir#"ci/build_"}.xml --target=esp32
           done
 
+  host_test_mosq:
+    if: contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push'
+    name: Mosquitto host test
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build and run host test
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd components/mosquitto/test/host_test
+          idf.py build
+          timeout 10 ./build/mosquitto_host_test.elf
+
   check_consistency:
     if: contains(github.event.pull_request.labels.*.name, 'mosquitto') || github.event_name == 'push'
     name: Checks that API docs and versions are consistent
