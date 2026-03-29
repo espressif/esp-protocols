@@ -280,7 +280,7 @@ static void result_txt_create(const uint8_t *data, size_t len, mdns_txt_item_t *
 
         memcpy(key, data + i, name_len);
         key[name_len] = 0;
-        i += name_len + 1;
+        i += name_len + (name_len < part_len); // skip '=' only if present
         t->key = key;
 
         int new_value_len = part_len - name_len - 1;
