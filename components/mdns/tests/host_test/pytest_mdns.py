@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+# SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Unlicense OR CC0-1.0
 import logging
 
@@ -121,6 +121,23 @@ def test_add_delegated_service(mdns_console, dig_app):
     mdns_console.get_output('PTR : extern')
     dig_app.check_record('_test2._tcp.local', query_type='PTR', expected=True)
     dig_app.check_record('extern._test2._tcp.local', query_type='SRV', expected=True)
+
+
+def test_service_discovery_dns_sd(dig_app):
+    """Query _services._dns-sd._udp.local PTR to discover registered service types (RFC 6763 §9)."""
+    resp = dig_app.run_query('_services._dns-sd._udp.local', query_type='PTR')
+    answers = dig_app.parse_answer_section(resp, 'PTR')
+    assert any('_test._tcp.local' in a for a in answers), \
+        f'Expected _test._tcp.local in DNS-SD response, got: {answers}'
+    assert any('_test2._tcp.local' in a for a in answers), \
+        f'Expected _test2._tcp.local in DNS-SD response, got: {answers}'
+
+
+def test_service_discovery_query(mdns_console):
+    """Test querier-side: query _services._dns-sd._udp via mdns_query_ptr (exercises multi-label splitting)."""
+    mdns_console.send_input('mdns_query_ptr _services._dns-sd _udp -t 2000 -m 10')
+    mdns_console.get_output('Query PTR: _services._dns-sd._udp.local')
+    mdns_console.get_output('mdns>')
 
 
 def test_remove_delegated_service(mdns_console, dig_app):

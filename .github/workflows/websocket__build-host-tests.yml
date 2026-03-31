@@ -12,11 +12,15 @@ jobs:
   host_test_websocket:
     if: contains(github.event.pull_request.labels.*.name, 'websocket') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "websocket"
         app_path: "esp-protocols/components/esp_websocket_client/examples/linux"
         component_path: "esp-protocols/components/esp_websocket_client"
+        pre_run_executable_script: "esp-protocols/components/esp_websocket_client/examples/linux/start_server.sh"
         run_executable: true
         upload_artifacts: true
         run_coverage: true

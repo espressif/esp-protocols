@@ -63,6 +63,9 @@ jobs:
   host_test_esp_modem:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "host_modem_test"
@@ -77,6 +80,9 @@ jobs:
   build_linux_example:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     uses: "./.github/workflows/run-host-tests.yml"
+    permissions:
+      checks: write
+      contents: read
     with:
         idf_version: "latest"
         app_name: "linux_modem"

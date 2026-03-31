@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.11.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.0)
+
+### Features
+
+- Add support for mdns service discovery ([a0af8449](https://github.com/espressif/esp-protocols/commit/a0af8449))
+
+### Bug Fixes
+
+- Use python implementation of dig utility ([0104a14a](https://github.com/espressif/esp-protocols/commit/0104a14a))
+- Fix null pointer exception in mdns_parse_packet ([56812092](https://github.com/espressif/esp-protocols/commit/56812092))
+
+### Updated
+
+- Add null check for netif in mDNS networking ([d5a393f6](https://github.com/espressif/esp-protocols/commit/d5a393f6))
+
+## [1.10.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.1)
+
+### Bug Fixes
+
+- correct server initialization condition in mdns_browse_new ([dcc33d69](https://github.com/espressif/esp-protocols/commit/dcc33d69))
+
 ## [1.10.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.10.0)
 
 ### Features

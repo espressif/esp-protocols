@@ -34,5 +34,5 @@ jobs:
         working-directory: ${{matrix.test.path}}
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           python ../../../ci/build_apps.py ./${{ matrix.test.app }} --target ${{ matrix.idf_target }} -vv --preserve-all --pytest-app

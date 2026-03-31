@@ -554,6 +554,10 @@ static void remove_parsed_question(mdns_parsed_packet_t *parsed_packet, uint16_t
 {
     mdns_parsed_question_t *q = parsed_packet->questions;
 
+    if (!q) {
+        return;
+    }
+
     if (question_matches(q, type, service)) {
         parsed_packet->questions = q->next;
         mdns_mem_free(q->host);

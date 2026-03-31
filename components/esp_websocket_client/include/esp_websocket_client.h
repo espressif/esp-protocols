@@ -115,6 +115,8 @@ typedef struct {
     bool                        disable_auto_reconnect;     /*!< Disable the automatic reconnect function when disconnected */
     bool                        enable_close_reconnect;     /*!< Enable reconnect after server close */
     void                        *user_context;              /*!< HTTP user data context */
+    bool                        task_core_id_set;           /*!< Set to true to use task_core_id. If false, the websocket task uses tskNO_AFFINITY(default) */
+    int                         task_core_id;               /*!< Core ID for the websocket task when task_core_id_set is true. Must be explicitly set by the user, otherwise a zero-initialized config, will pin the task to core 0. Use tskNO_AFFINITY for no pinning. */
     int                         task_prio;                  /*!< Websocket task priority */
     const char                 *task_name;                  /*!< Websocket task name */
     int                         task_stack;                 /*!< Websocket task stack */

@@ -29,6 +29,7 @@ static const char *TAG = "websocket_client";
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
 #define WEBSOCKET_BUFFER_SIZE_BYTE      (1024)
 #define WEBSOCKET_RECONNECT_TIMEOUT_MS  (10*1000)
+#define WEBSOCKET_TASK_CORE_ID          (tskNO_AFFINITY)
 #define WEBSOCKET_TASK_PRIORITY         (5)
 #define WEBSOCKET_TASK_STACK            (4*1024)
 #define WEBSOCKET_NETWORK_TIMEOUT_MS    (10*1000)
@@ -79,6 +80,7 @@ const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
 typedef struct {
+    BaseType_t                  task_core_id;
     const char                 *task_name;
     int                         task_stack;
     int                         task_prio;
@@ -356,6 +358,13 @@ static char *http_auth_basic(const char *username, const char *password)
 static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t client, const esp_websocket_client_config_t *config)
 {
     websocket_config_storage_t *cfg = client->config;
+
+    if (config->task_core_id_set) {
+        cfg->task_core_id = config->task_core_id;
+    } else {
+        cfg->task_core_id = WEBSOCKET_TASK_CORE_ID;
+    }
+
     cfg->task_prio = config->task_prio;
     if (cfg->task_prio <= 0) {
         cfg->task_prio = WEBSOCKET_TASK_PRIORITY;
@@ -743,8 +752,9 @@ static int esp_websocket_client_send_with_exact_opcode(esp_websocket_client_hand
 #endif
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
+                const char *error_name = esp_err_to_name(error_handle->last_error);
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                           ret, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                           ret, error_name, error_handle->esp_tls_error_code,
                                            error_handle->esp_tls_flags, errno);
             } else {
                 esp_websocket_client_error(client, "esp_transport_write() returned %d, errno=%d", ret, errno);
@@ -1088,8 +1098,9 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             esp_websocket_free_buf(client, false);
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
+                const char *error_name = esp_err_to_name(error_handle->last_error);
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                           rlen, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                           rlen, error_name, error_handle->esp_tls_error_code,
                                            error_handle->esp_tls_flags, errno);
             } else {
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, errno=%d", rlen, errno);
@@ -1202,9 +1213,10 @@ static void esp_websocket_client_task(void *pv)
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 client->error_handle.esp_ws_handshake_status_code  = esp_transport_ws_get_upgrade_request_status(client->transport);
                 if (error_handle) {
+                    const char *error_name = esp_err_to_name(error_handle->last_error);
                     esp_websocket_client_error(client, "esp_transport_connect() failed with %d, "
                                                "transport_error=%s, tls_error_code=%i, tls_flags=%i, esp_ws_handshake_status_code=%d, errno=%d",
-                                               result, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                               result, error_name, error_handle->esp_tls_error_code,
                                                error_handle->esp_tls_flags, client->error_handle.esp_ws_handshake_status_code, errno);
                 } else {
                     esp_websocket_client_error(client, "esp_transport_connect() failed with %d, esp_ws_handshake_status_code=%d, errno=%d",
@@ -1362,8 +1374,9 @@ static void esp_websocket_client_task(void *pv)
                 xSemaphoreTakeRecursive(client->lock, lock_timeout);
                 esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
                 if (error_handle) {
+                    const char *error_name = esp_err_to_name(error_handle->last_error);
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, transport_error=%s, tls_error_code=%i, tls_flags=%i, errno=%d",
-                                               read_select, esp_err_to_name(error_handle->last_error), error_handle->esp_tls_error_code,
+                                               read_select, error_name, error_handle->esp_tls_error_code,
                                                error_handle->esp_tls_flags, errno);
                 } else {
                     esp_websocket_client_error(client, "esp_transport_poll_read() returned %d, errno=%d", read_select, errno);
@@ -1462,7 +1475,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
                 client->config->task_prio,
                 client->task_stack_buffer,
                 client->task_buffer,
-                tskNO_AFFINITY
+                client->config->task_core_id
             );
             if (client->task_handle == NULL) {
                 res = pdFAIL;
@@ -1473,11 +1486,11 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         }
     } else {
         res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                                    client->config->task_stack, client, client->config->task_prio, &client->task_handle, tskNO_AFFINITY);
+                                    client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id);
     }
 #else
     res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                                client->config->task_stack, client, client->config->task_prio, &client->task_handle, tskNO_AFFINITY);
+                                client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id);
 #endif
 
     if (res != pdPASS || client->task_handle == NULL) {

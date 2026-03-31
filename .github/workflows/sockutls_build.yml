@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           python ci/build_apps.py ${TEST_DIR}
           cd ${TEST_DIR}
           ${GITHUB_WORKSPACE}/ci/clean_build_artifacts.sh `pwd`/${TARGET_TEST_DIR}
@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
-          pip install idf-component-manager idf-build-apps --upgrade
+          python -m pip install idf-build-apps
           cd ${TEST_DIR}
           idf.py build
           ./build/sock_utils_host_test.elf
