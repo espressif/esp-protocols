@@ -17,6 +17,8 @@
 #include <errno.h>
 
 static volatile bool running = true;
+static int batch_size = 0;      // 0 = send whole response at once
+static int batch_delay_ms = 1;  // delay between batches (ms)
 
 static void signal_handler(int sig)
 {
@@ -67,28 +69,41 @@ static std::string process_at_command(const std::string &command)
     return "ERROR\r\n";
 }
 
+static void print_escaped(const char *prefix, const std::string &s)
+{
+    printf("%s[%zu]: ", prefix, s.size());
+    for (auto c : s) {
+        printf(c >= 0x20 ? "%c" : "\\x%02x", (unsigned char)c);
+    }
+    printf("\n");
+}
+
 static void send_response(int fd, const std::string &cmd, const std::string &response)
 {
-    printf("modem_sim: rx [%zu]: ", cmd.size());
-    for (auto c : cmd) {
-        printf(c >= 0x20 ? "%c" : "\\x%02x", (unsigned char)c);
+    print_escaped("modem_sim: rx ", cmd);
+    if (batch_size > 0) {
+        printf("modem_sim: tx [%zu] in batches of %d, delay %dms\n",
+               response.size(), batch_size, batch_delay_ms);
+    } else {
+        print_escaped("modem_sim: tx ", response);
     }
-    printf("\n");
-    printf("modem_sim: tx [%zu]: ", response.size());
-    for (auto c : response) {
-        printf(c >= 0x20 ? "%c" : "\\x%02x", (unsigned char)c);
-    }
-    printf("\n");
     fflush(stdout);
 
     size_t total = 0;
     while (total < response.size()) {
-        ssize_t sent = write(fd, response.c_str() + total, response.size() - total);
+        size_t chunk = response.size() - total;
+        if (batch_size > 0 && chunk > (size_t)batch_size) {
+            chunk = batch_size;
+        }
+        ssize_t sent = write(fd, response.c_str() + total, chunk);
         if (sent < 0) {
             perror("modem_sim: write error");
             return;
         }
         total += sent;
+        if (batch_size > 0 && total < response.size() && batch_delay_ms > 0) {
+            usleep(batch_delay_ms * 1000);
+        }
     }
 }
 
@@ -153,11 +168,29 @@ static void handle_client(int client_fd)
     }
 }
 
+static void usage(const char *prog)
+{
+    printf("Usage: %s [port] [batch_size] [batch_delay_ms]\n"
+           "  port           TCP listen port (default: 10000)\n"
+           "  batch_size     reply chunk size in bytes, 0=whole (default: 0)\n"
+           "  batch_delay_ms delay between chunks in ms (default: 1)\n", prog);
+}
+
 int main(int argc, char *argv[])
 {
     int port = 10000;
     if (argc > 1) {
+        if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+            usage(argv[0]);
+            return 0;
+        }
         port = atoi(argv[1]);
+    }
+    if (argc > 2) {
+        batch_size = atoi(argv[2]);
+    }
+    if (argc > 3) {
+        batch_delay_ms = atoi(argv[3]);
     }
 
     signal(SIGINT, signal_handler);
@@ -190,7 +223,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    printf("modem_sim: listening on 127.0.0.1:%d\n", port);
+    printf("modem_sim: listening on 127.0.0.1:%d (batch_size=%d, batch_delay=%dms)\n",
+           port, batch_size, batch_delay_ms);
     fflush(stdout);
 
     while (running) {

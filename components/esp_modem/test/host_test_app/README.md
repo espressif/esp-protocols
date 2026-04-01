@@ -5,7 +5,7 @@ End-to-end host tests for esp_modem using two Linux processes connected over a T
 - **test_app** – IDF Linux application (Catch2) that exercises esp_modem AT commands via a VFS socket DTE.
 - **modem_sim** – Standalone TCP server that emulates a SIM7600-like modem, responding to AT commands.
 
-A lightweight `esp_netif_linux` stub replaces the real component so lwIP is not required.
+When `LWIP_PATH` is not set, `esp_netif_linux` builds automatically as a stub (no lwIP download needed).
 
 ## Build & Run
 
