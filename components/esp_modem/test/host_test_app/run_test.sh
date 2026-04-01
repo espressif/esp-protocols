@@ -7,6 +7,8 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT="${MODEM_SIM_PORT:-10000}"
+BATCH_SIZE="${MODEM_SIM_BATCH_SIZE:-0}"       # 0 = send whole response at once
+BATCH_DELAY="${MODEM_SIM_BATCH_DELAY_MS:-1}"  # delay between chunks (ms)
 SIM_BINARY="${SCRIPT_DIR}/modem_sim/build/modem_sim"
 TEST_BINARY="${SCRIPT_DIR}/build/host_test_app.elf"
 TEST_TIMEOUT="${TEST_TIMEOUT:-30}"
@@ -35,8 +37,8 @@ if [ ! -f "$TEST_BINARY" ]; then
 fi
 
 # --- Start modem simulator ---
-echo "Starting modem_sim on port $PORT..."
-"$SIM_BINARY" "$PORT" &
+echo "Starting modem_sim on port $PORT (batch_size=$BATCH_SIZE, batch_delay=${BATCH_DELAY}ms)..."
+"$SIM_BINARY" "$PORT" "$BATCH_SIZE" "$BATCH_DELAY" &
 SIM_PID=$!
 
 sleep 0.5
