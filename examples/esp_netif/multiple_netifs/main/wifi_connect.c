@@ -16,9 +16,11 @@
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
+#include "esp_wifi_types.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "iface_info.h"
+#include "sdkconfig.h"
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
@@ -26,6 +28,25 @@
 
 static const char *TAG = "wifi_connect";
 static int s_retry_num = 0;
+
+static wifi_auth_mode_t example_wifi_sta_authmode_threshold(void)
+{
+#if CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_OPEN
+    return WIFI_AUTH_OPEN;
+#elif CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WEP
+    return WIFI_AUTH_WEP;
+#elif CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_PSK
+    return WIFI_AUTH_WPA_PSK;
+#elif CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA2_PSK
+    return WIFI_AUTH_WPA2_PSK;
+#elif CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_WPA2_PSK
+    return WIFI_AUTH_WPA_WPA2_PSK;
+#elif CONFIG_ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA3_PSK
+    return WIFI_AUTH_WPA3_PSK;
+#else
+    return WIFI_AUTH_WPA2_PSK;
+#endif
+}
 static EventGroupHandle_t s_wifi_event_group;
 
 static void event_handler(void *args, esp_event_base_t event_base,
@@ -98,6 +119,7 @@ iface_info_t *example_wifi_init(int prio)
         .sta = {
             .ssid = CONFIG_ESP_WIFI_SSID,
             .password = CONFIG_ESP_WIFI_PASSWORD,
+            .threshold.authmode = example_wifi_sta_authmode_threshold(),
         },
     };
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));

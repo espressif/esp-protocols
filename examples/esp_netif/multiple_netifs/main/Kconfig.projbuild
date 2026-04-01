@@ -12,6 +12,27 @@ menu "Example Configuration"
         help
             WiFi password (WPA or WPA2) for the example to use.
 
+    choice ESP_WIFI_STA_AUTHMODE_THRESHOLD
+        prompt "WiFi STA scan authentication threshold"
+        default ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA2_PSK
+        help
+            Minimum authentication mode accepted when scanning and connecting as a station.
+            Lower this to connect to older networks (WEP/WPA).
+
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_OPEN
+            bool "Open"
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_WEP
+            bool "WEP"
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_PSK
+            bool "WPA PSK"
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA2_PSK
+            bool "WPA2 PSK"
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA_WPA2_PSK
+            bool "WPA/WPA2 PSK"
+        config ESP_WIFI_STA_AUTHMODE_THRESHOLD_WPA3_PSK
+            bool "WPA3 PSK"
+    endchoice
+
     config ESP_MAXIMUM_RETRY
         int "Maximum retry"
         default 0
