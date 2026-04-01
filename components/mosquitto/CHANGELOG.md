@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.20~7](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_7)
+
+### Features
+
+- Add a simple unit test ([47d98b64](https://github.com/espressif/esp-protocols/commit/47d98b64))
+
+### Bug Fixes
+
+- Fix mosquitto restart issue ([b438fe1d](https://github.com/espressif/esp-protocols/commit/b438fe1d), [#1022](https://github.com/espressif/esp-protocols/issues/1022))
+- Add more stack to broker example ([6d82fdd0](https://github.com/espressif/esp-protocols/commit/6d82fdd0))
+
 ## [2.0.20~6](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_6)
 
 ### Features
