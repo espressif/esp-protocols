@@ -26,6 +26,34 @@ public:
     }
     using DCE_T<GenericModule>::DCE_T;
     /**
+     * @brief Read the Restricted (U)SIM Access
+     * @param[out] data response from the command
+     * @param[in] command command to run
+     * @param[in] file_id file identifier
+     * @param[in] p1 param 1
+     * @param[in] p2 param 2
+     * @param[in] p3 param 3
+     * @return OK, FAIL or TIMEOUT
+     */
+    command_result get_restricted_usim_access(std::string &data, int command, int file_id, int p1, int p2, int p3)
+    {
+        return device->get_restricted_usim_access(data, command, file_id, p1, p2, p3);
+    }
+    /**
+     * @brief Write the Restricted (U)SIM Access
+     * @param[in] command command to run
+     * @param[in] file_id file identifier
+     * @param[in] p1 param 1
+     * @param[in] p2 param 2
+     * @param[in] p3 param 3
+     * @param[in] data data to write
+     * @return OK, FAIL or TIMEOUT
+     */
+    command_result set_restricted_usim_access(int command, int file_id, int p1, int p2, int p3, const std::string &data)
+    {
+        return device->set_restricted_usim_access(command, file_id, p1, p2, p3, data);
+    }
+    /**
      * @brief Sends the initial AT sequence to sync up with the device
      * @return OK, FAIL or TIMEOUT
      */
@@ -181,6 +209,15 @@ public:
         return device->get_imei(imei);
     }
     /**
+     * @brief Reads the ICCID number
+     * @param[out] iccid SIM's ICCID number
+     * @return OK, FAIL or TIMEOUT
+     */
+    command_result get_iccid(std::string &iccid)
+    {
+        return device->get_iccid(iccid);
+    }
+    /**
      * @brief Reads the module name
      * @param[out] name module name
      * @return OK, FAIL or TIMEOUT
@@ -188,6 +225,15 @@ public:
     command_result get_module_name(std::string &name)
     {
         return device->get_module_name(name);
+    }
+    /**
+     * @brief Reads the module firmware version
+     * @param[out] firmware module firmware version
+     * @return OK, FAIL or TIMEOUT
+     */
+    command_result get_module_firmware(std::string &firmware)
+    {
+        return device->get_module_firmware(firmware);
     }
     /**
      * @brief Sets the modem to data mode

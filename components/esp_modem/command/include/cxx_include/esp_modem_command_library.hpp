@@ -47,6 +47,28 @@ command_result sync(CommandableIf *t);
  */
 command_result get_operator_name(CommandableIf *t, std::string &name, int &act);
 /**
+ * @brief Read the Restricted (U)SIM Access
+ * @param[out] data response from the command
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result get_restricted_usim_access(CommandableIf *t, std::string &data, int command, int file_id, int p1, int p2, int p3);
+/**
+ * @brief Write the Restricted (U)SIM Access
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @param[in] data data to write
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result set_restricted_usim_access(CommandableIf *t, int command, int file_id, int p1, int p2, int p3, const std::string &data);
+/**
  * @brief Stores current user profile
  * @return OK, FAIL or TIMEOUT
  */
@@ -139,11 +161,23 @@ command_result get_imsi(CommandableIf *t, std::string &imsi);
  */
 command_result get_imei(CommandableIf *t, std::string &imei);
 /**
+ * @brief Reads the ICCID number
+ * @param[out] iccid SIM's ICCID number
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result get_iccid(CommandableIf *t, std::string &iccid);
+/**
  * @brief Reads the module name
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT
  */
 command_result get_module_name(CommandableIf *t, std::string &name);
+/**
+ * @brief Reads the module firmware version
+ * @param[out] firmware module firmware version
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result get_module_firmware(CommandableIf *t, std::string &firmware);
 /**
  * @brief Sets the modem to data mode
  * @return OK, FAIL or TIMEOUT
