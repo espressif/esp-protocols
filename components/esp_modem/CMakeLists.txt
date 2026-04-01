@@ -40,6 +40,11 @@ set(srcs ${platform_srcs}
         "src/esp_modem_vfs_socket_creator.cpp"
         "${command_dir}/src/esp_modem_modules.cpp")
 
+if(IDF_BUILD_V2)
+    include(CMakeLists_v2.txt)
+    return()
+endif()
+
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS include ${command_dir}/include
                     PRIV_INCLUDE_DIRS private_include
