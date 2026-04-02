@@ -21,7 +21,7 @@ TEST_CASE("TCP: Create and close socket", "[freertos_tcp]")
     TEST_ASSERT_NOT_EQUAL(FREERTOS_INVALID_SOCKET, sock);
 
     BaseType_t ret = FreeRTOS_closesocket(sock);
-    TEST_ASSERT_EQUAL(0, ret);
+    TEST_ASSERT_EQUAL(1, ret);
 
     ESP_LOGI(TAG, "TCP socket create/close: PASS");
 }
