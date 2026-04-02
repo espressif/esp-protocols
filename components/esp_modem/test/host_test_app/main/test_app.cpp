@@ -7,6 +7,8 @@
 #define CATCH_CONFIG_MAIN
 #include <memory>
 #include <cstdlib>
+#include <atomic>
+#include <vector>
 #include <unistd.h>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
@@ -151,6 +153,99 @@ TEST_CASE("Read PIN status", "[esp_modem][at]")
     bool pin_ok;
     CHECK(dce->read_pin(pin_ok) == command_result::OK);
     CHECK(pin_ok == true);
+}
+
+TEST_CASE("Transmit hooks fire on AT command", "[esp_modem][hooks]")
+{
+    auto dte = create_test_dte();
+    REQUIRE(dte != nullptr);
+
+    std::atomic<int> before_count{0};
+    std::atomic<int> after_count{0};
+
+    dte->set_transmit_hooks(
+    [&before_count]() {
+        before_count++;
+    },
+    [&after_count]() {
+        after_count++;
+    }
+    );
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    REQUIRE(dce != nullptr);
+
+    int rssi, ber;
+    CHECK(dce->get_signal_quality(rssi, ber) == command_result::OK);
+    CHECK(before_count > 0);
+    CHECK(after_count > 0);
+    CHECK(before_count == after_count);
+}
+
+TEST_CASE("Transmit hooks maintain correct ordering", "[esp_modem][hooks]")
+{
+    auto dte = create_test_dte();
+    REQUIRE(dte != nullptr);
+
+    std::vector<std::string> sequence;
+
+    dte->set_transmit_hooks(
+    [&sequence]() {
+        sequence.push_back("before");
+    },
+    [&sequence]() {
+        sequence.push_back("after");
+    }
+    );
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    REQUIRE(dce != nullptr);
+
+    std::string imei;
+    CHECK(dce->get_imei(imei) == command_result::OK);
+
+    REQUIRE(sequence.size() >= 2);
+    REQUIRE(sequence.size() % 2 == 0);
+    for (size_t i = 0; i < sequence.size(); i += 2) {
+        CHECK(sequence[i] == "before");
+        CHECK(sequence[i + 1] == "after");
+    }
+}
+
+TEST_CASE("Transmit hooks can be cleared", "[esp_modem][hooks]")
+{
+    auto dte = create_test_dte();
+    REQUIRE(dte != nullptr);
+
+    std::atomic<int> count{0};
+
+    dte->set_transmit_hooks(
+    [&count]() {
+        count++;
+    },
+    [&count]() {
+        count++;
+    }
+    );
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    REQUIRE(dce != nullptr);
+
+    CHECK(dce->set_command_mode() == command_result::OK);
+    int count_after_first = count.load();
+    CHECK(count_after_first > 0);
+
+    dte->set_transmit_hooks(nullptr, nullptr);
+
+    std::string imei;
+    CHECK(dce->get_imei(imei) == command_result::OK);
+    CHECK(count.load() == count_after_first);
 }
 
 #define CATCH_CONFIG_RUNNER
