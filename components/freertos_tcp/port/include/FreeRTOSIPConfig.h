@@ -353,7 +353,6 @@
 extern portMUX_TYPE g_xBufferAllocLock;
 extern portMUX_TYPE g_xDHCPStaticLock;
 
-// For buffer allocation
 #define ipconfigBUFFER_ALLOC_INIT()    do {} while( ipFALSE_BOOL )
 #define ipconfigBUFFER_ALLOC_LOCK_FROM_ISR()                                            \
     UBaseType_t uxSavedInterruptStatus = ( UBaseType_t ) portSET_INTERRUPT_MASK_FROM_ISR(); \
@@ -362,11 +361,27 @@ extern portMUX_TYPE g_xDHCPStaticLock;
     portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus ); \
 }
 
-#define ipconfigBUFFER_ALLOC_LOCK()      taskENTER_CRITICAL(&g_xBufferAllocLock)
-#define ipconfigBUFFER_ALLOC_UNLOCK()    taskEXIT_CRITICAL(&g_xBufferAllocLock)
+/*
+ * Use portENTER/EXIT_CRITICAL directly (not taskENTER/EXIT_CRITICAL) so these
+ * survive the zero-arg taskENTER_CRITICAL() redefine below.
+ */
+#define ipconfigBUFFER_ALLOC_LOCK()      portENTER_CRITICAL(&g_xBufferAllocLock)
+#define ipconfigBUFFER_ALLOC_UNLOCK()    portEXIT_CRITICAL(&g_xBufferAllocLock)
 
-#define ipconfigSTATIC_IP_LOCK()    taskENTER_CRITICAL(&g_xDHCPStaticLock);
-#define ipconfigSTATIC_IP_UNLOCK()  taskEXIT_CRITICAL(&g_xDHCPStaticLock);
+#define ipconfigSTATIC_IP_LOCK()    portENTER_CRITICAL(&g_xDHCPStaticLock);
+#define ipconfigSTATIC_IP_UNLOCK()  portEXIT_CRITICAL(&g_xDHCPStaticLock);
 
+/*
+ * Upstream FreeRTOS+TCP uses taskENTER_CRITICAL() with zero arguments (standard
+ * FreeRTOS), but ESP-IDF's non-SMP kernel defines taskENTER_CRITICAL(mux) with
+ * a portMUX_TYPE* argument.  Redefine as zero-arg to make the upstream sources
+ * compile.  All zero-arg critical sections share g_xDHCPStaticLock (equivalent
+ * to the single global lock that standard FreeRTOS uses when it disables
+ * interrupts).
+ */
+#undef taskENTER_CRITICAL
+#undef taskEXIT_CRITICAL
+#define taskENTER_CRITICAL()    portENTER_CRITICAL(&g_xDHCPStaticLock)
+#define taskEXIT_CRITICAL()     portEXIT_CRITICAL(&g_xDHCPStaticLock)
 
 #endif /* FREERTOS_IP_CONFIG_H */

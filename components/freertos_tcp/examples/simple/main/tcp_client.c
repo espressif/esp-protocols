@@ -10,6 +10,7 @@
 #include "freertos/FreeRTOS.h"
 #include "FreeRTOS_IP.h"
 #include "FreeRTOS_Sockets.h"
+#include "FreeRTOS_ARP.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_event.h"

@@ -202,3 +202,30 @@ void vNetworkNotifyIFDown(NetworkInterface_t *pxInterface)
     xRxEvent.pvData = pxInterface;
     (void) xSendEventStructToIPTask(&xRxEvent, 0);
 }
+
+#define NI_BUFFER_SIZE               ( ipTOTAL_ETHERNET_FRAME_SIZE + ipBUFFER_PADDING )
+#define NI_BUFFER_SIZE_ROUNDED_UP    ( ( NI_BUFFER_SIZE + 7 ) & ~0x07UL )
+
+size_t uxNetworkInterfaceAllocateRAMToBuffers(
+    NetworkBufferDescriptor_t pxNetworkBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ])
+{
+    static uint8_t *pucNetworkPacketBuffers = NULL;
+
+    if (pucNetworkPacketBuffers == NULL) {
+        pucNetworkPacketBuffers = (uint8_t *) pvPortMalloc(
+                                      ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS * NI_BUFFER_SIZE_ROUNDED_UP);
+    }
+
+    configASSERT(pucNetworkPacketBuffers != NULL);
+
+    for (size_t ux = 0; ux < ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS; ux++) {
+        size_t uxOffset = ux * NI_BUFFER_SIZE_ROUNDED_UP;
+        NetworkBufferDescriptor_t **ppDescriptor =
+            (NetworkBufferDescriptor_t **) &pucNetworkPacketBuffers[uxOffset];
+        *ppDescriptor = &pxNetworkBuffers[ux];
+        pxNetworkBuffers[ux].pucEthernetBuffer =
+            &pucNetworkPacketBuffers[uxOffset + ipBUFFER_PADDING];
+    }
+
+    return NI_BUFFER_SIZE_ROUNDED_UP - ipBUFFER_PADDING;
+}
