@@ -35,10 +35,12 @@ void app_main(void)
     struct freertos_addrinfo *results = NULL;
     struct freertos_addrinfo hints = { .ai_family = FREERTOS_AF_INET };
     NetworkEndPoint_t *pxEndPoint = FreeRTOS_FindGateWay(ipTYPE_IPv4);
+    ESP_LOGI(TAG, "FreeRTOS_FindGateWay() returned %p", pxEndPoint);
 
     if ((pxEndPoint != NULL) && (pxEndPoint->ipv4_settings.ulGatewayAddress != 0U)) {
         xARPWaitResolution(pxEndPoint->ipv4_settings.ulGatewayAddress, pdMS_TO_TICKS(1000U));
     }
+    ESP_LOGI(TAG, "xARPWaitResolution() returned");
     BaseType_t rc = FreeRTOS_getaddrinfo(
                         CONFIG_EXAMPLE_HOSTNAME,  /* The node. */
                         NULL,        /* const char *pcService: ignored for now. */

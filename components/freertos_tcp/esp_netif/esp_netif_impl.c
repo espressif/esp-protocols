@@ -7,6 +7,7 @@
 #include "esp_netif_net_stack.h"
 #include "interface.h"
 #include "NetworkInterface.h"
+#include "FreeRTOS_IP.h"
 #include "esp_log.h"
 #include "esp_event.h"
 #include "esp_idf_version.h"
@@ -33,7 +34,7 @@ struct esp_netif_obj {
 
     // stack related
     struct esp_netif_stack *net_stack;
-
+    bool phy_link_up;
 
     // misc flags, types, keys, priority
     esp_netif_flags_t flags;
@@ -93,9 +94,6 @@ esp_err_t esp_netif_receive(esp_netif_t *esp_netif, void *buffer, size_t len, vo
     struct esp_netif_stack *netif = esp_netif->net_stack;
     return netif->config.input_fn(&netif->aft_netif, buffer, len, eb);
 }
-
-void vNetworkNotifyIFUp(NetworkInterface_t *pxInterface);
-void vNetworkNotifyIFDown(NetworkInterface_t *pxInterface);
 
 void esp_netif_set_ip4_addr(esp_ip4_addr_t *addr, uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 {
@@ -333,24 +331,22 @@ esp_err_t esp_netif_get_hostname(esp_netif_t *esp_netif, const char **hostname)
 esp_err_t esp_netif_up(esp_netif_t *esp_netif)
 {
     ESP_LOGI(TAG, "Netif going up");
-    struct esp_netif_stack *netif = esp_netif->net_stack;
-    netif->aft_netif.bits.bInterfaceUp = 1;
-    vNetworkNotifyIFUp(&esp_netif->net_stack->aft_netif);
+    esp_netif->phy_link_up = true;
+    FreeRTOS_NetworkDown(&esp_netif->net_stack->aft_netif);
     return ESP_OK;
 }
 
 esp_err_t esp_netif_down(esp_netif_t *esp_netif)
 {
     ESP_LOGI(TAG, "Netif going down");
-    struct esp_netif_stack *netif = esp_netif->net_stack;
-    vNetworkNotifyIFDown(&netif->aft_netif);
+    esp_netif->phy_link_up = false;
+    FreeRTOS_NetworkDown(&esp_netif->net_stack->aft_netif);
     return ESP_OK;
 }
 
 bool esp_netif_is_netif_up(esp_netif_t *esp_netif)
 {
-    struct esp_netif_stack *netif = esp_netif->net_stack;
-    return (netif->aft_netif.bits.bInterfaceUp == pdTRUE_UNSIGNED) ? true : false;
+    return esp_netif->phy_link_up;
 }
 
 esp_err_t esp_netif_get_old_ip_info(esp_netif_t *esp_netif, esp_netif_ip_info_t *ip_info)
@@ -497,6 +493,15 @@ esp_netif_t *esp_netif_find_if(esp_netif_find_predicate_t fn, void *ctx)
 esp_err_t esp_netif_set_link_speed(esp_netif_t *esp_netif, uint32_t speed)
 {
     return ESP_OK;
+}
+
+BaseType_t xEspNetif_IsPhyUp(NetworkInterface_t *pxInterface)
+{
+    if (pxInterface == NULL || pxInterface->pvArgument == NULL) {
+        return pdFALSE;
+    }
+    esp_netif_t *esp_netif = pxInterface->pvArgument;
+    return esp_netif->phy_link_up ? pdTRUE : pdFALSE;
 }
 
 /* Called by FreeRTOS+TCP when the network connects or disconnects.  Disconnect

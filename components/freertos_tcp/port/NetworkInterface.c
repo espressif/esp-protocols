@@ -82,20 +82,16 @@ NetworkInterface_t *pxESP32_Eth_FillInterfaceDescriptor(BaseType_t xEMACIndex,
 }
 /*-----------------------------------------------------------*/
 
+extern BaseType_t xEspNetif_IsPhyUp(NetworkInterface_t *pxInterface);
+
 static BaseType_t xESP32_Eth_NetworkInterfaceInitialise(NetworkInterface_t *pxInterface)
 {
-    return pxInterface->bits.bInterfaceUp ? pdTRUE : pdFALSE;
+    return xEspNetif_IsPhyUp(pxInterface);
 }
 
 static BaseType_t xESP32_Eth_GetPhyLinkStatus(NetworkInterface_t *pxInterface)
 {
-    BaseType_t xResult = pdFALSE;
-
-    if (pxInterface->bits.bInterfaceUp) {
-        xResult = pdTRUE;
-    }
-
-    return xResult;
+    return xEspNetif_IsPhyUp(pxInterface);
 }
 
 static BaseType_t xESP32_Eth_NetworkInterfaceOutput(NetworkInterface_t *pxInterface,
@@ -161,10 +157,11 @@ esp_err_t xESP32_Eth_NetworkInterfaceInput(NetworkInterface_t *pxInterface, void
         /* Set the packet size, in case a larger buffer was returned. */
         pxNetworkBuffer->xDataLength = len;
         pxNetworkBuffer->pxInterface = pxInterface;
-        pxNetworkBuffer->pxEndPoint = FreeRTOS_MatchingEndpoint(pxInterface, buffer);
 
-        /* Copy the packet data. */
+        /* Copy first — pool buffers have the (4n+2) alignment that
+         * FreeRTOS_MatchingEndpoint asserts on; WiFi RX buffers don't. */
         memcpy(pxNetworkBuffer->pucEthernetBuffer, buffer, len);
+        pxNetworkBuffer->pxEndPoint = FreeRTOS_MatchingEndpoint(pxInterface, pxNetworkBuffer->pucEthernetBuffer);
         xRxEvent.pvData = (void *) pxNetworkBuffer;
 
         if (xSendEventStructToIPTask(&xRxEvent, xDescriptorWaitTime) == pdFAIL) {
@@ -181,26 +178,6 @@ esp_err_t xESP32_Eth_NetworkInterfaceInput(NetworkInterface_t *pxInterface, void
     ESP_LOGE(TAG, "Failed to get buffer descriptor");
     esp_netif_free_rx_buffer(pxInterface->pvArgument, eb);
     return ESP_FAIL;
-}
-
-void vNetworkNotifyIFUp(NetworkInterface_t *pxInterface)
-{
-    pxInterface->bits.bInterfaceUp = 1;
-
-    /* FreeRTOS+TCP has no explicit "network up" event. Waking the IP-task with a
-     * TX event makes it re-check the interface/endpoints and start DHCP/etc. */
-    IPStackEvent_t xRxEvent = { eNetworkTxEvent, NULL };
-    xRxEvent.pvData = pxInterface;
-    (void) xSendEventStructToIPTask(&xRxEvent, 0);
-}
-
-void vNetworkNotifyIFDown(NetworkInterface_t *pxInterface)
-{
-    pxInterface->bits.bInterfaceUp = 0;
-
-    IPStackEvent_t xRxEvent = { eNetworkDownEvent, NULL };
-    xRxEvent.pvData = pxInterface;
-    (void) xSendEventStructToIPTask(&xRxEvent, 0);
 }
 
 #define NI_BUFFER_SIZE               ( ipTOTAL_ETHERNET_FRAME_SIZE + ipBUFFER_PADDING )
