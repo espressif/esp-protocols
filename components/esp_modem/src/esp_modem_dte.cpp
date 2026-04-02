@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -160,7 +160,14 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     buffer_state.command_start_offset = buffer_state.total_processed;
 #endif
     command_cb.set(got_line, separator);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
     primary_term->write((uint8_t *)command.c_str(), command.length());
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
     command_cb.wait_for_line(time_ms);
     command_cb.set(nullptr);
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
@@ -339,20 +346,66 @@ int DTE::read(uint8_t **d, size_t len)
     return actual_len;
 }
 
+std::shared_ptr<const DTE::TransmitHooks> DTE::load_transmit_hooks()
+{
+#if defined(__cpp_lib_atomic_shared_ptr)
+    return transmit_hooks_.load(std::memory_order_acquire);
+#else
+    return std::atomic_load_explicit(&transmit_hooks_, std::memory_order_acquire);
+#endif
+}
+
+void DTE::set_transmit_hooks(transmit_hook_t before_tx, transmit_hook_t after_tx)
+{
+    std::shared_ptr<const TransmitHooks> p;
+    if (before_tx || after_tx) {
+        p = std::make_shared<TransmitHooks>(std::move(before_tx), std::move(after_tx));
+    }
+#if defined(__cpp_lib_atomic_shared_ptr)
+    transmit_hooks_.store(std::move(p), std::memory_order_release);
+#else
+    std::atomic_store_explicit(&transmit_hooks_, std::move(p), std::memory_order_release);
+#endif
+}
+
 int DTE::write(uint8_t *data, size_t len)
 {
-    return secondary_term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = secondary_term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::send(uint8_t *data, size_t len, int term_id)
 {
     Terminal *term = term_id == 0 ? primary_term.get() : secondary_term.get();
-    return term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::write(DTE_Command command)
 {
-    return primary_term->write(command.data, command.len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = primary_term->write(command.data, command.len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 void DTE::on_read(got_line_cb on_read_cb)
