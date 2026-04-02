@@ -64,7 +64,7 @@ eDHCPCallbackAnswer_t xApplicationDHCPHook_Multi(eDHCPCallbackPhase_t eDHCPPhase
     return eDHCPContinue;
 }
 
-/* MVP: Returns global hostname for all network interfaces.
+/* Returns global hostname for all network interfaces.
  * Future enhancement: Make this netif-specific once FreeRTOS-Plus-TCP supports it. */
 const char *pcApplicationHostnameHook(void)
 {
@@ -73,7 +73,7 @@ const char *pcApplicationHostnameHook(void)
 
 /*-----------------------------------------------------------*/
 /* Network buffer management
- * MVP: Uses static buffer allocation for predictable memory usage and deterministic behavior.
+ * Initial release: Uses static buffer allocation for predictable memory usage and deterministic behavior.
  * Future enhancement: Add Kconfig option to support dynamic allocation for memory-constrained systems. */
 #define NETWORK_BUFFER_SIZE    1536
 static uint8_t ucBuffers[ ipconfigNUM_NETWORK_BUFFER_DESCRIPTORS ][ NETWORK_BUFFER_SIZE ];

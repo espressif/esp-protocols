@@ -2,11 +2,11 @@
 
 ESP-IDF port of Amazon FreeRTOS-Plus-TCP - a lightweight TCP/IP stack providing an alternative to lwIP.
 
-## MVP Status
+## Initial release scope
 
-**This is a Minimum Viable Product (MVP) release focusing on IPv4-only, single network interface functionality.**
+**This initial release focuses on IPv4-only, single network interface functionality (minimum network interface support).**
 
-**What's Included in MVP:**
+**What's included in this initial release:**
 - ✅ Full TCP/UDP support with IPv4
 - ✅ DHCP client with hostname registration
 - ✅ DNS resolution with caching
@@ -16,7 +16,7 @@ ESP-IDF port of Amazon FreeRTOS-Plus-TCP - a lightweight TCP/IP stack providing 
 - ✅ Single WiFi station interface
 - ✅ Basic test coverage
 
-**Not Included in MVP (Future Releases):**
+**Not included yet (future releases):**
 - ⚠️ IPv6 support (code present but disabled by default)
 - ⚠️ DHCPv6
 - ⚠️ Multiple network interfaces
@@ -35,7 +35,7 @@ This component integrates [FreeRTOS-Plus-TCP](https://github.com/FreeRTOS/FreeRT
 The component consists of three main layers:
 
 ### 1. FreeRTOS-Plus-TCP Core (`FreeRTOS-Plus-TCP/`)
-- Upstream library (Git submodule)
+- Upstream library (Git submodule, currently v4.4.0)
 - Complete TCP/IP stack implementation
 - Provides: TCP, UDP, IPv4, IPv6, DHCP, DNS, ARP, ICMP, mDNS, LLMNR, NBNS
 
@@ -55,10 +55,10 @@ The component consists of three main layers:
 ### Networking Protocols
 - ✅ **TCP**: Full TCP implementation with windowing
 - ✅ **UDP**: UDP support
-- ✅ **IPv4**: Full IPv4 stack (MVP focus)
-- ⚠️ **IPv6**: Experimental - disabled by default in MVP (`CONFIG_AFPT_IPV6=n`)
+- ✅ **IPv4**: Full IPv4 stack (initial release focus)
+- ⚠️ **IPv6**: Experimental - disabled by default in this initial release (`CONFIG_AFPT_IPV6=n`)
 - ✅ **DHCP**: DHCPv4 client with hostname registration
-- ❌ **DHCPv6**: Not included in MVP (`ipconfigUSE_DHCPv6 = 0`)
+- ❌ **DHCPv6**: Not included in this initial release (`ipconfigUSE_DHCPv6 = 0`)
 - ✅ **DNS**: DNS client with caching (6 addresses per entry)
 - ✅ **ARP**: Address Resolution Protocol with clash detection
 - ✅ **ICMP**: Ping support (both incoming and outgoing)
@@ -86,8 +86,8 @@ The component consists of three main layers:
 |--------|---------|-------------|
 | `AFPT_ENABLE` | Y | Enables FreeRTOS-Plus-TCP (auto-enabled) |
 | `AFPT_LOCAL_HOSTNAME` | 'espressif' | Default device hostname |
-| `AFPT_IPV4` | Y | Enable IPv4 stack (required for MVP) |
-| `AFPT_IPV6` | **N** | Enable IPv6 stack (experimental, not in MVP) |
+| `AFPT_IPV4` | Y | Enable IPv4 stack (required for this initial release) |
+| `AFPT_IPV6` | **N** | Enable IPv6 stack (experimental, not enabled by default) |
 
 ### Key Stack Parameters (in `FreeRTOSIPConfig.h`)
 - **Network MTU**: 1500 bytes
@@ -202,31 +202,7 @@ cd examples/simple
 idf.py build flash monitor
 ```
 
-## File Structure
-
-```
-freertos_tcp/
-├── CMakeLists.txt              # Component build configuration
-├── Kconfig                     # Configuration menu options
-├── idf_component.yml           # Component metadata
-├── README.md                   # This file
-├── FreeRTOS-Plus-TCP/          # Upstream library (submodule)
-│   └── source/                 # TCP/IP stack source files
-├── port/                       # ESP-IDF port layer
-│   ├── NetworkInterface.c      # Network interface driver
-│   ├── FreeRTOSIPConfig.c      # Configuration implementation
-│   ├── FreeRTOS_AppHooks.c     # Application hooks
-│   └── include/
-│       └── FreeRTOSIPConfig.h  # Stack configuration header
-├── esp_netif/                  # ESP-IDF integration
-│   ├── esp_netif_impl.c        # esp_netif implementation
-│   ├── interface.c             # Interface bridge
-│   └── interface.h             # Interface definitions
-└── examples/
-    └── simple/                 # Simple TCP client example
-```
-
-## Roadmap (Post-MVP)
+## Roadmap (beyond initial release)
 
 Future releases may include:
 

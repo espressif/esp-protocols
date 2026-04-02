@@ -22,7 +22,6 @@ menu "Amazon FreeRTOS plus TCP (AFpT)"
         bool "Enable IPv6"
         default n
         help
-            Enable IPv6 function (Experimental - not included in MVP).
-            For MVP, use IPv4 only stack. If you want to use IPv4 only TCP/IP stack, disable this.
+            Enable IPv6 function (Experimental - not included in the initial version).
 
 endmenu

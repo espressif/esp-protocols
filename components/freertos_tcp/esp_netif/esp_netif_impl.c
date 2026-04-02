@@ -12,7 +12,7 @@
 #include "esp_event.h"
 #include "esp_idf_version.h"
 
-#define MAX_ENDPOINTS_PER_NETIF     1  // MVP: single interface, single endpoint
+#define MAX_ENDPOINTS_PER_NETIF     1  // single interface, single endpoint
 
 static const char *TAG = "esp_netif_AFpT";
 
@@ -63,6 +63,7 @@ struct esp_netif_stack *esp_netif_new_netstack_if(esp_netif_t *esp_netif, const 
     }
     netif->config.init_fn = cfg->init_fn;
     if (!cfg->init_fn(netif_count++, &netif->aft_netif)) {
+        ESP_LOGE(TAG, "Failed to initialize network interface");
         free(netif);
         return NULL;
     }
