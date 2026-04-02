@@ -120,6 +120,7 @@ void Netif::pause()
 
 Netif::~Netif()
 {
+    ppp_dte->set_read_cb(nullptr);
     if (signal.is_any(PPP_STARTED)) {
         esp_netif_action_stop(driver.base.netif, nullptr, 0, nullptr);
         signal.clear(PPP_STARTED);
