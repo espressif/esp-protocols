@@ -110,3 +110,29 @@ jobs:
           ./scripts/generate.sh
           git diff --name-only
           git diff --quiet
+
+  build_host_test_app:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    name: Host test app
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.5", "release-v6.0", "latest"]
+
+    runs-on: ubuntu-latest
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          path: protocols
+      - name: Build host test app with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          cd $GITHUB_WORKSPACE/protocols/components/esp_modem/test/host_test_app
+          . ${IDF_PATH}/export.sh
+          idf.py --preview set-target linux
+          idf.py build
+          echo "Running test with batch size 0 and delay 1ms"
+          MODEM_SIM_PORT=10000 MODEM_SIM_BATCH_SIZE=0 MODEM_SIM_BATCH_DELAY_MS=1 TEST_TIMEOUT=30 ./run_test.sh
+          echo "Running test with batch size 1 and delay 5ms"
+          MODEM_SIM_PORT=10000 MODEM_SIM_BATCH_SIZE=1 MODEM_SIM_BATCH_DELAY_MS=5 TEST_TIMEOUT=30 ./run_test.sh

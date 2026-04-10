@@ -1,6 +1,14 @@
 set(LWIP_DIR "$ENV{LWIP_PATH}")
 set(LWIP_CONTRIB_DIR "$ENV{LWIP_CONTRIB_PATH}")
 
+if(NOT LWIP_DIR OR NOT EXISTS "${LWIP_DIR}/src/Filelists.cmake")
+    # Stub-only build (no lwIP) -- enough for AT command testing without networking
+    idf_component_register(SRCS esp_netif_stub.c
+                           INCLUDE_DIRS include
+                           REQUIRES esp_system_protocols_linux)
+    return()
+endif()
+
 set(lwipcontribportunix_SRCS  ${LWIP_CONTRIB_DIR}/ports/unix/port/sys_arch.c)
 
 if(NOT CMAKE_BUILD_EARLY_EXPANSION)
