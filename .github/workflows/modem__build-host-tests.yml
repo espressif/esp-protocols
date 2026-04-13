@@ -93,6 +93,36 @@ jobs:
         run_coverage: false
         pre_run_script: "esp-protocols/components/esp_modem/test/host_test/env.sh"
 
+  build_esp_modem_v2:
+    if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
+    # Component manager + v2 mismatches the esp_modem override name; use EXTRA_COMPONENT_DIRS instead.
+    name: Build ap_to_pppos with IDF build system v2
+    runs-on: ubuntu-22.04
+    container: espressif/idf:release-v6.0
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          path: protocols
+      - name: Build ap_to_pppos with v2
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd $GITHUB_WORKSPACE/protocols/components/esp_modem/examples/ap_to_pppos
+          rm -f main/idf_component.yml dependencies.lock
+          cat > CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.22)
+
+          set(EXTRA_COMPONENT_DIRS ../..)
+          include($ENV{IDF_PATH}/tools/cmakev2/idf.cmake)
+
+          project(ap-to-pppos C CXX ASM)
+
+          idf_project_default()
+          EOF
+          idf.py set-target esp32
+          idf.py build
+
   esp_modem_generated_commands:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Generated commands compatibility
