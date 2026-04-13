@@ -2,7 +2,6 @@
 # Initialize lists before use to avoid inheriting variables from
 # a parent component scope (recursive evaluation in v2).
 set(public_deps)
-set(optional_deps)
 
 foreach(dep IN LISTS dependencies)
     idf_component_include(${dep})
