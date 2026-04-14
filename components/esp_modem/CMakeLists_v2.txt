@@ -1,0 +1,36 @@
+# --- IDF Build System V2 Integration ---
+# Initialize lists before use to avoid inheriting variables from
+# a parent component scope (recursive evaluation in v2).
+set(public_deps)
+
+foreach(dep IN LISTS dependencies)
+    idf_component_include(${dep})
+    list(APPEND public_deps idf::${dep})
+endforeach()
+
+add_library(${COMPONENT_TARGET} STATIC ${srcs})
+
+target_include_directories(${COMPONENT_TARGET}
+    PUBLIC
+        include
+        ${command_dir}/include
+    PRIVATE
+        private_include
+)
+
+target_link_libraries(${COMPONENT_TARGET} PUBLIC ${public_deps})
+
+target_compile_features(${COMPONENT_TARGET} PUBLIC cxx_std_17)
+set_target_properties(${COMPONENT_TARGET} PROPERTIES
+    CXX_EXTENSIONS ON
+)
+
+# Optional dependency on "main" when custom module is enabled.
+# Use TARGET_EXISTS generator expression so the link is a no-op when
+# "main" is not part of the build (v2 makes all Kconfig visible, so
+# CONFIG_ESP_MODEM_ADD_CUSTOM_MODULE can be set even if "main" is absent).
+if(CONFIG_ESP_MODEM_ADD_CUSTOM_MODULE)
+    idf_component_include(main)
+    target_link_libraries(${COMPONENT_TARGET} PUBLIC
+        "$<$<TARGET_EXISTS:idf::main>:idf::main>")
+endif()
