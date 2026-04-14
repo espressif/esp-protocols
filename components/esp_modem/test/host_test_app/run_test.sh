@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
-# SPDX-License-Identifier: Unlicense OR CC0-1.0
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
 #
 # Test harness: starts modem simulator, runs test app, collects results.
 

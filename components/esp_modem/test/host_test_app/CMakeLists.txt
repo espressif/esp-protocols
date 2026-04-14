@@ -11,7 +11,3 @@ set(EXTRA_COMPONENT_DIRS
 
 set(COMPONENTS main)
 project(host_test_app)
-
-idf_component_get_property(esp_modem esp_modem COMPONENT_LIB)
-target_compile_definitions(${esp_modem} PRIVATE "-DCONFIG_COMPILER_CXX_EXCEPTIONS")
-target_compile_definitions(${esp_modem} PRIVATE "-DCONFIG_IDF_TARGET_LINUX")
