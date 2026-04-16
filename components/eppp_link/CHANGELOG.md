@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.5](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.5)
+
+### Bug Fixes
+
+- Use C++ traits to control netif predicate type changes ([5eca0c55](https://github.com/espressif/esp-protocols/commit/5eca0c55))
+
 ## [1.1.4](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.4)
 
 ### Bug Fixes
