@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,6 +39,15 @@ using dte_config = ::esp_modem_dte_config;
  *         if exceptions are disabled the API abort()'s on error
  */
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config);
+
+/**
+ * @brief Create a UART terminal without wrapping it in a DTE
+ *
+ * Useful for building custom DTE subclasses that need a standard UART terminal.
+ * @param config DTE configuration (uses the uart_config member)
+ * @return unique ptr to Terminal on success, nullptr on failure
+ */
+std::unique_ptr<Terminal> create_uart_terminal(const dte_config *config);
 
 /**
  * @brief Create VFS DTE
