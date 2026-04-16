@@ -168,6 +168,52 @@ command_result GenericModule::get_imei(std::string &imei)
     return esp_modem::dce_commands::get_imei(dte.get(), imei);
 }
 /**
+ * @brief Reads the ICCID number
+ * @param[out] iccid SIM's ICCID number
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::get_iccid(std::string &iccid)
+{
+    return esp_modem::dce_commands::get_iccid(dte.get(), iccid);
+}
+/**
+ * @brief Reads the module firmware version
+ * @param[out] firmware module firmware version
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::get_module_firmware(std::string &firmware)
+{
+    return esp_modem::dce_commands::get_module_firmware(dte.get(), firmware);
+}
+/**
+ * @brief Read the Restricted (U)SIM Access
+ * @param[out] data response from the command
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::get_restricted_usim_access(std::string &data, int command, int file_id, int p1, int p2, int p3)
+{
+    return esp_modem::dce_commands::get_restricted_usim_access(dte.get(), data, command, file_id, p1, p2, p3);
+}
+/**
+ * @brief Write the Restricted (U)SIM Access
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @param[in] data data to write
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::set_restricted_usim_access(int command, int file_id, int p1, int p2, int p3, const std::string &data)
+{
+    return esp_modem::dce_commands::set_restricted_usim_access(dte.get(), command, file_id, p1, p2, p3, data);
+}
+/**
  * @brief Reads the module name
  * @param[out] name module name
  * @return OK, FAIL or TIMEOUT

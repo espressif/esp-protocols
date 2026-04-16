@@ -56,3 +56,10 @@
         ESP_MODEM_HELPER_GENERIC(prefix, p3), \
         ESP_MODEM_HELPER_GENERIC(prefix, p4), \
         ESP_MODEM_HELPER_GENERIC(prefix, p5) trail_comma
+#define ESP_MODEM_HELPER6(prefix, lead_comma, trail_comma, p1, p2, p3, p4, p5, p6) lead_comma \
+        ESP_MODEM_HELPER_GENERIC(prefix, p1), \
+        ESP_MODEM_HELPER_GENERIC(prefix, p2), \
+        ESP_MODEM_HELPER_GENERIC(prefix, p3), \
+        ESP_MODEM_HELPER_GENERIC(prefix, p4), \
+        ESP_MODEM_HELPER_GENERIC(prefix, p5), \
+        ESP_MODEM_HELPER_GENERIC(prefix, p6) trail_comma
