@@ -7,10 +7,11 @@ if(NOT CONFIG_LWIP_IPV6 AND NOT CMAKE_BUILD_EARLY_EXPANSION)
 endif()
 
 set(asio_sources "asio/asio/src/asio.cpp" "port/src/asio_stub.cpp")
-# sock_utils must be a public dependency because asio's public header
-# port/include/asio/detail/config.hpp includes "socketpair.h" from sock_utils.
-set(asio_requires sock_utils)
-set(asio_priv_requires lwip)
+# sock_utils is a private dependency: its "socketpair.h" is only pulled in by
+# asio's own TU (asio.cpp) via the ASIO_SOURCE-guarded include in
+# port/include/asio/detail/config.hpp. Client code that just includes asio
+# headers does not need sock_utils on its include path.
+set(asio_requires lwip sock_utils)
 
 if(CONFIG_ASIO_SSL_SUPPORT)
     list(APPEND asio_sources
@@ -23,8 +24,7 @@ endif()
 idf_component_register(SRCS ${asio_sources}
                     INCLUDE_DIRS "port/include" "asio/asio/include"
                     PRIV_INCLUDE_DIRS ${asio_priv_includes}
-                    REQUIRES ${asio_requires}
-                    PRIV_REQUIRES ${asio_priv_requires})
+                    PRIV_REQUIRES ${asio_requires})
 
 target_compile_definitions(${COMPONENT_LIB} PUBLIC SA_RESTART=0x01
                                                    SA_NOCLDSTOP=0x2
