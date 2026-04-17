@@ -288,10 +288,18 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 }
                 dbg_printf("\n");
             } else if (type == MDNS_TYPE_AAAA) {
+                if (data_len < sizeof(esp_ip6_addr_t)) {
+                    dbg_printf("ERROR: truncated AAAA\n");
+                    continue;
+                }
                 esp_ip6_addr_t ip6;
                 memcpy(&ip6, data_ptr, sizeof(esp_ip6_addr_t));
                 dbg_printf(IPV6STR "\n", IPV62STR(ip6));
             } else if (type == MDNS_TYPE_A) {
+                if (data_len < sizeof(esp_ip4_addr_t)) {
+                    dbg_printf("ERROR: truncated A\n");
+                    continue;
+                }
                 esp_ip4_addr_t ip;
                 memcpy(&ip, data_ptr, sizeof(esp_ip4_addr_t));
                 dbg_printf(IPSTR "\n", IP2STR(&ip));
