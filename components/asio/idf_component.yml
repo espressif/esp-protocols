@@ -9,3 +9,4 @@ dependencies:
     version: ">=5.0"
   espressif/sock_utils:
     version: "^0.1"
+    public: true
