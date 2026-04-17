@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -191,6 +191,11 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 break;
             }
 
+            if (content + MDNS_LEN_OFFSET + 1 >= data + len) {
+                // malformed packet, RR header (TYPE/CLASS/TTL/LEN) would read past the buffer
+                dbg_printf("ERROR: truncated RR header\n");
+                break;
+            }
             uint16_t type = mdns_utils_read_u16(content, MDNS_TYPE_OFFSET);
             uint16_t mdns_class = mdns_utils_read_u16(content, MDNS_CLASS_OFFSET);
             uint32_t ttl = mdns_utils_read_u32(content, MDNS_TTL_OFFSET);
@@ -309,6 +314,11 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 if (new_ptr) {
                     dbg_printf("%s.%s.%s.%s. ", name->host, name->service, name->proto, name->domain);
                     size_t diff = new_ptr - old_ptr;
+                    if (diff > data_len) {
+                        // FQDN parsed past the record boundary; avoid underflowing data_len
+                        dbg_printf("ERROR: parse NSEC\n");
+                        continue;
+                    }
                     data_len -= diff;
                     data_ptr = new_ptr;
                 }
