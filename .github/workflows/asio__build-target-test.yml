@@ -15,11 +15,17 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
         idf_target: ["esp32", "esp32s2"]
-        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server", "unit"]
+        example: ["asio_chat", "async_request", "socks4", "ssl_client_server", "tcp_echo_server", "udp_echo_server", "unit", "build_test"]
+        exclude:
+          # build_test (regression test for PR 2403) runs only on latest, v6.0 and v5.5
+          - { idf_ver: "release-v5.1", example: "build_test" }
+          - { idf_ver: "release-v5.2", example: "build_test" }
+          - { idf_ver: "release-v5.3", example: "build_test" }
+          - { idf_ver: "release-v5.4", example: "build_test" }
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
-      APP_DIR: ${{ matrix.example == 'unit' && 'components/asio/tests/unit' || format('components/asio/examples/{0}', matrix.example) }}
+      APP_DIR: ${{ (matrix.example == 'unit' || matrix.example == 'build_test') && format('components/asio/tests/{0}', matrix.example) || format('components/asio/examples/{0}', matrix.example) }}
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4

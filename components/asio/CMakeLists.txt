@@ -7,6 +7,10 @@ if(NOT CONFIG_LWIP_IPV6 AND NOT CMAKE_BUILD_EARLY_EXPANSION)
 endif()
 
 set(asio_sources "asio/asio/src/asio.cpp" "port/src/asio_stub.cpp")
+# sock_utils is a private dependency: its "socketpair.h" is only pulled in by
+# asio's own TU (asio.cpp) via the ASIO_SOURCE-guarded include in
+# port/include/asio/detail/config.hpp. Client code that just includes asio
+# headers does not need sock_utils on its include path.
 set(asio_requires lwip sock_utils)
 
 if(CONFIG_ASIO_SSL_SUPPORT)
