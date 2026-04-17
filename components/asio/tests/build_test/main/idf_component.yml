@@ -1,0 +1,4 @@
+dependencies:
+  espressif/asio:
+    version: "^1.14.1"
+    override_path: "../../../"
