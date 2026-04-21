@@ -366,7 +366,7 @@ void sock_recv_task(void *arg)
                 packet->pb = packet_pbuf;
                 packet->src_port = ntohs(port);
                 memcpy(&packet->src, &addr, sizeof(esp_ip_addr_t));
-                // TODO(IDF-3651): Add the correct dest addr -- for mdns to decide multicast/unicast
+                // TODO: Add the correct dest addr -- for mdns to decide multicast/unicast
                 // Currently it's enough to assume the packet is multicast and mdns to check the source port of the packet
                 memset(&packet->dest, 0, sizeof(esp_ip_addr_t));
                 packet->multicast = 1;
