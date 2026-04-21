@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.1)
+
+### Bug Fixes
+
+- Remove IDF tracker from sources/comments ([4870186b](https://github.com/espressif/esp-protocols/commit/4870186b))
+- Bounds check RR header and NSEC length in debug parser ([c10eb9ac](https://github.com/espressif/esp-protocols/commit/c10eb9ac))
+- Validate RDATA length for A/AAAA records ([df9644aa](https://github.com/espressif/esp-protocols/commit/df9644aa))
+- Validate second byte of DNS compression pointer ([6dd051a1](https://github.com/espressif/esp-protocols/commit/6dd051a1))
+- Minor cleanup in mdns socket layer ([37b8a7ca](https://github.com/espressif/esp-protocols/commit/37b8a7ca))
+- Fix parsing of mdns.txt records containing booleans ([a6e09518](https://github.com/espressif/esp-protocols/commit/a6e09518))
+- race conditions in async query lifecycle (IDFGH-17246) ([ab5aeaf8](https://github.com/espressif/esp-protocols/commit/ab5aeaf8), [#1010](https://github.com/espressif/esp-protocols/issues/1010))
+
 ## [1.11.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.0)
 
 ### Features
