@@ -54,6 +54,10 @@ const uint8_t *mdns_utils_read_fqdn(const uint8_t *packet, const uint8_t *start,
                 memcpy(mdns_name_ptrs[name->parts++], buf, len + 1);
             }
         } else {
+            if (start + index >= packet_end) {
+                // truncated compression pointer (second byte would be out of bounds)
+                return NULL;
+            }
             size_t address = (((uint16_t)len & 0x3F) << 8) | start[index++];
             if ((packet + address) >= start) {
                 //reference address can not be after where we are
