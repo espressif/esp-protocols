@@ -160,6 +160,7 @@ bool DCE_Mode::set_unsafe(DTE *dte, ModuleIf *device, Netif &netif, modem_mode m
         if (mode == modem_mode::CMUX_MODE) {
             netif.stop();
             netif.wait_until_ppp_exits();
+            usleep(CONFIG_ESP_MODEM_CMUX_DELAY_AFTER_NETIF_DISCONNECT * 1'000);
             if (!dte->set_mode(modem_mode::COMMAND_MODE)) {
                 return false;
             }
