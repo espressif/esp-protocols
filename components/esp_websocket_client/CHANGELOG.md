@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.7.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.7.0)
+
+### Features
+
+- affinity configuration ([aa55d069](https://github.com/espressif/esp-protocols/commit/aa55d069))
+- websocket autobahn test suit integration ([0f102151](https://github.com/espressif/esp-protocols/commit/0f102151))
+
+### Bug Fixes
+
+- use local test server instead of public echo.websocket.org ([37413999](https://github.com/espressif/esp-protocols/commit/37413999))
+- prevent NULL pointer crash in error handling ([cdf064dc](https://github.com/espressif/esp-protocols/commit/cdf064dc))
+- improve resource cleanup robustness and update destroy API documentation ([3d37eaa7](https://github.com/espressif/esp-protocols/commit/3d37eaa7))
+- fix use-after-free race condition in task stop sequence ([22c77c76](https://github.com/espressif/esp-protocols/commit/22c77c76))
+
 ## [1.6.1](https://github.com/espressif/esp-protocols/commits/websocket-v1.6.1)
 
 ### Bug Fixes
