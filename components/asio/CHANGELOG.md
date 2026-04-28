@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.32.0~2](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0_2)
+
+### Bug Fixes
+
+- Fix asio dependency issue ([64a58750](https://github.com/espressif/esp-protocols/commit/64a58750), [#1044](https://github.com/espressif/esp-protocols/issues/1044))
+
 ## [1.32.0~1](https://github.com/espressif/esp-protocols/commits/asio-v1.32.0_1)
 
 ### Features
