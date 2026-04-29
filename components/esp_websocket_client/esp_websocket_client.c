@@ -156,6 +156,7 @@ struct esp_websocket_client {
     ws_transport_opcodes_t      last_opcode;
     int                         payload_len;
     int                         payload_offset;
+    int                         close_status_code;  /*!< Status code from the last received CLOSE frame (0 = none / client-initiated) */
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
 };
@@ -220,6 +221,7 @@ static esp_err_t esp_websocket_client_dispatch_event(esp_websocket_client_handle
     event_data.op_code = client->last_opcode;
     event_data.payload_len = client->payload_len;
     event_data.payload_offset = client->payload_offset;
+    event_data.close_status_code = client->close_status_code;
 
     if (client->error_handle.error_type == WEBSOCKET_ERROR_TYPE_TCP_TRANSPORT) {
         event_data.error_handle.esp_tls_last_esp_err = esp_tls_get_and_clear_last_error(esp_transport_get_error_handle(client->transport),
@@ -1138,7 +1140,14 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
     } else if (client->last_opcode == WS_TRANSPORT_OPCODES_PONG) {
         client->wait_for_pong_resp = false;
     } else if (client->last_opcode == WS_TRANSPORT_OPCODES_CLOSE) {
-        ESP_LOGD(TAG, "Received close frame");
+        /* RFC 6455 §5.5.1: first two bytes of the CLOSE body are the status code in network byte order */
+        client->close_status_code = 0;
+        if (client->payload_len >= 2) {
+            uint16_t code_net;
+            memcpy(&code_net, client->rx_buffer, sizeof(code_net));
+            client->close_status_code = (int)ntohs(code_net);
+        }
+        ESP_LOGD(TAG, "Received close frame, status code: %d", client->close_status_code);
         client->state = WEBSOCKET_STATE_CLOSING;
     }
     esp_websocket_free_buf(client, false);
@@ -1236,6 +1245,7 @@ static void esp_websocket_client_task(void *pv)
             client->payload_offset = 0;
             client->last_fin = false;
             client->last_opcode = WS_TRANSPORT_OPCODES_NONE;
+            client->close_status_code = 0;
 
             esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CONNECTED, NULL, 0);
 
