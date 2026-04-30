@@ -50,6 +50,12 @@ The component consists of three main layers:
 - **`interface.c`/`interface.h`**: Bridge between `esp_netif` and FreeRTOS-Plus-TCP
 - Enables use of standard ESP-IDF WiFi/Ethernet drivers with FreeRTOS-Plus-TCP
 
+### lwIP and this component
+
+ESP-IDF still ships **lwIP** as the default TCP/IP stack in the framework. It remains available (for example for direct use or for components that depend on it), but **interfaces created through this component's `esp_netif` integration use FreeRTOS-Plus-TCP on the data path**, not lwIP. In other words, lwIP is not the primary stack attached to Wi-Fi/Ethernet for those netifs.
+
+You can **disable lwIP** in your project if nothing you build requires it. If lwIP is not referenced, the linker can strip unused code. This component does not currently add a Kconfig option that automatically turns lwIP off for you.
+
 ## Features
 
 ### Networking Protocols
