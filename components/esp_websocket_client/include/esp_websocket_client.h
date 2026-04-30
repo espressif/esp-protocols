@@ -231,6 +231,36 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client);
 esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client);
 
 /**
+ * @brief      Pause the WebSocket client without destroying the task.
+ *
+ * Closes the TCP/TLS transport but keeps the internal FreeRTOS task alive
+ * (blocked at zero CPU cost).  Call esp_websocket_client_resume() to reconnect
+ * using the same task, avoiding vTaskDelete/xTaskCreate overhead.
+ *
+ *  Notes:
+ *  - Cannot be called from the websocket event handler / websocket task
+ *  - After pause, call set_uri() if the endpoint changed, then resume()
+ *
+ * @param[in]  client  The client
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_pause(esp_websocket_client_handle_t client);
+
+/**
+ * @brief      Resume a paused WebSocket client.
+ *
+ * Wakes the internal task which will re-apply transport settings from config
+ * (updated path, headers) and establish a fresh connection.
+ *
+ * @param[in]  client   The client (must be in paused state)
+ * @param[in]  headers  Optional new headers to set before reconnecting (NULL to keep current)
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_resume(esp_websocket_client_handle_t client, const char *headers);
+
+/**
  * @brief      Destroy the WebSocket connection and free all resources.
  *             This function must be the last function to call for an session.
  *             It is the opposite of the esp_websocket_client_init function and must be called with the same handle as input that a esp_websocket_client_init call returned.
@@ -272,6 +302,21 @@ esp_err_t esp_websocket_client_destroy_on_exit(esp_websocket_client_handle_t cli
  *     - (-1) if any errors
  */
 int esp_websocket_client_send_bin(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
+
+/**
+ * @brief      Generic write data to the WebSocket connection; defaults to binary send
+ *             (backward-compat shim kept for IDF 4.4 API parity)
+ *
+ * @param[in]  client  The client
+ * @param[in]  data    The data
+ * @param[in]  len     The length
+ * @param[in]  timeout Write data timeout in RTOS ticks
+ *
+ * @return
+ *     - Number of data was sent
+ *     - (-1) if any errors
+ */
+int esp_websocket_client_send(esp_websocket_client_handle_t client, const char *data, int len, TickType_t timeout);
 
 /**
  * @brief      Write binary data to the WebSocket connection and sends it without setting the FIN flag(data send with WS OPCODE=02, i.e. binary)
