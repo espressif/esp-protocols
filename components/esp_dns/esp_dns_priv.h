@@ -42,8 +42,6 @@ struct esp_dns_handle {
     /* Connection state */
     bool initialized;                      /* Flag indicating successful initialization */
 
-    response_buffer_t response_buffer;     /* Buffer for storing DNS response data during processing */
-
     /* Thread safety */
     SemaphoreHandle_t lock;                /* Mutex for synchronization */
 };
