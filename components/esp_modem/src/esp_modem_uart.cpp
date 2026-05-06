@@ -177,6 +177,10 @@ int UartTerminal::read(uint8_t *data, size_t len)
     length = std::min(len, length);
     if (length > 0) {
         int read_len = uart_read_bytes(uart.port, data, length, portMAX_DELAY);
+        if (read_len < 0) {
+            ESP_LOGE(TAG, "Error occurred during read: %d", read_len);
+            return 0;
+        }
 #if CONFIG_ESP_MODEM_ADD_DEBUG_LOGS
         ESP_LOG_BUFFER_HEXDUMP("uart-rx", data, read_len, ESP_LOG_DEBUG);
 #endif
