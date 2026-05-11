@@ -91,6 +91,7 @@ typedef struct {
     int payload_len;                        /*!< Total payload length, payloads exceeding buffer will be posted through multiple events */
     int payload_offset;                     /*!< Actual offset for the data associated with this event */
     esp_websocket_error_codes_t error_handle; /*!< esp-websocket error handle including esp-tls errors as well as internal websocket errors */
+    int close_status_code;                  /*!< RFC 6455 close status code received from the server (0 if none or client-initiated) */
 } esp_websocket_event_data_t;
 
 /**
