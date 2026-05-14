@@ -168,7 +168,7 @@ err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t
                                &response_buffer.dns_response);
 
         /* Extract IP addresses from DNS response */
-        err = esp_dns_extract_ip_addresses_from_response(&response_buffer.dns_response, addr);
+        err = esp_dns_get_ips_from_response(&response_buffer.dns_response, addr);
         if (err != ERR_OK) {
             ESP_LOGE(TAG, "Failed to extract IP address from DNS response");
             goto cleanup;

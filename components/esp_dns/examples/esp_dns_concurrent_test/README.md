@@ -10,7 +10,7 @@ This example stress-tests **`getaddrinfo()`** while the **esp_dns** component ow
 
 ## What it does
 
-1. Connects Wi-Fi or Ethernet via `protocol_examples_common` (`example_connect()`).
+1. Connects Wi-Fi or Ethernet via the **net_connect** component (`net_connect()`).
 2. Initializes **Cloudflare** DNS-over-TLS (`1dot1dot1dot1.cloudflare-dns.com:853`) with the **certificate bundle**.
 3. Starts several FreeRTOS tasks that call `getaddrinfo()` on real hostnames at the same time; then prints success/failure counts.
 4. Repeats the same pattern for **DNS-over-HTTPS** (`1dot1dot1dot1.cloudflare-dns.com:443`, path `dns-query`).
@@ -45,5 +45,5 @@ If you see **no failures**, increase **`NUM_WORKERS`** and **`ITERATIONS_PER_TAS
 
 ## Troubleshooting
 
-- **Network**: check `example_connect` credentials in `menuconfig` (same as other protocol examples).
-- **Certificate**: ensure certificate bundle options in `sdkconfig.defaults` match your IDF version (`menuconfig` → mbedTLS → certificate bundle).
+- **Network**: configure Wi-Fi/Ethernet credentials in **net_connect** options in `menuconfig`.
+- **Certificate**: ensure certificate bundle options in `sdkconfig.defaults` match your IDF version (`menuconfig` → mbedTLS → certificate bundle). If you get `No matching trusted root certificate found` with Cloudflare or Google, make sure `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y` is enabled in your configuration (`menuconfig` -> `Component config` -> `mbedTLS` -> `Certificate Bundle` -> `Support cross-signed certificate verification`).

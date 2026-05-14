@@ -213,6 +213,7 @@ Once you add this component to your project, it will replace the default LWIP DN
 - **Certificate Errors**:
   - Verify that the correct certificate is provided for secure protocols
   - For public DNS servers, use the certificate bundle approach
+  - If you see `No matching trusted root certificate found` when using the certificate bundle (e.g. with `dns.google` or Cloudflare), the server likely uses a cross-signed chain. You must enable `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y` in your `sdkconfig` (under Component config → mbedTLS → Certificate Bundle → Support cross-signed certificate verification).
 
 - **Timeout Errors**:
   - Increase the timeout value for slow network connections
