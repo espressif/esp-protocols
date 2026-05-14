@@ -20,7 +20,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_crt_bundle.h"
-#include "protocol_examples_common.h"
+#include "net_connect.h"
 #include "esp_dns.h"
 
 #define TAG "esp_dns_concurrent_test"
@@ -394,7 +394,7 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_ERROR_CHECK(example_connect());
+    ESP_ERROR_CHECK(net_connect());
 
     ESP_LOGI(TAG, "Network ready. Cloudflare DoT/DoH + concurrent getaddrinfo (see ISSUES_AND_PROGRESS.md Issues 1 & 4).");
 

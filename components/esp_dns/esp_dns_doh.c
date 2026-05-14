@@ -295,7 +295,7 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
         }
 
         /* Extract IP addresses from DNS response */
-        err = esp_dns_extract_ip_addresses_from_response(&response_buffer.dns_response, addr);
+        err = esp_dns_get_ips_from_response(&response_buffer.dns_response, addr);
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(ret));
         err = ERR_VAL;

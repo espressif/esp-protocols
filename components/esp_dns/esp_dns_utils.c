@@ -137,8 +137,9 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
         return;
     }
 
-    /* Ensure only MAX_ANSWERS are processed */
-    dns_response->num_answers = (answer_count < MAX_ANSWERS ? answer_count : MAX_ANSWERS);
+    /* Ensure we scan up to ESP_DNS_MAX_ANSWER_SCAN answers */
+    dns_response->num_answers = 0;
+    int scan_count = (answer_count < ESP_DNS_MAX_ANSWER_SCAN ? answer_count : ESP_DNS_MAX_ANSWER_SCAN);
 
     /* Skip the header and question section */
     uint8_t *ptr = buffer + sizeof(dns_header_t);
@@ -154,7 +155,10 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
     ptr += sizeof(dns_question_t);
 
     /* Parse each answer record */
-    for (int i = 0; i < dns_response->num_answers; i++) {
+    for (int i = 0; i < scan_count; i++) {
+        if (dns_response->num_answers >= MAX_ANSWERS) {
+            break; /* We have collected enough IP addresses */
+        }
 
         /* Answer fields */
         ptr = skip_dns_name(ptr, response_size - (ptr - buffer));
@@ -174,24 +178,20 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
 
         /* Validate RR class and ttl */
         if ((class != DNS_RRCLASS_IN) || (ttl > DNS_MAX_TTL)) {
-            dns_response->answers[i].status = ERR_VAL;
             goto next_answer;
         }
-
-        /* Initialize status for this answer */
-        dns_response->answers[i].status = ERR_OK;
 
         /* Check the type of answer */
         if (type == DNS_RRTYPE_A && data_len == 4) {
             /* IPv4 Address (A record) */
-            memcpy(&dns_response->answers[i].ip, ptr, sizeof(struct in_addr));
-            IP_SET_TYPE(&dns_response->answers[i].ip, IPADDR_TYPE_V4);
+            memcpy(&dns_response->answers[dns_response->num_answers], ptr, sizeof(struct in_addr));
+            IP_SET_TYPE(&dns_response->answers[dns_response->num_answers], IPADDR_TYPE_V4);
+            dns_response->num_answers++;
         } else if (type == DNS_RRTYPE_AAAA && data_len == 16) {
             /* IPv6 Address (AAAA record) */
-            memcpy(&dns_response->answers[i].ip, ptr, sizeof(struct in6_addr));
-            IP_SET_TYPE(&dns_response->answers[i].ip, IPADDR_TYPE_V6);
-        } else {
-            dns_response->answers[i].status = ERR_VAL;
+            memcpy(&dns_response->answers[dns_response->num_answers], ptr, sizeof(struct in6_addr));
+            IP_SET_TYPE(&dns_response->answers[dns_response->num_answers], IPADDR_TYPE_V6);
+            dns_response->num_answers++;
         }
 
 next_answer:
@@ -201,42 +201,33 @@ next_answer:
 }
 
 /**
- * @brief Converts a dns_response_t to an array of IP addresses.
+ * @brief Copies parsed IP addresses from a DNS response to an array.
  *
- * This function iterates over the DNS response and extracts valid
- * IPv4 and IPv6 addresses, storing them in the provided array.
+ * This function retrieves the valid IPv4 and IPv6 addresses that were
+ * previously parsed and stored in the DNS response structure, copying
+ * them into the provided array.
  *
- * @param response The DNS response to process
- * @param ipaddr Array to store the extracted IP addresses
+ * @param response The parsed DNS response
+ * @param ipaddr Array to store the copied IP addresses
  *
- * @return err_t Status of DNS response parsing
+ * @return err_t ERR_OK on success, or an error code from the response
  */
-err_t esp_dns_extract_ip_addresses_from_response(const dns_response_t *response, ip_addr_t ipaddr[])
+err_t esp_dns_get_ips_from_response(const dns_response_t *response, ip_addr_t ipaddr[])
 {
-    int count = 0;
     memset(ipaddr, 0, DNS_MAX_HOST_IP * sizeof(ip_addr_t));
 
     if (response->status_code != ERR_OK) {
         return response->status_code;
     }
 
-    /* Iterate over the DNS answers */
-    for (int i = 0; i < response->num_answers && count < DNS_MAX_HOST_IP; i++) {
-        const dns_answer_storage_t *answer = &response->answers[i];
-
-        /* Check if the answer is valid */
-        if (answer->status != ERR_OK) {
-            continue;
-        }
-
-        ipaddr[count] = answer->ip;
-        count++;
-    }
-
-    if (count == 0) {
+    if (response->num_answers == 0) {
         return ERR_VAL;
     }
 
-    /* Store the number of valid IP addresses */
+    /* Copy the valid IP addresses */
+    for (int i = 0; i < response->num_answers; i++) {
+        ipaddr[i] = response->answers[i];
+    }
+
     return ERR_OK;
 }
