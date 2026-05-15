@@ -67,6 +67,7 @@ See the Getting Started Guide for full steps to configure and use ESP-IDF to bui
 
 * **Certificate Issues**:
   For DoT and DoH protocols, ensure that the certificates are valid for the DNS server you're using. The example includes Google DNS certificates, but these may need to be updated if they expire.
+  If you are using the Certificate Bundle and see a `No matching trusted root certificate found` error, it is likely due to cross-signed chains (e.g., from Google). Make sure that `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y` is enabled in your configuration. This can be enabled via `idf.py menuconfig` -> `Component config` -> `mbedTLS` -> `Certificate Bundle` -> `Support cross-signed certificate verification`.
 
 ## Example Output
 

@@ -18,7 +18,7 @@
 #include "esp_event.h"
 #include "esp_timer.h"
 #include "lwip/opt.h"
-#include "protocol_examples_common.h"
+#include "net_connect.h"
 #include "esp_dns.h"
 #if defined(CONFIG_MBEDTLS_CERTIFICATE_BUNDLE)
 #include "esp_crt_bundle.h"
@@ -30,6 +30,10 @@
 #endif
 
 #define TAG "example_esp_dns"
+
+/* ESP-IDF xTaskCreate() stack size is in bytes. DoT/DoH paths pull in mbedTLS inside
+ * getaddrinfo(); 4 KiB is too small and triggers a stack overflow on typical builds. */
+#define DNS_ADDRINFO_TASK_STACK 8192
 
 extern const char server_root_cert_pem_start[] asm("_binary_cert_google_root_pem_start");
 extern const char server_root_cert_pem_end[]   asm("_binary_cert_google_root_pem_end");
@@ -137,7 +141,7 @@ static void run_dns_query_task(void)
 {
     TaskHandle_t task_handle = NULL;
     TaskHandle_t parent_handle = xTaskGetCurrentTaskHandle();
-    xTaskCreate(addr_info_task, "AddressInfo", 4 * 1024, parent_handle, 5, &task_handle);
+    xTaskCreate(addr_info_task, "AddressInfo", DNS_ADDRINFO_TASK_STACK, parent_handle, 5, &task_handle);
 
     /* Wait for task to complete */
     if (task_handle != NULL) {
@@ -298,7 +302,7 @@ void app_main(void)
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
      */
-    ESP_ERROR_CHECK(example_connect());
+    ESP_ERROR_CHECK(net_connect());
 
     /* Test Without ESP_DNS module */
     ESP_LOGI(TAG, "Executing DNS without initializing ESP_DNS module");

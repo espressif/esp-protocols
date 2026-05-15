@@ -99,7 +99,7 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
 {
     char *temp_buff = NULL;
     size_t temp_buff_len = 0;
-    esp_dns_handle_t handle = (esp_dns_handle_t)evt->user_data;
+    response_buffer_t *response_buffer = (response_buffer_t *)evt->user_data;
 
     switch (evt->event_id) {
     case HTTP_EVENT_ERROR:
@@ -117,32 +117,32 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
     case HTTP_EVENT_ON_DATA:
         ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
         /* Check if buffer is null, if yes, initialize it */
-        if (handle->response_buffer.buffer == NULL) {
+        if (response_buffer->buffer == NULL) {
             if (evt->data_len == 0) {
                 ESP_LOGW(TAG, "Received empty HTTP data");
                 return ESP_ERR_INVALID_ARG;
             }
             temp_buff = malloc(evt->data_len);
             if (temp_buff) {
-                handle->response_buffer.buffer = temp_buff;
-                handle->response_buffer.length = evt->data_len;
-                memcpy(handle->response_buffer.buffer, evt->data, evt->data_len);
+                response_buffer->buffer = temp_buff;
+                response_buffer->length = evt->data_len;
+                memcpy(response_buffer->buffer, evt->data, evt->data_len);
             } else {
                 ESP_LOGE(TAG, "Buffer allocation error");
                 return ESP_ERR_NO_MEM;
             }
         } else {
             /* Reallocate buffer to hold the new data chunk */
-            int new_len = handle->response_buffer.length + evt->data_len;
+            int new_len = response_buffer->length + evt->data_len;
             if (new_len == 0) {
                 ESP_LOGW(TAG, "New data length is zero after receiving HTTP data");
                 return ESP_ERR_INVALID_ARG;
             }
-            temp_buff = realloc(handle->response_buffer.buffer, new_len);
+            temp_buff = realloc(response_buffer->buffer, new_len);
             if (temp_buff) {
-                handle->response_buffer.buffer = temp_buff;
-                memcpy(handle->response_buffer.buffer + handle->response_buffer.length, evt->data, evt->data_len);
-                handle->response_buffer.length = new_len;
+                response_buffer->buffer = temp_buff;
+                memcpy(response_buffer->buffer + response_buffer->length, evt->data, evt->data_len);
+                response_buffer->length = new_len;
             } else {
                 ESP_LOGE(TAG, "Buffer allocation error");
                 return ESP_ERR_NO_MEM;
@@ -152,24 +152,24 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
     case HTTP_EVENT_ON_FINISH:
         ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
         /* Entire response received, process it here */
-        ESP_LOGD(TAG, "Received full response, length: %d", handle->response_buffer.length);
+        ESP_LOGD(TAG, "Received full response, length: %d", response_buffer->length);
 
         /* Check if the buffer indicates an HTTP error response */
         if (HttpStatus_Ok == esp_http_client_get_status_code(evt->client)) {
             /* Parse the DNS response */
-            esp_dns_parse_response((uint8_t *)handle->response_buffer.buffer,
-                                   handle->response_buffer.length,
-                                   &handle->response_buffer.dns_response);
+            esp_dns_parse_response((uint8_t *)response_buffer->buffer,
+                                   response_buffer->length,
+                                   &response_buffer->dns_response);
         } else {
             ESP_LOGE(TAG, "HTTP Error: %d", esp_http_client_get_status_code(evt->client));
-            temp_buff_len = handle->response_buffer.length > ESP_DNS_BUFFER_SIZE ? ESP_DNS_BUFFER_SIZE : handle->response_buffer.length;
-            ESP_LOG_BUFFER_HEXDUMP(TAG, handle->response_buffer.buffer, temp_buff_len, ESP_LOG_ERROR);
-            handle->response_buffer.dns_response.status_code = ERR_VAL;    /* TBD: Not handled properly yet */
+            temp_buff_len = response_buffer->length > ESP_DNS_BUFFER_SIZE ? ESP_DNS_BUFFER_SIZE : response_buffer->length;
+            ESP_LOG_BUFFER_HEXDUMP(TAG, response_buffer->buffer, temp_buff_len, ESP_LOG_ERROR);
+            response_buffer->dns_response.status_code = ERR_VAL;    /* TBD: Not handled properly yet */
         }
 
-        free(handle->response_buffer.buffer);
-        handle->response_buffer.buffer = NULL;
-        handle->response_buffer.length = 0;
+        free(response_buffer->buffer);
+        response_buffer->buffer = NULL;
+        response_buffer->length = 0;
         break;
     case HTTP_EVENT_DISCONNECTED:
         ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
@@ -204,6 +204,7 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
     /* Initialize error status */
     err_t err = ERR_OK;
     const char *prefix = "https://";
+    response_buffer_t response_buffer;
 
     /* Set default values for DoH configuration if not specified */
     const char *url_path = handle->config.protocol_config.doh_config.url_path ?
@@ -233,7 +234,7 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
         .url = dns_server_url,
         .event_handler = esp_dns_http_event_handler,
         .method = HTTP_METHOD_POST,
-        .user_data = handle,
+        .user_data = &response_buffer,
         .port = port,
     };
 
@@ -244,11 +245,11 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
         config.cert_pem = handle->config.tls_config.cert_pem;  /* Use the root certificate for dns.google if needed */
     }
 
-    /* Clear the response buffer to ensure no residual data remains */
-    memset(&handle->response_buffer, 0, sizeof(response_buffer_t));
+    /* Keep response state local to this lookup so concurrent queries do not collide. */
+    memset(&response_buffer, 0, sizeof(response_buffer_t));
 
     /* Create DNS query in wire format */
-    size_t query_size = esp_dns_create_query(buffer_qry, sizeof(buffer_qry), name, rrtype, &handle->response_buffer.dns_response.id);
+    size_t query_size = esp_dns_create_query(buffer_qry, sizeof(buffer_qry), name, rrtype, &response_buffer.dns_response.id);
     if (query_size == -1) {
         ESP_LOGE(TAG, "Error: Hostname too big");
         err = ERR_MEM;
@@ -288,13 +289,13 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
 
         /* Verify HTTP status code and DNS response status */
         if ((HttpStatus_Ok != esp_http_client_get_status_code(client)) ||
-                (handle->response_buffer.dns_response.status_code != ERR_OK)) {
+                (response_buffer.dns_response.status_code != ERR_OK)) {
             err = ERR_ARG;
             goto client_cleanup;
         }
 
         /* Extract IP addresses from DNS response */
-        err = esp_dns_extract_ip_addresses_from_response(&handle->response_buffer.dns_response, addr);
+        err = esp_dns_get_ips_from_response(&response_buffer.dns_response, addr);
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(ret));
         err = ERR_VAL;
