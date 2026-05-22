@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,6 +35,14 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
  * @note Calls (indirectly) search-send from mdns_querier.c, which sends out the query
  */
 void mdns_priv_browse_send_all(mdns_if_t mdns_if);
+
+/**
+ * @brief Send out browse queries by IP protocol
+ *
+ * @note Called from the network events (mdns_netif.c)
+ * @note Calls (indirectly) search-send from mdns_querier.c, which sends out the query
+ */
+void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
 
 /**
  * @brief Sync browse results
