@@ -1,0 +1,111 @@
+menu "Example Configuration"
+
+    config ESP_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config ESP_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config ESP_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+    config EXAMPLE_SPI_HOST
+        int "SPI Host"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 1
+        range 0 2
+        help
+            SPI host to use (SPI1_HOST=0, SPI2_HOST=1, SPI3_HOST=2).
+
+    config EXAMPLE_SPI_MOSI_PIN
+        int "MOSI Pin Number"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 23
+        range 0 39
+        help
+            Pin number of SPI MOSI.
+
+    config EXAMPLE_SPI_MISO_PIN
+        int "MISO Pin Number"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 19
+        range 0 39
+        help
+            Pin number of SPI MISO.
+
+    config EXAMPLE_SPI_SCLK_PIN
+        int "SCLK Pin Number"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 18
+        range 0 39
+        help
+            Pin number of SPI SCLK.
+
+    config EXAMPLE_SPI_CS_PIN
+        int "CS Pin Number"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 5
+        range 0 39
+        help
+            Pin number of SPI CS.
+
+    config EXAMPLE_SPI_INTR_PIN
+        int "Interrupt Pin Number"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 17
+        range 0 39
+        help
+            Pin number of SPI interrupt.
+
+    config EXAMPLE_SPI_FREQUENCY
+        int "SPI Frequency (Hz)"
+        depends on EPPP_LINK_DEVICE_SPI
+        default 1000000
+        range 100000 80000000
+        help
+            SPI frequency in Hz.
+
+    config EXAMPLE_UART_TX_PIN
+        int "TXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 18
+        range 0 31
+        help
+            Pin number of UART TX.
+
+    config EXAMPLE_UART_RX_PIN
+        int "RXD Pin Number"
+        depends on EPPP_LINK_DEVICE_UART
+        default 17
+        range 0 31
+        help
+            Pin number of UART RX.
+
+    config EXAMPLE_UART_BAUDRATE
+        int "Baudrate"
+        depends on EPPP_LINK_DEVICE_UART
+        default 921600
+        range 0 4000000
+        help
+            Baudrate used by the PPP over UART
+
+    config EXAMPLE_WIFI_OVER_EPPP_CHANNEL
+        bool "Use WiFi over EPPP channel"
+        default n
+        depends on EPPP_LINK_CHANNELS_SUPPORT
+        help
+            Enable this option to use WiFi over EPPP channel.
+            If this option is enabled, the example will only start the Wi-Fi driver,
+            but the Wi-Fi netif will reside on client's end and will channel
+            the Rx and Tx data via EPPP channels.
+
+endmenu
