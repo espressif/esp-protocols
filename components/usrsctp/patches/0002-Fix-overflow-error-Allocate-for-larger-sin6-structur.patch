@@ -1,0 +1,33 @@
+From 7233b98785769b8eeb9d15f39b0a9e888503bf6b Mon Sep 17 00:00:00 2001
+From: Vikram Dattu <vikram.dattu@espressif.com>
+Date: Tue, 3 Jun 2025 18:16:36 +0530
+Subject: [PATCH 2/5] Fix overflow error: Allocate for larger sin6 structure
+
+---
+ usrsctplib/netinet/sctp_bsd_addr.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/usrsctplib/netinet/sctp_bsd_addr.c b/usrsctplib/netinet/sctp_bsd_addr.c
+index 9197dfd..1d5277e 100755
+--- a/usrsctplib/netinet/sctp_bsd_addr.c
++++ b/usrsctplib/netinet/sctp_bsd_addr.c
+@@ -421,12 +421,14 @@ sctp_init_ifns_for_vrf(int vrfid)
+        uint32_t ifa_flags;
+        uint32_t if_num;
+        char if_name[NETIF_NAMESIZE];
+-       struct sockaddr* in_addr = malloc(sizeof(struct sockaddr));
++       /* Allocate for sockaddr_in6 which is larger than sockaddr_in */
++       struct sockaddr* in_addr = malloc(sizeof(struct sockaddr_in6));
+ 
+        for(if_num=1;if_num<LWIP_IF_NUM_MAX; if_num++){
+                struct netif* tmp_if = netif_get_by_index(if_num);
+                char * tmp_name = netif_index_to_name(if_num, if_name);
+-               memset(in_addr, 0, sizeof(struct sockaddr));
++               /* Zero out the larger sockaddr_in6 structure */
++               memset(in_addr, 0, sizeof(struct sockaddr_in6));
+                if(tmp_if != NULL){
+ 
+                        if(ip_addr_isloopback(&tmp_if->ip_addr)){
+-- 
+2.39.5 (Apple Git-154)
+

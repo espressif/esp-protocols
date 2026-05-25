@@ -1,0 +1,31 @@
+version: "0.9.5~1"
+description: "Userspace SCTP stack — wraps sctplab/usrsctp as an ESP-IDF component. Used for WebRTC data channels and other SCTP-over-DTLS-over-UDP transports."
+url: https://github.com/espressif/esp-protocols/tree/master/components/usrsctp
+repository: https://github.com/espressif/esp-protocols.git
+issues: https://github.com/espressif/esp-protocols/issues
+documentation: https://github.com/espressif/esp-protocols/blob/master/components/usrsctp/README.md
+license: "Apache-2.0 AND BSD-3-Clause"
+tags:
+  - usrsctp
+  - sctp
+  - webrtc
+  - lwip
+dependencies:
+  idf: ">=5.4"
+
+# SBOM manifest for the wrapped upstream usrsctp.
+sbom:
+  manifests:
+    - path: sbom_usrsctp.yml
+      dest: usrsctp
+
+# Trim the registry tarball: upstream fuzzer / Manual aren't needed inside the
+# registry artifact; host_test/test_apps/example build dirs are local-only.
+files:
+  exclude:
+    - "usrsctp/fuzzer/**"
+    - "usrsctp/Manual.md"
+    - "usrsctp/**/.git*"
+    - "host_test/build*"
+    - "test_apps/build*"
+    - "examples/*/build*"

@@ -1,0 +1,11 @@
+name: usrsctp
+version: 0.9.5
+cpe: cpe:2.3:a:sctplab:usrsctp:{}:*:*:*:*:*:*:*
+supplier: 'Organization: sctplab <https://github.com/sctplab/usrsctp>'
+originator: 'Persons: Randall Stewart, Michael Tuexen'
+description: A portable userland implementation of the SCTP protocol (RFC 4960). Submodule pinned at canonical sctplab/usrsctp commit 2e1ab10; ESP-IDF specific patches (LWIP integration, sin6 buffer overflow fix, thread-safe netif API, SPIRAM-backed worker-thread stacks, Linux-target buildability) live in the parent component's patches/ directory and are applied at configure time.
+url: https://github.com/sctplab/usrsctp
+hash: 2e1ab1050bbb6c710f6a475f1601acf1ae7ecb78
+cve-exclude-list:
+  - cve: CVE-2022-32230
+    reason: Resolved in 0.9.5.0; current pin (2e1ab10) is post-0.9.5.0.

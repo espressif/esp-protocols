@@ -1,0 +1,574 @@
+From 7f7dceb536dc74ed13033025786cd62681821005 Mon Sep 17 00:00:00 2001
+From: Vikram Dattu <vikram.dattu@espressif.com>
+Date: Thu, 10 Jul 2025 15:41:06 +0530
+Subject: [PATCH 3/5] ESP_PLATFORM: Added support for thread_safe netif API
+ implementations
+
+ - The alternative path compiles only when ESP_PLATFORM and SCTP_USE_LWIP macros are set
+---
+ usrsctp.pc.in                              |   2 +-
+ usrsctplib/CMakeLists.txt                  |   1 +
+ usrsctplib/netinet/sctp_bsd_addr.c         |   8 +
+ usrsctplib/netinet/sctp_lwip_thread_safe.c | 149 ++++++++++++++++++
+ usrsctplib/netinet/sctp_lwip_thread_safe.h |  24 +++
+ usrsctplib/netinet/sctp_userspace.c        |  82 ++++++++++
+ usrsctplib/user_socket.c                   | 174 +++++++++++++++++++++
+ 7 files changed, 439 insertions(+), 1 deletion(-)
+ create mode 100644 usrsctplib/netinet/sctp_lwip_thread_safe.c
+ create mode 100644 usrsctplib/netinet/sctp_lwip_thread_safe.h
+
+diff --git a/usrsctp.pc.in b/usrsctp.pc.in
+index 20c4631..1b675b8 100644
+--- a/usrsctp.pc.in
++++ b/usrsctp.pc.in
+@@ -7,7 +7,7 @@ Name: usrsctp
+ Description: SCTP implementation
+ URL: https://github.com/sctplab/usrsctp
+ Version: @VERSION@
+-Requires: 
++Requires:
+ Libs: -L${libdir} -lusrsctp
+ Libs.private: -lpthread
+ Cflags: -I${includedir} @APPCFLAGS@
+diff --git a/usrsctplib/CMakeLists.txt b/usrsctplib/CMakeLists.txt
+index 2b82f49..49bd266 100644
+--- a/usrsctplib/CMakeLists.txt
++++ b/usrsctplib/CMakeLists.txt
+@@ -126,6 +126,7 @@ list(APPEND usrsctp_netinet_headers
+ 	netinet/sctp_asconf.h
+ 	netinet/sctp_auth.h
+ 	netinet/sctp_bsd_addr.h
++	netinet/sctp_lwip_thread_safe.c
+ 	netinet/sctp_callout.h
+ 	netinet/sctp_constants.h
+ 	netinet/sctp_crc32.h
+diff --git a/usrsctplib/netinet/sctp_bsd_addr.c b/usrsctplib/netinet/sctp_bsd_addr.c
+index 1d5277e..816cd92 100755
+--- a/usrsctplib/netinet/sctp_bsd_addr.c
++++ b/usrsctplib/netinet/sctp_bsd_addr.c
+@@ -51,6 +51,9 @@
+ 
+ #if defined(SCTP_USE_LWIP)
+ #include <lwip/netif.h>
++#if defined(ESP_PLATFORM)
++#include "sctp_lwip_thread_safe.h"
++#endif
+ #endif
+ 
+ /* Declare all of our malloc named types */
+@@ -415,6 +418,10 @@ static void
+ sctp_init_ifns_for_vrf(int vrfid)
+ {
+ #if defined(SCTP_USE_LWIP)
++#if defined(ESP_PLATFORM)
++       // Use thread-safe wrapper for ESP platform
++       sctp_lwip_init_ifns_for_vrf_safe((uint32_t)vrfid);
++#else
+        #define LWIP_IF_NUM_MAX 256
+ 
+        struct sctp_ifa *sctp_ifa;
+@@ -489,6 +496,7 @@ sctp_init_ifns_for_vrf(int vrfid)
+                }
+        }
+        free(in_addr);
++#endif
+ #else
+ #if defined(INET) || defined(INET6)
+ 	int rc;
+diff --git a/usrsctplib/netinet/sctp_lwip_thread_safe.c b/usrsctplib/netinet/sctp_lwip_thread_safe.c
+new file mode 100644
+index 0000000..5dc4758
+--- /dev/null
++++ b/usrsctplib/netinet/sctp_lwip_thread_safe.c
+@@ -0,0 +1,149 @@
++#if defined(ESP_PLATFORM) && defined(SCTP_USE_LWIP)
++#include <stdlib.h>
++#include <string.h>
++
++#include "lwip/tcpip.h"
++#include "lwip/err.h"
++#include "lwip/netif.h"
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#include "freertos/semphr.h"
++
++#include "sctp_os_userspace.h"
++#include "sctp_pcb.h"
++#include "sctp_var.h"
++#include "sctp_constants.h"
++
++#define LWIP_IF_NUM_MAX 256
++
++// Structure to pass data between threads for init_ifns
++typedef struct {
++    uint32_t vrfid;
++    SemaphoreHandle_t semaphore;
++} init_ifns_thread_data_t;
++
++// Function to run in TCPIP thread for init_ifns
++static void init_ifns_tcpip_thread(void *arg)
++{
++    init_ifns_thread_data_t *thread_data = (init_ifns_thread_data_t *)arg;
++    struct sctp_ifa *sctp_ifa;
++    uint32_t ifa_flags;
++    uint32_t if_num;
++    char if_name[NETIF_NAMESIZE];
++
++    /* Allocate for sockaddr_in6 which is larger than sockaddr_in */
++    struct sockaddr* in_addr = malloc(sizeof(struct sockaddr_in6));
++    if (in_addr == NULL) {
++        xSemaphoreGive(thread_data->semaphore);
++        return;
++    }
++
++    for(if_num = 1; if_num < LWIP_IF_NUM_MAX; if_num++) {
++        struct netif* tmp_if = netif_get_by_index(if_num);
++        char * tmp_name = netif_index_to_name(if_num, if_name);
++
++        /* Zero out the larger sockaddr_in6 structure */
++        memset(in_addr, 0, sizeof(struct sockaddr_in6));
++
++        if(tmp_if != NULL) {
++            if(ip_addr_isloopback(&tmp_if->ip_addr)) {
++                continue;
++            }
++
++            if(tmp_if->ip_addr.type == IPADDR_TYPE_V4) {
++                in_addr->sa_family = AF_INET;
++                memcpy(&((struct sockaddr_in *)in_addr)->sin_addr, &tmp_if->ip_addr.u_addr, sizeof(uint32_t));
++            } else {
++                in_addr->sa_family = AF_INET6;
++                memcpy(&((struct sockaddr_in6 *)in_addr)->sin6_addr, &tmp_if->ip_addr.u_addr, sizeof(uint32_t) * 4);
++            }
++
++#if !defined(INET)
++            if (in_addr->sa_family != AF_INET6) {
++                /* non inet6 skip */
++                continue;
++            }
++#elif !defined(INET6)
++            if (in_addr->sa_family != AF_INET) {
++                /* non inet skip */
++                continue;
++            }
++#else
++            if ((in_addr->sa_family != AF_INET) && (in_addr->sa_family != AF_INET6)) {
++                /* non inet/inet6 skip */
++                continue;
++            }
++#endif
++#if defined(INET6)
++            if ((in_addr->sa_family == AF_INET6) &&
++                IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *)in_addr)->sin6_addr)) {
++                /* skip unspecifed addresses */
++                continue;
++            }
++#endif
++#if defined(INET)
++            if (in_addr->sa_family == AF_INET &&
++                ((struct sockaddr_in *)in_addr)->sin_addr.s_addr == 0) {
++                continue;
++            }
++#endif
++            ifa_flags = 0;
++            sctp_ifa = sctp_add_addr_to_vrf(thread_data->vrfid,
++                                          NULL,
++                                          if_num,
++                                          0,
++                                          tmp_name,
++                                          NULL,
++                                          (struct sockaddr*)in_addr,
++                                          ifa_flags,
++                                          0);
++            if (sctp_ifa) {
++                sctp_ifa->localifa_flags &= ~SCTP_ADDR_DEFER_USE;
++            }
++        } else {
++            break;
++        }
++    }
++
++    free(in_addr);
++    xSemaphoreGive(thread_data->semaphore);
++}
++
++// Thread-safe wrapper for sctp_init_ifns_for_vrf
++void sctp_lwip_init_ifns_for_vrf_safe(uint32_t vrfid)
++{
++    // Allocate the thread data on the heap to ensure it remains valid
++    // when the TCPIP thread processes it
++    init_ifns_thread_data_t *thread_data = malloc(sizeof(init_ifns_thread_data_t));
++    if (thread_data == NULL) {
++        return;
++    }
++
++    thread_data->vrfid = vrfid;
++
++    // Create semaphore
++    thread_data->semaphore = xSemaphoreCreateBinary();
++    if (thread_data->semaphore == NULL) {
++        free(thread_data);
++        return;
++    }
++
++    // Execute in TCPIP thread
++    err_t err = tcpip_callback(init_ifns_tcpip_thread, thread_data);
++    if (err != ERR_OK) {
++        vSemaphoreDelete(thread_data->semaphore);
++        free(thread_data);
++        return;
++    }
++
++    // Wait for completion (with timeout)
++    if (xSemaphoreTake(thread_data->semaphore, pdMS_TO_TICKS(5000)) != pdTRUE) {
++        // Even if timeout occurs, we can't free the data yet as the TCPIP thread might still be using it
++        // Just return and accept the memory leak in this rare timeout case
++        return;
++    }
++
++    vSemaphoreDelete(thread_data->semaphore);
++    free(thread_data);
++}
++#endif
+diff --git a/usrsctplib/netinet/sctp_lwip_thread_safe.h b/usrsctplib/netinet/sctp_lwip_thread_safe.h
+new file mode 100644
+index 0000000..0777f6a
+--- /dev/null
++++ b/usrsctplib/netinet/sctp_lwip_thread_safe.h
+@@ -0,0 +1,24 @@
++#ifndef SCTP_LWIP_THREAD_SAFE_H
++#define SCTP_LWIP_THREAD_SAFE_H
++
++#include <stdint.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/**
++ * Thread-safe wrapper for sctp_init_ifns_for_vrf
++ *
++ * This function ensures that the network interface operations happen in the TCPIP thread
++ * to avoid thread safety issues with LWIP when CONFIG_LWIP_CHECK_THREAD_SAFETY is enabled.
++ *
++ * @param vrfid The VRF ID to initialize interfaces for
++ */
++void sctp_lwip_init_ifns_for_vrf_safe(uint32_t vrfid);
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* SCTP_LWIP_THREAD_SAFE_H */
+diff --git a/usrsctplib/netinet/sctp_userspace.c b/usrsctplib/netinet/sctp_userspace.c
+index 5a77f6d..f0c9035 100755
+--- a/usrsctplib/netinet/sctp_userspace.c
++++ b/usrsctplib/netinet/sctp_userspace.c
+@@ -95,15 +95,97 @@ sctp_userspace_set_threadname(const char *name)
+ }
+ 
+ #if !defined(_WIN32) && !defined(__native_client__)
++#if defined(ESP_PLATFORM) && defined(SCTP_USE_LWIP)
++#include "lwip/tcpip.h"
++#include "lwip/err.h"
++#include "lwip/netif.h"
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#include "freertos/semphr.h"
++
++// Structure to pass data between threads
++typedef struct {
++	uint32_t if_index;
++	SemaphoreHandle_t semaphore;
++	int mtu;
++} mtu_thread_data_t;
++
++// Function to run in TCPIP thread
++void get_mtu_tcpip_thread(void *arg)
++{
++	mtu_thread_data_t *thread_data = (mtu_thread_data_t *)arg;
++	struct netif* net_if = netif_get_by_index(thread_data->if_index);
++
++	if(net_if != NULL) {
++		thread_data->mtu = net_if->mtu;
++	} else {
++		thread_data->mtu = 0;
++	}
++
++	xSemaphoreGive(thread_data->semaphore);
++}
++
++int sctp_userspace_get_mtu_from_ifn_safe(uint32_t if_index)
++{
++
++	// Special case for 0xffffffff (wildcard interface)
++	if (if_index == 0xffffffff) {
++		return 1280;
++	}
++
++	// Allocate thread data on the heap to ensure it remains valid
++	mtu_thread_data_t *thread_data = malloc(sizeof(mtu_thread_data_t));
++	if (thread_data == NULL) {
++		return 0;
++	}
++
++	thread_data->if_index = if_index;
++	thread_data->mtu = 0;
++
++	// Create semaphore
++	thread_data->semaphore = xSemaphoreCreateBinary();
++	if (thread_data->semaphore == NULL) {
++		free(thread_data);
++		return 0;
++	}
++
++	// Execute in TCPIP thread
++	err_t err = tcpip_callback(get_mtu_tcpip_thread, thread_data);
++	if (err != ERR_OK) {
++		vSemaphoreDelete(thread_data->semaphore);
++		free(thread_data);
++		return 0;
++	}
++
++	// Wait for completion (with timeout)
++	if (xSemaphoreTake(thread_data->semaphore, pdMS_TO_TICKS(1000)) != pdTRUE) {
++		// Even if timeout occurs, we can't free the data yet as the TCPIP thread might still be using it
++		// Just return and accept the memory leak in this rare timeout case
++		return 0;
++	}
++
++	int result = thread_data->mtu;
++	vSemaphoreDelete(thread_data->semaphore);
++	free(thread_data);
++	return result;
++}
++#endif
++
+ int
+ sctp_userspace_get_mtu_from_ifn(uint32_t if_index)
+ {
+ #if defined(SCTP_USE_LWIP)
++#if defined(ESP_PLATFORM)
++	// When running on ESP platform, we need to ensure the network interface operations
++	// happen in the TCPIP thread to avoid thread safety issues with LWIP
++	return sctp_userspace_get_mtu_from_ifn_safe(if_index);
++#else
+ 	struct netif* net_if = netif_get_by_index(if_index);
+ 	if(net_if != NULL){
+ 		return net_if->mtu;
+ 	}
+ 	return 0;
++#endif
+ #else
+ #if defined(INET) || defined(INET6)
+ 	struct ifreq ifr;
+diff --git a/usrsctplib/user_socket.c b/usrsctplib/user_socket.c
+index 0471330..95cb7b9 100755
+--- a/usrsctplib/user_socket.c
++++ b/usrsctplib/user_socket.c
+@@ -3110,9 +3110,178 @@ free_mbuf:
+ }
+ #endif
+ 
++#if defined(ESP_PLATFORM) && defined(SCTP_USE_LWIP)
++#include "lwip/tcpip.h"
++#include "lwip/err.h"
++#include "freertos/FreeRTOS.h"
++#include "freertos/task.h"
++#include "freertos/semphr.h"
++
++// Structure to pass data between threads for register_address
++typedef struct {
++	struct sockaddr_conn *sconn;
++	SemaphoreHandle_t semaphore;
++} register_thread_data_t;
++
++// Function to run in TCPIP thread for register_address
++void register_address_tcpip_thread(void *arg)
++{
++	register_thread_data_t *thread_data = (register_thread_data_t *)arg;
++
++	// This function is now running in the TCPIP thread context, so it's safe to call
++	sctp_add_addr_to_vrf(SCTP_DEFAULT_VRFID,
++							NULL,
++							0xffffffff,
++							0,
++							"conn",
++							NULL,
++							(struct sockaddr *)thread_data->sconn,
++							0,
++							0);
++
++	xSemaphoreGive(thread_data->semaphore);
++}
++
++// Structure to pass data between threads for deregister_address
++typedef struct {
++	struct sockaddr_conn *sconn;
++	SemaphoreHandle_t semaphore;
++} deregister_thread_data_t;
++
++// Function to run in TCPIP thread for deregister_address
++void deregister_address_tcpip_thread(void *arg)
++{
++	deregister_thread_data_t *thread_data = (deregister_thread_data_t *)arg;
++
++	// This function is now running in the TCPIP thread context, so it's safe to call
++	sctp_del_addr_from_vrf(SCTP_DEFAULT_VRFID,
++						 (struct sockaddr *)thread_data->sconn,
++						 NULL, 0xffffffff);
++
++	xSemaphoreGive(thread_data->semaphore);
++}
++
++static void usrsctp_deregister_address_safe(void *addr)
++{
++	struct sockaddr_conn sconn;
++
++	memset(&sconn, 0, sizeof(struct sockaddr_conn));
++	sconn.sconn_family = AF_CONN;
++#ifdef HAVE_SCONN_LEN
++	sconn.sconn_len = sizeof(struct sockaddr_conn);
++#endif
++	sconn.sconn_port = 0;
++	sconn.sconn_addr = addr;
++
++	// Allocate thread data on the heap to ensure it remains valid
++	deregister_thread_data_t *thread_data = malloc(sizeof(deregister_thread_data_t));
++	if (thread_data == NULL) {
++		return;
++	}
++
++	// Copy sockaddr to heap to ensure it remains valid
++	struct sockaddr_conn *heap_sconn = malloc(sizeof(struct sockaddr_conn));
++	if (heap_sconn == NULL) {
++		free(thread_data);
++		return;
++	}
++	memcpy(heap_sconn, &sconn, sizeof(struct sockaddr_conn));
++
++	thread_data->sconn = heap_sconn;
++
++	// Create semaphore
++	thread_data->semaphore = xSemaphoreCreateBinary();
++	if (thread_data->semaphore == NULL) {
++		free(heap_sconn);
++		free(thread_data);
++		return;
++	}
++
++	// Execute in TCPIP thread
++	err_t err = tcpip_callback(deregister_address_tcpip_thread, thread_data);
++	if (err != ERR_OK) {
++		vSemaphoreDelete(thread_data->semaphore);
++		free(heap_sconn);
++		free(thread_data);
++		return;
++	}
++
++	// Wait for completion (with timeout)
++	if (xSemaphoreTake(thread_data->semaphore, pdMS_TO_TICKS(5000)) != pdTRUE) {
++		// Even if timeout occurs, we can't free the data yet as the TCPIP thread might still be using it
++		// Just return and accept the memory leak in this rare timeout case
++		return;
++	}
++
++	vSemaphoreDelete(thread_data->semaphore);
++	free(heap_sconn);
++	free(thread_data);
++}
++
++static void usrsctp_register_address_safe(void *addr)
++{
++	struct sockaddr_conn sconn;
++
++	memset(&sconn, 0, sizeof(struct sockaddr_conn));
++	sconn.sconn_family = AF_CONN;
++#ifdef HAVE_SCONN_LEN
++	sconn.sconn_len = sizeof(struct sockaddr_conn);
++#endif
++	sconn.sconn_port = 0;
++	sconn.sconn_addr = addr;
++
++	// Allocate thread data on the heap to ensure it remains valid
++	register_thread_data_t *thread_data = malloc(sizeof(register_thread_data_t));
++	if (thread_data == NULL) {
++		return;
++	}
++
++	// Copy sockaddr to heap to ensure it remains valid
++	struct sockaddr_conn *heap_sconn = malloc(sizeof(struct sockaddr_conn));
++	if (heap_sconn == NULL) {
++		free(thread_data);
++		return;
++	}
++	memcpy(heap_sconn, &sconn, sizeof(struct sockaddr_conn));
++
++	thread_data->sconn = heap_sconn;
++
++	// Create semaphore
++	thread_data->semaphore = xSemaphoreCreateBinary();
++	if (thread_data->semaphore == NULL) {
++		free(heap_sconn);
++		free(thread_data);
++		return;
++	}
++
++	// Execute in TCPIP thread
++	err_t err = tcpip_callback(register_address_tcpip_thread, thread_data);
++	if (err != ERR_OK) {
++		vSemaphoreDelete(thread_data->semaphore);
++		free(heap_sconn);
++		free(thread_data);
++		return;
++	}
++
++	// Wait for completion (with timeout)
++	if (xSemaphoreTake(thread_data->semaphore, pdMS_TO_TICKS(5000)) != pdTRUE) {
++		// Even if timeout occurs, we can't free the data yet as the TCPIP thread might still be using it
++		// Just return and accept the memory leak in this rare timeout case
++		return;
++	}
++
++	vSemaphoreDelete(thread_data->semaphore);
++	free(heap_sconn);
++	free(thread_data);
++}
++#endif
++
+ void
+ usrsctp_register_address(void *addr)
+ {
++#if defined(ESP_PLATFORM) && defined(SCTP_USE_LWIP)
++	usrsctp_register_address_safe(addr);
++#else
+ 	struct sockaddr_conn sconn;
+ 
+ 	memset(&sconn, 0, sizeof(struct sockaddr_conn));
+@@ -3131,11 +3300,15 @@ usrsctp_register_address(void *addr)
+ 	                     (struct sockaddr *)&sconn,
+ 	                     0,
+ 	                     0);
++#endif
+ }
+ 
+ void
+ usrsctp_deregister_address(void *addr)
+ {
++#if defined(ESP_PLATFORM) && defined(SCTP_USE_LWIP)
++	usrsctp_deregister_address_safe(addr);
++#else
+ 	struct sockaddr_conn sconn;
+ 
+ 	memset(&sconn, 0, sizeof(struct sockaddr_conn));
+@@ -3148,6 +3321,7 @@ usrsctp_deregister_address(void *addr)
+ 	sctp_del_addr_from_vrf(SCTP_DEFAULT_VRFID,
+ 	                       (struct sockaddr *)&sconn,
+ 	                       NULL, 0xffffffff);
++#endif
+ }
+ 
+ #define PREAMBLE_FORMAT "\n%c %02d:%02d:%02d.%06ld "
+-- 
+2.39.5 (Apple Git-154)
+

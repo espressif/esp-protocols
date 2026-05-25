@@ -1,0 +1,4 @@
+dependencies:
+  espressif/usrsctp:
+    version: "^0.9.5"
+    override_path: "../.."
