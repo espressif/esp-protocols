@@ -1,0 +1,10 @@
+name: libsrtp
+version: 2.8.0
+cpe: cpe:2.3:a:cisco:libsrtp:{}:*:*:*:*:*:*:*
+supplier: 'Organization: Cisco Systems, Inc. <https://github.com/cisco/libsrtp>'
+description: Library for the Secure Real-time Transport Protocol (SRTP, RFC 3711) and Secure RTCP (SRTCP). Submodule pinned at upstream release tag v2.8.0 (commit 24b3bf8). One small ESP-IDF specific delta lives in port/crypto_kernel.c — it opts out of the AES-ICM-192 cipher registration when GCM is enabled (saves binary size; AES-CM-128 and AES-GCM cover all WebRTC SRTP suites).
+url: https://github.com/cisco/libsrtp
+hash: 24b3bf8f19b6f5ab4cd2bcceb4f4064efca86fd5
+cve-exclude-list:
+  - cve: CVE-2023-31222
+    reason: Resolved in 2.6.0; current pin (v2.8.0) is well past.

@@ -1,1 +1,2 @@
 components/mosquitto/examples/serverless_mqtt/components/libjuice/port/juice_random.c
+components/libsrtp/port/crypto_kernel.c

@@ -1,0 +1,35 @@
+version: "2.8.0"
+description: "libsrtp (Cisco) wrapper for ESP-IDF — mbedTLS crypto backend with AES-GCM + AES-CM + HMAC-SHA1. SRTP/SRTCP packet protection for WebRTC and other RTP-based protocols."
+url: https://github.com/espressif/esp-protocols/tree/master/components/libsrtp
+repository: https://github.com/espressif/esp-protocols.git
+issues: https://github.com/espressif/esp-protocols/issues
+documentation: https://github.com/espressif/esp-protocols/blob/master/components/libsrtp/README.md
+license: "Apache-2.0 AND BSD-3-Clause"
+tags:
+  - libsrtp
+  - srtp
+  - webrtc
+  - mbedtls
+dependencies:
+  # Upper bound is intentional. libsrtp v2.x's mbedTLS adapters use the
+  # legacy <mbedtls/aes.h> / <mbedtls/gcm.h> headers; ESP-IDF v6 ships
+  # mbedTLS 4 which reorganised those into the TF-PSA-Crypto split.
+  # Bump the bound once the component tracks a libsrtp release that
+  # speaks mbedTLS 4 (see cisco/libsrtp#812 for context).
+  idf: ">=5.4,<6"
+
+# SBOM manifest for the wrapped upstream — see sbom_libsrtp.yml.
+sbom:
+  manifests:
+    - path: sbom_libsrtp.yml
+      dest: libsrtp
+
+# Files excluded from the registry tarball (saves bytes, avoids confusion).
+files:
+  exclude:
+    - "libsrtp/test/**"      # upstream tests are linked at host_test/ build time
+    - "libsrtp/doc/**"
+    - "libsrtp/**/.git*"
+    - "host_test/build*"
+    - "test_apps/build*"
+    - "examples/*/build*"

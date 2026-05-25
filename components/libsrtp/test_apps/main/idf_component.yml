@@ -1,0 +1,4 @@
+dependencies:
+  libsrtp:
+    version: "*"
+    override_path: "../.."
