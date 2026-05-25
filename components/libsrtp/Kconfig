@@ -1,0 +1,14 @@
+menu "libsrtp (libsrtp)"
+
+    # The ESP-IDF port wires libsrtp's crypto exclusively through mbedTLS
+    # (AES-CM, AES-GCM, HMAC-SHA1). No Kconfig knob — the alternative
+    # backends (OpenSSL, NSS, WolfSSL) aren't built in this component.
+
+    config SRTP2_LOG_RTP_TRACE
+        bool "Enable verbose RTP trace logging"
+        default n
+        help
+            Enables libsrtp's internal debug-trace logging at runtime
+            (extra binary size; meant only for development).
+
+endmenu

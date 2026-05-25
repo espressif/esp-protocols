@@ -1,0 +1,6 @@
+name: 'libsrtp'
+supplier: 'Organization: Espressif Systems (Shanghai) CO LTD'
+originator: 'Organization: Espressif Systems (Shanghai) CO LTD'
+description: ESP-IDF wrapper for libsrtp (Cisco) using mbedtls crypto backend with AES-GCM. Used for SRTP/SRTCP packet protection in WebRTC and other RTP-based protocols.
+virtpackages:
+  - sbom_libsrtp.yml

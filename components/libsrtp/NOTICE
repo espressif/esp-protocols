@@ -1,0 +1,17 @@
+libsrtp
+Copyright 2024-2026 Espressif Systems (Shanghai) CO LTD
+
+This product includes software developed by the following third parties:
+
+================================================================================
+
+libsrtp
+https://github.com/cisco/libsrtp
+Copyright (c) 2001-2017, Cisco Systems, Inc.
+Licensed under the BSD 3-Clause License (see libsrtp/LICENSE).
+
+The Secure Real-time Transport Protocol (SRTP) and Secure RTCP (SRTCP)
+implementation. Bundled as a submodule, pinned at upstream release tag
+v2.8.0 (commit 24b3bf8).
+
+================================================================================

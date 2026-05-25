@@ -1,0 +1,7 @@
+## Build-check app for libsrtp.
+## During CI / local build, override_path points at the parent repo so we
+## consume the in-tree component instead of the registry version.
+dependencies:
+  espressif/libsrtp:
+    version: "^2.8.0"
+    override_path: ../../..
