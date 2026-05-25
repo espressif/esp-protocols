@@ -1,0 +1,35 @@
+menu "libwebsockets"
+
+    # All defaults below preserve the previously-baked behaviour
+    # (extensions off, file_ops on, threadpool off). Flip them to suit
+    # the workload — e.g. WebRTC signaling consumers enable extensions
+    # for permessage-deflate and threadpool for parallel TLS work.
+
+    config LWS_WITH_EXTENSIONS
+        bool "Build libwebsockets with extensions (permessage-deflate, mux)"
+        default n
+        help
+            Enables LWS extensions support. Required for clients/servers
+            that negotiate permessage-deflate or other RFC 7692 extensions
+            over the WebSocket handshake. Requires LWS_WITH_ZLIB at link
+            time, which the ESP-IDF mbedTLS build does not pull in by
+            default — you'll need to add zlib as a dependency.
+
+    config LWS_WITH_FILE_OPS
+        bool "Build libwebsockets with the file-operations VFS"
+        default y
+        help
+            Compiles the libwebsockets virtual filesystem layer used by
+            server-side static file serving. Disable on embedded targets
+            that don't expose a real filesystem to lws to save flash.
+
+    config LWS_WITH_THREADPOOL
+        bool "Build libwebsockets with the worker threadpool API"
+        default n
+        help
+            Enables lws's managed worker thread pool (pthread-backed).
+            Used by clients that want to off-load parallel TLS handshake
+            or other work from the lws service thread (e.g. AWS KVS
+            WebRTC signaling). Costs a few hundred bytes of static data.
+
+endmenu
