@@ -829,7 +829,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                             goto clear_rx_packet;
                         }
                     }
-                    memcpy(browse_result_service, browse_result->service, MDNS_NAME_BUF_LEN);
+                    strncpy(browse_result_service, browse_result->service, MDNS_NAME_BUF_LEN - 1);
+                    browse_result_service[MDNS_NAME_BUF_LEN - 1] = '\0';
                     if (!browse_result_proto) {
                         browse_result_proto = (char *)mdns_mem_malloc(MDNS_NAME_BUF_LEN);
                         if (!browse_result_proto) {
@@ -837,7 +838,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                             goto clear_rx_packet;
                         }
                     }
-                    memcpy(browse_result_proto, browse_result->proto, MDNS_NAME_BUF_LEN);
+                    strncpy(browse_result_proto, browse_result->proto, MDNS_NAME_BUF_LEN - 1);
+                    browse_result_proto[MDNS_NAME_BUF_LEN - 1] = '\0';
                     if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
                         if (!browse_result_instance) {
                             browse_result_instance = (char *)mdns_mem_malloc(MDNS_NAME_BUF_LEN);
