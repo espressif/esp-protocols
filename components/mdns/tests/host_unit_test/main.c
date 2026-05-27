@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "esp_err.h"
+#include "mdns.h"
 #include "mdns_receive.h"
 #include "mdns_responder.h"
 #include "mdns_mem_caps.h"
@@ -15,6 +16,11 @@
 esp_err_t mdns_packet_push(esp_ip_addr_t *addr, int port, mdns_if_t tcpip_if, uint8_t*data, size_t len);
 
 mdns_search_once_t *s_a, *s_aaaa, *s_ptr, *s_srv, *s_txt;
+
+static void browse_notifier(mdns_result_t *result)
+{
+    (void)result;
+}
 
 void init_responder(void)
 {
@@ -48,6 +54,10 @@ void init_responder(void)
     s_ptr = mdns_query_async_new("minifritz", "_http", "_tcp", MDNS_TYPE_PTR, 1000, 1, NULL);
     s_srv = mdns_query_async_new("fritz", "_http", "_tcp", MDNS_TYPE_SRV, 1000, 1, NULL);
     s_txt = mdns_query_async_new("fritz", "_http", "_tcp", MDNS_TYPE_TXT, 1000, 1, NULL);
+
+    mdns_browse_new("_http", "_tcp", browse_notifier);
+    mdns_browse_new("_scanner", "_tcp", browse_notifier);
+    mdns_browse_new("_sleep", "_udp", browse_notifier);
 }
 
 void deinit_responder(void)
@@ -57,6 +67,9 @@ void deinit_responder(void)
     mdns_query_async_delete(s_ptr);
     mdns_query_async_delete(s_srv);
     mdns_query_async_delete(s_txt);
+    mdns_browse_delete("_http", "_tcp");
+    mdns_browse_delete("_scanner", "_tcp");
+    mdns_browse_delete("_sleep", "_udp");
     mdns_service_remove_all();
     mdns_priv_responder_free();
 }
