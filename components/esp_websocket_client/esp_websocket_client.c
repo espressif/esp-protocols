@@ -67,8 +67,8 @@ static const char *TAG = "websocket_client";
 #define WS_HTTP_BASIC_AUTH  "Basic "
 #define WS_HTTP_REDIRECT(code) ((code >= 300) && (code < 400))
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
-// Features supported in 5.5.0
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 1)
+// esp_transport_ws_get_redir_uri was added after the v5.5.0 tag; first appears in v5.5.1
 #define WS_TRANSPORT_REDIRECT_HEADER_SUPPORT    1
 #endif
 
