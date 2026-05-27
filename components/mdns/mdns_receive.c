@@ -1311,7 +1311,7 @@ clear_rx_packet:
     mdns_mem_free(browse_result_instance);
     mdns_mem_free(browse_result_service);
     mdns_mem_free(browse_result_proto);
-    mdns_mem_free(out_sync_browse);
+    mdns_priv_browse_sync_free(out_sync_browse);
 }
 
 void mdns_priv_receive_action(mdns_action_t *action, mdns_action_subtype_t type)

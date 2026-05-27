@@ -412,6 +412,14 @@ static void sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
     mdns_mem_free(browse_sync);
 }
 
+void mdns_priv_browse_sync_free(mdns_browse_sync_t *browse_sync)
+{
+    if (!browse_sync) {
+        return;
+    }
+    sync_browse_result_link_free(browse_sync);
+}
+
 void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
@@ -699,6 +707,7 @@ void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
             if (mdns_utils_str_null_or_empty(r->hostname) || strcasecmp(hostname, r->hostname)) {
+                mdns_mem_free((char *)r->hostname);
                 r->hostname = mdns_mem_strdup(hostname);
                 r->port = port;
                 if (!r->hostname) {

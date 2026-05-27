@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,6 +23,11 @@ void mdns_priv_query_start_stop(void);
  *  @note Called from mdns_free()
  */
 void mdns_priv_query_free(void);
+
+/**
+ * @brief Free one search object (detached or still on the active list)
+ */
+void mdns_priv_search_once_free(mdns_search_once_t *search);
 
 /**
  * @brief Free search results

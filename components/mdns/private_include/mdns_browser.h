@@ -53,6 +53,11 @@ typedef struct mdns_browse_staged_ip {
 mdns_browse_sync_t *mdns_priv_browse_ensure_sync(mdns_browse_t *browse, mdns_browse_sync_t *sync);
 
 /**
+ * @brief Free browse sync object and its pending result list
+ */
+void mdns_priv_browse_sync_free(mdns_browse_sync_t *browse_sync);
+
+/**
  * @brief Stage an A/AAAA record to apply after all packet records are parsed
  */
 esp_err_t mdns_priv_browse_stage_ip(mdns_browse_staged_ip_t **staged, const char *hostname, esp_ip_addr_t *ip,

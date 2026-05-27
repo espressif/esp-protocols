@@ -11,6 +11,8 @@
 #include "mdns.h"
 #include "mdns_receive.h"
 #include "mdns_responder.h"
+#include "mdns_querier.h"
+#include "mdns_browser.h"
 #include "mdns_mem_caps.h"
 
 esp_err_t mdns_packet_push(esp_ip_addr_t *addr, int port, mdns_if_t tcpip_if, uint8_t*data, size_t len);
@@ -62,16 +64,20 @@ void init_responder(void)
 
 void deinit_responder(void)
 {
-    mdns_query_async_delete(s_a);
-    mdns_query_async_delete(s_aaaa);
-    mdns_query_async_delete(s_ptr);
-    mdns_query_async_delete(s_srv);
-    mdns_query_async_delete(s_txt);
-    mdns_browse_delete("_http", "_tcp");
-    mdns_browse_delete("_scanner", "_tcp");
-    mdns_browse_delete("_sleep", "_udp");
+    mdns_priv_search_once_free(s_a);
+    mdns_priv_search_once_free(s_aaaa);
+    mdns_priv_search_once_free(s_ptr);
+    mdns_priv_search_once_free(s_srv);
+    mdns_priv_search_once_free(s_txt);
+    mdns_priv_query_free();
+    mdns_priv_browse_free();
     mdns_service_remove_all();
     mdns_priv_responder_free();
+    s_a = NULL;
+    s_aaaa = NULL;
+    s_ptr = NULL;
+    s_srv = NULL;
+    s_txt = NULL;
 }
 
 static void send_packet(bool ip4, bool mdns_port, uint8_t*data, size_t len)
