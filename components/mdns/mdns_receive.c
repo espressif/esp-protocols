@@ -637,7 +637,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 #endif // CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
 
     // Check for the minimum size of mdns packet
-    if (len <=  MDNS_HEAD_ADDITIONAL_OFFSET) {
+    if (len < MDNS_HEAD_LEN) {
         return;
     }
 
