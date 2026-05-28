@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -77,7 +77,7 @@ static void browse_sync(mdns_browse_sync_t *browse_sync)
 /**
  * @brief  Send PTR query packet to all available interfaces for browsing.
  */
-static void browse_send(mdns_browse_t *browse, mdns_if_t interface)
+static void browse_send(mdns_browse_t *browse, mdns_if_t interface, mdns_ip_protocol_t ip_protocol)
 {
     // Using search once for sending the PTR query
     mdns_search_once_t search = {0};
@@ -89,18 +89,22 @@ static void browse_send(mdns_browse_t *browse, mdns_if_t interface)
     search.unicast = false;
     search.result = NULL;
     search.next = NULL;
+    mdns_priv_query_send(&search, interface, ip_protocol);
+}
 
-    for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
-        mdns_priv_query_send(&search, interface, (mdns_ip_protocol_t) protocol_idx);
+void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+{
+    mdns_browse_t *browse = s_browse;
+    while (browse) {
+        browse_send(browse, mdns_if, ip_protocol);
+        browse = browse->next;
     }
 }
 
 void mdns_priv_browse_send_all(mdns_if_t mdns_if)
 {
-    mdns_browse_t *browse = s_browse;
-    while (browse) {
-        browse_send(browse, mdns_if);
-        browse = browse->next;
+    for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
+        mdns_priv_browse_send_by_ip_protocol(mdns_if, (mdns_ip_protocol_t) protocol_idx);
     }
 }
 
@@ -192,7 +196,9 @@ static void browse_add(mdns_browse_t *browse)
         s_browse = browse;
     }
     for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
-        browse_send(browse, (mdns_if_t) interface_idx);
+        for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
+            browse_send(browse, (mdns_if_t) interface_idx, (mdns_ip_protocol_t) protocol_idx);
+        }
     }
     if (found) {
         browse_item_free(browse);

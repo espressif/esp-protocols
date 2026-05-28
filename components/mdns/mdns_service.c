@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -187,6 +187,9 @@ static void execute_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
+        break;
+    case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
+        mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
         break;
     default:
         break;
