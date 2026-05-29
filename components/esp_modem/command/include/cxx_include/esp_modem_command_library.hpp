@@ -58,6 +58,13 @@ command_result store_profile(CommandableIf *t);
  */
 command_result set_pin(CommandableIf *t, const std::string &pin);
 /**
+ * @brief Use PUK to set a new SIM PIN (AT+CPIN=<puk>,<new_pin>)
+ * @param[in] puk PUK code
+ * @param[in] pin New PIN code
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result reset_pin(CommandableIf *t, const std::string &puk, const std::string &pin);
+/**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
  * @param[out] out Raw output from DTE
@@ -81,6 +88,12 @@ command_result at(CommandableIf *t, const std::string &cmd, std::string &out, in
  * @return OK, FAIL or TIMEOUT
  */
 command_result read_pin(CommandableIf *t, bool &pin_ok);
+/**
+ * @brief Reads the SIM PIN status from AT+CPIN?
+ * @param[out] state CPIN state (READY, NEED_PIN, NEED_PUK, ...)
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result read_pin_state(CommandableIf *t, esp_modem::sim_pin_state &state);
 /**
  * @brief Sets echo mode
  * @param[in] echo_on true if echo mode on (repeats the commands)

@@ -13,6 +13,7 @@
 #define PARAM_INT_IN(name) int name
 #define PARAM_BOOL_IN(name) const bool name
 #define PARAM_BOOL_OUT(name) bool& name
+#define PARAM_ENUM_OUT(enum_name, name) esp_modem::enum_name& name
 #define PARAM_STRUCT_OUT(struct_name, name)  struct_name& name
 #define PARAM_INT_LIST_IN(name) const int* name
 #else
@@ -22,6 +23,7 @@
 #define PARAM_INT_IN(name) int name
 #define PARAM_BOOL_IN(name) const bool name
 #define PARAM_BOOL_OUT(name) bool* name
+#define PARAM_ENUM_OUT(enum_name, name) esp_modem_ ## enum_name ## _t* name
 #define PARAM_STRUCT_OUT(struct_name, name)  esp_modem_ ## struct_name ## _t* name
 #define PARAM_INT_LIST_IN(name) const int* name
 #endif
@@ -32,6 +34,7 @@
 #define FORWARD_INT_IN(name) name
 #define FORWARD_BOOL_IN(name) name
 #define FORWARD_BOOL_OUT(name) name
+#define FORWARD_ENUM_OUT(enum_name, name) name
 #define FORWARD_STRUCT_OUT(struct_name, name) name
 #define FORWARD_INT_LIST_IN(name) name
 

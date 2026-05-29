@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -26,7 +26,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         async_results.push_back(std::move(ret));
         return len;
     }
-    if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+') ) { // Simple AT responder
+    if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+')) {  // Simple AT responder
         std::string command((char *)data, len);
         std::string response;
         if (command == "+++") {
@@ -46,11 +46,29 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         } else if (command.find("AT+CBC\r") != std::string::npos) {
             response = is_bg96 ? "+CBC: 1,20,123456\r\r\n\r\nOK\r\n\n\r\n" :
                        "+CBC: 123.456V\r\r\n\r\nOK\r\n\n\r\n";
-        } else if (command.find("AT+CPIN=1234\r") != std::string::npos) {
-            response = "OK\r\n";
-            pin_ok = true;
+        } else if (command.find("AT+CPIN=") != std::string::npos) {
+            if (command.find(',') != std::string::npos) {
+                response = "OK\r\n";
+                pin_ok = true;
+                needs_puk = false;
+            } else if (command.find("AT+CPIN=1234\r") != std::string::npos) {
+                response = "OK\r\n";
+                pin_ok = true;
+                needs_puk = false;
+            } else if (needs_puk) {
+                response = "ERROR\r\n";
+            } else {
+                response = "OK\r\n";
+                pin_ok = true;
+            }
         } else if (command.find("AT+CPIN?\r") != std::string::npos) {
-            response = pin_ok ? "+CPIN: READY\r\nOK\r\n" : "+CPIN: SIM PIN\r\nOK\r\n";
+            if (pin_ok) {
+                response = "+CPIN: READY\r\nOK\r\n";
+            } else if (needs_puk) {
+                response = "+CPIN: SIM PUK\r\nOK\r\n";
+            } else {
+                response = "+CPIN: SIM PIN\r\nOK\r\n";
+            }
         } else if (command.find("AT") != std::string::npos) {
             if (command.length() > 4) {
                 response = command;
@@ -108,12 +126,12 @@ int LoopbackTerm::read(uint8_t *data, size_t len)
     return read_len;
 }
 
-LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), is_bg96(is_bg96), inject_by(0)
+LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(is_bg96), inject_by(0)
 {
     init_signal();
 }
 
-LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), is_bg96(false), inject_by(0)
+LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(false), inject_by(0)
 {
     init_signal();
 }

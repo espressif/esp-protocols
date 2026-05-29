@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -57,6 +57,17 @@ enum class command_result {
     OK,             /*!< The command completed successfully */
     FAIL,           /*!< The command explicitly failed */
     TIMEOUT         /*!< The device didn't respond in the specified timeline */
+};
+
+/**
+ * @brief SIM PIN status reported by AT+CPIN?
+ */
+enum class sim_pin_state {
+    UNKNOWN,   /*!< Response could not be parsed */
+    READY,     /*!< SIM is unlocked */
+    NEED_PIN,  /*!< SIM PIN (or PIN2) required */
+    NEED_PUK,  /*!< SIM PUK (or PUK2) required */
+    OTHER,     /*!< Other CPIN state (e.g. PH-SIM PIN) */
 };
 
 typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;

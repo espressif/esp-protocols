@@ -380,26 +380,58 @@ command_result set_cmux(CommandableIf *t)
     return generic_command_common(t, "AT+CMUX=0\r");
 }
 
-command_result read_pin(CommandableIf *t, bool &pin_ok)
+static sim_pin_state parse_cpin_response(const std::string &out)
+{
+    if (out.find("+CPIN:") == std::string::npos) {
+        return sim_pin_state::UNKNOWN;
+    }
+    if (out.find("READY") != std::string::npos) {
+        return sim_pin_state::READY;
+    }
+    if (out.find("SIM PUK2") != std::string::npos || out.find("SIM PUK") != std::string::npos) {
+        return sim_pin_state::NEED_PUK;
+    }
+    if (out.find("SIM PIN2") != std::string::npos || out.find("SIM PIN") != std::string::npos) {
+        return sim_pin_state::NEED_PIN;
+    }
+    return sim_pin_state::OTHER;
+}
+
+command_result read_pin_state(CommandableIf *t, sim_pin_state &state)
 {
     ESP_LOGV(TAG, "%s", __func__);
     std::string out;
     auto ret = generic_get_string(t, "AT+CPIN?\r", out);
     if (ret != command_result::OK) {
+        state = sim_pin_state::UNKNOWN;
         return ret;
     }
-    if (out.find("+CPIN:") == std::string::npos) {
+    state = parse_cpin_response(out);
+    if (state == sim_pin_state::UNKNOWN) {
         return command_result::FAIL;
     }
-    if (out.find("SIM PIN") != std::string::npos || out.find("SIM PUK") != std::string::npos) {
-        pin_ok = false;
-        return command_result::OK;
+    return command_result::OK;
+}
+
+command_result read_pin(CommandableIf *t, bool &pin_ok)
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    sim_pin_state state;
+    auto ret = read_pin_state(t, state);
+    if (ret != command_result::OK) {
+        return ret;
     }
-    if (out.find("READY") != std::string::npos) {
+    switch (state) {
+    case sim_pin_state::READY:
         pin_ok = true;
         return command_result::OK;
+    case sim_pin_state::NEED_PIN:
+    case sim_pin_state::NEED_PUK:
+        pin_ok = false;
+        return command_result::OK;
+    default:
+        return command_result::FAIL;
     }
-    return command_result::FAIL; // Neither pin-ok, nor waiting for pin/puk -> mark as error
 }
 
 command_result set_pin(CommandableIf *t, const std::string &pin)
@@ -407,6 +439,13 @@ command_result set_pin(CommandableIf *t, const std::string &pin)
     ESP_LOGV(TAG, "%s", __func__);
     std::string set_pin_command = "AT+CPIN=" + pin + "\r";
     return generic_command_common(t, set_pin_command);
+}
+
+command_result reset_pin(CommandableIf *t, const std::string &puk, const std::string &pin)
+{
+    ESP_LOGV(TAG, "%s", __func__);
+    std::string reset_pin_command = "AT+CPIN=" + puk + "," + pin + "\r";
+    return generic_command_common(t, reset_pin_command);
 }
 
 command_result at(CommandableIf *t, const std::string &cmd, std::string &out, int timeout = 500)

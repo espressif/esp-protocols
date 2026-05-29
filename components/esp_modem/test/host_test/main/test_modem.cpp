@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -108,6 +108,29 @@ TEST_CASE("DCE AT parser", "[esp_modem]")
     CHECK(dce->get_operator_name(operator_name, act) == command_result::OK);
     CHECK(operator_name == "OperatorName");
     CHECK(act == 5);
+}
+
+TEST_CASE("SIM PUK recovery", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>(true);
+    term->set_sim_puk_locked(true);
+    auto dte = std::make_shared<DTE>(std::move(term));
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_BG96_dce(&dce_config, dte, &netif);
+    CHECK(dce != nullptr);
+
+    sim_pin_state state;
+    CHECK(dce->read_pin_state(state) == command_result::OK);
+    CHECK(state == sim_pin_state::NEED_PUK);
+
+    bool pin_ok = true;
+    CHECK(dce->read_pin(pin_ok) == command_result::OK);
+    CHECK(pin_ok == false);
+
+    CHECK(dce->reset_pin("87654321", "1234") == command_result::OK);
+    CHECK(dce->read_pin_state(state) == command_result::OK);
+    CHECK(state == sim_pin_state::READY);
 }
 
 

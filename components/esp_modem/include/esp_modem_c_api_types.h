@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,6 +24,17 @@ typedef struct esp_modem_PdpContext_t {
     const char *protocol_type;
     const char *apn;
 } esp_modem_PdpContext_t;
+
+/**
+ * @brief SIM PIN status reported by AT+CPIN?
+ */
+typedef enum esp_modem_sim_pin_state {
+    ESP_MODEM_SIM_PIN_STATE_UNKNOWN = 0,
+    ESP_MODEM_SIM_PIN_STATE_READY,
+    ESP_MODEM_SIM_PIN_STATE_NEED_PIN,
+    ESP_MODEM_SIM_PIN_STATE_NEED_PUK,
+    ESP_MODEM_SIM_PIN_STATE_OTHER,
+} esp_modem_sim_pin_state_t;
 
 /**
  * @defgroup ESP_MODEM_C_API ESP_MODEM C API
