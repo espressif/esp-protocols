@@ -46,6 +46,10 @@
 #include <config.h>
 #endif
 
+#if defined(__has_include) && __has_include("soc/soc_caps.h")
+#include "soc/soc_caps.h"
+#endif
+
 #include "alloc.h"
 
 #include "crypto_kernel.h"
@@ -127,7 +131,12 @@ srtp_err_status_t srtp_crypto_kernel_init(void)
         return status;
     }
 #ifdef GCM
-#if 0
+    /* AES-ICM-192: only the original ESP32 has SoC AES-192 support
+     * (SOC_AES_SUPPORT_AES_192). On every later SoC the mbedtls port returns
+     * MBEDTLS_ERR_PLATFORM_FEATURE_UNSUPPORTED for 192-bit keys (no software
+     * fallback in IDF's mbedtls), so letting libsrtp claim this cipher would
+     * surface as a test failure during the cipher self-tests. */
+#if defined(SOC_AES_SUPPORT_AES_192) && SOC_AES_SUPPORT_AES_192
     status = srtp_crypto_kernel_load_cipher_type(&srtp_aes_icm_192,
                                                  SRTP_AES_ICM_192);
     if (status) {

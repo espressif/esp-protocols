@@ -67,9 +67,7 @@
 #define SIZEOF_UNSIGNED_LONG_LONG 8
 
 /* Force SRTP to use system types */
-#define HAVE_STDINT_H 1
 #define HAVE_INTTYPES_H 1
-#define HAVE_SYS_TYPES_H 1
 #define HAVE_UINT64_T 1
 #define HAVE_UINT32_T 1
 #define HAVE_UINT16_T 1
@@ -82,18 +80,7 @@
 /* Prevent SRTP from redefining types */
 #define INTEGERS_H
 
-/* Prevent srtp_ssrc_t redefinition */
-#ifdef __XTENSA__
-#define SRTP_KERNEL_COMPAT
-#endif
-
-/* Prevent in_addr_t redefinition */
-#ifndef _LWIP_INET_H
-typedef uint32_t in_addr_t;
-#endif
-
 #define GCM 1
 #define MBEDTLS 1
-#define ERR_REPORTING_STDOUT 1
 
 #endif /* CONFIG_H */

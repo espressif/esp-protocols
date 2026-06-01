@@ -1,6 +1,6 @@
 # libsrtp — get_started
 
-Minimal sanity-check application for [`libsrtp`](https://github.com/espressif/idf-extra-components/tree/master/libsrtp). Initializes libsrtp via `srtp_init()` and shuts it down. Used by the repo's CI to verify the component compiles and links across supported targets; also useful as a copy-paste starting point.
+Minimal sanity-check application for [`libsrtp`](https://github.com/espressif/esp-protocols/tree/master/components/libsrtp). Initializes libsrtp via `srtp_init()` and shuts it down. Used by the repo's CI to verify the component compiles and links across supported targets; also useful as a copy-paste starting point.
 
 ## Build
 
