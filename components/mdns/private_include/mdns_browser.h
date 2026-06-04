@@ -29,6 +29,57 @@ void mdns_priv_browse_free(void);
 mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
 /**
+ * @brief Looks for an active browse matching a PTR owner name (service._proto.local)
+ *
+ * @note Called from the packet parser (mdns_receive.c)
+ */
+mdns_browse_t *mdns_priv_browse_find_ptr(mdns_name_t *name);
+
+/**
+ * @brief Packet-scoped staging for browse A/AAAA records received before SRV
+ */
+typedef struct mdns_browse_staged_ip {
+    struct mdns_browse_staged_ip *next;
+    char hostname[MDNS_NAME_BUF_LEN];
+    esp_ip_addr_t ip;
+    mdns_if_t tcpip_if;
+    mdns_ip_protocol_t ip_protocol;
+    uint32_t ttl;
+} mdns_browse_staged_ip_t;
+
+/**
+ * @brief Allocate or return existing browse sync object for a packet
+ */
+mdns_browse_sync_t *mdns_priv_browse_ensure_sync(mdns_browse_t *browse, mdns_browse_sync_t *sync);
+
+/**
+ * @brief Stage an A/AAAA record to apply after all packet records are parsed
+ */
+esp_err_t mdns_priv_browse_stage_ip(mdns_browse_staged_ip_t **staged, const char *hostname, esp_ip_addr_t *ip,
+                                    mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl);
+
+/**
+ * @brief Apply staged A/AAAA records once SRV/hostnames are known
+ *
+ * @note Delegates to mdns_priv_browse_result_add_ip(), which updates only the
+ *       first matching instance per hostname; see mdns_browse_new() in mdns.h.
+ */
+void mdns_priv_browse_apply_staged_ips(mdns_browse_t *browse, mdns_browse_staged_ip_t *staged,
+                                       mdns_browse_sync_t *out_sync_browse);
+
+/**
+ * @brief Free staged A/AAAA list
+ */
+void mdns_priv_browse_staged_ip_free(mdns_browse_staged_ip_t *staged);
+
+/**
+ * @brief Add a PTR record to the browse result (including TTL=0 removal)
+ */
+void mdns_priv_browse_result_add_ptr(mdns_browse_t *browse, const char *instance, const char *service, const char *proto,
+                                     mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl,
+                                     mdns_browse_sync_t *out_sync_browse);
+
+/**
  * @brief Send out all browse queries
  *
  * @note Called from the network events (mdns_netif.c)
@@ -71,6 +122,8 @@ void mdns_priv_browse_result_add_txt(mdns_browse_t *browse, const char *instance
  * @brief  Add an IP record to the browse result
  *
  * @note Called from the packet parser (mdns_receive.c)
+ * @note Attaches @p ip only to the first browse result with matching @p hostname
+ *       on the given interface and IP protocol; see mdns_browse_new() in mdns.h.
  */
 void mdns_priv_browse_result_add_ip(mdns_browse_t *browse, const char *hostname, esp_ip_addr_t *ip,
                                     mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl, mdns_browse_sync_t *out_sync_browse);

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -118,6 +118,33 @@ typedef struct mdns_result_s {
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
+
+/**
+ * @brief Browse result change notifier
+ *
+ * Called once per browse result that changed in a given response packet (not
+ * once per packet). The @p result argument points at the changed entry, but it
+ * remains a live node in the internal browse cache until the callback returns.
+ *
+ * @warning @p result->next links other cached instances for this browse, not
+ *          necessarily other results that changed in the same packet. For
+ *          ordinary add/update notifications, use only @p result; do not walk
+ *          @c next, because unchanged instances may appear there.
+ *
+ * @warning Batch PTR TTL=0 ("goodbye") responses (for example when a peer
+ *          exits and Bonjour sends many removals in one packet) may invoke the
+ *          notifier once while several instances in the cache are updated.
+ *          Until this is improved, applications may walk @c next and treat
+ *          entries with @c ttl == 0 as removals. Do not assume every node on
+ *          @c next changed in the current packet.
+ *
+ * @warning If handling is deferred outside this callback, copy @p result first
+ *          (including strings and addresses). Goodbye entries may be freed when
+ *          the callback returns.
+ *
+ * @param result  The browse result that changed. See the warnings above for
+ *                use of @c result->next.
+ */
 typedef void (*mdns_browse_notify_t)(mdns_result_t *result);
 
 /**
@@ -913,9 +940,21 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
  *
  * @param service  Pointer to the `_service` which will be browsed.
  * @param proto    Pointer to the `_proto` which will be browsed.
- * @param notifier The callback which will be called when the browsing service changed.
+ * @param notifier The callback which will be called when a browse result changes.
+ *                 See @ref mdns_browse_notify_t for callback semantics and limitations.
  * @return mdns_browse_t pointer to new browse object if initiated successfully.
  *         NULL otherwise.
+ *
+ * @note When several service instances share the same SRV target hostname, A/AAAA
+ *       addresses from a response are attached only to the first matching browse
+ *       result for that hostname (per interface and IP protocol). Other instances
+ *       with the same target host are not populated automatically; applications
+ *       that need host-level addresses for every instance must resolve or cache
+ *       them separately until this behavior is improved.
+ *
+ * @note If one response packet contains answers for multiple active browses,
+ *       only one browse is synchronized for that packet. This should not affect
+ *       typical browse traffic, where packets answer one service type.
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
 
