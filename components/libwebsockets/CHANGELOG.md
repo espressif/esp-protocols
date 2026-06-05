@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.3.3~2](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_2)
+
+### Features
+
+- add Kconfig toggles + bump submodule ([23448d54](https://github.com/espressif/esp-protocols/commit/23448d54))
+
 ## [4.3.3~1](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_1)
 
 ### Bug Fixes
