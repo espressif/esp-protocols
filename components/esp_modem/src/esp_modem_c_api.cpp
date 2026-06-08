@@ -209,6 +209,27 @@ extern "C" esp_err_t esp_modem_set_pin(esp_modem_dce_t *dce_wrap, const char *pi
     return command_response_to_esp_err(dce_wrap->dce->set_pin(pin_str));
 }
 
+extern "C" esp_err_t esp_modem_reset_pin(esp_modem_dce_t *dce_wrap, const char *puk, const char *pin)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || puk == nullptr || pin == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string puk_str(puk);
+    std::string pin_str(pin);
+    return command_response_to_esp_err(dce_wrap->dce->reset_pin(puk_str, pin_str));
+}
+
+extern "C" esp_err_t esp_modem_read_pin_state(esp_modem_dce_t *dce_wrap, esp_modem_sim_pin_state_t *state)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || state == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    sim_pin_state cpp_state = sim_pin_state::UNKNOWN;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->read_pin_state(cpp_state));
+    *state = static_cast<esp_modem_sim_pin_state_t>(cpp_state);
+    return ret;
+}
+
 extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, char *p_out, int timeout)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || at == nullptr) {

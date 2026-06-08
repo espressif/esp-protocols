@@ -38,6 +38,13 @@ esp_err_t esp_modem_store_profile(esp_modem_dce_t *dce);
  */
 esp_err_t esp_modem_set_pin(esp_modem_dce_t *dce, const char *pin);
 /**
+ * @brief Use PUK to set a new SIM PIN (AT+CPIN=<puk>,<new_pin>)
+ * @param[in] puk PUK code
+ * @param[in] pin New PIN code
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_reset_pin(esp_modem_dce_t *dce, const char *puk, const char *pin);
+/**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
  * @param[out] out Raw output from DTE
@@ -61,6 +68,12 @@ esp_err_t esp_modem_at(esp_modem_dce_t *dce, const char *cmd, char *out, int tim
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_read_pin(esp_modem_dce_t *dce, bool *pin_ok);
+/**
+ * @brief Reads the SIM PIN status from AT+CPIN?
+ * @param[out] state CPIN state (READY, NEED_PIN, NEED_PUK, ...)
+ * @return OK, FAIL or TIMEOUT
+ */
+esp_err_t esp_modem_read_pin_state(esp_modem_dce_t *dce, esp_modem_sim_pin_state_t *state);
 /**
  * @brief Sets echo mode
  * @param[in] echo_on true if echo mode on (repeats the commands)

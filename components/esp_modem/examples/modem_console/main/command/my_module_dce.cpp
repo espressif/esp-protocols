@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -62,6 +62,16 @@ command_result Shiny::DCE::set_pin(const std::string &pin)
     return esp_modem::dce_commands::set_pin(this, pin);
 }
 /**
+ * @brief Use PUK to set a new SIM PIN (AT+CPIN=<puk>,<new_pin>)
+ * @param[in] puk PUK code
+ * @param[in] pin New PIN code
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result Shiny::DCE::reset_pin(const std::string &puk, const std::string &pin)
+{
+    return esp_modem::dce_commands::reset_pin(this, puk, pin);
+}
+/**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
  * @param[out] out Raw output from DTE
@@ -93,6 +103,15 @@ command_result Shiny::DCE::at(const std::string &cmd, std::string &out, int time
 command_result Shiny::DCE::read_pin(bool &pin_ok)
 {
     return esp_modem::dce_commands::read_pin(this, pin_ok);
+}
+/**
+ * @brief Reads the SIM PIN status from AT+CPIN?
+ * @param[out] state CPIN state (READY, NEED_PIN, NEED_PUK, ...)
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result Shiny::DCE::read_pin_state(esp_modem::sim_pin_state &state)
+{
+    return esp_modem::dce_commands::read_pin_state(this, state);
 }
 /**
  * @brief Sets echo mode

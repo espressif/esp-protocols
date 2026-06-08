@@ -26,6 +26,14 @@ ESP_MODEM_DECLARE_DCE_COMMAND(store_profile, command_result)
 ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, STR_IN(pin))
 
 /**
+ * @brief Use PUK to set a new SIM PIN (AT+CPIN=<puk>,<new_pin>)
+ * @param[in] puk PUK code
+ * @param[in] pin New PIN code
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(reset_pin, command_result, STR_IN(puk), STR_IN(pin))
+
+/**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
  * @param[out] out Raw output from DTE
@@ -51,6 +59,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(at, command_result, STR_IN(cmd), STR_OUT(out), INT
  * @return OK, FAIL or TIMEOUT
  */
 ESP_MODEM_DECLARE_DCE_COMMAND(read_pin, command_result, BOOL_OUT(pin_ok))
+
+/**
+ * @brief Reads the SIM PIN status from AT+CPIN?
+ * @param[out] state CPIN state (READY, NEED_PIN, NEED_PUK, ...)
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(read_pin_state, command_result, ENUM_OUT(sim_pin_state, state))
 
 /**
  * @brief Sets echo mode

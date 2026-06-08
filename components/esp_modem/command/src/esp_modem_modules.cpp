@@ -48,6 +48,16 @@ command_result GenericModule::set_pin(const std::string &pin)
     return esp_modem::dce_commands::set_pin(dte.get(), pin);
 }
 /**
+ * @brief Use PUK to set a new SIM PIN (AT+CPIN=<puk>,<new_pin>)
+ * @param[in] puk PUK code
+ * @param[in] pin New PIN code
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::reset_pin(const std::string &puk, const std::string &pin)
+{
+    return esp_modem::dce_commands::reset_pin(dte.get(), puk, pin);
+}
+/**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
  * @param[out] out Raw output from DTE
@@ -79,6 +89,15 @@ command_result GenericModule::at(const std::string &cmd, std::string &out, int t
 command_result GenericModule::read_pin(bool &pin_ok)
 {
     return esp_modem::dce_commands::read_pin(dte.get(), pin_ok);
+}
+/**
+ * @brief Reads the SIM PIN status from AT+CPIN?
+ * @param[out] state CPIN state (READY, NEED_PIN, NEED_PUK, ...)
+ * @return OK, FAIL or TIMEOUT
+ */
+command_result GenericModule::read_pin_state(esp_modem::sim_pin_state &state)
+{
+    return esp_modem::dce_commands::read_pin_state(dte.get(), state);
 }
 /**
  * @brief Sets echo mode

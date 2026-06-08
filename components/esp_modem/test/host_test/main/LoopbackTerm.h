@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -33,6 +33,12 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override;
 
+    void set_sim_puk_locked(bool locked)
+    {
+        needs_puk = locked;
+        pin_ok = false;
+    }
+
 private:
     enum class status_t {
         STARTED,
@@ -46,6 +52,7 @@ private:
     std::vector<uint8_t> loopback_data;
     size_t data_len;
     bool pin_ok;
+    bool needs_puk;
     bool is_bg96;
     size_t inject_by;
     size_t delay_before_inject;
