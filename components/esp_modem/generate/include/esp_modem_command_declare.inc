@@ -5,6 +5,30 @@
 ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result)
 
 /**
+ * @brief Read the Restricted (U)SIM Access
+ * @param[out] data response from the command
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_restricted_usim_access, command_result, STR_OUT(data), INT_IN(command), INT_IN(file_id), INT_IN(p1), INT_IN(p2), INT_IN(p3))
+
+/**
+ * @brief Write the Restricted (U)SIM Access
+ * @param[in] command command to run
+ * @param[in] file_id file identifier
+ * @param[in] p1 param 1
+ * @param[in] p2 param 2
+ * @param[in] p3 param 3
+ * @param[in] data data to write
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(set_restricted_usim_access, command_result, INT_IN(command), INT_IN(file_id), INT_IN(p1), INT_IN(p2), INT_IN(p3), STR_IN(data))
+
+/**
  * @brief Reads the operator name
  * @param[out] name operator name
  * @param[out] act access technology
@@ -113,6 +137,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result)
 ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, STR_OUT(imsi))
 
 /**
+ * @brief Reads the ICCID number
+ * @param[out] iccid SIM's ICCID number
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_iccid, command_result, STR_OUT(iccid))
+
+/**
  * @brief Reads the IMEI number
  * @param[out] imei Module's IMEI number
  * @return OK, FAIL or TIMEOUT
@@ -125,6 +156,13 @@ ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, STR_OUT(imei))
  * @return OK, FAIL or TIMEOUT
  */
 ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, STR_OUT(name))
+
+/**
+ * @brief Reads the module firmware
+ * @param[out] firmware module firmware
+ * @return OK, FAIL or TIMEOUT
+ */
+ESP_MODEM_DECLARE_DCE_COMMAND(get_module_firmware, command_result, STR_OUT(firmware))
 
 /**
  * @brief Sets the modem to data mode

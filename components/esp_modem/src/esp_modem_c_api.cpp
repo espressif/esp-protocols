@@ -254,6 +254,19 @@ extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce_wrap, char *p_imsi)
     return ret;
 }
 
+extern "C" esp_err_t esp_modem_get_iccid(esp_modem_dce_t *dce_wrap, char *p_iccid)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_iccid == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string iccid;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_iccid(iccid));
+    if (ret == ESP_OK && !iccid.empty()) {
+        strlcpy(p_iccid, iccid.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
 extern "C" esp_err_t esp_modem_at_raw(esp_modem_dce_t *dce_wrap, const char *cmd, char *p_out, const char *pass, const char *fail, int timeout)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || cmd == nullptr || pass == nullptr || fail == nullptr) {
@@ -297,6 +310,29 @@ extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
     return ret;
 }
 
+extern "C" esp_err_t esp_modem_get_restricted_usim_access(esp_modem_dce_t *dce_wrap, char *p_data, int command, int file_id, int p1, int p2, int p3)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_data == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string data;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_restricted_usim_access(data, command, file_id, p1, p2, p3));
+    if (ret == ESP_OK && !data.empty()) {
+        strlcpy(p_data, data.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_set_restricted_usim_access(esp_modem_dce_t *dce_wrap, int command, int file_id, int p1, int p2, int p3, const char *data)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || data == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string data_str(data);
+    auto ret = command_response_to_esp_err(dce_wrap->dce->set_restricted_usim_access(command, file_id, p1, p2, p3, data_str));
+    return ret;
+}
+
 extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char *p_name, int *p_act)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || (p_name == nullptr && p_act == nullptr)) {
@@ -325,6 +361,19 @@ extern "C" esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce_wrap, char *
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_module_name(name));
     if (ret == ESP_OK) {
         strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
+    }
+    return ret;
+}
+
+extern "C" esp_err_t esp_modem_get_module_firmware(esp_modem_dce_t *dce_wrap, char *p_firmware)
+{
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || p_firmware == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    std::string firmware;
+    auto ret = command_response_to_esp_err(dce_wrap->dce->get_module_firmware(firmware));
+    if (ret == ESP_OK && !firmware.empty()) {
+        strlcpy(p_firmware, firmware.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
 }
