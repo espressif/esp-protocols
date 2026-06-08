@@ -1,0 +1,164 @@
+From cfda51e0c654653ec9dee3487675c72d6422fa89 Mon Sep 17 00:00:00 2001
+From: Vikram Dattu <vikram.dattu@espressif.com>
+Date: Wed, 29 Apr 2026 16:27:08 +0530
+Subject: [PATCH 5/5] Fix non-LWIP / Linux-target buildability in 'Added LWIP
+ support'
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Three regressions added by 435f8e8 ("Added LWIP support") that only
+affected the SCTP_USE_LWIP=OFF path — and therefore went unnoticed
+because every consumer of this fork had LWIP enabled until the
+ESP-IDF Linux target tried it.
+
+1. usrsctplib/CMakeLists.txt: removed
+   `if(NOT sctp_use_lwip) add_definitions(-D__native_client__) endif()`.
+   __native_client__ is the Chrome Native Client toolchain marker;
+   defining it on a regular Linux/macOS host pushed sctp_os_userspace.h
+   into the Win32/NaCl block, which redefines `struct ip` /
+   `struct iovec` / `struct udphdr` and conflicts with system
+   <netinet/in.h> / <sys/uio.h> / <netinet/udp.h>. The right gate is
+   the existing `#if defined(SCTP_USE_LWIP)` blocks; no fake
+   `__native_client__` is needed.
+
+2. netinet/sctp_udp_port.h: GET_UDP_* macros were using glibc's
+   without-__FAVOR_BSD member names (`->source`/`->dest`/`->len`/
+   `->check`). sctp_output.c defines __FAVOR_BSD on Linux, which
+   exposes the BSD-style `uh_*` names (and macOS only ever has the
+   `uh_*` form). Switched the macros to `uh_sport`/`uh_dport`/
+   `uh_ulen`/`uh_sum` for portability across macOS, Linux+__FAVOR_BSD,
+   and BSD.
+
+3. netinet/sctp_ip_port.h + sctp_udp_port.h: macro-hygiene bug. Several
+   GET_IP_* and GET_UDP_* macros took a parameter named `ip` (or
+   `udp`) and the macro body contained the literal `struct ip` (or
+   `struct udphdr`). The C preprocessor doesn't know C syntax, so
+   when a caller passed a variable named `iphdr`, it rewrote
+   `struct ip` to `struct iphdr` — fabricating a non-existent type
+   and producing 'incomplete struct iphdr' errors. Renamed all such
+   parameters to `_h` so they don't collide with the type tokens.
+
+After these fixes the library compiles cleanly on the IDF Linux
+target. The ESP target is unaffected — when SCTP_USE_LWIP is defined
+(its default for real ESP builds), the `#else` branches with the
+`struct ip_hdr` / `struct udp_hdr` LWIP types kick in unchanged.
+---
+ usrsctplib/CMakeLists.txt          | 12 ++++++++---
+ usrsctplib/netinet/sctp_ip_port.h  | 34 +++++++++++++++++-------------
+ usrsctplib/netinet/sctp_udp_port.h | 25 +++++++++++++++-------
+ 3 files changed, 45 insertions(+), 26 deletions(-)
+
+diff --git a/usrsctplib/CMakeLists.txt b/usrsctplib/CMakeLists.txt
+index 49bd266..7815911 100644
+--- a/usrsctplib/CMakeLists.txt
++++ b/usrsctplib/CMakeLists.txt
+@@ -58,9 +58,15 @@ option(SCTP_USE_MBEDTLS_SHA1 "Build with mbedtls sha1 support." OFF)
+ add_definitions(-D__Userspace__)
+ add_definitions(-DSCTP_SIMPLE_ALLOCATOR)
+ add_definitions(-DSCTP_PROCESS_LEVEL_LOCKS)
+-if(NOT sctp_use_lwip)
+-	add_definitions(-D__native_client__)
+-endif()
++# NOTE: a previous "Added LWIP support" patch added an `add_definitions(
++# -D__native_client__)` here when SCTP_USE_LWIP was off. That was wrong
++# — `__native_client__` is the Chrome Native Client toolchain marker,
++# and defining it on a regular Linux/macOS host makes sctp_os_userspace.h
++# enter the Win32/NaCl block which defines its own `struct ip` /
++# `struct iovec` and conflicts with system <netinet/in.h> / <sys/uio.h>.
++# The fork only worked because every consumer set sctp_use_lwip=ON.
++# Removed so the upstream `__APPLE__` / `__linux__` paths can take
++# effect on real host builds; LWIP support stays opt-in via SCTP_USE_LWIP.
+ 
+ if(SCTP_USE_MBEDTLS_SHA1)
+ 	add_definitions(-DSCTP_USE_MBEDTLS_SHA1)
+diff --git a/usrsctplib/netinet/sctp_ip_port.h b/usrsctplib/netinet/sctp_ip_port.h
+index 2e382eb..6bfcb8b 100644
+--- a/usrsctplib/netinet/sctp_ip_port.h
++++ b/usrsctplib/netinet/sctp_ip_port.h
+@@ -43,22 +43,26 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_timer.h 359195 2020-03-21 16:12:19Z tu
+ #if !defined(SCTP_USE_LWIP)
+ #include <netinet/ip.h>
+ #define STRUCT_IP_HDR struct ip
+-//#define GET_IP_VERSION(ip) ((struct ip_hdr*)(ip))->ip_v
+-//#define GET_IP_HDR_LEN(ip) ((struct ip_hdr*)(ip))->ip_hl
+-#define GET_IP_TOS(ip) ((struct ip*)(ip))->ip_tos
+-#define GET_IP_LEN(ip) ((struct ip*)ip)->ip_len
+-#define GET_IP_ID(ip) ((struct ip*)ip)->ip_id
+-#define GET_IP_OFFSET(ip) ((struct ip*)ip)->ip_off
+-#define GET_IP_TTL(ip) ((struct ip*)ip)->ip_ttl
+-#define GET_IP_PROTO(ip) ((struct ip*)ip)->ip_p
+-#define GET_IP_CHKSUM(ip) ((struct ip*)ip)->ip_sum
+-#define GET_IP_SRC(ip) ((struct ip*)ip)->ip_src
+-#define GET_IP_DEST(ip) ((struct ip*)ip)->ip_dst
+-#define GET_IP_SRC_ADDR(ip) ((struct ip*)ip)->ip_src.s_addr
+-#define GET_IP_DEST_ADDR(ip) ((struct ip*)ip)->ip_dst.s_addr
++/* The parameter is named `_h` (not `ip`) on purpose: a parameter
++ * named `ip` would collide with the literal `ip` token inside
++ * `struct ip*`, and the preprocessor — which doesn't know C syntax —
++ * would substitute it, producing nonsense like `struct iphdr*`
++ * when the caller passes a variable named `iphdr`. That hygiene bug
++ * existed in the original "Added LWIP support" commit. */
++#define GET_IP_TOS(_h)       ((struct ip*)(_h))->ip_tos
++#define GET_IP_LEN(_h)       ((struct ip*)(_h))->ip_len
++#define GET_IP_ID(_h)        ((struct ip*)(_h))->ip_id
++#define GET_IP_OFFSET(_h)    ((struct ip*)(_h))->ip_off
++#define GET_IP_TTL(_h)       ((struct ip*)(_h))->ip_ttl
++#define GET_IP_PROTO(_h)     ((struct ip*)(_h))->ip_p
++#define GET_IP_CHKSUM(_h)    ((struct ip*)(_h))->ip_sum
++#define GET_IP_SRC(_h)       ((struct ip*)(_h))->ip_src
++#define GET_IP_DEST(_h)      ((struct ip*)(_h))->ip_dst
++#define GET_IP_SRC_ADDR(_h)  ((struct ip*)(_h))->ip_src.s_addr
++#define GET_IP_DEST_ADDR(_h) ((struct ip*)(_h))->ip_dst.s_addr
+ 
+-#define GET_IP_VERSION_VAL(ip) ((struct ip_hdr*)(ip))->ip_v
+-#define GET_IP_HDR_LEN_VAL(ip) ((struct ip_hdr*)(ip))->ip_hl
++#define GET_IP_VERSION_VAL(_h) ((struct ip*)(_h))->ip_v
++#define GET_IP_HDR_LEN_VAL(_h) ((struct ip*)(_h))->ip_hl
+ 
+ #define SET_IP_VHL(hdr, v, hl) do{\
+                                     (hdr)->ip_v = v;\
+diff --git a/usrsctplib/netinet/sctp_udp_port.h b/usrsctplib/netinet/sctp_udp_port.h
+index 4f51a80..e96bf19 100644
+--- a/usrsctplib/netinet/sctp_udp_port.h
++++ b/usrsctplib/netinet/sctp_udp_port.h
+@@ -46,19 +46,28 @@ __FBSDID("$FreeBSD: head/sys/netinet/sctp_timer.h 359195 2020-03-21 16:12:19Z tu
+ #if !defined(SCTP_USE_LWIP)
+ #include <netinet/udp.h>
+ 
++/* Use BSD-style `uh_*` member names: present on macOS unconditionally,
++ * and present on Linux glibc when __FAVOR_BSD is defined (which
++ * sctp_output.c does, see its top of file). The previous form
++ * (`->source` / `->dest` / `->len` / `->check`) only worked on Linux
++ * glibc *without* __FAVOR_BSD — i.e. inconsistent with the rest of
++ * the file — and broke macOS host builds outright. */
++/* Parameter name `_h` instead of `udp` — same preprocessor-hygiene
++ * concern as in sctp_ip_port.h: `udp` would collide with the
++ * `struct udphdr` token. */
+ #define STRUCT_UDP_HDR struct udphdr
+-#define GET_UDP_SRC(udp) ((struct udphdr*)udp)->source
+-#define GET_UDP_DEST(udp) ((struct udphdr*)udp)->dest
+-#define GET_UDP_LEN(udp) ((struct udphdr*)udp)->len
+-#define GET_UDP_CHKSUM(udp) ((struct udphdr*)udp)->check
++#define GET_UDP_SRC(_h)    ((struct udphdr*)(_h))->uh_sport
++#define GET_UDP_DEST(_h)   ((struct udphdr*)(_h))->uh_dport
++#define GET_UDP_LEN(_h)    ((struct udphdr*)(_h))->uh_ulen
++#define GET_UDP_CHKSUM(_h) ((struct udphdr*)(_h))->uh_sum
+ 
+ #else
+ #include "lwip/udp.h"
+ #define STRUCT_UDP_HDR struct udp_hdr
+-#define GET_UDP_SRC(udp) ((struct udp_hdr*)udp)->src
+-#define GET_UDP_DEST(udp) ((struct udp_hdr*)udp)->dest
+-#define GET_UDP_LEN(udp) ((struct udp_hdr*)udp)->len
+-#define GET_UDP_CHKSUM(udp) ((struct udp_hdr*)udp)->chksum
++#define GET_UDP_SRC(_h)    ((struct udp_hdr*)(_h))->src
++#define GET_UDP_DEST(_h)   ((struct udp_hdr*)(_h))->dest
++#define GET_UDP_LEN(_h)    ((struct udp_hdr*)(_h))->len
++#define GET_UDP_CHKSUM(_h) ((struct udp_hdr*)(_h))->chksum
+ 
+ // #TBD
+ #define UIO_MAXIOV 1024
+-- 
+2.39.5 (Apple Git-154)
+

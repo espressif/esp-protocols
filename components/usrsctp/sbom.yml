@@ -1,0 +1,6 @@
+name: 'usrsctp'
+supplier: 'Organization: Espressif Systems (Shanghai) CO LTD'
+originator: 'Organization: Espressif Systems (Shanghai) CO LTD'
+description: ESP-IDF wrapper for userspace SCTP stack (usrsctp). Used for WebRTC data channels and other SCTP-based protocols on ESP32-series chips.
+virtpackages:
+  - sbom_usrsctp.yml
