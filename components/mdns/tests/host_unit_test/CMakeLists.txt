@@ -81,6 +81,12 @@ elseif(NOT CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     message(WARNING "Missing LIBBSD library. Install libbsd-dev package and/or check linker directories.")
 endif()
 
+# Sanitizers for AFL fuzzing (unit tests enable these in unity/enable_testing.cmake)
+if(NOT ENABLE_UNIT_TESTS)
+    target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)
+    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)
+endif()
+
 # Enable testing if unit tests are enabled
 if(ENABLE_UNIT_TESTS)
     include(unity/enable_testing.cmake)

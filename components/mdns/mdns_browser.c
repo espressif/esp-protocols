@@ -412,6 +412,14 @@ static void sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
     mdns_mem_free(browse_sync);
 }
 
+void mdns_priv_browse_sync_free(mdns_browse_sync_t *browse_sync)
+{
+    if (!browse_sync) {
+        return;
+    }
+    sync_browse_result_link_free(browse_sync);
+}
+
 void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
@@ -545,17 +553,35 @@ void mdns_priv_browse_result_add_ip(mdns_browse_t *browse, const char *hostname,
     }
 }
 
+static bool txt_values_equal(const char *a, const char *b, uint8_t len)
+{
+    if (len == 0) {
+        return true;
+    }
+    if (!a || !b) {
+        return a == b;
+    }
+    return memcmp(a, b, len) == 0;
+}
+
 static bool is_txt_item_in_list(mdns_txt_item_t txt, uint8_t txt_value_len, mdns_txt_item_t *txt_list, uint8_t *txt_value_len_list, size_t txt_count)
 {
     for (size_t i = 0; i < txt_count; i++) {
-        if (strcmp(txt.key, txt_list[i].key) == 0) {
-            if (txt_value_len == txt_value_len_list[i] && memcmp(txt.value, txt_list[i].value, txt_value_len) == 0) {
-                return true;
-            } else {
-                // The key value is unique, so there is no need to continue searching.
-                return false;
+        if (mdns_utils_str_null_or_empty(txt.key) || mdns_utils_str_null_or_empty(txt_list[i].key)) {
+            if (mdns_utils_str_null_or_empty(txt.key) != mdns_utils_str_null_or_empty(txt_list[i].key)) {
+                continue;
             }
+        } else if (strcmp(txt.key, txt_list[i].key) != 0) {
+            continue;
         }
+        if (txt_value_len != txt_value_len_list[i]) {
+            return false;
+        }
+        if (txt_values_equal(txt.value, txt_list[i].value, txt_value_len)) {
+            return true;
+        }
+        // The key value is unique, so there is no need to continue searching.
+        return false;
     }
     return false;
 }
@@ -699,6 +725,7 @@ void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
             if (mdns_utils_str_null_or_empty(r->hostname) || strcasecmp(hostname, r->hostname)) {
+                mdns_mem_free((char *)r->hostname);
                 r->hostname = mdns_mem_strdup(hostname);
                 r->port = port;
                 if (!r->hostname) {

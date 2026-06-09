@@ -637,7 +637,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 #endif // CONFIG_MDNS_SKIP_SUPPRESSING_OWN_QUERIES
 
     // Check for the minimum size of mdns packet
-    if (len <=  MDNS_HEAD_ADDITIONAL_OFFSET) {
+    if (len < MDNS_HEAD_LEN) {
         return;
     }
 
@@ -829,7 +829,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                             goto clear_rx_packet;
                         }
                     }
-                    memcpy(browse_result_service, browse_result->service, MDNS_NAME_BUF_LEN);
+                    strncpy(browse_result_service, browse_result->service, MDNS_NAME_BUF_LEN - 1);
+                    browse_result_service[MDNS_NAME_BUF_LEN - 1] = '\0';
                     if (!browse_result_proto) {
                         browse_result_proto = (char *)mdns_mem_malloc(MDNS_NAME_BUF_LEN);
                         if (!browse_result_proto) {
@@ -837,7 +838,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                             goto clear_rx_packet;
                         }
                     }
-                    memcpy(browse_result_proto, browse_result->proto, MDNS_NAME_BUF_LEN);
+                    strncpy(browse_result_proto, browse_result->proto, MDNS_NAME_BUF_LEN - 1);
+                    browse_result_proto[MDNS_NAME_BUF_LEN - 1] = '\0';
                     if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
                         if (!browse_result_instance) {
                             browse_result_instance = (char *)mdns_mem_malloc(MDNS_NAME_BUF_LEN);
@@ -1309,7 +1311,7 @@ clear_rx_packet:
     mdns_mem_free(browse_result_instance);
     mdns_mem_free(browse_result_service);
     mdns_mem_free(browse_result_proto);
-    mdns_mem_free(out_sync_browse);
+    mdns_priv_browse_sync_free(out_sync_browse);
 }
 
 void mdns_priv_receive_action(mdns_action_t *action, mdns_action_subtype_t type)
