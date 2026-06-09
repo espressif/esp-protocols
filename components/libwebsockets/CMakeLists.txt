@@ -37,8 +37,36 @@ target_link_libraries(${COMPONENT_LIB} INTERFACE websockets)
 
 target_sources(${COMPONENT_LIB} INTERFACE "port/lws_port.c")
 
+idf_component_get_property(mbedtls_dir mbedtls COMPONENT_DIR)
+
+# lws's mbedtls 4 detection probe is gated by `if (LWS_MBEDTLS_INCLUDE_DIRS)`
+# in lib/tls/mbedtls/CMakeLists.txt:120, which on FreeRTOS is empty (the
+# find_path call only runs on non-FreeRTOS). Result: on ESP-IDF, lws never
+# sets `LWS_HAVE_MBEDTLS_V4` even when the mbedtls submodule is v4 — and
+# lws's mbedtls-4-aware source (libwebsockets.h:414 etc.) goes down the
+# v3 branch and breaks. Pre-set the cache var when we know IDF mbedtls is
+# v4 so lws picks the right branch. Verified empirically against IDF v6.
+file(STRINGS "${mbedtls_dir}/mbedtls/include/mbedtls/build_info.h"
+     _mbedtls_major REGEX "^#define MBEDTLS_VERSION_MAJOR[ \t]+[0-9]+")
+if(_mbedtls_major MATCHES "[ \t]+([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 4)
+    set(LWS_HAVE_MBEDTLS_V4 1 CACHE INTERNAL "mbedtls 4 detected on IDF")
+endif()
 
 add_subdirectory(libwebsockets)
 
 # pollfd.c at this lws pin has an unused 'vpt' on FreeRTOS; drop after the next bump.
 target_compile_options(websockets PRIVATE -Wno-unused-variable)
+
+# mbedTLS 4 (IDF v6) split public headers across tf-psa-crypto/. The inner
+# `websockets` target reaches mbedtls headers via lws's hardcoded
+# $ENV{IDF_PATH}/components/mbedtls/... list (lib/CMakeLists.txt:60), which
+# only mentions mbedtls/include + port/include. Inject the new dirs here
+# when present so the IDF v6 (mbedtls 4) chain resolves; the EXISTS guard
+# keeps IDF v5.x (mbedtls 3) builds untouched.
+# Drop once upstream lws covers tf-psa-crypto in its ESP_PLATFORM block.
+if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
+    target_include_directories(websockets PRIVATE
+        "${mbedtls_dir}/mbedtls/tf-psa-crypto/include"
+        "${mbedtls_dir}/mbedtls/tf-psa-crypto/drivers/builtin/include"
+        "${mbedtls_dir}/port/psa_driver/include")
+endif()
