@@ -1,0 +1,3 @@
+# The libwebsockets client (mbedTLS + TLS) exceeds the 1 MB default single-app
+# partition. Use the large single-app layout so a plain `idf.py build` fits.
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
