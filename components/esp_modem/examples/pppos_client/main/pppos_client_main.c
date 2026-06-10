@@ -295,7 +295,7 @@ void app_main(void)
 
 #ifdef CONFIG_EXAMPLE_MODEM_DEVICE_CUSTOM
     {
-        char time[64];
+        char time[ESP_MODEM_C_API_STR_BUF_SIZE];
         err = esp_modem_get_time(dce, time);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "esp_modem_get_time failed with %d %s", err, esp_err_to_name(err));
@@ -370,7 +370,7 @@ void app_main(void)
         ESP_LOGE(TAG, "esp_modem_set_mode(ESP_MODEM_MODE_COMMAND) failed with %d", err);
         return;
     }
-    char imsi[32];
+    char imsi[ESP_MODEM_C_API_STR_BUF_SIZE];
     err = esp_modem_get_imsi(dce, imsi);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_modem_get_imsi failed with %d", err);

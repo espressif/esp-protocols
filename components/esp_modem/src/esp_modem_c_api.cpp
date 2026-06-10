@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -19,6 +19,14 @@
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dest, const char *src, size_t len);
 #endif
+
+static void truncate_to_c_api_max(std::string &s)
+{
+    const size_t max_len = CONFIG_ESP_MODEM_C_API_STR_MAX - 1;
+    if (s.size() > max_len) {
+        s.resize(max_len);
+    }
+}
 
 #ifdef CONFIG_ESP_MODEM_ADD_CUSTOM_MODULE
 #include CONFIG_ESP_MODEM_CUSTOM_MODULE_HEADER
@@ -208,7 +216,8 @@ extern "C" esp_err_t esp_modem_at(esp_modem_dce_t *dce_wrap, const char *at, cha
     std::string out;
     std::string at_str(at);
     auto ret = command_response_to_esp_err(dce_wrap->dce->at(at_str, out, timeout));
-    if ((p_out != NULL) && (!out.empty())) {
+    if ((p_out != NULL)) {
+        truncate_to_c_api_max(out);
         strlcpy(p_out, out.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -229,7 +238,8 @@ extern "C" esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce_wrap, char *p_imsi)
     }
     std::string imsi;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_imsi(imsi));
-    if (ret == ESP_OK && !imsi.empty()) {
+    if (ret == ESP_OK) {
+        truncate_to_c_api_max(imsi);
         strlcpy(p_imsi, imsi.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -242,7 +252,8 @@ extern "C" esp_err_t esp_modem_at_raw(esp_modem_dce_t *dce_wrap, const char *cmd
     }
     std::string out;
     auto ret = command_response_to_esp_err(dce_wrap->dce->at_raw(cmd, out, pass, fail, timeout));
-    if ((p_out != NULL) && (!out.empty())) {
+    if ((p_out != NULL)) {
+        truncate_to_c_api_max(out);
         strlcpy(p_out, out.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -272,7 +283,8 @@ extern "C" esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce_wrap, char *p_imei)
     }
     std::string imei;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_imei(imei));
-    if (ret == ESP_OK && !imei.empty()) {
+    if (ret == ESP_OK) {
+        truncate_to_c_api_max(imei);
         strlcpy(p_imei, imei.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;
@@ -286,9 +298,14 @@ extern "C" esp_err_t esp_modem_get_operator_name(esp_modem_dce_t *dce_wrap, char
     std::string name;
     int act;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_operator_name(name, act));
-    if (ret == ESP_OK && !name.empty()) {
-        strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
-        *p_act = act;
+    if (ret == ESP_OK) {
+        if (p_name != nullptr) {
+            truncate_to_c_api_max(name);
+            strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
+        }
+        if (p_act != nullptr) {
+            *p_act = act;
+        }
     }
     return ret;
 }
@@ -300,7 +317,8 @@ extern "C" esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce_wrap, char *
     }
     std::string name;
     auto ret = command_response_to_esp_err(dce_wrap->dce->get_module_name(name));
-    if (ret == ESP_OK && !name.empty()) {
+    if (ret == ESP_OK) {
+        truncate_to_c_api_max(name);
         strlcpy(p_name, name.c_str(), CONFIG_ESP_MODEM_C_API_STR_MAX);
     }
     return ret;

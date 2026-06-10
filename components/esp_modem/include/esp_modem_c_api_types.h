@@ -1,11 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #pragma once
 
+#include "sdkconfig.h"
 #include "esp_modem_config.h"
 #include "esp_netif.h"
 
@@ -24,6 +25,15 @@ typedef struct esp_modem_PdpContext_t {
     const char *protocol_type;
     const char *apn;
 } esp_modem_PdpContext_t;
+
+/**
+ * @brief Minimum byte size of caller-allocated buffers for C-API string output parameters.
+ *
+ * Buffers passed to esp_modem_get_imsi(), esp_modem_get_imei(),
+ * esp_modem_get_operator_name(), esp_modem_get_module_name(), esp_modem_at(), and
+ * esp_modem_at_raw() must be at least this many bytes (including space for a NUL terminator).
+ */
+#define ESP_MODEM_C_API_STR_BUF_SIZE CONFIG_ESP_MODEM_C_API_STR_MAX
 
 /**
  * @defgroup ESP_MODEM_C_API ESP_MODEM C API
