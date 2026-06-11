@@ -1,0 +1,58 @@
+name: "libsrtp: build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_libsrtp:
+    if: contains(github.event.pull_request.labels.*.name, 'libsrtp') || github.event_name == 'push'
+    name: libsrtp build
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["release-v5.4", "release-v5.5"]
+        app:
+          - { name: "get_started",  path: "components/libsrtp/examples/get_started" }
+          - { name: "test_apps",    path: "components/libsrtp/test_apps" }
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.app.name }} with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          python -m pip install idf-build-apps
+          python ./ci/build_apps.py -c ${{ matrix.app.path }} -m components/libsrtp/.build-test-rules.yml
+
+  host_test_libsrtp:
+    if: contains(github.event.pull_request.labels.*.name, 'libsrtp') || github.event_name == 'push'
+    name: libsrtp host test
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["release-v5.4", "release-v5.5"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build + run host_test with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          python -m pip install idf-build-apps
+          python ./ci/build_apps.py -c components/libsrtp/host_test -m components/libsrtp/.build-test-rules.yml
+          cd components/libsrtp/host_test
+          for dir in $(ls -d build_linux_* 2>/dev/null); do
+            "./$dir/host_test_libsrtp.elf"
+          done

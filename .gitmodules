@@ -7,3 +7,6 @@
 [submodule "components/libwebsockets/libwebsockets"]
 	path = components/libwebsockets/libwebsockets
 	url = https://github.com/warmcat/libwebsockets.git
+[submodule "components/libsrtp/libsrtp"]
+	path = components/libsrtp/libsrtp
+	url = https://github.com/cisco/libsrtp.git

@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+#
+# libsrtp requires ESP-IDF 5.4+ (idf_component.yml `idf: ">=5.4"`). The
+# disable rules below skip the build on older IDF releases so the repo-wide
+# CI matrix (v5.1 / v5.2 / v5.3 / v5.4 / v5.5 / latest) doesn't try them.
+#
+# IDF v6+ is also disabled for now: libsrtp 2.x's mbedTLS adapters
+# (aes_gcm_mbedtls.c, aes_icm_mbedtls.c, hmac_mbedtls.c) include the
+# classic <mbedtls/aes.h> / <mbedtls/gcm.h> headers which moved under the
+# TF-PSA-Crypto split in mbedTLS 4.x (shipped by IDF v6+). Re-enable once
+# libsrtp adapts or we ship a port-side compatibility shim.
+
+components/libsrtp/examples/get_started:
+  enable:
+    - if: IDF_TARGET in ["esp32", "esp32c3", "esp32s3", "esp32c5", "esp32c6", "esp32p4"]
+      reason: "Build sanity on representative Xtensa + RISC-V targets."
+  disable:
+    - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
+      reason: "libsrtp requires ESP-IDF 5.4+."
+    - if: IDF_VERSION_MAJOR >= 6
+      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
+
+components/libsrtp/test_apps:
+  enable:
+    - if: IDF_TARGET in ["esp32", "esp32c3"]
+      reason: "Sufficient to exercise one Xtensa and one RISC-V target."
+  disable:
+    - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
+      reason: "libsrtp requires ESP-IDF 5.4+."
+    - if: IDF_VERSION_MAJOR >= 6
+      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
+
+components/libsrtp/host_test:
+  enable:
+    - if: IDF_TARGET == "linux"
+      reason: "Linux host build runs the SRTP roundtrip smoke test."
+  disable:
+    - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
+      reason: "libsrtp requires ESP-IDF 5.4+."
+    - if: IDF_VERSION_MAJOR >= 6
+      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
