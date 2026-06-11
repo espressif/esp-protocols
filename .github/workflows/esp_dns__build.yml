@@ -13,7 +13,7 @@ jobs:
     name: Build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"]
+        idf_ver: ["latest", "release-v5.4", "release-v5.5", "release-v6.0"]
         idf_target: ["esp32"]
         test: [ { app: esp_dns_basic, path: "components/esp_dns/examples"}]
         include:
@@ -33,8 +33,9 @@ jobs:
         shell: bash
         working-directory: ${{matrix.test.path}}
         run: |
-          if [[ "${{ matrix.idf_ver }}" == "release-v5.3" || "${{ matrix.idf_ver }}" == "release-v5.4" ]]; then
-            export EXPECTED_WARNING="unknown kconfig symbol 'LWIP_USE_ESP_GETADDRINFO'"
+          if [[ "${{ matrix.idf_ver }}" == "release-v5.4" || "${{ matrix.idf_ver }}" == "release-v5.5" ]]; then
+            export EXPECTED_WARNING="unknown kconfig symbol 'LWIP_USE_ESP_GETADDRINFO'
+          unknown kconfig symbol 'MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY'"
           fi
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps
