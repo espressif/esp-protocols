@@ -86,17 +86,27 @@ size_t esp_dns_create_query(uint8_t *buffer, size_t buffer_size, const char *hos
  */
 static uint8_t *skip_dns_name(uint8_t *ptr, size_t remaining_bytes)
 {
-    uint8_t offset = 0;
+    size_t offset = 0;
 
     /* Loop through each part of the name, handling labels and compression pointers */
-    while (ptr[offset] != 0) {
+    while (1) {
         if (offset >= remaining_bytes) {
             return NULL;
         }
+
+        /* Check for end of name (0x00) */
+        if (ptr[offset] == 0) {
+            offset += 1;
+            break;
+        }
+
         /* Check if this part is a compression pointer, indicated by the two high bits set to 1 (0xC0) */
         /* RFC 1035, Section 4.1.4: Compression pointers */
         if ((ptr[offset] & 0xC0) == 0xC0) {
-            /* Compression pointer is 2 bytes; move offset by 2 and stop */
+            /* Compression pointer is 2 bytes */
+            if (offset + 2 > remaining_bytes) {
+                return NULL;
+            }
             offset += 2;
             return ptr + offset; /* End of name processing due to pointer */
         } else {
@@ -104,12 +114,15 @@ static uint8_t *skip_dns_name(uint8_t *ptr, size_t remaining_bytes)
                RFC 1035, Section 3.1: Labels
                - The first byte is the length of this label
                - Followed by 'length' bytes of label content */
-            offset += ptr[offset] + 1;  /* Move past this label (1 byte for length + label content) */
+            size_t label_len = ptr[offset];
+            /* 1 byte for length + label_len for content */
+            if (offset + label_len + 1 > remaining_bytes) {
+                return NULL;
+            }
+            offset += label_len + 1;
         }
     }
 
-    /* RFC 1035, Section 3.1: End of a name is indicated by a zero-length byte (0x00) */
-    offset += 1;    /* Move past the terminating zero byte */
     return ptr + offset;
 }
 
@@ -123,12 +136,19 @@ static uint8_t *skip_dns_name(uint8_t *ptr, size_t remaining_bytes)
  */
 void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_t *dns_response)
 {
-    /* Validate input buffer */
+    /* Validate input buffer and minimum size */
     assert(buffer != NULL);
 
-    dns_header_t *header = (dns_header_t *)buffer;
-
     dns_response->status_code = ERR_OK; /* Initialize DNS response code */
+
+    if (response_size < sizeof(dns_header_t)) {
+        dns_response->status_code = ERR_VAL;
+        return;
+    }
+
+    uint8_t *buffer_end = buffer + response_size;
+
+    dns_header_t *header = (dns_header_t *)buffer;
 
     /* Check if there are answers and Transaction id matches */
     int answer_count = ntohs(header->ancount);
@@ -145,13 +165,21 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
     uint8_t *ptr = buffer + sizeof(dns_header_t);
 
     /* Skip the question name */
-    ptr = skip_dns_name(ptr, response_size - (ptr - buffer));
+    if (ptr > buffer_end) {
+        dns_response->status_code = ERR_VAL;
+        return;
+    }
+    ptr = skip_dns_name(ptr, buffer_end - ptr);
     if (ptr == NULL) {
         dns_response->status_code = ERR_VAL;
         return;
     }
 
     /* Skip the question type and class */
+    if (ptr + sizeof(dns_question_t) > buffer_end) {
+        dns_response->status_code = ERR_VAL;
+        return;
+    }
     ptr += sizeof(dns_question_t);
 
     /* Parse each answer record */
@@ -161,8 +189,17 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
         }
 
         /* Answer fields */
-        ptr = skip_dns_name(ptr, response_size - (ptr - buffer));
+        if (ptr > buffer_end) {
+            dns_response->status_code = ERR_VAL;
+            return;
+        }
+        ptr = skip_dns_name(ptr, buffer_end - ptr);
         if (ptr == NULL) {
+            dns_response->status_code = ERR_VAL;
+            return;
+        }
+
+        if (ptr + SIZEOF_DNS_ANSWER_FIXED > buffer_end) {
             dns_response->status_code = ERR_VAL;
             return;
         }
@@ -175,6 +212,11 @@ void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_
 
         /* Skip fixed parts of answer (type, class, ttl, data_len) */
         ptr += SIZEOF_DNS_ANSWER_FIXED;
+
+        if (ptr + data_len > buffer_end) {
+            dns_response->status_code = ERR_VAL;
+            return;
+        }
 
         /* Validate RR class and ttl */
         if ((class != DNS_RRCLASS_IN) || (ttl > DNS_MAX_TTL)) {

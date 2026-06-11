@@ -156,10 +156,15 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
 
         /* Check if the buffer indicates an HTTP error response */
         if (HttpStatus_Ok == esp_http_client_get_status_code(evt->client)) {
-            /* Parse the DNS response */
-            esp_dns_parse_response((uint8_t *)response_buffer->buffer,
-                                   response_buffer->length,
-                                   &response_buffer->dns_response);
+            if (response_buffer->length >= sizeof(dns_header_t)) {
+                /* Parse the DNS response */
+                esp_dns_parse_response((uint8_t *)response_buffer->buffer,
+                                       response_buffer->length,
+                                       &response_buffer->dns_response);
+            } else {
+                ESP_LOGE(TAG, "DNS response too small");
+                response_buffer->dns_response.status_code = ERR_VAL;
+            }
         } else {
             ESP_LOGE(TAG, "HTTP Error: %d", esp_http_client_get_status_code(evt->client));
             temp_buff_len = response_buffer->length > ESP_DNS_BUFFER_SIZE ? ESP_DNS_BUFFER_SIZE : response_buffer->length;
