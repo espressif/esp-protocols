@@ -116,7 +116,7 @@ jobs:
     name: Host test app
     strategy:
       matrix:
-        idf_ver: ["release-v5.5", "release-v6.0", "latest"]
+        idf_ver: ["release-v5.5", "release-v6.0"]
 
     runs-on: ubuntu-latest
     container: espressif/idf:${{ matrix.idf_ver }}
