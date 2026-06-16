@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -9,7 +9,7 @@
 #include "unity_main.h"
 #include "mock_mdns_pcb.h"
 #include "mock_mdns_send.h"
-#include "create_test_packet.h"
+#include "mdns_private.h"
 
 static void test_mdns_hostname_queries(void)
 {
@@ -61,6 +61,27 @@ static void test_mdns_with_answers(void)
 
 }
 
+/*
+ * Regression test for fa84ee6: packets shorter than MDNS_HEAD_LEN (12) must
+ * be rejected before reading the additional RR count at offset 10.
+ * An 11-byte AFL input (id_000005) previously passed the old check and read
+ * one byte past the RX buffer.
+ */
+static void test_mdns_reject_short_packet(void)
+{
+    static const uint8_t eleven_byte_packet[] = {
+        0x00, 0xc0, 0x32, 0x00, 0x01, 0x00, 0x14, 0x00, 0x00, 0x54, 0x01
+    };
+
+    for (size_t len = 0; len < MDNS_HEAD_LEN; len++) {
+        const uint8_t *data = eleven_byte_packet;
+        send_packet(true, true, (uint8_t *)data, len);
+        send_packet(true, false, (uint8_t *)data, len);
+        send_packet(false, true, (uint8_t *)data, len);
+        send_packet(false, false, (uint8_t *)data, len);
+    }
+}
+
 static void mdns_priv_create_answer_from_parsed_packet_Callback(mdns_parsed_packet_t* parsed_packet, int cmock_num_calls)
 {
     printf("callback\n");
@@ -88,6 +109,8 @@ void run_unity_tests(void)
 
     // Run test with answers
     RUN_TEST(test_mdns_with_answers);
+
+    RUN_TEST(test_mdns_reject_short_packet);
 
     UNITY_END();
 }

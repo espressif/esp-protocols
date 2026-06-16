@@ -192,6 +192,22 @@ void mdns_priv_query_start_stop(void)
     mdns_priv_service_unlock();
 }
 
+void mdns_priv_search_once_free(mdns_search_once_t *search)
+{
+    if (!search) {
+        return;
+    }
+    queueDetach(mdns_search_once_t, s_search_once, search);
+    mdns_mem_free(search->instance);
+    mdns_mem_free(search->service);
+    mdns_mem_free(search->proto);
+    vSemaphoreDelete(search->done_semaphore);
+    if (search->result) {
+        mdns_priv_query_results_free(search->result);
+    }
+    mdns_mem_free(search);
+}
+
 void mdns_priv_query_free(void)
 {
     while (s_search_once) {
