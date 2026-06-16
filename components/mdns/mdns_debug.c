@@ -258,13 +258,15 @@ void static dbg_packet(const uint8_t *data, size_t len)
             dbg_printf("%" PRIu32, ttl);
             dbg_printf("[%u] ", data_len);
             if (type == MDNS_TYPE_PTR) {
-                if (!mdns_utils_parse_fqdn(data, data_ptr, name, len)) {
+                size_t rdata_bound = (size_t)(data_ptr + data_len - data);
+                if (!mdns_utils_parse_fqdn(data, data_ptr, name, rdata_bound)) {
                     dbg_printf("ERROR: parse PTR\n");
                     continue;
                 }
                 dbg_printf("%s.%s.%s.%s.\n", name->host, name->service, name->proto, name->domain);
             } else if (type == MDNS_TYPE_SRV) {
-                if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
+                size_t rdata_bound = (size_t)(data_ptr + data_len - data);
+                if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, rdata_bound)) {
                     dbg_printf("ERROR: parse SRV\n");
                     continue;
                 }

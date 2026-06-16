@@ -855,7 +855,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 
             if (type == MDNS_TYPE_PTR) {
                 mdns_browse_t *browse_for_ptr = mdns_priv_browse_find_ptr(name);
-                if (!mdns_utils_parse_fqdn(data, data_ptr, name, len)) {
+                size_t rdata_bound = (size_t)(data_ptr + data_len - data);
+                if (!mdns_utils_parse_fqdn(data, data_ptr, name, rdata_bound)) {
                     continue;//error
                 }
                 if (browse_for_ptr) {
@@ -947,7 +948,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                     }
                 }
                 bool is_selfhosted = is_name_selfhosted(name);
-                if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, len)) {
+                size_t rdata_bound = (size_t)(data_ptr + data_len - data);
+                if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, rdata_bound)) {
                     continue;
                 }
                 if (data_ptr + MDNS_SRV_PORT_OFFSET + 1 >= data + len) {
