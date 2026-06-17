@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,7 +21,7 @@ extern "C" {
 esp_err_t esp_modem_sync(esp_modem_dce_t *dce);
 /**
  * @brief Reads the operator name
- * @param[out] name operator name
+ * @param[out] name operator name; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[out] act access technology
  * @return OK, FAIL or TIMEOUT
  */
@@ -47,7 +47,7 @@ esp_err_t esp_modem_reset_pin(esp_modem_dce_t *dce, const char *puk, const char 
 /**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
- * @param[out] out Raw output from DTE
+ * @param[out] out Raw output from DTE; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[in] pass Pattern in response for the API to return OK
  * @param[in] fail Pattern in response for the API to return FAIL
  * @param[in] timeout AT command timeout in milliseconds
@@ -57,7 +57,7 @@ esp_err_t esp_modem_at_raw(esp_modem_dce_t *dce, const char *cmd, char *out, con
 /**
  * @brief Execute the supplied AT command
  * @param[in] cmd AT command
- * @param[out] out Command output string
+ * @param[out] out Command output string; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
  */
@@ -121,19 +121,19 @@ esp_err_t esp_modem_set_command_mode(esp_modem_dce_t *dce);
 esp_err_t esp_modem_set_cmux(esp_modem_dce_t *dce);
 /**
  * @brief Reads the IMSI number
- * @param[out] imsi Module's IMSI number
+ * @param[out] imsi Module's IMSI number; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_get_imsi(esp_modem_dce_t *dce, char *imsi);
 /**
  * @brief Reads the IMEI number
- * @param[out] imei Module's IMEI number
+ * @param[out] imei Module's IMEI number; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_get_imei(esp_modem_dce_t *dce, char *imei);
 /**
  * @brief Reads the module name
- * @param[out] name module name
+ * @param[out] name module name; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_get_module_name(esp_modem_dce_t *dce, char *name);
