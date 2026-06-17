@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.0.2](https://github.com/espressif/esp-protocols/commits/modem-v2.0.2)
+
+### Features
+
+- Add Delay after netif stop prior sending disconnect to CMUX virtual terminals ([55f670ab](https://github.com/espressif/esp-protocols/commit/55f670ab))
+- Add support for reset pin ([d5e09178](https://github.com/espressif/esp-protocols/commit/d5e09178), [#1065](https://github.com/espressif/esp-protocols/issues/1065))
+- Add end2end host tests with host modem_sim ([cd3eb4a2](https://github.com/espressif/esp-protocols/commit/cd3eb4a2))
+- add idf build system v2 support ([2e52e77f](https://github.com/espressif/esp-protocols/commit/2e52e77f))
+
+### Bug Fixes
+
+- Truncate C-API out buffer len to API_STR_MAX ([c6c0b985](https://github.com/espressif/esp-protocols/commit/c6c0b985))
+- Fix URC handling: unbouded size, stale last urc ([9cbf1d19](https://github.com/espressif/esp-protocols/commit/9cbf1d19))
+- Prevent UART read -1/int leak to size_t ([9176fa6e](https://github.com/espressif/esp-protocols/commit/9176fa6e))
+- Fix netif destructor UAF ([5be5f6a2](https://github.com/espressif/esp-protocols/commit/5be5f6a2))
+- Minor fixes per code review ([ac832bb8](https://github.com/espressif/esp-protocols/commit/ac832bb8))
+- Remove optional_deps variable (unused) ([783d23a5](https://github.com/espressif/esp-protocols/commit/783d23a5))
+- Run test in CI, add batch mode ([89008876](https://github.com/espressif/esp-protocols/commit/89008876))
+- Harden AT library against command injection ([6a684bfc](https://github.com/espressif/esp-protocols/commit/6a684bfc))
+
 ## [2.0.1](https://github.com/espressif/esp-protocols/commits/modem-v2.0.1)
 
 ### Bug Fixes
