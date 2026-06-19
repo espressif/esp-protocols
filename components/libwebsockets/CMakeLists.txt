@@ -88,15 +88,22 @@ if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
         "${mbedtls_dir}/port/psa_driver/include")
 endif()
 
+# The include workarounds below reach into components that only exist on
+# IDF v6 (esp_hal_mspi, esp_blockdev, esp_libc). idf_component_get_property
+# hard-errors if the component isn't in the build, so gate every lookup on
+# BUILD_COMPONENTS membership first - that keeps IDF v5.x untouched.
+idf_build_get_property(_lws_build_comps BUILD_COMPONENTS)
+
 # lib/misc/romfs.c pulls esp_flash.h, whose IDF v6 include chain spans
 # components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
 # esp_blockdev) that aren't on lws's hardcoded include list. Add their include
-# dirs (not link, which would re-inherit IDF's -Werror). EXISTS-guarded so
-# IDF v5.x is untouched.
+# dirs (not link, which would re-inherit IDF's -Werror).
 foreach(_lws_extra_comp esp_hal_mspi esp_blockdev)
-    idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
-    if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
-        target_include_directories(websockets PRIVATE "${_lws_cdir}/include")
+    if(_lws_extra_comp IN_LIST _lws_build_comps)
+        idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
+        if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
+            target_include_directories(websockets PRIVATE "${_lws_cdir}/include")
+        endif()
     endif()
 endforeach()
 
@@ -104,8 +111,10 @@ endforeach()
 # component, whose non-TLS errno.h shadows IDF v6's esp_libc (picolibc) TLS
 # errno - which then fails to link ("TLS definition ... mismatches non-TLS
 # reference in async-dns.c.obj"). Prepend esp_libc's platform_include so its
-# TLS errno.h wins. EXISTS-guarded so IDF v5.x is untouched.
-idf_component_get_property(_esp_libc_dir esp_libc COMPONENT_DIR)
-if(_esp_libc_dir AND EXISTS "${_esp_libc_dir}/platform_include")
-    target_include_directories(websockets BEFORE PRIVATE "${_esp_libc_dir}/platform_include")
+# TLS errno.h wins.
+if(esp_libc IN_LIST _lws_build_comps)
+    idf_component_get_property(_esp_libc_dir esp_libc COMPONENT_DIR)
+    if(_esp_libc_dir AND EXISTS "${_esp_libc_dir}/platform_include")
+        target_include_directories(websockets BEFORE PRIVATE "${_esp_libc_dir}/platform_include")
+    endif()
 endif()
