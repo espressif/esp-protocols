@@ -65,10 +65,27 @@ if(_mbedtls_major MATCHES "[ \t]+([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 4)
     set(LWS_HAVE_MBEDTLS_V4 1 CACHE INTERNAL "mbedtls 4 detected on IDF")
 endif()
 
+# Stop lws adding its own -Werror (the IDF build already sets -Werror globally).
+set(DISABLE_WERROR ON CACHE BOOL "lws: don't treat warnings as errors" FORCE)
+
 add_subdirectory(libwebsockets)
 
-# pollfd.c at this lws pin has an unused 'vpt' on FreeRTOS; drop after the next bump.
-target_compile_options(websockets PRIVATE -Wno-unused-variable)
+# The IDF build compiles everything with a global -Werror.  IDF v6's mbedtls
+# headers emit a harmless MBEDTLS_PSA_BUILTIN_ALG_HMAC redefinition warning
+# (esp_config.h vs tf-psa-crypto) that lws's sources pull in via libwebsockets.h
+# -> mbedtls/ssl.h; -Wno-error keeps that (and the unused 'vpt' in this pin's
+# pollfd.c) from failing the build.  See esp-idf esp_config.h redefinition bug.
+target_compile_options(websockets PRIVATE -Wno-unused-variable -Wno-error)
+
+# IDF v6's libc (picolibc) makes errno thread-local. With lws's LWIP_PROVIDE_ERRNO
+# now gated off on v6, lwip's errno.h forwards to the system errno - but lws's
+# hardcoded include list (lib/CMakeLists.txt) puts .../lwip/src/include/lwip on the
+# path, so a bare <errno.h> resolves to lwip's own errno.h (LWIP_ERRNO_STDINCLUDE
+# would re-include itself). Point lwip at <sys/errno.h> instead, which is not
+# shadowed and pulls picolibc's TLS errno + E* macros via esp_libc's #include_next.
+# Otherwise lws objects fail with "errno undeclared" (compile) or "TLS definition
+# ... mismatches non-TLS reference" (link).
+target_compile_definitions(websockets PRIVATE "LWIP_ERRNO_INCLUDE=<sys/errno.h>")
 
 # Supply a UTC timegm() for lws (LWS_HAVE_TIMEGM set above). lws_http_date_parse_unix()
 # calls timegm(); the port source defines it and the shim force-includes a prototype
@@ -95,4 +112,26 @@ if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
         "${mbedtls_dir}/mbedtls/tf-psa-crypto/include"
         "${mbedtls_dir}/mbedtls/tf-psa-crypto/drivers/builtin/include"
         "${mbedtls_dir}/port/psa_driver/include")
+endif()
+
+# lib/misc/romfs.c pulls esp_flash.h, whose IDF v6 include chain spans
+# components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
+# esp_blockdev) that aren't on lws's hardcoded include list. Add their include
+# dirs (not link, which would re-inherit IDF's -Werror). EXISTS-guarded so
+# IDF v5.x is untouched.
+foreach(_lws_extra_comp esp_hal_mspi esp_blockdev)
+    idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
+    if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
+        target_include_directories(websockets PRIVATE "${_lws_cdir}/include")
+    endif()
+endforeach()
+
+# lws's hardcoded ESP include list still points at the legacy 'newlib'
+# component, whose non-TLS errno.h shadows IDF v6's esp_libc (picolibc) TLS
+# errno - which then fails to link ("TLS definition ... mismatches non-TLS
+# reference in async-dns.c.obj"). Prepend esp_libc's platform_include so its
+# TLS errno.h wins. EXISTS-guarded so IDF v5.x is untouched.
+idf_component_get_property(_esp_libc_dir esp_libc COMPONENT_DIR)
+if(_esp_libc_dir AND EXISTS "${_esp_libc_dir}/platform_include")
+    target_include_directories(websockets BEFORE PRIVATE "${_esp_libc_dir}/platform_include")
 endif()
