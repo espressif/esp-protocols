@@ -1,0 +1,44 @@
+From 32bb935b2183a538287853b34cfd23994836acfe Mon Sep 17 00:00:00 2001
+From: Vikram Dattu <vikram.dattu@espressif.com>
+Date: Thu, 19 Feb 2026 19:29:58 +0530
+Subject: [PATCH 4/5] feat(esp): allocate usrsctp thread stacks from SPIRAM
+
+Use esp_pthread to configure SPIRAM allocation caps for threads
+created by usrsctp on ESP32 platforms. This moves the thread stacks
+out of internal SRAM, freeing it for DMA and other constrained uses.
+---
+ usrsctplib/netinet/sctp_userspace.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/usrsctplib/netinet/sctp_userspace.c b/usrsctplib/netinet/sctp_userspace.c
+index f0c9035..0604365 100755
+--- a/usrsctplib/netinet/sctp_userspace.c
++++ b/usrsctplib/netinet/sctp_userspace.c
+@@ -44,6 +44,11 @@
+ #include <sys/prctl.h>
+ #endif
+ 
++#if defined(ESP_PLATFORM)
++#include "esp_pthread.h"
++#include "esp_heap_caps.h"
++#endif
++
+ #if defined(_WIN32)
+ /* Adapter to translate Unix thread start routines to Windows thread start
+  * routines.
+@@ -76,6 +81,12 @@ sctp_userspace_thread_create(userland_thread_t *thread, start_routine_t start_ro
+ int
+ sctp_userspace_thread_create(userland_thread_t *thread, start_routine_t start_routine)
+ {
++#if defined(ESP_PLATFORM)
++	esp_pthread_cfg_t pthread_cfg = esp_pthread_get_default_config();
++	pthread_cfg.stack_alloc_caps = MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT;
++	pthread_cfg.thread_name = "sctp_userspace";
++	esp_pthread_set_cfg(&pthread_cfg);
++#endif
+ 	return pthread_create(thread, NULL, start_routine, NULL);
+ }
+ #endif
+-- 
+2.39.5 (Apple Git-154)
+

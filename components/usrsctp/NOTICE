@@ -1,0 +1,23 @@
+esp_usrsctp
+Copyright 2024-2026 Espressif Systems (Shanghai) CO LTD
+
+This product includes software developed by the following third parties:
+
+================================================================================
+
+usrsctp
+https://github.com/sctplab/usrsctp (forked at https://github.com/vikramdattu/usrsctp)
+Copyright (c) 2015, Randall Stewart and Michael Tuexen
+Licensed under the BSD 3-Clause License (see usrsctp/LICENSE.md).
+
+A portable userland implementation of the SCTP protocol. Bundled as a
+submodule from a fork (vikramdattu/usrsctp) carrying ESP-specific patches:
+- SPIRAM thread stack allocation
+- ESP_PLATFORM thread-safe netif API support
+- sin6 overflow fix
+- LWIP support layer
+
+The fork's ESP-specific commits are also under the BSD 3-Clause License,
+matching upstream.
+
+================================================================================

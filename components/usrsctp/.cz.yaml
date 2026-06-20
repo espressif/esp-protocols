@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(usrsctp): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py usrsctp
+  tag_format: usrsctp-v$version
+  version: 0.9.5~1
+  version_files:
+    - idf_component.yml

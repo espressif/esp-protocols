@@ -1,0 +1,27 @@
+menu "usrsctp"
+
+    config USRSCTP_DEBUG
+        bool "Enable SCTP_DEBUG runtime tracing"
+        default n
+        help
+            Builds usrsctp with verbose runtime trace logging via SCTP_DEBUG.
+            Adds binary size; only useful during development.
+
+    config USRSCTP_THREAD_STACK_IN_SPIRAM
+        bool "Allocate usrsctp's internal pthread stacks from SPIRAM"
+        depends on SPIRAM
+        default y
+        help
+            Routes usrsctp's userspace-mode worker threads to SPIRAM.
+            Strongly recommended on memory-constrained chips
+            (esp32c6, esp32p4-eye) where internal RAM is at a premium.
+
+    config USRSCTP_USE_MBEDTLS_SHA1
+        bool "Use mbedTLS for SHA1 instead of usrsctp's bundled implementation"
+        default y
+        help
+            Uses ESP-IDF's mbedTLS (typically backed by the on-chip SHA
+            peripheral) for SHA-1 hashing inside usrsctp. Smaller binary
+            and faster than usrsctp's bundled software SHA-1.
+
+endmenu
