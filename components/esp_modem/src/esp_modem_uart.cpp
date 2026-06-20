@@ -46,7 +46,12 @@ public:
         event_queue(), uart(&config->uart_config, &event_queue, -1), signal(),
         task_handle(config->task_stack_size, config->task_priority, this, s_task) {}
 
-    ~UartTerminal() override = default;
+    ~UartTerminal() override
+    {
+        // Stop the RX task gracefully (and synchronously) before our members are torn down,
+        // so it is never force-deleted while inside a callback or blocked in the UART driver.
+        UartTerminal::stop();
+    }
 
     void start() override
     {
@@ -55,7 +60,16 @@ public:
 
     void stop() override
     {
-        signal.set(TASK_STOP);
+        if (signal.is_any(TASK_STOPPED)) {
+            return;     // already stopped (stop() is also called from the destructor)
+        }
+        signal.clear(TASK_START);   // make the processing loop exit
+        signal.set(TASK_STOP);      // release the task if it never started
+        // Block until the task confirms it has left the processing loop: no read/error callback
+        // is in flight, and it is not blocked in the UART driver, so it is safe to delete.
+        if (!signal.wait_any(TASK_STOPPED, stop_timeout_ms)) {
+            ESP_LOGW(TAG, "Timed out waiting for uart_task to stop");
+        }
     }
 
     int write(uint8_t *data, size_t len) override;
@@ -64,6 +78,7 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
+        Scoped<Lock> l(cb_lock);
         on_read = std::move(f);
     }
 
@@ -72,14 +87,37 @@ private:
     {
         auto t = static_cast<UartTerminal *>(task_param);
         t->task();
-        t->task_handle.task_handle = nullptr;
-        vTaskDelete(nullptr);
+        // task() returns only after stop() requested it. Acknowledge that the processing loop has
+        // been left -- this is the last access to any member -- then idle until the owner deletes
+        // us from ~uart_task(). We deliberately do not self-delete, to avoid racing that delete.
+        t->signal.set(TASK_STOPPED);
+        while (true) {
+            vTaskDelay(portMAX_DELAY);
+        }
     }
 
     void task();
     bool get_event(uart_event_t &event, uint32_t time_ms)
     {
         return xQueueReceive(event_queue, &event, pdMS_TO_TICKS(time_ms));
+    }
+
+    // Invoke the read/error callbacks under cb_lock so they cannot be reassigned or cleared
+    // (by set_mode()/teardown on another task) while we're executing them. Re-check under the
+    // lock, since the callback may have been cleared between the outer check and acquiring it.
+    void notify_read(size_t len)
+    {
+        Scoped<Lock> l(cb_lock);
+        if (on_read) {
+            on_read(nullptr, len);
+        }
+    }
+    void notify_error(terminal_error err)
+    {
+        Scoped<Lock> l(cb_lock);
+        if (on_error) {
+            on_error(err);
+        }
     }
 
     void reset_events()
@@ -91,6 +129,8 @@ private:
     static const size_t TASK_INIT = BIT0;
     static const size_t TASK_START = BIT1;
     static const size_t TASK_STOP = BIT2;
+    static const size_t TASK_STOPPED = BIT3;        /*!< Set by the task once it has left the processing loop */
+    static const uint32_t stop_timeout_ms = 1000;   /*!< Max wait for a graceful stop before forcing deletion */
 
     QueueHandle_t event_queue;
     uart_resource uart;
@@ -121,41 +161,31 @@ void UartTerminal::task()
             switch (event.type) {
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);
-                if (len && on_read) {
-                    on_read(nullptr, len);
+                if (len) {
+                    notify_read(len);
                 }
                 break;
             case UART_FIFO_OVF:
                 ESP_LOGW(TAG, "HW FIFO Overflow");
-                if (on_error) {
-                    on_error(terminal_error::BUFFER_OVERFLOW);
-                }
+                notify_error(terminal_error::BUFFER_OVERFLOW);
                 reset_events();
                 break;
             case UART_BUFFER_FULL:
                 ESP_LOGW(TAG, "Ring Buffer Full");
-                if (on_error) {
-                    on_error(terminal_error::BUFFER_OVERFLOW);
-                }
+                notify_error(terminal_error::BUFFER_OVERFLOW);
                 reset_events();
                 break;
             case UART_BREAK:
                 ESP_LOGW(TAG, "Rx Break");
-                if (on_error) {
-                    on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
-                }
+                notify_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
                 break;
             case UART_PARITY_ERR:
                 ESP_LOGE(TAG, "Parity Error");
-                if (on_error) {
-                    on_error(terminal_error::CHECKSUM_ERROR);
-                }
+                notify_error(terminal_error::CHECKSUM_ERROR);
                 break;
             case UART_FRAME_ERR:
                 ESP_LOGE(TAG, "Frame Error");
-                if (on_error) {
-                    on_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
-                }
+                notify_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
                 break;
             default:
                 ESP_LOGW(TAG, "unknown uart event type: %d", event.type);
@@ -163,8 +193,8 @@ void UartTerminal::task()
             }
         } else {
             uart_get_buffered_data_len(uart.port, &len);
-            if (len && on_read) {
-                on_read(nullptr, len);
+            if (len) {
+                notify_read(len);
             }
         }
     }

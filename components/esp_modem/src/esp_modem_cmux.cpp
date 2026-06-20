@@ -124,6 +124,10 @@ bool CMux::data_available(uint8_t *data, size_t len)
     if (data && (type & FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
         int virtual_term = dlci - 1;
         if (virtual_term < MAX_TERMINALS_NUM) {
+            // Hold cb_lock (not the state lock) across the read_cb check and invocation, so the
+            // callback cannot be reassigned/cleared (set_read_cb()/teardown) while we're using it,
+            // without blocking write() during the (potentially long) upcall.
+            Scoped<Lock> l(cb_lock);
             if (read_cb[virtual_term] == nullptr) {
                 // ignore all virtual terminal's data before we completely establish CMUX
                 ESP_LOG_BUFFER_HEXDUMP("CMUX Rx before init", data, len, ESP_LOG_DEBUG);
@@ -148,6 +152,7 @@ bool CMux::data_available(uint8_t *data, size_t len)
     } else if (data == nullptr && dlci > 0) {
         int virtual_term = dlci - 1;
         if (virtual_term < MAX_TERMINALS_NUM) {
+            Scoped<Lock> l(cb_lock);
             if (read_cb[virtual_term] == nullptr) {
                 // silently ignore this CMUX frame (not finished entering CMUX, yet)
                 return true;
@@ -430,6 +435,18 @@ bool CMux::deinit()
     return true;
 }
 
+CMux::~CMux()
+{
+    // The underlying terminal's RX task drives on_cmux_data(), which touches CMux state (lock,
+    // buffer, read_cb[]). Detach it before that state is destroyed, otherwise a late RX event
+    // would use this CMux after free. set_read_cb()/set_error_cb() are synchronized against the
+    // RX task, so once they return no callback is in flight.
+    if (term) {
+        term->set_read_cb(nullptr);
+        term->set_error_cb(nullptr);
+    }
+}
+
 bool CMux::init()
 {
     frame_header_offset = 0;
@@ -494,6 +511,7 @@ int CMux::write(int virtual_term, uint8_t *data, size_t len)
 
 void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
 {
+    Scoped<Lock> l(cb_lock);
     if (inst < MAX_TERMINALS_NUM) {
         read_cb[inst] = std::move(f);
     }
@@ -518,4 +536,11 @@ bool CMux::recover()
     Scoped<Lock> l(lock);
     recover_protocol(protocol_mismatch_reason::UNKNOWN);
     return true;
+}
+
+void CMux::stop()
+{
+    if (term) {
+        term->stop();
+    }
 }
