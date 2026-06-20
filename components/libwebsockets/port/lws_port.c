@@ -55,3 +55,20 @@ struct lws *__wrap_lws_adopt_descriptor_vhost(struct lws_vhost *vh, lws_adoption
 
     return lws_adopt_descriptor_vhost_via_info(&info);
 }
+
+#include "lwip/opt.h"
+#if !LWIP_NETIF_API
+#include "lwip/netif.h"
+/*
+ * Older ESP-IDF lwip (<= v5.3) builds with LWIP_NETIF_API==0, so if_api.c is
+ * not compiled and if_nametoindex() - declared in newlib's <net/if.h> - is
+ * never defined. Recent libwebsockets uses it in lws_get_addr_scope(), which
+ * then fails to link. Provide the same fallback lwip's own if_nametoindex()
+ * uses: resolve the name through the ungated core helper. On v5.4+ lwip
+ * supplies the symbol (LWIP_NETIF_API==1), so this is compiled out.
+ */
+unsigned int if_nametoindex(const char *ifname)
+{
+    return netif_name_to_index(ifname);
+}
+#endif
