@@ -1,9 +1,9 @@
 version: "2.8.0"
 description: "libsrtp (Cisco) wrapper for ESP-IDF — mbedTLS crypto backend with AES-GCM + AES-CM + HMAC-SHA1. SRTP/SRTCP packet protection for WebRTC and other RTP-based protocols."
 url: https://github.com/espressif/esp-protocols/tree/master/components/libsrtp
-repository: https://github.com/espressif/esp-protocols.git
 issues: https://github.com/espressif/esp-protocols/issues
 documentation: https://github.com/espressif/esp-protocols/blob/master/components/libsrtp/README.md
+repository: https://github.com/espressif/esp-protocols.git
 license: "Apache-2.0 AND BSD-3-Clause"
 tags:
   - libsrtp
