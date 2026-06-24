@@ -32,4 +32,14 @@ menu "libwebsockets"
             or other work from the lws service thread (e.g. AWS KVS
             WebRTC signaling). Costs a few hundred bytes of static data.
 
+    config LWS_WITH_CUSTOM_HEADERS
+        bool "Build libwebsockets with custom HTTP header support"
+        default n
+        help
+            Enables the lws_hdr_custom_* APIs for reading non-standard
+            HTTP headers (sets LWS_WITH_CUSTOM_HEADERS and
+            LWS_WITH_CUSTOM_HTTP_HEADERS). Required by clients that must
+            read service-specific response headers — e.g. AWS KVS WebRTC
+            signaling reads the x-amzn-RequestId header over HTTP/1.1.
+
 endmenu
