@@ -45,7 +45,16 @@ public:
 
     void stop() override
     {
-        signal.clear(TASK_START);
+        if (signal.is_any(TASK_STOPPED)) {
+            return;     // already stopped (stop() is also called from the destructor)
+        }
+        signal.clear(TASK_START);   // make the processing loop exit
+        signal.set(TASK_STOP);      // release the task if it never started
+        // Block until the task confirms it has left the processing loop, so no read callback is
+        // in flight when the task is deleted .
+        if (!signal.wait_any(TASK_STOPPED, stop_timeout_ms)) {
+            ESP_LOGW(TAG, "Timed out waiting for fs task to stop");
+        }
     }
 
     int write(uint8_t *data, size_t len) override;
@@ -54,17 +63,28 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
+        Scoped<Lock> l(cb_lock);
         on_read = std::move(f);
-        signal.set(TASK_PARAMS);
     }
 
 private:
     void task();
 
+    // Invoke on_read under cb_lock so it cannot be reassigned/cleared (set_mode()/teardown on
+    // another task) while we're executing it; re-check under the lock.
+    void notify_read()
+    {
+        Scoped<Lock> l(cb_lock);
+        if (on_read) {
+            on_read(nullptr, 0);
+        }
+    }
+
     static const size_t TASK_INIT = SignalGroup::bit0;
     static const size_t TASK_START = SignalGroup::bit1;
     static const size_t TASK_STOP = SignalGroup::bit2;
-    static const size_t TASK_PARAMS = SignalGroup::bit3;
+    static const size_t TASK_STOPPED = SignalGroup::bit3;   /*!< Set by the task once it has left the processing loop */
+    static const uint32_t stop_timeout_ms = 2000;           /*!< Max wait for a graceful stop (must exceed the select() timeout) */
 
     File f;
     SignalGroup signal;
@@ -86,13 +106,22 @@ FdTerminal::FdTerminal(const esp_modem_dte_config *config) :
 {
     auto t = static_cast<FdTerminal *>(p);
     t->task();
-    Task::Delete();
+    // task() returns only after stop() requested it. Acknowledge that the processing loop has
+    // been left -- this is the last access to any member.
+    t->signal.set(TASK_STOPPED);
+#if !defined(CONFIG_IDF_TARGET_LINUX)
+    // FreeRTOS: a task function must not return. Idle until the owner (Task destructor) deletes
+    // us; we deliberately do not self-delete, to avoid racing that delete.
+    while (true) {
+        Task::Delay(3600 * 1000);
+    }
+#endif
+    // Linux: returning ends the std::thread, which the Task destructor join()s.
 })
 {}
 
 void FdTerminal::task()
 {
-    std::function<bool(uint8_t *data, size_t len)> on_read_priv = nullptr;
     signal.set(TASK_INIT);
     signal.wait_any(TASK_START | TASK_STOP, portMAX_DELAY);
     if (signal.is_any(TASK_STOP)) {
@@ -110,10 +139,6 @@ void FdTerminal::task()
         FD_SET(f.fd, &rfds);
 
         s = select(f.fd + 1, &rfds, nullptr, nullptr, &tv);
-        if (signal.is_any(TASK_PARAMS)) {
-            on_read_priv = on_read;
-            signal.clear(TASK_PARAMS);
-        }
 
         if (s < 0) {
             break;
@@ -121,9 +146,7 @@ void FdTerminal::task()
 //            ESP_LOGV(TAG, "Select exited with timeout");
         } else {
             if (FD_ISSET(f.fd, &rfds)) {
-                if (on_read_priv) {
-                    on_read_priv(nullptr, 0);
-                }
+                notify_read();
             }
         }
         Task::Relinquish();

@@ -53,7 +53,7 @@ public:
     explicit DTE(const esp_modem_dte_config *config, std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s);
     explicit DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s);
 
-    ~DTE() = default;
+    ~DTE();
 
     /**
      * @brief Writing to the underlying terminal
