@@ -573,8 +573,8 @@ void mdns_priv_query_result_add_txt(mdns_search_once_t *search, mdns_txt_item_t 
         r->next = search->result;
         search->result = r;
         search->num_results++;
+        return;
     }
-    return;
 
 free_txt:
     for (size_t i = 0; i < txt_count; i++) {
