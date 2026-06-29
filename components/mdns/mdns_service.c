@@ -31,8 +31,8 @@
 #endif
 #define MDNS_TASK_AFFINITY          CONFIG_MDNS_TASK_AFFINITY
 
-#define MDNS_SERVICE_LOCK()     xSemaphoreTakeRecursive(s_service_semaphore, portMAX_DELAY)
-#define MDNS_SERVICE_UNLOCK()   xSemaphoreGiveRecursive(s_service_semaphore)
+#define MDNS_SERVICE_LOCK()     xSemaphoreTake(s_service_semaphore, portMAX_DELAY)
+#define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(s_service_semaphore)
 
 static volatile TaskHandle_t s_service_task_handle = NULL;
 static SemaphoreHandle_t s_service_semaphore = NULL;
@@ -287,7 +287,7 @@ static esp_err_t service_task_start(void)
 {
     esp_err_t ret = ESP_OK;
     if (!s_service_semaphore) {
-        s_service_semaphore = xSemaphoreCreateRecursiveMutex();
+        s_service_semaphore = xSemaphoreCreateMutex();
         ESP_RETURN_ON_FALSE(s_service_semaphore != NULL, ESP_FAIL, TAG, "Failed to create the mDNS service lock");
     }
     MDNS_SERVICE_LOCK();
