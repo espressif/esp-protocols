@@ -69,6 +69,25 @@ typedef struct {
 } mdns_txt_item_t;
 
 /**
+ * @brief   mDNS basic text item structure, with length of values
+ *          Suitable for both string and non-string items
+ *          Used in mdns_service_add_with_explicit_txt_item_value_len()
+ */
+typedef struct {
+    const char *key;                        /*!< item key name */
+    const uint8_t *value;                   /*!< item value */
+    uint8_t value_len;                /*!< item value length */
+} mdns_txt_item_with_value_len_t;
+
+/**
+ * @brief mDNS TXT item type, either regular one or with value length
+ */
+typedef enum {
+    MDNS_TXT_ITEM,
+    MDNS_TXT_ITEM_WITH_VALUE_LEN
+} mdns_txt_item_type_t;
+
+/**
  * @brief   mDNS basic subtype item structure
  *          Used in mdns_service_subtype_xxx() APIs
  */
@@ -312,6 +331,56 @@ esp_err_t mdns_service_add_for_host(const char *instance_name, const char *servi
                                     const char *hostname, uint16_t port, mdns_txt_item_t txt[], size_t num_items);
 
 /**
+ * @brief  Add service to mDNS server
+ *
+ * @note The value length of txt items should be configured in structures
+ *
+ * @param  instance_name    instance name to set. If NULL,
+ *                          global instance name or hostname will be used.
+ *                          Note that MDNS_MULTIPLE_INSTANCE config option
+ *                          needs to be enabled for adding multiple instances
+ *                          with the same instance type.
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  port             service port
+ * @param  txt              array of TXT data with value length (eg. {{"var", "val", 3},{"other", "2", 1}})
+ * @param  num_items        number of items in TXT data
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NO_MEM memory error
+ *     - ESP_FAIL failed to add service
+ */
+esp_err_t mdns_service_add_with_explicit_txt_item_value_len(const char *instance_name, const char *service_type, const char *proto, uint16_t port, mdns_txt_item_with_value_len_t txt[], size_t num_items);
+
+/**
+ * @brief  Add service to mDNS server with a delegated hostname
+ *
+ * @note The value length of txt items should be configured in structures
+ *
+ * @param  instance_name    instance name to set. If NULL,
+ *                          global instance name or hostname will be used
+ *                          Note that MDNS_MULTIPLE_INSTANCE config option
+ *                          needs to be enabled for adding multiple instances
+ *                          with the same instance type.
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  hostname         service hostname. If NULL, local hostname will be used.
+ * @param  port             service port
+ * @param  txt              array of TXT data with value length (eg. {{"var", "val", 3},{"other", "2", 1}})
+ * @param  num_items        number of items in TXT data
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NO_MEM memory error
+ *     - ESP_FAIL failed to add service
+ */
+esp_err_t mdns_service_add_for_host_with_explicit_txt_item_value_len(const char *instance_name, const char *service_type, const char *proto,
+                                                                     const char *hostname, uint16_t port, mdns_txt_item_with_value_len_t txt[], size_t num_items);
+
+/**
  * @brief  Check whether a service has been added.
  *
  * @param  service_type     service type (_http, _ftp, etc)
@@ -474,6 +543,45 @@ esp_err_t mdns_service_txt_set(const char *service_type, const char *proto, mdns
  */
 esp_err_t mdns_service_txt_set_for_host(const char *instance, const char *service_type, const char *proto, const char *hostname,
                                         mdns_txt_item_t txt[], uint8_t num_items);
+
+/**
+ * @brief  Replace all TXT items for service
+ *
+ * @note The value length of txt items should be configured in structures
+ *
+ * @param  service_type service type (_http, _ftp, etc)
+ * @param  proto        service protocol (_tcp, _udp)
+ * @param  txt          array of TXT data with value length (eg. {{"var", "val", 3},{"other", "2", 1}})
+ * @param  num_items    number of items in TXT data
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NOT_FOUND Service not found
+ *     - ESP_ERR_NO_MEM memory error
+ */
+esp_err_t mdns_service_txt_set_with_explicit_txt_item_value_len(const char *service_type, const char *proto, mdns_txt_item_with_value_len_t txt[], uint8_t num_items);
+
+/**
+ * @brief  Replace all TXT items for service with hostname
+ *
+ * @note The value length of txt items should be configured in structures
+ *
+ * @param  instance     instance name
+ * @param  service_type service type (_http, _ftp, etc)
+ * @param  proto        service protocol (_tcp, _udp)
+ * @param  hostname     service hostname. If NULL, local hostname will be used.
+ * @param  txt          array of TXT data with value length (eg. {{"var", "val", 3},{"other", "2", 1}})
+ * @param  num_items    number of items in TXT data
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ *     - ESP_ERR_NOT_FOUND Service not found
+ *     - ESP_ERR_NO_MEM memory error
+ */
+esp_err_t mdns_service_txt_set_for_host_with_explicit_txt_item_value_len(const char *instance, const char *service_type, const char *proto, const char *hostname,
+                                                                         mdns_txt_item_with_value_len_t txt[], uint8_t num_items);
 
 /**
  * @brief  Set/Add TXT item for service TXT record
