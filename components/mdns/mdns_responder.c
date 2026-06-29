@@ -302,6 +302,53 @@ static mdns_txt_linked_item_t *allocate_txt(size_t num_items, mdns_txt_item_t tx
 }
 
 /**
+ * @brief  creates/allocates new text item list with value length
+ * @param  num_items     service number of txt items or 0
+ * @param  txt           service txt items with value length array or NULL
+ *
+ * @return pointer to the linked txt item list or NULL
+ */
+static mdns_txt_linked_item_t *allocate_txt_with_len(size_t num_items, mdns_txt_item_with_len_t txt[])
+{
+    mdns_txt_linked_item_t *new_txt = NULL;
+    size_t i = 0;
+    if (num_items) {
+        for (i = 0; i < num_items; i++) {
+            mdns_txt_linked_item_t *new_item = (mdns_txt_linked_item_t *)mdns_mem_malloc(sizeof(mdns_txt_linked_item_t));
+            if (!new_item) {
+                HOOK_MALLOC_FAILED;
+                break;
+            }
+            new_item->key = mdns_mem_strdup(txt[i].key);
+            if (!new_item->key) {
+                mdns_mem_free(new_item);
+                break;
+            }
+
+            // Value is copied according to given value length
+            // 要+1吗，后面需要测试一下（包括mechcop里的alloc_txt_list）
+            if (txt[i].value) {
+                new_item->value = (char *)malloc(txt[i].value_len + 1);
+                if (!new_item->value) {
+                    mdns_mem_free((char *)new_item->key);
+                    mdns_mem_free(new_item);
+                    break;
+                }
+                memcpy(new_item->value, txt[i].value, txt[i].value_len);
+                new_item->value[txt[i].value_len] = '\0';
+                new_item->value_len = txt[i].value_len;
+            } else {
+                new_item->value = NULL;
+                new_item->value_len = 0;
+            }
+            new_item->next = new_txt;
+            new_txt = new_item;
+        }
+    }
+    return new_txt;
+}
+
+/**
  * @brief Deallocate the txt linked list
  * @param txt pointer to the txt pointer to free, noop if txt==NULL
  */
@@ -340,6 +387,71 @@ static mdns_service_t *create_service(const char *service, const char *proto, co
     }
 
     mdns_txt_linked_item_t *new_txt = allocate_txt(num_items, txt);
+    if (num_items && new_txt == NULL) {
+        goto fail;
+    }
+
+    s->priority = 0;
+    s->weight = 0;
+    s->instance = instance ? mdns_mem_strndup(instance, MDNS_NAME_BUF_LEN - 1) : NULL;
+    s->txt = new_txt;
+    s->port = port;
+    s->subtype = NULL;
+
+    if (hostname) {
+        s->hostname = mdns_mem_strndup(hostname, MDNS_NAME_BUF_LEN - 1);
+        if (!s->hostname) {
+            goto fail;
+        }
+    } else {
+        s->hostname = NULL;
+    }
+
+    s->service = mdns_mem_strndup(service, MDNS_NAME_BUF_LEN - 1);
+    if (!s->service) {
+        goto fail;
+    }
+
+    s->proto = mdns_mem_strndup(proto, MDNS_NAME_BUF_LEN - 1);
+    if (!s->proto) {
+        goto fail;
+    }
+    return s;
+
+fail:
+    free_linked_txt(s->txt);
+    mdns_mem_free((char *)s->instance);
+    mdns_mem_free((char *)s->service);
+    mdns_mem_free((char *)s->proto);
+    mdns_mem_free((char *)s->hostname);
+    mdns_mem_free(s);
+
+    return NULL;
+}
+
+/**
+ * @brief  creates/allocates new service using txt items with value length
+ * @param  service       service type
+ * @param  proto         service proto
+ * @param  hostname      service hostname
+ * @param  port          service port
+ * @param  instance      service instance
+ * @param  num_items     service number of txt items with calue length or 0
+ * @param  txt           array of service txt items with value length or NULL
+ *
+ * @return pointer to the service or NULL on error
+ */
+static mdns_service_t *create_service_with_len(const char *service, const char *proto, const char *hostname,
+                                      uint16_t port, const char *instance, size_t num_items,
+                                      mdns_txt_item_with_len_t txt[])
+{
+    mdns_service_t *s = (mdns_service_t *)mdns_mem_calloc(1, sizeof(mdns_service_t));
+    if (!s) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+
+    mdns_txt_linked_item_t *new_txt = allocate_txt_with_len(num_items, txt);
     if (num_items && new_txt == NULL) {
         goto fail;
     }
@@ -815,6 +927,57 @@ esp_err_t mdns_service_add(const char *instance, const char *service, const char
     return mdns_service_add_for_host(instance, service, proto, NULL, port, txt, num_items);
 }
 
+esp_err_t mdns_service_add_for_host_with_len(const char *instance, const char *service, const char *proto, const char *host,
+                                    uint16_t port, mdns_txt_item_with_len_t txt[], size_t num_items)
+{
+    if (!s_server || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto) || !s_server->hostname) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    mdns_priv_service_lock();
+    esp_err_t ret = ESP_OK;
+    const char *hostname = host ? host : s_server->hostname;
+    mdns_service_t *s = NULL;
+
+    ESP_GOTO_ON_FALSE(can_add_more_services(), ESP_ERR_NO_MEM, err, TAG,
+                      "Cannot add more services, please increase CONFIG_MDNS_MAX_SERVICES (%d)", CONFIG_MDNS_MAX_SERVICES);
+
+    mdns_srv_item_t *item = mdns_utils_get_service_item_instance(instance, service, proto, hostname);
+    ESP_GOTO_ON_FALSE(!item, ESP_ERR_INVALID_ARG, err, TAG, "Service already exists");
+
+    s = create_service_with_len(service, proto, hostname, port, instance, num_items, txt);
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NO_MEM, err, TAG, "Cannot create service: Out of memory");
+
+    item = (mdns_srv_item_t *)mdns_mem_malloc(sizeof(mdns_srv_item_t));
+    ESP_GOTO_ON_FALSE(item, ESP_ERR_NO_MEM, err, TAG, "Cannot create service: Out of memory");
+
+    item->service = s;
+    item->next = NULL;
+
+    item->next = s_server->services;
+    s_server->services = item;
+    mdns_priv_probe_all_pcbs(&item, 1, false, false);
+    mdns_priv_service_unlock();
+    return ESP_OK;
+
+err:
+    mdns_priv_service_unlock();
+    free_service(s);
+    if (ret == ESP_ERR_NO_MEM) {
+        HOOK_MALLOC_FAILED;
+    }
+    return ret;
+}
+
+esp_err_t mdns_service_add_with_len(const char *instance, const char *service, const char *proto, uint16_t port,
+                           mdns_txt_item_with_len_t txt[], size_t num_items)
+{
+    if (!s_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return mdns_service_add_for_host_with_len(instance, service, proto, NULL, port, txt, num_items);
+}
+
 bool mdns_service_exists(const char *service_type, const char *proto, const char *hostname)
 {
     bool ret = false;
@@ -1041,6 +1204,44 @@ esp_err_t mdns_service_txt_set(const char *service, const char *proto, mdns_txt_
         return ESP_ERR_INVALID_STATE;
     }
     return mdns_service_txt_set_for_host(NULL, service, proto, NULL, txt, num_items);
+}
+
+esp_err_t mdns_service_txt_set_for_host_with_len(const char *instance, const char *service, const char *proto, const char *host,
+                                        mdns_txt_item_with_len_t txt_items[], uint8_t num_items)
+{
+    mdns_priv_service_lock();
+    esp_err_t ret = ESP_OK;
+    const char *hostname = host ? host : s_server->hostname;
+    ESP_GOTO_ON_FALSE(s_server && s_server->services && !mdns_utils_str_null_or_empty(service) && !mdns_utils_str_null_or_empty(proto) && !(num_items && txt_items == NULL),
+                      ESP_ERR_INVALID_ARG, err, TAG, "Invalid state or arguments");
+    mdns_srv_item_t *s = mdns_utils_get_service_item_instance(instance, service, proto, hostname);
+    ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
+
+    mdns_txt_linked_item_t *new_txt = NULL;
+    if (num_items) {
+        new_txt = allocate_txt_with_len(num_items, txt_items);
+        if (!new_txt) {
+            return ESP_ERR_NO_MEM;
+        }
+    }
+    mdns_service_t *srv = s->service;
+    mdns_txt_linked_item_t *txt = srv->txt;
+    srv->txt = NULL;
+    free_linked_txt(txt);
+    srv->txt = new_txt;
+    announce_all_pcbs(&s, 1, false);
+
+err:
+    mdns_priv_service_unlock();
+    return ret;
+}
+
+esp_err_t mdns_service_txt_set_with_len(const char *service, const char *proto, mdns_txt_item_with_len_t txt[], uint8_t num_items)
+{
+    if (!s_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return mdns_service_txt_set_for_host_with_len(NULL, service, proto, NULL, txt, num_items);
 }
 
 esp_err_t mdns_service_txt_item_set_for_host_with_explicit_value_len(const char *instance, const char *service, const char *proto,
