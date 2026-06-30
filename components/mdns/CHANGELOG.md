@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.3](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.3)
+
+### Features
+
+- Add a structure and APIs for allocating TXT items with given value length ([234f9f00](https://github.com/espressif/esp-protocols/commit/234f9f00))
+
+### Bug Fixes
+
+- Fix potential browse null instance crash caught by fuzzer ([953c3a78](https://github.com/espressif/esp-protocols/commit/953c3a78))
+- fix deadlock caused by re-acquiring the service lock ([88c68330](https://github.com/espressif/esp-protocols/commit/88c68330))
+- free dropped TXT query results when max results reached ([f81720b7](https://github.com/espressif/esp-protocols/commit/f81720b7))
+
 ## [1.11.2](https://github.com/espressif/esp-protocols/commits/mdns-v1.11.2)
 
 ### Bug Fixes
