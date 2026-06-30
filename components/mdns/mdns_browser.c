@@ -76,7 +76,7 @@ static void browse_sync(mdns_browse_sync_t *browse_sync)
             queueDetach(mdns_result_t, browse->result, result);
             // Just free current result
             result->next = NULL;
-            mdns_query_results_free(result);
+            mdns_priv_query_results_free(result);
         }
         sync_result = sync_result->next;
     }

@@ -453,6 +453,6 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif)
             break;
         }
     }
-    mdns_priv_service_lock();
+    mdns_priv_service_unlock();
     return err;
 }
