@@ -994,11 +994,11 @@ esp_err_t esp_websocket_client_set_uri(esp_websocket_client_handle_t client, con
                 pass ++;
                 free(client->config->password);
                 client->config->password = strdup(pass);
-                ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->password, return ESP_ERR_NO_MEM);
+                ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->password, free(user_info); return ESP_ERR_NO_MEM);
             }
             free(client->config->username);
             client->config->username = strdup(user_info);
-            ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->username, return ESP_ERR_NO_MEM);
+            ESP_WS_CLIENT_MEM_CHECK(TAG, client->config->username, free(user_info); return ESP_ERR_NO_MEM);
             free(user_info);
         } else {
             return ESP_ERR_NO_MEM;
