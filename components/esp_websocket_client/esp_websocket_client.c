@@ -76,6 +76,7 @@ const static int STOPPED_BIT = BIT0;
 const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame was sent by the client
 // and we are waiting for the server to continue with clean close
 const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop has been requested
+const static int WAKEUP_BIT = BIT3;             // Wakes the reconnect wait early (e.g. on timeout change)
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
@@ -1316,7 +1317,7 @@ static void esp_websocket_client_task(void *pv)
             break;
         case WEBSOCKET_STATE_WAIT_TIMEOUT:
 
-            if (_tick_get_ms() - client->reconnect_tick_ms > client->wait_timeout_ms) {
+            if (_tick_get_ms() - client->reconnect_tick_ms >= (uint64_t)client->wait_timeout_ms) {
                 client->state = WEBSOCKET_STATE_INIT;
                 client->reconnect_tick_ms = _tick_get_ms();
                 ESP_LOGD(TAG, "Reconnecting...");
@@ -1385,8 +1386,13 @@ static void esp_websocket_client_task(void *pv)
                 ESP_LOGV(TAG, "Read poll timeout: skipping esp_transport_poll_read().");
             }
         } else if (WEBSOCKET_STATE_WAIT_TIMEOUT == client->state) {
-            // waiting for reconnection or a request to stop the client...
-            xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT, false, true, client->wait_timeout_ms / 2 / portTICK_PERIOD_MS);
+            xEventGroupClearBits(client->status_bits, WAKEUP_BIT);
+            uint64_t elapsed_ms = _tick_get_ms() - client->reconnect_tick_ms;
+            if (client->run && elapsed_ms < (uint64_t)client->wait_timeout_ms) {
+                uint32_t remaining_ms = (uint32_t)((uint64_t)client->wait_timeout_ms - elapsed_ms);
+                xEventGroupWaitBits(client->status_bits, REQUESTED_STOP_BIT | WAKEUP_BIT,
+                                    false, false, pdMS_TO_TICKS(remaining_ms) + 1);
+            }
         } else if (WEBSOCKET_STATE_CLOSING == client->state &&
                    (CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits))) {
             ESP_LOGD(TAG, " Waiting for TCP connection to be closed by the server");
@@ -1449,7 +1455,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         ESP_LOGE(TAG, "Error create websocket task");
         return ESP_FAIL;
     }
-    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT);
+    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT | WAKEUP_BIT);
     ESP_LOGI(TAG, "Started");
     return ESP_OK;
 }
@@ -1655,6 +1661,9 @@ esp_err_t esp_websocket_client_set_reconnect_timeout(esp_websocket_client_handle
     }
 
     client->wait_timeout_ms = reconnect_timeout_ms;
+    if (client->status_bits) {
+        xEventGroupSetBits(client->status_bits, WAKEUP_BIT);
+    }
 
     return ESP_OK;
 }
