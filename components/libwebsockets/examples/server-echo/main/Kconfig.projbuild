@@ -1,0 +1,12 @@
+menu "Example Configuration"
+    config WEBSOCKET_PORT
+        int "Websocket endpoint PORT"
+        default 80
+        help
+            Port of websocket endpoint this example connects to and sends echo
+    config WS_OVER_TLS
+        bool "Enable WebSocket over TLS with Server Certificate"
+        default y
+        help
+            Enables WebSocket connections over TLS (WSS)
+endmenu
