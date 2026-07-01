@@ -764,6 +764,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
         uint16_t recordIndex = 0;
 
         while (content < (data + len)) {
+            search_result = NULL;
+            browse_result = NULL;
 
             content = mdns_utils_parse_fqdn(data, content, name, len);
             if (!content) {
@@ -959,7 +961,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 uint16_t weight = mdns_utils_read_u16(data_ptr, MDNS_SRV_WEIGHT_OFFSET);
                 uint16_t port = mdns_utils_read_u16(data_ptr, MDNS_SRV_PORT_OFFSET);
 
-                if (browse_result) {
+                if (browse_result && !mdns_utils_str_null_or_empty(browse_result_instance)
+                        && !mdns_utils_str_null_or_empty(browse_result_service)
+                        && !mdns_utils_str_null_or_empty(browse_result_proto)) {
                     mdns_priv_browse_result_add_srv(browse_result, name->host, browse_result_instance,
                                                     browse_result_service,
                                                     browse_result_proto, port, packet->tcpip_if, packet->ip_protocol,
@@ -1037,7 +1041,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 size_t txt_count = 0;
 
                 mdns_result_t *result = NULL;
-                if (browse_result) {
+                if (browse_result && !mdns_utils_str_null_or_empty(browse_result_instance)
+                        && !mdns_utils_str_null_or_empty(browse_result_service)
+                        && !mdns_utils_str_null_or_empty(browse_result_proto)) {
                     result_txt_create(data_ptr, data_len, &txt, &txt_value_len, &txt_count);
                     mdns_priv_browse_result_add_txt(browse_result, browse_result_instance, browse_result_service,
                                                     browse_result_proto,

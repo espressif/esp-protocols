@@ -319,7 +319,9 @@ void mdns_priv_browse_result_add_ptr(mdns_browse_t *browse, const char *instance
                                      mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, uint32_t ttl,
                                      mdns_browse_sync_t *out_sync_browse)
 {
-    if (!browse || !out_sync_browse || out_sync_browse->browse != browse) {
+    if (!browse || !out_sync_browse || out_sync_browse->browse != browse
+            || mdns_utils_str_null_or_empty(instance) || mdns_utils_str_null_or_empty(service)
+            || mdns_utils_str_null_or_empty(proto)) {
         return;
     }
     mdns_result_t *r = browse->result;
@@ -593,12 +595,10 @@ void mdns_priv_browse_result_add_txt(mdns_browse_t *browse, const char *instance
                                      mdns_txt_item_t *txt, uint8_t *txt_value_len, size_t txt_count, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol,
                                      uint32_t ttl, mdns_browse_sync_t *out_sync_browse)
 {
-    if (out_sync_browse->browse == NULL) {
-        return;
-    } else {
-        if (out_sync_browse->browse != browse) {
-            return;
-        }
+    if (out_sync_browse->browse == NULL || out_sync_browse->browse != browse
+            || mdns_utils_str_null_or_empty(instance) || mdns_utils_str_null_or_empty(service)
+            || mdns_utils_str_null_or_empty(proto)) {
+        goto free_txt;
     }
     mdns_result_t *r = browse->result;
     while (r) {
@@ -660,11 +660,12 @@ void mdns_priv_browse_result_add_txt(mdns_browse_t *browse, const char *instance
     r->service_type = mdns_mem_strdup(service);
     r->proto = mdns_mem_strdup(proto);
     if (!r->instance_name || !r->service_type || !r->proto) {
+        HOOK_MALLOC_FAILED;
         mdns_mem_free(r->instance_name);
         mdns_mem_free(r->service_type);
         mdns_mem_free(r->proto);
         mdns_mem_free(r);
-        return;
+        goto free_txt;
     }
     r->txt = txt;
     r->txt_value_len = txt_value_len;
@@ -718,13 +719,19 @@ void mdns_priv_browse_result_add_srv(mdns_browse_t *browse, const char *hostname
             return;
         }
     }
+    if (mdns_utils_str_null_or_empty(instance) || mdns_utils_str_null_or_empty(service)
+            || mdns_utils_str_null_or_empty(proto)) {
+        return;
+    }
     mdns_result_t *r = browse->result;
     while (r) {
         if (r->esp_netif == mdns_priv_get_esp_netif(tcpip_if) && r->ip_protocol == ip_protocol &&
                 !mdns_utils_str_null_or_empty(r->instance_name) && !strcasecmp(instance, r->instance_name) &&
                 !mdns_utils_str_null_or_empty(r->service_type) && !strcasecmp(service, r->service_type) &&
                 !mdns_utils_str_null_or_empty(r->proto) && !strcasecmp(proto, r->proto)) {
-            if (mdns_utils_str_null_or_empty(r->hostname) || strcasecmp(hostname, r->hostname)) {
+            if (mdns_utils_str_null_or_empty(r->hostname)
+                    || mdns_utils_str_null_or_empty(hostname)
+                    || strcasecmp(hostname, r->hostname)) {
                 mdns_mem_free((char *)r->hostname);
                 r->hostname = mdns_mem_strdup(hostname);
                 r->port = port;
