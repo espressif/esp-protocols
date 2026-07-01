@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.3.3~3](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_3)
+
+### Features
+
+- Bump libwebsockets submodule to warmcat main, which includes mbedTLS 4 support and the FreeRTOS/ESP-IDF v6 build fixes
+- Allow building with IDF v6.0 (ships mbedTLS 4 by default)
+- Force lws's mbedTLS 4 code path on IDF: lws's own V4 probe is skipped on FreeRTOS, so detect the version from the IDF mbedtls component and inject the tf-psa-crypto include dirs when present
+
 ## [4.3.3~2](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_2)
 
 ### Features

@@ -7,3 +7,4 @@ Warning: Deprecated: Command 'extract_public_key' is deprecated. Use 'extract-pu
 warning: unknown kconfig symbol 'EXAMPLE_ETH_PHY_IP101'
 WARNING: The following Kconfig variables were used in "if" clauses, but not
 warning: unknown kconfig symbol 'LIBC_NEWLIB'
+warning: 'MBEDTLS_PSA_BUILTIN_[A-Z0-9_]+' redefined
