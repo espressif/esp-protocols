@@ -413,7 +413,7 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
 
         case UrcConsumeResult::CONSUME_ALL:
             // Consume entire buffer
-            dte->buffer_state.last_urc_processed = consumed + len;
+            dte->buffer_state.last_urc_processed = 0;
             return true;  // Signal buffer consumption
         }
     }
