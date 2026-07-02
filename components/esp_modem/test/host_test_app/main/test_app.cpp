@@ -7,6 +7,7 @@
 #include <memory>
 #include <cstdlib>
 #include <unistd.h>
+#include <string_view>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include "cxx_include/esp_modem_api.hpp"
@@ -16,6 +17,65 @@
 #include "vfs_resource/vfs_create.hpp"
 
 using namespace esp_modem;
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+namespace {
+
+struct UrcTestState {
+    int urc_lines = 0;
+    bool saw_discard_urc = false;
+    bool post_consume_all_valid = false;
+};
+
+static UrcTestState urc_state;
+
+static DTE::UrcConsumeInfo handle_enhanced_urc(const DTE::UrcBufferInfo &info)
+{
+    if (info.new_data_size > info.buffer_total_size) {
+        return {DTE::UrcConsumeResult::CONSUME_NONE, 0};
+    }
+
+    std::string_view buf(reinterpret_cast<const char *>(info.buffer_start), info.buffer_total_size);
+
+    if (buf.find("+URCTEST: discard") != std::string_view::npos) {
+        urc_state.saw_discard_urc = true;
+        return {DTE::UrcConsumeResult::CONSUME_ALL, 0};
+    }
+
+    if (urc_state.saw_discard_urc && info.processed_offset == 0 && info.new_data_size > 0) {
+        urc_state.post_consume_all_valid = true;
+    }
+
+    size_t start = info.processed_offset;
+    while (start < info.buffer_total_size) {
+        size_t line_end = buf.find('\n', start);
+        if (line_end == std::string_view::npos) {
+            return {DTE::UrcConsumeResult::CONSUME_NONE, 0};
+        }
+
+        std::string_view line = buf.substr(start, line_end - start + 1);
+        if (line.rfind("+URCTEST:", 0) == 0) {
+            urc_state.urc_lines++;
+            size_t consume_size = line_end + 1 - info.processed_offset;
+            return {DTE::UrcConsumeResult::CONSUME_PARTIAL, consume_size};
+        }
+        start = line_end + 1;
+    }
+
+    return {DTE::UrcConsumeResult::CONSUME_NONE, 0};
+}
+
+static command_result wait_for_ok(uint8_t *data, size_t len)
+{
+    std::string_view resp(reinterpret_cast<char *>(data), len);
+    if (resp.find("OK") != std::string_view::npos) {
+        return command_result::OK;
+    }
+    return command_result::TIMEOUT;
+}
+
+} // namespace
+#endif
 
 [[maybe_unused]] constexpr auto TAG = "host_test_app";
 
@@ -99,6 +159,33 @@ TEST_CASE("AT commands via socket", "[esp_modem][at]")
         CHECK(pin_ok == true);
     }
 }
+
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+TEST_CASE("Enhanced URC via socket", "[esp_modem][urc]")
+{
+    urc_state = {};
+
+    auto dte = create_test_dte();
+    REQUIRE(dte != nullptr);
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("internet");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    REQUIRE(dce != nullptr);
+    dce->set_enhanced_urc(handle_enhanced_urc);
+
+    SECTION("URC before command response") {
+        CHECK(dce->command("AT+URCTEST0\r", wait_for_ok, 5000) == command_result::OK);
+        CHECK(urc_state.urc_lines == 1);
+    }
+
+    SECTION("CONSUME_ALL resets buffer offset") {
+        CHECK(dce->command("AT+URCTEST1\r", wait_for_ok, 5000) == command_result::OK);
+        CHECK(urc_state.saw_discard_urc);
+        CHECK(urc_state.post_consume_all_valid);
+    }
+}
+#endif
 
 int main(int argc, char *argv[])
 {
