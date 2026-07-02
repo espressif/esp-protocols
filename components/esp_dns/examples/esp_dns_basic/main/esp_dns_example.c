@@ -31,6 +31,9 @@
 
 #define TAG "example_esp_dns"
 
+/* DoH runs TLS + esp_http_client on the caller task; 4 KB overflows on IDF 6.x */
+#define ADDR_INFO_TASK_STACK_SIZE   (8 * 1024)
+
 extern const char server_root_cert_pem_start[] asm("_binary_cert_google_root_pem_start");
 extern const char server_root_cert_pem_end[]   asm("_binary_cert_google_root_pem_end");
 
@@ -137,7 +140,7 @@ static void run_dns_query_task(void)
 {
     TaskHandle_t task_handle = NULL;
     TaskHandle_t parent_handle = xTaskGetCurrentTaskHandle();
-    xTaskCreate(addr_info_task, "AddressInfo", 4 * 1024, parent_handle, 5, &task_handle);
+    xTaskCreate(addr_info_task, "AddressInfo", ADDR_INFO_TASK_STACK_SIZE, parent_handle, 5, &task_handle);
 
     /* Wait for task to complete */
     if (task_handle != NULL) {
@@ -225,8 +228,15 @@ void perform_esp_dns_dot_query(char *val_type)
 
     if (strcmp(val_type, "cert") == 0) {
         dot_config.tls_config.cert_pem = server_root_cert_pem_start;
+        dot_config.tls_config.crt_bundle_attach = NULL;
     } else if (strcmp(val_type, "bndl") == 0) {
+        dot_config.tls_config.cert_pem = NULL;
+#if defined(CONFIG_MBEDTLS_CERTIFICATE_BUNDLE)
         dot_config.tls_config.crt_bundle_attach = esp_crt_bundle_attach;
+#else
+        ESP_LOGW(TAG, "Certificate bundle not enabled; skipping DoT bundle test");
+        return;
+#endif
     }
 
     /* Initialize DoT DNS module */
@@ -259,14 +269,21 @@ void perform_esp_dns_doh_query(char *val_type)
         .port = ESP_DNS_DEFAULT_DOH_PORT,
 
         .protocol_config.doh_config = {
-            .url_path = "/dns-query",
+            .url_path = "dns-query",
         },
     };
 
     if (strcmp(val_type, "cert") == 0) {
         doh_config.tls_config.cert_pem = server_root_cert_pem_start;
+        doh_config.tls_config.crt_bundle_attach = NULL;
     } else if (strcmp(val_type, "bndl") == 0) {
+        doh_config.tls_config.cert_pem = NULL;
+#if defined(CONFIG_MBEDTLS_CERTIFICATE_BUNDLE)
         doh_config.tls_config.crt_bundle_attach = esp_crt_bundle_attach;
+#else
+        ESP_LOGW(TAG, "Certificate bundle not enabled; skipping DoH bundle test");
+        return;
+#endif
     }
 
     /* Initialize DoH DNS module */

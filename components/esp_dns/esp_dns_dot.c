@@ -173,7 +173,14 @@ err_t dns_resolve_dot(const esp_dns_handle_t handle, const char *name, ip_addr_t
                              dot_buffer,
                              sizeof(dot_buffer),
                              timeout_ms);
-    if (len > 0) {
+    if (len >= 2 + sizeof(dns_header_t)) {
+        size_t expected_len = ((uint8_t)dot_buffer[0] << 8) | (uint8_t)dot_buffer[1];
+        if (expected_len > len - 2) {
+            ESP_LOGE(TAG, "Incomplete DNS response");
+            err = ERR_ABRT;
+            goto cleanup;
+        }
+
         /* Skip the 2-byte length field that prepends DNS messages as required by RFC 7858 */
         handle->response_buffer.buffer = dot_buffer + 2;
         handle->response_buffer.length = len - 2;
@@ -190,7 +197,7 @@ err_t dns_resolve_dot(const esp_dns_handle_t handle, const char *name, ip_addr_t
             goto cleanup;
         }
     } else {
-        ESP_LOGE(TAG, "Failed to receive response");
+        ESP_LOGE(TAG, "Failed to receive response or response too small");
         err = ERR_ABRT;
         goto cleanup;
     }
