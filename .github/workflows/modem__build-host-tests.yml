@@ -108,8 +108,7 @@ jobs:
           cd components/esp_modem
           find examples/ -type f -regex '.*/generate/.*\.\(hpp\|cpp\)' -exec ./scripts/generate.sh {} \;
           ./scripts/generate.sh
-          git diff --name-only
-          git diff --quiet
+          ./scripts/check_generated_compat.sh
 
   build_host_test_app:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
