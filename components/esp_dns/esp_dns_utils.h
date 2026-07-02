@@ -70,15 +70,12 @@ typedef struct {
 /** Maximum number of answers that can be stored */
 #define MAX_ANSWERS (CONFIG_LWIP_DNS_MAX_HOST_IP)
 
-#define ESP_DNS_BUFFER_SIZE 512
+/** Maximum number of resource records to scan in a response */
+#ifndef ESP_DNS_MAX_ANSWER_SCAN
+#define ESP_DNS_MAX_ANSWER_SCAN 16
+#endif
 
-/**
- * @brief Structure to store a single DNS answer
- */
-typedef struct {
-    err_t status;      /* Status of the answer */
-    ip_addr_t ip;      /* IP address from the answer */
-} dns_answer_storage_t;
+#define ESP_DNS_BUFFER_SIZE 512
 
 /**
  * @brief Structure to store a complete DNS response
@@ -87,7 +84,7 @@ typedef struct {
     err_t status_code;           /* Overall status of the DNS response */
     uint16_t id;                 /* Transaction ID */
     int num_answers;             /* Number of valid answers */
-    dns_answer_storage_t answers[MAX_ANSWERS];  /* Array of answers */
+    ip_addr_t answers[MAX_ANSWERS];  /* Array of IP addresses */
 } dns_response_t;
 
 /**
@@ -122,17 +119,18 @@ size_t esp_dns_create_query(uint8_t *buffer, size_t buffer_size, const char *hos
 void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_t *dns_response);
 
 /**
- * @brief Converts a dns_response_t to an array of IP addresses.
+ * @brief Copies parsed IP addresses from a DNS response to an array.
  *
- * This function iterates over the DNS response and extracts valid
- * IPv4 and IPv6 addresses, storing them in the provided array.
+ * This function retrieves the valid IPv4 and IPv6 addresses that were
+ * previously parsed and stored in the DNS response structure, copying
+ * them into the provided array.
  *
- * @param response The DNS response to process.
- * @param ipaddr An array to store the extracted IP addresses.
+ * @param response The parsed DNS response
+ * @param ipaddr Array to store the copied IP addresses
  *
- * @return err Status of dns response parsing
+ * @return err_t ERR_OK on success, or an error code from the response
  */
-err_t esp_dns_extract_ip_addresses_from_response(const dns_response_t *response, ip_addr_t ipaddr[]);
+err_t esp_dns_get_ips_from_response(const dns_response_t *response, ip_addr_t ipaddr[]);
 
 #ifdef __cplusplus
 }
