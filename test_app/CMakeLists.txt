@@ -7,7 +7,6 @@ include($ENV{IDF_PATH}/tools/cmake/version.cmake)
 set(EXTRA_COMPONENT_DIRS
     ../components/eppp_link
     ../components/esp_modem
-    ../components/esp_mqtt_cxx
     ../components/esp_websocket_client
     ../components/console_cmd_ifconfig
     ../components/console_cmd_ping
@@ -15,7 +14,6 @@ set(EXTRA_COMPONENT_DIRS
     ../components/console_simple_init
     ../components/mbedtls_cxx
     ../components/sock_utils
-    ../components/libwebsockets
     ../components/mdns)
 
 
