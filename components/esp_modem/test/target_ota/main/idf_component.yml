@@ -5,7 +5,6 @@ dependencies:
     override_path: ../../..
   espressif/mbedtls_cxx:
     version: '*'
-    override_path: ../../../../mbedtls_cxx
   idf:
     version: '>=4.1.0'
   espressif/mqtt:
