@@ -1,0 +1,27 @@
+menu "ESP DNS"
+
+    config ESP_DNS_MAX_ANSWER_SCAN
+        int "Maximum resource records to scan per DNS response"
+        range 1 128
+        default 16
+        help
+            Maximum number of answer-section resource records to walk when parsing
+            a DNS response. This limit is independent of MAX_ANSWERS (fixed at 1
+            until the lwIP external-resolve hook passes addr_cnt).
+
+            Increase this value for long CNAME chains or responses with many
+            non-address records before the desired A/AAAA records.
+
+    config ESP_DNS_BUFFER_SIZE
+        int "DNS response/query buffer size in bytes"
+        range 512 4096
+        default 512
+        help
+            Size of stack buffers used for DNS queries and responses in TCP,
+            DNS-over-TLS, and DNS-over-HTTPS paths. The default of 512 bytes
+            matches the traditional DNS UDP message size limit from RFC 1035.
+
+            Increase this value if you expect larger responses (for example
+            with EDNS0), keeping in mind the impact on task stack usage.
+
+endmenu
