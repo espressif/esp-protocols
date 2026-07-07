@@ -25,7 +25,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(sync, command_result, 0) \
     \
 /**
  * @brief Reads the operator name
- * @param[out] name operator name
+ * @param[out] name operator name; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[out] act access technology
  * @return OK, FAIL or TIMEOUT
  */ \
@@ -47,7 +47,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_pin, command_result, 1, STRING_IN(p1, pin)) \
 /**
  * @brief Execute the supplied AT command in raw mode (doesn't append '\r' to command, returns everything)
  * @param[in] cmd String command that's send to DTE
- * @param[out] out Raw output from DTE
+ * @param[out] out Raw output from DTE; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[in] pass Pattern in response for the API to return OK
  * @param[in] fail Pattern in response for the API to return FAIL
  * @param[in] timeout AT command timeout in milliseconds
@@ -58,7 +58,7 @@ ESP_MODEM_DECLARE_DCE_COMMAND(at_raw, command_result, 5, STRING_IN(p1, cmd), STR
 /**
  * @brief Execute the supplied AT command
  * @param[in] cmd AT command
- * @param[out] out Command output string
+ * @param[out] out Command output string; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @param[in] timeout AT command timeout in milliseconds
  * @return OK, FAIL or TIMEOUT
  */\
@@ -126,21 +126,21 @@ ESP_MODEM_DECLARE_DCE_COMMAND(set_cmux, command_result, 0) \
     \
 /**
  * @brief Reads the IMSI number
- * @param[out] imsi Module's IMSI number
+ * @param[out] imsi Module's IMSI number; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_imsi, command_result, 1, STRING_OUT(p1, imsi)) \
     \
 /**
  * @brief Reads the IMEI number
- * @param[out] imei Module's IMEI number
+ * @param[out] imei Module's IMEI number; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_imei, command_result, 1, STRING_OUT(p1, imei)) \
     \
 /**
  * @brief Reads the module name
- * @param[out] name module name
+ * @param[out] name module name; must point to a buffer of at least @c ESP_MODEM_C_API_STR_BUF_SIZE bytes
  * @return OK, FAIL or TIMEOUT
  */ \
 ESP_MODEM_DECLARE_DCE_COMMAND(get_module_name, command_result, 1, STRING_OUT(p1, name)) \

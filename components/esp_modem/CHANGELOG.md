@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.3](https://github.com/espressif/esp-protocols/commits/modem-v1.4.3)
+
+### Bug Fixes
+
+- Truncate C-API out buffer len to API_STR_MAX ([d9f96c17](https://github.com/espressif/esp-protocols/commit/d9f96c17))
+
+### Updated
+
+- ci(modem): Replace MQTT client with simple ping command ([d775b449](https://github.com/espressif/esp-protocols/commit/d775b449))
+- ci(modem): Use mbedtls-cxx deps from the registry ([9aae31df](https://github.com/espressif/esp-protocols/commit/9aae31df))
+- ci(modem): Use large app partition in examples ([c539932e](https://github.com/espressif/esp-protocols/commit/c539932e))
+- ci(common): backport CI fixes before modem-v1.4 release ([362d059c](https://github.com/espressif/esp-protocols/commit/362d059c))
+- ci(modem): Update test app for IDFv6.2 (removed signal definition) ([d481161a](https://github.com/espressif/esp-protocols/commit/d481161a))
+- ci(modem): Update example to use optional mqtt deps ([2cef4cdd](https://github.com/espressif/esp-protocols/commit/2cef4cdd))
+
 ## [1.4.2](https://github.com/espressif/esp-protocols/commits/modem-v1.4.2)
 
 ### Bug Fixes

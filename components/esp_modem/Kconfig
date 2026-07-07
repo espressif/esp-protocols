@@ -69,6 +69,9 @@ menu "esp-modem"
         help
             Some AT commands returns textual values which C-API copy as c-string to user allocated space,
             it also truncates the output data to this size. Increase this if some AT answers are truncated.
+            Callers of esp_modem_get_imsi(), esp_modem_get_imei(), esp_modem_get_operator_name(),
+            esp_modem_get_module_name(), esp_modem_at(), and esp_modem_at_raw() must allocate output
+            buffers of at least this many bytes (see ESP_MODEM_C_API_STR_BUF_SIZE).
 
     config ESP_MODEM_URC_HANDLER
         bool "Enable support for adding URC handler"

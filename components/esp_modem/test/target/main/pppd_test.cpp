@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -121,20 +121,4 @@ TEST_CASE("Disconnection test", "[esp_modem]")
     modem_stop_network();
     EventBits_t b = xEventGroupWaitBits(event_group, 2, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
     CHECK(b == 2);
-}
-
-
-extern "C" {
-
-    static void handle(int nr)
-    {
-        ESP_LOGE(TAG, "Signal handler %d", nr);
-    }
-
-    _sig_func_ptr signal (int nr, _sig_func_ptr)
-    {
-        return handle;
-    }
-
-
 }
