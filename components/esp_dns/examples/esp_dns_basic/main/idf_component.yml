@@ -1,8 +1,7 @@
 dependencies:
   idf:
-    version: ">=5.1"
-  protocol_examples_common:
-    path: ${IDF_PATH}/examples/common_components/protocol_examples_common
+    version: ">=5.4.3"
+  espressif/net_connect: "^0.1.1"
   esp_dns:
     version: "*"
     override_path: '../../../'
