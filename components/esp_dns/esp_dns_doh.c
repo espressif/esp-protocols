@@ -160,7 +160,8 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
                 /* Parse the DNS response */
                 esp_dns_parse_response((uint8_t *)response_buffer->buffer,
                                        response_buffer->length,
-                                       &response_buffer->dns_response);
+                                       &response_buffer->dns_response,
+                                       response_buffer->max_ips);
             } else {
                 ESP_LOGE(TAG, "DNS response too small");
                 response_buffer->dns_response.status_code = ERR_VAL;
@@ -198,11 +199,12 @@ esp_err_t esp_dns_http_event_handler(esp_http_client_event_t *evt)
  * @param handle Pointer to the DNS handle
  * @param name The hostname to resolve
  * @param addr Pointer to store the resolved IP addresses
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype The address RR type (A or AAAA)
  *
  * @return ERR_OK on success, or an error code on failure
  */
-err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype)
+err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype)
 {
     uint8_t buffer_qry[ESP_DNS_BUFFER_SIZE];
 
@@ -210,6 +212,11 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
     err_t err = ERR_OK;
     const char *prefix = "https://";
     response_buffer_t response_buffer;
+    u8_t max_ips = esp_dns_clamp_addr_cnt(addr_cnt);
+
+    if (addr == NULL || max_ips == 0) {
+        return ERR_ARG;
+    }
 
     /* Set default values for DoH configuration if not specified */
     const char *url_path = handle->config.protocol_config.doh_config.url_path ?
@@ -252,6 +259,7 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
 
     /* Keep response state local to this lookup so concurrent queries do not collide. */
     memset(&response_buffer, 0, sizeof(response_buffer_t));
+    response_buffer.max_ips = max_ips;
 
     /* Create DNS query in wire format */
     size_t query_size = esp_dns_create_query(buffer_qry, sizeof(buffer_qry), name, rrtype, &response_buffer.dns_response.id);
@@ -300,7 +308,7 @@ err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t
         }
 
         /* Extract IP addresses from DNS response */
-        err = esp_dns_extract_ip_addresses_from_response(&response_buffer.dns_response, addr);
+        err = esp_dns_get_ips_from_response(&response_buffer.dns_response, addr, max_ips);
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(ret));
         err = ERR_VAL;

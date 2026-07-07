@@ -70,45 +70,49 @@ int esp_dns_cleanup(esp_dns_handle_t handle);
  *
  * @param handle DNS module handle
  * @param name Hostname to resolve
- * @param addr Pointer to store resolved IP address
+ * @param addr Pointer to store resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype Record type (A or AAAA)
  *
  * @return err_t Error code
  */
-err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype);
+err_t dns_resolve_doh(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype);
 
 /**
  * @brief Resolve hostname using DNS over TLS
  *
  * @param handle DNS module handle
  * @param name Hostname to resolve
- * @param addr Pointer to store resolved IP address
+ * @param addr Pointer to store resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype Record type (A or AAAA)
  *
  * @return err_t Error code
  */
-err_t dns_resolve_dot(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype);
+err_t dns_resolve_dot(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype);
 
 /**
  * @brief Resolve hostname using TCP DNS
  *
  * @param handle DNS module handle
  * @param name Hostname to resolve
- * @param addr Pointer to store resolved IP address
+ * @param addr Pointer to store resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype Record type (A or AAAA)
  *
  * @return err_t Error code
  */
-err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype);
+err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype);
 
 /**
  * @brief Resolve hostname using UDP DNS
  *
  * @param handle DNS module handle
  * @param name Hostname to resolve
- * @param addr Pointer to store resolved IP address
+ * @param addr Pointer to store resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype Record type (A or AAAA)
  *
  * @return err_t Error code
  */
-err_t dns_resolve_udp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype);
+err_t dns_resolve_udp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype);
