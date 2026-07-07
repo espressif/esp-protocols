@@ -63,10 +63,11 @@ See the Getting Started Guide for full steps to configure and use ESP-IDF to bui
   Ensure that the network connection details are accurate. For example, verify the Wi-Fi SSID and password or check that the Ethernet connection is secure and not faulty.
 
 * **Memory Issues**:
-  If you encounter memory-related errors, check the system information output which displays free heap and stack high water mark. You may need to increase task stack sizes for more complex DNS operations.
+  If you encounter memory-related errors, check the system information output which displays free heap and stack high water mark. You may need to increase task stack sizes for more complex DNS operations. The `getaddrinfo()` worker stack is configurable via menuconfig (**Example Configuration → getaddrinfo worker task stack size**); default is 8192 bytes.
 
 * **Certificate Issues**:
   For DoT and DoH protocols, ensure that the certificates are valid for the DNS server you're using. The example includes Google DNS certificates, but these may need to be updated if they expire.
+  Cross-signed chain verification is enabled by default in this example's `sdkconfig.defaults` (`CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y`). If you still see `No matching trusted root certificate found` with the certificate bundle, confirm that option is present in your active `sdkconfig`. To opt out, remove it from `sdkconfig.defaults` or disable it in menuconfig (**Component config → mbedTLS → Certificate Bundle → Support cross-signed certificate verification**).
 
 ## Example Output
 
