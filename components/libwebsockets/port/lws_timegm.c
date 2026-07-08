@@ -20,7 +20,9 @@ static int lws_is_leap(int y)
     return ((y % 4 == 0) && (y % 100 != 0)) || (y % 400 == 0);
 }
 
-time_t timegm(struct tm *tm)
+/* weak: if a future picolibc/newlib exports a linkable timegm(), the libc one
+ * wins and this definition is discarded — no multiple-definition error. */
+__attribute__((weak)) time_t timegm(struct tm *tm)
 {
     static const int mdays_cum[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 

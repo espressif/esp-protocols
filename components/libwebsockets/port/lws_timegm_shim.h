@@ -13,7 +13,9 @@
 #pragma once
 #include <time.h>
 
-#ifndef __ESP_LWS_TIMEGM_DECLARED
-#define __ESP_LWS_TIMEGM_DECLARED
+/* Only the ESP libc (picolibc/newlib) hides timegm()'s prototype behind BSD/GNU
+ * visibility; declare it for those. A libc that already declares it (e.g. glibc)
+ * needs no redeclaration. `#pragma once` already guards double-inclusion. */
+#if defined(__PICOLIBC__) || defined(__NEWLIB__)
 time_t timegm(struct tm *__tp);
 #endif
