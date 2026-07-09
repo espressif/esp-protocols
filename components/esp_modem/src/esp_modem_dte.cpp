@@ -61,6 +61,28 @@ DTE::DTE(std::unique_ptr<Terminal> t, std::unique_ptr<Terminal> s)
 }
 
 
+DTE::~DTE()
+{
+    // The terminals' RX tasks invoke read/error callbacks that capture this DTE (and reference
+    // command_cb.line_lock). Members are destroyed after this body runs, and command_cb is
+    // destroyed first of all (declared last), so we must guarantee no callback can fire into a
+    // half-destroyed DTE.
+    //
+    // stop() quiesces the RX task (for CMUX, CMuxInstance::stop() forwards to the physical
+    // terminal); clearing the callbacks afterwards is synchronized against the RX task, so once
+    // these return no callback is in flight and none will start.
+    if (primary_term) {
+        primary_term->stop();
+        primary_term->set_read_cb(nullptr);
+        primary_term->set_error_cb(nullptr);
+    }
+    if (secondary_term && secondary_term != primary_term) {
+        secondary_term->stop();
+        secondary_term->set_read_cb(nullptr);
+        secondary_term->set_error_cb(nullptr);
+    }
+}
+
 void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {

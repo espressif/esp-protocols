@@ -45,11 +45,13 @@ public:
 
     void set_error_cb(std::function<void(terminal_error)> f)
     {
+        Scoped<Lock> l(cb_lock);
         on_error = std::move(f);
     }
 
     virtual void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f)
     {
+        Scoped<Lock> l(cb_lock);
         on_read = std::move(f);
     }
 
@@ -74,6 +76,14 @@ public:
     virtual void stop() = 0;
 
 protected:
+    /**
+     * @brief Serializes (re)assignment of on_read/on_error (set_read_cb/set_error_cb) against their
+     * invocation by the terminal's RX task. Recursive, so a callback may re-enter set_read_cb()
+     * (e.g. DTE clears its own read callback from within the callback). Holding this lock while
+     * clearing a callback guarantees no callback is in flight afterwards, which is what makes it
+     * safe to tear down the state the callback captures.
+     */
+    Lock cb_lock{};
     std::function<bool(uint8_t *data, size_t len)> on_read;
     std::function<void(terminal_error)> on_error;
 };

@@ -49,7 +49,7 @@ class CMux {
 public:
     explicit CMux(std::shared_ptr<Terminal> t, unique_buffer &&b):
         term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer(std::move(b))  {}
-    ~CMux() = default;
+    ~CMux();
 
     /**
      * @brief Initializes CMux protocol
@@ -95,6 +95,14 @@ public:
      * @return true on success
      */
     bool recover();
+
+    /**
+     * @brief Stops the underlying (physical) terminal's RX task.
+     *
+     * Used on teardown to quiesce the data pump that drives the virtual terminals before the
+     * CMux/DTE state it touches is destroyed.
+     */
+    void stop();
 
 private:
 
@@ -150,6 +158,13 @@ private:
     unique_buffer buffer;
 
     Lock lock;
+    /**
+     * @brief Serializes (re)assignment of read_cb[] (set_read_cb()) against their invocation from
+     * the underlying terminal's RX task. Deliberately separate from `lock`: the read callback
+     * upcall may take a long time (or block in the network stack) and must not block write(),
+     * which uses `lock`. Recursive, so the upcall may re-enter write().
+     */
+    Lock cb_lock;
 };
 
 /**
@@ -173,7 +188,12 @@ public:
         return  0;
     }
     void start() override { }
-    void stop() override { }
+    // A virtual terminal has no task of its own; the physical terminal pumps all of them. Forward
+    // stop() so that tearing down a DTE in CMUX mode quiesces that physical terminal's RX task.
+    void stop() override
+    {
+        cmux->stop();
+    }
 private:
     std::shared_ptr<CMux> cmux;
     size_t instance;
