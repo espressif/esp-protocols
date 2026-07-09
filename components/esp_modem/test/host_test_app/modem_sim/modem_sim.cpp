@@ -107,6 +107,36 @@ static void send_response(int fd, const std::string &cmd, const std::string &res
     }
 }
 
+static void send_urc_event_response(int fd, const std::string &cmd)
+{
+    const std::string urc = "+URCTEST: event\r\n";
+    const std::string ok = "\r\nOK\r\n";
+
+    print_escaped("modem_sim: rx ", cmd);
+    print_escaped("modem_sim: tx (phase1) ", urc);
+    fflush(stdout);
+    write(fd, urc.c_str(), urc.size());
+    usleep(5000);
+    print_escaped("modem_sim: tx (phase2) ", ok);
+    fflush(stdout);
+    write(fd, ok.c_str(), ok.size());
+}
+
+static void send_urc_discard_response(int fd, const std::string &cmd)
+{
+    const std::string urc = "+URCTEST: discard-me-with-extra-padding-to-exercise-consume-all\r\n";
+    const std::string ok = "OK\r\n";
+
+    print_escaped("modem_sim: rx ", cmd);
+    print_escaped("modem_sim: tx (phase1) ", urc);
+    fflush(stdout);
+    write(fd, urc.c_str(), urc.size());
+    usleep(5000);
+    print_escaped("modem_sim: tx (phase2) ", ok);
+    fflush(stdout);
+    write(fd, ok.c_str(), ok.size());
+}
+
 static void handle_client(int client_fd)
 {
     char buf[1024];
@@ -161,6 +191,16 @@ static void handle_client(int client_fd)
         while ((pos = pending.find('\r')) != std::string::npos) {
             std::string cmd = pending.substr(0, pos + 1);
             pending.erase(0, pos + 1);
+
+            if (cmd.find("AT+URCTEST0\r") != std::string::npos) {
+                send_urc_event_response(client_fd, cmd);
+                continue;
+            }
+
+            if (cmd.find("AT+URCTEST1\r") != std::string::npos) {
+                send_urc_discard_response(client_fd, cmd);
+                continue;
+            }
 
             std::string response = process_at_command(cmd);
             send_response(client_fd, cmd, response);
