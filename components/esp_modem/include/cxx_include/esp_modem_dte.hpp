@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,9 +7,13 @@
 #pragma once
 
 #include <memory>
+#if defined(__cpp_lib_atomic_shared_ptr)
+#include <atomic>
+#endif
 #include <utility>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include "cxx_include/esp_modem_primitives.hpp"
 #include "cxx_include/esp_modem_terminal.hpp"
 #include "cxx_include/esp_modem_types.hpp"
@@ -105,6 +109,23 @@ public:
      * @param f Function to be called on DTE error
      */
     void set_error_cb(std::function<void(terminal_error err)> f);
+
+    using transmit_hook_t = std::function<void()>;
+
+    /**
+     * @brief Register hooks that fire around every DTE write operation.
+     *
+     * Useful for toggling a GPIO (DTR / sleep pin) before and after UART writes,
+     * covering both application AT commands and internal PPP traffic.
+     *
+     * @param before_tx Called just before bytes are sent to the terminal (nullptr to clear)
+     * @param after_tx  Called just after bytes are sent to the terminal (nullptr to clear)
+     *
+     * @note Intended to be called during initialization before concurrent transmit (typical use).
+     *       Internally hooks are stored as an immutable pair behind std::shared_ptr with atomic
+     *       load/store so paired before/after stay consistent without a dedicated mutex.
+     */
+    void set_transmit_hooks(transmit_hook_t before_tx, transmit_hook_t after_tx);
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     /**
@@ -207,6 +228,14 @@ private:
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
     void exit_cmux_internal();                              /*!< Cleanup CMUX */
 
+    struct TransmitHooks {
+        transmit_hook_t before;
+        transmit_hook_t after;
+    };
+
+    /** Loads the current hook pair; nullptr if unset or cleared. */
+    std::shared_ptr<const TransmitHooks> load_transmit_hooks();
+
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     /**
      * @brief Buffer state tracking for enhanced URC processing
@@ -242,6 +271,11 @@ private:
     modem_mode mode;                                        /*!< DTE operation mode */
     std::function<bool(uint8_t *data, size_t len)> on_data; /*!< on data callback for current terminal */
     std::function<void(terminal_error err)> user_error_cb;  /*!< user callback on error event from attached terminals */
+#if defined(__cpp_lib_atomic_shared_ptr)
+    std::atomic<std::shared_ptr<const TransmitHooks>> transmit_hooks_ {}; /*!< Immutable hook pair */
+#else
+    std::shared_ptr<const TransmitHooks> transmit_hooks_;                /*!< Immutable hook pair; use std::atomic_{load,store} */
+#endif
 
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
     /**
