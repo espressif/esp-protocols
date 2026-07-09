@@ -7,9 +7,13 @@ The ESP WebSocket client is an implementation of `WebSocket protocol client <htt
 
 Features
 --------
-   * Supports WebSocket over TCP, TLS with mbedtls
+   * Supports WebSocket over TCP and TLS with mbedtls
+   * Supports HTTP handshake header callback via ``WEBSOCKET_EVENT_HEADER_RECEIVED``
+   * Supports automatic HTTP redirect handling during websocket upgrade
+   * Supports pause/resume without destroying the websocket task
+   * Supports fragmented text/binary transmission APIs
    * Easy to setup with URI
-   * Multiple instances (Multiple clients in one application)
+   * Multiple instances (multiple clients in one application)
 
 Configuration
 -------------
@@ -124,6 +128,7 @@ Events
 * `WEBSOCKET_EVENT_BEGIN`: The client thread is running.
 * `WEBSOCKET_EVENT_BEFORE_CONNECT`: The client is about to connect.
 * `WEBSOCKET_EVENT_CONNECTED`: The client has successfully established a connection to the server. The client is now ready to send and receive data. Contains no event data.
+* `WEBSOCKET_EVENT_HEADER_RECEIVED`: Posted for each pre-upgrade HTTP response header (IDF 6.0+ builds).
 * `WEBSOCKET_EVENT_DATA`: The client has successfully received and parsed a WebSocket frame. The event data contains a pointer to the payload data, the length of the payload data as well as the opcode of the received frame. A message may be fragmented into multiple events if the length exceeds the buffer size. This event will also be posted for non-payload frames, e.g. pong or connection close frames.
 * `WEBSOCKET_EVENT_ERROR`: The client has experienced an error. Examples include transport write or read failures.
 * `WEBSOCKET_EVENT_DISCONNECTED`: The client has aborted the connection due to the transport layer failing to read data, e.g. because the server is unavailable. Contains no event data.
@@ -143,7 +148,9 @@ Limitations and Known Issues
 
 Application Example
 -------------------
-A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data with the `websocket.org <https://websocket.org>`_ server can be found here: `example <https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client/examples>`_
+A simple WebSocket example that uses esp_websocket_client to establish a websocket connection and send/receive data can be found in the component example directory: `examples <https://github.com/espressif/esp-protocols/tree/master/components/esp_websocket_client/examples>`_.
+
+For a broader feature walkthrough (headers callback, fragmented frames, pause/resume, runtime ping/reconnect tuning), see: `websocket_features example <https://github.com/espressif/esp-protocols/tree/master/examples/websocket_features>`_.
 
 Sending Text Data
 ^^^^^^^^^^^^^^^^^
