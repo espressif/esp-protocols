@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.3.3~3](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_3)
+
+### Features
+
+- add LWS_WITH_CUSTOM_HEADERS option and UTC timegm ([8fd4febf](https://github.com/espressif/esp-protocols/commit/8fd4febf))
+
 ## [4.3.3~2](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_2)
 
 ### Features
