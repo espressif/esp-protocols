@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.20~8](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_8)
+
+### Bug Fixes
+
+- Undef POSIX_C_SOURCE as mosquitto config defines it ([07de5c0e](https://github.com/espressif/esp-protocols/commit/07de5c0e))
+
 ## [2.0.20~7](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_7)
 
 ### Features
