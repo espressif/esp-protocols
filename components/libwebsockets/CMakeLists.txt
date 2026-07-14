@@ -1,4 +1,7 @@
-idf_component_register(REQUIRES mbedtls)
+# esp_driver_gpio is a PUBLIC requirement: the public header lws-freertos.h
+# includes <driver/gpio.h>, so every consumer of libwebsockets.h needs it on
+# its include path. Declaring it here propagates to all consumers.
+idf_component_register(REQUIRES mbedtls esp_driver_gpio)
 
 set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE BOOL "Export libwebsockets CMake targets.  Disable if they conflict with an outer cmake project.")
 set(LWS_WITH_MBEDTLS ON CACHE BOOL "Use mbedTLS (>=2.0) replacement for OpenSSL.")
@@ -124,7 +127,12 @@ idf_build_get_property(_lws_build_comps BUILD_COMPONENTS)
 # components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
 # esp_blockdev) that aren't on lws's hardcoded include list. Add their include
 # dirs (not link, which would re-inherit IDF's -Werror).
-foreach(_lws_extra_comp esp_hal_mspi esp_blockdev)
+# esp_security / esp_hal_security: the mbedTLS-4 PSA header chain (psa/crypto.h
+# -> driver-context composites) pulls the ESP HW-crypto driver context headers,
+# which include esp_ds.h / esp_key_mgr.h (esp_security); those in turn include
+# hal/key_mgr_types.h (esp_hal_security). mbedtls links these PRIVATE so they
+# aren't propagated to this add_subdirectory target — add both here.
+foreach(_lws_extra_comp esp_hal_mspi esp_blockdev esp_security esp_hal_security)
     if(_lws_extra_comp IN_LIST _lws_build_comps)
         idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
         if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
@@ -132,6 +140,13 @@ foreach(_lws_extra_comp esp_hal_mspi esp_blockdev)
         endif()
     endif()
 endforeach()
+
+# lws-freertos.h includes driver/gpio.h (IDF v6 esp_driver_gpio). That component
+# isn't in BUILD_COMPONENTS yet when this file runs (ordering), so the IN_LIST
+# guard above would skip it — reference the IDF path directly instead.
+if(EXISTS "$ENV{IDF_PATH}/components/esp_driver_gpio/include/driver/gpio.h")
+    target_include_directories(websockets PRIVATE "$ENV{IDF_PATH}/components/esp_driver_gpio/include")
+endif()
 
 # lws's hardcoded ESP include list still points at the legacy 'newlib'
 # component, whose non-TLS errno.h shadows IDF v6's esp_libc (picolibc) TLS
