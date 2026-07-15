@@ -6,14 +6,12 @@
 #pragma once
 
 #include "freertos/FreeRTOS.h"
-#include "esp_heap_caps.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define tskNO_AFFINITY      ( ( BaseType_t ) 0x7FFFFFFF )
-#define TaskHandle_t TaskHandle_t
 #define vSemaphoreDelete( xSemaphore ) vQueueDelete( ( QueueHandle_t ) ( xSemaphore ) )
 
 typedef void *StackType_t;
@@ -93,9 +91,6 @@ EventBits_t xEventGroupSetBits(EventGroupHandle_t xEventGroup,
                                const EventBits_t uxBitsToSet);
 
 uint32_t xQueueSendToBack(QueueHandle_t xQueue, const void *pvItemToQueue, TickType_t xTicksToWait);
-
-void *heap_caps_malloc(size_t size, uint32_t caps);
-void heap_caps_free(void *ptr);
 
 #ifdef __cplusplus
 }
