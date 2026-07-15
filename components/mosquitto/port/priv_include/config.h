@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -20,10 +20,5 @@
 #include <ctype.h>
 #include "net/if.h"
 #include "esp_idf_version.h"
-
-#if ESP_IDF_VERSION_MAJOR < 6
-#undef  isspace
-#define isspace(__c) (__ctype_lookup((int)__c)&_S)
-#endif
 
 #define VERSION "v2.0.20~8"
