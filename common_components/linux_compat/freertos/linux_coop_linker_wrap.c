@@ -8,6 +8,8 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 #include "esp_private/freertos_linux_coop_syscalls.h"
@@ -86,4 +88,32 @@ ssize_t __wrap_read(int fd, void *buf, size_t count)
 int __wrap_poll(struct pollfd *fds, nfds_t nfds, int timeout)
 {
     return freertos_linux_coop_poll(fds, nfds, timeout);
+}
+
+/*
+ * Path open/mkdir/write must not go through IDF VFS on Linux host builds:
+ * VFS has no path mount for the host FS, so esp_vfs_open/mkdir return ENOENT
+ * and libgcov fails with "Cannot open" / empty .gcda (0% coverage).
+ * Use syscalls directly; sockets already use the wraps above.
+ */
+int __wrap_mkdir(const char *path, mode_t mode)
+{
+    return (int)syscall(SYS_mkdirat, AT_FDCWD, path, mode);
+}
+
+int __wrap_open(const char *path, int flags, ...)
+{
+    mode_t mode = 0;
+    if (flags & O_CREAT) {
+        va_list args;
+        va_start(args, flags);
+        mode = (mode_t)va_arg(args, int);
+        va_end(args);
+    }
+    return (int)syscall(SYS_openat, AT_FDCWD, path, flags, mode);
+}
+
+ssize_t __wrap_write(int fd, const void *buf, size_t count)
+{
+    return (ssize_t)syscall(SYS_write, fd, buf, count);
 }
