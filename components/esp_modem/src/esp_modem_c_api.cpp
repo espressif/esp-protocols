@@ -585,12 +585,16 @@ extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
 
 extern "C" esp_err_t esp_modem_set_pdp_context(esp_modem_dce_t *dce_wrap, esp_modem_PdpContext_t *c_api_pdp)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || c_api_pdp == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || c_api_pdp == nullptr || c_api_pdp->apn == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    esp_modem::PdpContext pdp{c_api_pdp->apn};
-    pdp.context_id = c_api_pdp->context_id;
-    pdp.protocol_type = c_api_pdp->protocol_type;
+    auto new_pdp = std::make_unique<PdpContext>(c_api_pdp->apn);
+    new_pdp->context_id = c_api_pdp->context_id;
+    if (c_api_pdp->protocol_type != nullptr) {
+        new_pdp->protocol_type = c_api_pdp->protocol_type;
+    }
+    PdpContext pdp = *new_pdp;
+    dce_wrap->dce->get_module()->configure_pdp_context(std::move(new_pdp));
     return command_response_to_esp_err(dce_wrap->dce->set_pdp_context(pdp));
 }
 
