@@ -10,3 +10,6 @@
 [submodule "components/libsrtp/libsrtp"]
 	path = components/libsrtp/libsrtp
 	url = https://github.com/cisco/libsrtp.git
+[submodule "components/freertos_tcp/FreeRTOS-Plus-TCP"]
+	path = components/freertos_tcp/FreeRTOS-Plus-TCP
+	url = https://github.com/FreeRTOS/FreeRTOS-Plus-TCP.git

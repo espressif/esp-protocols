@@ -1,0 +1,31 @@
+name: "aft (amazon freertos plus tcp): build-tests"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+jobs:
+  build_aft:
+    if: contains(github.event.pull_request.labels.*.name, 'aft') || github.event_name == 'push'
+    name: Amazon FreeRTOS Plus TCP build
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.5"]
+    runs-on: ubuntu-latest
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/freertos_tcp/test_app
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          pip install idf-build-apps --upgrade
+          python ci/build_apps.py ${TEST_DIR} -m components/freertos_tcp/.build-test-rules.yml
