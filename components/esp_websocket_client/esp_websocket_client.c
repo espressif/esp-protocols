@@ -302,8 +302,15 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
     va_list myargs;
     va_start(myargs, format);
 
-    size_t needed_size = vsnprintf(NULL, 0, format, myargs);
-    needed_size++; // null terminator
+    va_list args_copy;
+    va_copy(args_copy, myargs);
+    int sized = vsnprintf(NULL, 0, format, args_copy);
+    va_end(args_copy);
+    if (sized < 0) {
+        va_end(myargs);
+        return ESP_FAIL;
+    }
+    size_t needed_size = (size_t)sized + 1; // null terminator
 
     if (needed_size > client->errormsg_size) {
         if (client->errormsg_buffer) {
@@ -312,6 +319,7 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
         client->errormsg_buffer = malloc(needed_size);
         if (client->errormsg_buffer == NULL) {
             client->errormsg_size = 0;
+            va_end(myargs);
             ESP_LOGE(TAG, "Failed to allocate...");
             return ESP_ERR_NO_MEM;
         }
@@ -319,7 +327,6 @@ static esp_err_t esp_websocket_client_error(esp_websocket_client_handle_t client
     }
 
     needed_size = vsnprintf(client->errormsg_buffer, client->errormsg_size, format, myargs);
-
     va_end(myargs);
 
     ESP_LOGE(TAG, "%s", client->errormsg_buffer);
