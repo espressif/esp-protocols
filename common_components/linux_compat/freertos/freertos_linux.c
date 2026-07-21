@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,6 +13,36 @@
 #include <string.h>
 #include "osal/osal_api.h"
 #include <semaphore.h>
+
+static __thread bool s_in_freertos_task = false;
+
+bool linux_port_in_freertos_task(void)
+{
+    return s_in_freertos_task;
+}
+
+static pthread_mutex_t s_critical_mutex;
+static pthread_once_t s_critical_once = PTHREAD_ONCE_INIT;
+
+static void init_critical_mutex(void)
+{
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&s_critical_mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+}
+
+void vPortEnterCritical(void)
+{
+    pthread_once(&s_critical_once, init_critical_mutex);
+    pthread_mutex_lock(&s_critical_mutex);
+}
+
+void vPortExitCritical(void)
+{
+    pthread_mutex_unlock(&s_critical_mutex);
+}
 
 typedef struct task_notifiers {
     sem_t sem;
@@ -208,6 +238,7 @@ void *pthread_task(void *params)
     sem_init(&s_notifiers[s_threads - 1].sem, 0, 0);
     pthread_mutex_unlock(&s_mutex);
     pthread_params->started = true;
+    s_in_freertos_task = true;
 
     task(param);
 

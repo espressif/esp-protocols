@@ -1,9 +1,13 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #pragma once
+
+#ifndef INC_FREERTOS_H
+#define INC_FREERTOS_H
+#endif
 
 #include <stdio.h>
 #include <stdint.h>
@@ -11,17 +15,19 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include "esp_heap_caps.h"
+
 #define portTICK_PERIOD_MS 1
 #define portMAX_DELAY ( TickType_t ) 0xffffffffUL
 
-typedef void *SemaphoreHandle_t;
 typedef void *QueueHandle_t;
+typedef QueueHandle_t SemaphoreHandle_t;
 typedef void *TaskHandle_t;
 typedef void *EventGroupHandle_t;
 typedef uint32_t TickType_t;
 typedef TickType_t               EventBits_t;
 
-typedef void (*TaskFunction_t)( void * );
+typedef void (*TaskFunction_t)(void *);
 typedef unsigned int    UBaseType_t;
 typedef int             BaseType_t;
 
@@ -35,3 +41,5 @@ typedef int             BaseType_t;
 
 uint32_t esp_random(void);
 void vTaskSuspendAll(void);
+
+#include "freertos/portmacro.h"

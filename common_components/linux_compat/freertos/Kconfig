@@ -1,5 +1,12 @@
 menu "FreeRTOS"
 
+    config FREERTOS_HZ
+        int "configTICK_RATE_HZ"
+        range 1 1000
+        default 100
+        help
+            Sets the FreeRTOS tick interrupt frequency in Hz (see configTICK_RATE_HZ in FreeRTOS).
+
     config FREERTOS_NO_AFFINITY
         hex
         default 0x7FFFFFFF
