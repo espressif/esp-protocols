@@ -6,7 +6,8 @@ set(coop_syscalls "${freertos_linux_port}/utils/linux_port_coop_syscalls.c")
 
 # Blocking host syscalls stall the FreeRTOS Linux simulator; redirect a small
 # set of libc entry points to the IDF cooperative layer via linker wrap.
-set(coop_wrap_functions socket accept fcntl close send read poll)
+# open/write/mkdir bypass IDF VFS so libgcov can write .gcda on host.
+set(coop_wrap_functions socket accept fcntl close send read poll open write mkdir)
 
 set(srcs freertos_linux.c
          osal/queue.cpp
@@ -43,6 +44,13 @@ if("${idf_target}" STREQUAL "linux" AND EXISTS "${coop_syscalls}")
             "-Wl,--wrap=${wrap}"
             "-Wl,-u,__wrap_${wrap}")
     endforeach()
+endif()
+
+# Host shim has no esp_startup_start_app(); apps provide their own main().
+# Suppress esp_system's weak main() so it cannot satisfy CRT first from the archive.
+if("${idf_target}" STREQUAL "linux")
+    idf_component_get_property(esp_system_lib esp_system COMPONENT_LIB)
+    target_compile_definitions(${esp_system_lib} PRIVATE ESP_SYSTEM_LINUX_NO_MAIN)
 endif()
 
 set_target_properties(${COMPONENT_LIB} PROPERTIES

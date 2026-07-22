@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -185,15 +185,9 @@ static void websocket_event_handler(void *handler_args,
         ESP_LOGI(TAG, "Disconnected");
         test_running = false;
         ws_accumulator_reset();
-#if CONFIG_IDF_TARGET_LINUX
-        if (test_done_sem) {
-            sem_post(test_done_sem);
-        }
-#else
-        if (test_done_sem) {
-            xSemaphoreGive(test_done_sem);
-        }
-#endif
+        /* Do not signal test_done here: ERROR/DISCONNECTED can fire while the
+         * client task still holds its lock mid-abort. Wait for FINISH so stop/destroy
+         * does not race the task teardown (hangs on Linux host). */
         break;
 
     case WEBSOCKET_EVENT_DATA: {
@@ -424,19 +418,11 @@ static void websocket_event_handler(void *handler_args,
         ESP_LOGW(TAG, "WebSocket error event");
         test_running = false;
         ws_accumulator_reset();  // Reset accumulator on error
-#if CONFIG_IDF_TARGET_LINUX
-        if (test_done_sem) {
-            sem_post(test_done_sem);
-        }
-#else
-        if (test_done_sem) {
-            xSemaphoreGive(test_done_sem);
-        }
-#endif
+        /* Same as DISCONNECTED: wait for FINISH before tearing down the client. */
         break;
 
     case WEBSOCKET_EVENT_FINISH:
-        ESP_LOGD(TAG, "WebSocket finish event");
+        ESP_LOGI(TAG, "WebSocket finish event");
         test_running = false;
         ws_accumulator_reset();  // Reset accumulator on finish
 #if CONFIG_IDF_TARGET_LINUX
@@ -539,7 +525,7 @@ static esp_err_t run_test_case(int case_num)
         .uri = uri,
         .buffer_size = BUFFER_SIZE,
         .network_timeout_ms = 10000,   // 10s for connection (default), 200ms was too short
-        .reconnect_timeout_ms = 500,
+        .disable_auto_reconnect = true, // Autobahn cases expect a clean stop on protocol errors
         .task_prio = 10,                // High prio → low latency
         .task_stack = 8144,
     };
@@ -576,21 +562,31 @@ static esp_err_t run_test_case(int case_num)
         return start_ret;
     }
 
-    /* Wait up to 60 s so server can close properly */
+    /* Wait up to 60 s for FINISH (client task exiting). */
 #if CONFIG_IDF_TARGET_LINUX
+    int wait_ret;
     {
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
         ts.tv_sec += 60;  // absolute timeout (now + 60s)
-        (void)sem_timedwait(test_done_sem, &ts);
+        wait_ret = sem_timedwait(test_done_sem, &ts);
+    }
+    if (wait_ret != 0) {
+        /* Timed out without FINISH — force-stop a still-running task. */
+        esp_websocket_client_stop(client);
+    } else {
+        /* FINISH was posted just before transport_close + STOPPED_BIT.
+         * Calling stop() here races that teardown and can hang on Linux.
+         * Brief yield so destroy() sees STOPPED_BIT already set. */
+        usleep(100 * 1000);
     }
 #else
-    xSemaphoreTake(test_done_sem, pdMS_TO_TICKS(60000));
-#endif
-
-    if (esp_websocket_client_is_connected(client)) {
+    if (xSemaphoreTake(test_done_sem, pdMS_TO_TICKS(60000)) != pdTRUE) {
         esp_websocket_client_stop(client);
+    } else {
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
+#endif
 
     esp_websocket_client_destroy(client);
 #if CONFIG_IDF_TARGET_LINUX

@@ -9,8 +9,10 @@
 #include "freertos/task.h"
 #include <pthread.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "osal/osal_api.h"
 #include <semaphore.h>
 
@@ -19,6 +21,22 @@ static __thread bool s_in_freertos_task = false;
 bool linux_port_in_freertos_task(void)
 {
     return s_in_freertos_task;
+}
+
+/*
+ * IDF's linux_port_coop_syscalls.c overrides usleep/nanosleep to call
+ * vTaskDelay() inside FreeRTOS tasks. The host shim's vTaskDelay must not
+ * call those interposed symbols or it recurses until stack overflow.
+ * clock_nanosleep is not interposed.
+ */
+static void host_sleep_us(unsigned int usec)
+{
+    struct timespec ts = {
+        .tv_sec = usec / 1000000,
+        .tv_nsec = (long)(usec % 1000000) * 1000L,
+    };
+    while (clock_nanosleep(CLOCK_REALTIME, 0, &ts, &ts) == EINTR) {
+    }
 }
 
 static pthread_mutex_t s_critical_mutex;
@@ -217,7 +235,7 @@ TickType_t xTaskGetTickCount(void)
 
 void vTaskDelay(const TickType_t xTicksToDelay)
 {
-    usleep(xTicksToDelay * 1000);
+    host_sleep_us(xTicksToDelay * 1000);
 }
 
 void *pthread_task(void *params)
@@ -286,7 +304,7 @@ BaseType_t xTaskCreate(TaskFunction_t pvTaskCode, const char *const pcName, cons
 
     // just wait till the task started so we can unwind params from the stack
     while (pthread_params.started == false) {
-        usleep(1000);
+        host_sleep_us(1000);
     }
     if (pvCreatedTask) {
         *pvCreatedTask = pthread_params.handle;
@@ -309,7 +327,7 @@ void xTaskNotifyGive(TaskHandle_t task)
         if (++i == s_threads) {
             i = 0;
         }
-        usleep(1000);
+        host_sleep_us(1000);
     }
 }
 
@@ -368,6 +386,6 @@ void ulTaskNotifyTake(bool clear_on_exit, uint32_t xTicksToWait)
         if (++i == s_threads) {
             i = 0;
         }
-        usleep(1000);
+        host_sleep_us(1000);
     }
 }
