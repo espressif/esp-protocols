@@ -20,4 +20,31 @@ menu "ESP WebSocket client"
         default 2000
         help
             Timeout for acquiring the TX lock when using separate TX lock.
+
+    config ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+        bool "Allocate esp_websocket_client structure and config storage in PSRAM"
+        default n
+        depends on SPIRAM
+        depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+        help
+            Enable this option to allocate the esp_websocket_client structure and its
+            internal configuration storage in external RAM (PSRAM). This is useful for
+            freeing up internal RAM in memory-constrained applications.
+            If PSRAM allocation fails, esp_websocket_client_init() returns NULL.
+            There is no fallback to internal RAM.
+
+    config ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+        bool "Allocate websocket task stack in PSRAM"
+        default n
+        depends on SPIRAM
+        depends on (SPIRAM_USE_CAPS_ALLOC || SPIRAM_USE_MALLOC)
+        depends on FREERTOS_SUPPORT_STATIC_ALLOCATION
+        depends on FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+        help
+            Enable this option to allocate the WebSocket task stack in external RAM (PSRAM)
+            using xTaskCreateStaticPinnedToCore. Only the task stack is placed in PSRAM;
+            the TCB (Task Control Block) remains in internal RAM as required by the API.
+            This option requires FreeRTOS to allow creating tasks with stacks in external memory.
+            If PSRAM stack allocation fails, esp_websocket_client_start() returns ESP_FAIL.
+            There is no fallback to internal RAM.
 endmenu
