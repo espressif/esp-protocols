@@ -1,4 +1,7 @@
-idf_component_register(REQUIRES mbedtls)
+# esp_driver_gpio is a PUBLIC requirement: the public header lws-freertos.h
+# includes <driver/gpio.h>, so every consumer of libwebsockets.h needs it on
+# its include path. Declaring it here propagates to all consumers.
+idf_component_register(REQUIRES mbedtls esp_driver_gpio)
 
 set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE BOOL "Export libwebsockets CMake targets.  Disable if they conflict with an outer cmake project.")
 set(LWS_WITH_MBEDTLS ON CACHE BOOL "Use mbedTLS (>=2.0) replacement for OpenSSL.")
@@ -50,11 +53,42 @@ target_link_libraries(${COMPONENT_LIB} INTERFACE websockets)
 
 target_sources(${COMPONENT_LIB} INTERFACE "port/lws_port.c")
 
+idf_component_get_property(mbedtls_dir mbedtls COMPONENT_DIR)
+
+# lws's mbedtls 4 detection probe is gated by `if (LWS_MBEDTLS_INCLUDE_DIRS)`
+# in lib/tls/mbedtls/CMakeLists.txt:120, which on FreeRTOS is empty (the
+# find_path call only runs on non-FreeRTOS). Result: on ESP-IDF, lws never
+# sets `LWS_HAVE_MBEDTLS_V4` even when the mbedtls submodule is v4 — and
+# lws's mbedtls-4-aware source (libwebsockets.h:414 etc.) goes down the
+# v3 branch and breaks. Pre-set the cache var when we know IDF mbedtls is
+# v4 so lws picks the right branch. Verified empirically against IDF v6.
+file(STRINGS "${mbedtls_dir}/mbedtls/include/mbedtls/build_info.h"
+     _mbedtls_major REGEX "^#define MBEDTLS_VERSION_MAJOR[ \t]+[0-9]+")
+if(_mbedtls_major MATCHES "[ \t]+([0-9]+)" AND CMAKE_MATCH_1 GREATER_EQUAL 4)
+    set(LWS_HAVE_MBEDTLS_V4 1 CACHE INTERNAL "mbedtls 4 detected on IDF")
+endif()
+
+# Stop lws adding its own -Werror (the IDF build already sets -Werror globally).
+set(DISABLE_WERROR ON CACHE BOOL "lws: don't treat warnings as errors" FORCE)
 
 add_subdirectory(libwebsockets)
 
-# pollfd.c at this lws pin has an unused 'vpt' on FreeRTOS; drop after the next bump.
-target_compile_options(websockets PRIVATE -Wno-unused-variable)
+# The IDF build compiles everything with a global -Werror.  IDF v6's mbedtls
+# headers emit a harmless MBEDTLS_PSA_BUILTIN_ALG_HMAC redefinition warning
+# (esp_config.h vs tf-psa-crypto) that lws's sources pull in via libwebsockets.h
+# -> mbedtls/ssl.h; -Wno-error keeps that (and the unused 'vpt' in this pin's
+# pollfd.c) from failing the build.  See esp-idf esp_config.h redefinition bug.
+target_compile_options(websockets PRIVATE -Wno-unused-variable -Wno-error)
+
+# IDF v6's libc (picolibc) makes errno thread-local. With lws's LWIP_PROVIDE_ERRNO
+# now gated off on v6, lwip's errno.h forwards to the system errno - but lws's
+# hardcoded include list (lib/CMakeLists.txt) puts .../lwip/src/include/lwip on the
+# path, so a bare <errno.h> resolves to lwip's own errno.h (LWIP_ERRNO_STDINCLUDE
+# would re-include itself). Point lwip at <sys/errno.h> instead, which is not
+# shadowed and pulls picolibc's TLS errno + E* macros via esp_libc's #include_next.
+# Otherwise lws objects fail with "errno undeclared" (compile) or "TLS definition
+# ... mismatches non-TLS reference" (link).
+target_compile_definitions(websockets PRIVATE "LWIP_ERRNO_INCLUDE=<sys/errno.h>")
 
 # Supply a UTC timegm() for lws (LWS_HAVE_TIMEGM set above). lws_http_date_parse_unix()
 # calls timegm(); the port source defines it and the shim force-includes a prototype
@@ -67,4 +101,61 @@ target_compile_options(websockets PRIVATE "-include${CMAKE_CURRENT_SOURCE_DIR}/p
 # the lws CMake option is dropped on the FreeRTOS/minimal profile.
 if(CONFIG_LWS_WITH_CUSTOM_HEADERS)
     target_compile_definitions(websockets PUBLIC LWS_WITH_CUSTOM_HEADERS=1 LWS_WITH_CUSTOM_HTTP_HEADERS=1)
+endif()
+
+# mbedTLS 4 (IDF v6) split public headers across tf-psa-crypto/. The inner
+# `websockets` target reaches mbedtls headers via lws's hardcoded
+# $ENV{IDF_PATH}/components/mbedtls/... list (lib/CMakeLists.txt:60), which
+# only mentions mbedtls/include + port/include. Inject the new dirs here
+# when present so the IDF v6 (mbedtls 4) chain resolves; the EXISTS guard
+# keeps IDF v5.x (mbedtls 3) builds untouched.
+# Drop once upstream lws covers tf-psa-crypto in its ESP_PLATFORM block.
+if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
+    target_include_directories(websockets PRIVATE
+        "${mbedtls_dir}/mbedtls/tf-psa-crypto/include"
+        "${mbedtls_dir}/mbedtls/tf-psa-crypto/drivers/builtin/include"
+        "${mbedtls_dir}/port/psa_driver/include")
+endif()
+
+# The include workarounds below reach into components that only exist on
+# IDF v6 (esp_hal_mspi, esp_blockdev, esp_libc). idf_component_get_property
+# hard-errors if the component isn't in the build, so gate every lookup on
+# BUILD_COMPONENTS membership first - that keeps IDF v5.x untouched.
+idf_build_get_property(_lws_build_comps BUILD_COMPONENTS)
+
+# lib/misc/romfs.c pulls esp_flash.h, whose IDF v6 include chain spans
+# components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
+# esp_blockdev) that aren't on lws's hardcoded include list. Add their include
+# dirs (not link, which would re-inherit IDF's -Werror).
+# esp_security / esp_hal_security: the mbedTLS-4 PSA header chain (psa/crypto.h
+# -> driver-context composites) pulls the ESP HW-crypto driver context headers,
+# which include esp_ds.h / esp_key_mgr.h (esp_security); those in turn include
+# hal/key_mgr_types.h (esp_hal_security). mbedtls links these PRIVATE so they
+# aren't propagated to this add_subdirectory target — add both here.
+foreach(_lws_extra_comp esp_hal_mspi esp_blockdev esp_security esp_hal_security)
+    if(_lws_extra_comp IN_LIST _lws_build_comps)
+        idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
+        if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
+            target_include_directories(websockets PRIVATE "${_lws_cdir}/include")
+        endif()
+    endif()
+endforeach()
+
+# lws-freertos.h includes driver/gpio.h (IDF v6 esp_driver_gpio). That component
+# isn't in BUILD_COMPONENTS yet when this file runs (ordering), so the IN_LIST
+# guard above would skip it — reference the IDF path directly instead.
+if(EXISTS "$ENV{IDF_PATH}/components/esp_driver_gpio/include/driver/gpio.h")
+    target_include_directories(websockets PRIVATE "$ENV{IDF_PATH}/components/esp_driver_gpio/include")
+endif()
+
+# lws's hardcoded ESP include list still points at the legacy 'newlib'
+# component, whose non-TLS errno.h shadows IDF v6's esp_libc (picolibc) TLS
+# errno - which then fails to link ("TLS definition ... mismatches non-TLS
+# reference in async-dns.c.obj"). Prepend esp_libc's platform_include so its
+# TLS errno.h wins.
+if(esp_libc IN_LIST _lws_build_comps)
+    idf_component_get_property(_esp_libc_dir esp_libc COMPONENT_DIR)
+    if(_esp_libc_dir AND EXISTS "${_esp_libc_dir}/platform_include")
+        target_include_directories(websockets BEFORE PRIVATE "${_esp_libc_dir}/platform_include")
+    endif()
 endif()
