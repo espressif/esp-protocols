@@ -108,5 +108,6 @@ jobs:
             components/esp_dns;
             components/net_connect;
             components/libsrtp;
+            components/freertos_tcp;
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}

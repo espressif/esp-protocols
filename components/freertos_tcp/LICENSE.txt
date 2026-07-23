@@ -1,0 +1,3 @@
+This project is licensed under the MIT and Apache-2.0
+* Upstream FreeRTOS-Plus-TCP is licensed under the MIT license: [FreeRTOS-Plus-TCP](./FreeRTOS-Plus-TCP/LICENSE.md)
+* Port layer/esp_netif is licensed under Apache-2.0

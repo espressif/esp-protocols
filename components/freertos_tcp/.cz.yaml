@@ -1,0 +1,8 @@
+---
+commitizen:
+  bump_message: 'bump(aft_netif): $current_version -> $new_version'
+  pre_bump_hooks: python ../../ci/changelog.py freertos_tcp
+  tag_format: aft_netif-v$version
+  version: 4.4.0
+  version_files:
+  - idf_component.yml

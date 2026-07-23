@@ -27,8 +27,8 @@ ESP-IDF port of Amazon FreeRTOS-Plus-TCP - a lightweight TCP/IP stack providing 
 
 This component integrates [FreeRTOS-Plus-TCP](https://github.com/FreeRTOS/FreeRTOS-Plus-TCP) as a custom TCP/IP stack for ESP-IDF. It provides a Berkeley sockets-like interface with fully scalable features and RAM footprint, making it suitable for various ESP32 applications.
 
-**Version**: 0.1.0
-**Minimum ESP-IDF**: 5.0
+**Version**: 4.4.0
+**Minimum ESP-IDF**: 5.5
 
 ## Architecture
 
