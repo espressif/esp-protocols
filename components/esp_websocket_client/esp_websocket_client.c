@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 
+#include "esp_heap_caps.h"
 #include "esp_websocket_client.h"
 #include "esp_transport.h"
 #include "esp_transport_tcp.h"
@@ -13,6 +14,7 @@
 /* using uri parser */
 #include "http_parser.h"
 #include "freertos/task.h"
+#include "freertos/idf_additions.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
@@ -24,6 +26,12 @@
 #include <arpa/inet.h>
 
 static const char *TAG = "websocket_client";
+
+#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+#define ESP_WS_CLIENT_OBJ_FREE(ptr) heap_caps_free(ptr)
+#else
+#define ESP_WS_CLIENT_OBJ_FREE(ptr) free(ptr)
+#endif
 
 #define WEBSOCKET_TCP_DEFAULT_PORT      (80)
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
@@ -488,7 +496,7 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     free(cfg->user_agent);
     free(cfg->headers);
     memset(cfg, 0, sizeof(websocket_config_storage_t));
-    free(client->config);
+    ESP_WS_CLIENT_OBJ_FREE(client->config);
     client->config = NULL;
     return ESP_OK;
 }
@@ -535,7 +543,7 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         vEventGroupDelete(client->status_bits);
         client->status_bits = NULL;
     }
-    free(client);
+    ESP_WS_CLIENT_OBJ_FREE(client);
     client = NULL;
 }
 
@@ -554,7 +562,6 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
 }
-
 #if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
 static void websocket_header_hook(void * client, const char * line, int line_len)
 {
@@ -785,7 +792,11 @@ unlock_and_return:
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
 {
+#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+    esp_websocket_client_handle_t client = heap_caps_calloc(1, sizeof(struct esp_websocket_client), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
     esp_websocket_client_handle_t client = calloc(1, sizeof(struct esp_websocket_client));
+#endif
     ESP_WS_CLIENT_MEM_CHECK(TAG, client, return NULL);
 
     esp_event_loop_args_t event_args = {
@@ -795,7 +806,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 
     if (esp_event_loop_create(&event_args, &client->event_handle) != ESP_OK) {
         ESP_LOGE(TAG, "Error create event handler for websocket client");
-        free(client);
+        ESP_WS_CLIENT_OBJ_FREE(client);
         return NULL;
     }
 
@@ -820,7 +831,11 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_lock, goto _websocket_init_fail);
 #endif
 
+#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+    client->config = heap_caps_calloc(1, sizeof(websocket_config_storage_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
     client->config = calloc(1, sizeof(websocket_config_storage_t));
+#endif
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
 
     if (config->transport == WEBSOCKET_TRANSPORT_OVER_TCP) {
@@ -1450,7 +1465,13 @@ static void esp_websocket_client_task(void *pv)
     } else {
         xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     }
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+    /* Task stack/TCB were allocated with memory caps via xTaskCreatePinnedToCoreWithCaps(),
+     * so it must be deleted with vTaskDeleteWithCaps(), including on self-deletion. */
+    vTaskDeleteWithCaps(NULL);
+#else
     vTaskDelete(NULL);
+#endif
 }
 
 esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
@@ -1458,6 +1479,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if (client->state >= WEBSOCKET_STATE_INIT) {
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
@@ -1472,8 +1494,19 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     }
 
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT | WAKEUP_BIT);
-    if (xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                                client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id) != pdTRUE) {
+
+    BaseType_t res;
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+    res = xTaskCreatePinnedToCoreWithCaps(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
+                                          client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id,
+                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
+    res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
+                                  client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id);
+#endif
+
+    if (res != pdPASS || client->task_handle == NULL) {
+        client->task_handle = NULL;
         ESP_LOGE(TAG, "Error create websocket task");
         xEventGroupSetBits(client->status_bits, STOPPED_BIT);
         return ESP_FAIL;
