@@ -12,7 +12,7 @@ project(mdns_host_unit_test C)
 
 # Set ENABLE_UNIT_TESTS with a default of OFF
 if(NOT DEFINED UNIT_TESTS)
-    set(UNIT_TESTS "OFF" CACHE STRING "Unit tests: OFF, test_receiver, test_sender")
+    set(UNIT_TESTS "OFF" CACHE STRING "Unit tests: OFF, test_receiver, test_sender, test_browse, test_pcb")
 else()
     set(ENABLE_UNIT_TESTS 1)
     message(STATUS "Unit testing enabled with UNIT_TESTS=${UNIT_TESTS}")

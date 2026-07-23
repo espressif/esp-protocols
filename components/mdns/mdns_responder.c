@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -163,23 +163,21 @@ static void announce_all_pcbs(mdns_srv_item_t **services, size_t len, bool inclu
 static void send_final_bye(bool include_ip)
 {
     //collect all services to send bye packet
-    size_t srv_count = 0;
     mdns_srv_item_t *a = s_server->services;
-    while (a) {
+    size_t srv_count = 0;
+    for (mdns_srv_item_t *s = a; s; s = s->next) {
         srv_count++;
-        a = a->next;
     }
     if (!srv_count) {
         return;
     }
     mdns_srv_item_t *services[srv_count];
     size_t i = 0;
-    a = s_server->services;
-    while (a) {
+    while (a && i < srv_count) {
         services[i++] = a;
         a = a->next;
     }
-    mdns_priv_pcb_send_bye_service(services, srv_count, include_ip);
+    mdns_priv_pcb_send_bye_service(services, i, include_ip);
 }
 
 /**
@@ -187,62 +185,57 @@ static void send_final_bye(bool include_ip)
  */
 static void send_bye_all_pcbs_no_instance(bool include_ip)
 {
-    size_t srv_count = 0;
     mdns_srv_item_t *a = s_server->services;
-    while (a) {
-        if (!a->service->instance) {
+    size_t srv_count = 0;
+    for (mdns_srv_item_t *s = a; s; s = s->next) {
+        if (!s->service->instance) {
             srv_count++;
         }
-        a = a->next;
     }
     if (!srv_count) {
         return;
     }
     mdns_srv_item_t *services[srv_count];
     size_t i = 0;
-    a = s_server->services;
-    while (a) {
+    while (a && i < srv_count) {
         if (!a->service->instance) {
             services[i++] = a;
         }
         a = a->next;
     }
-    mdns_priv_pcb_send_bye_service(services, srv_count, include_ip);
+    mdns_priv_pcb_send_bye_service(services, i, include_ip);
 }
 
 void mdns_priv_restart_all_pcbs_no_instance(void)
 {
-    size_t srv_count = 0;
     mdns_srv_item_t *a = s_server->services;
-    while (a) {
-        if (!a->service->instance) {
+    size_t srv_count = 0;
+    for (mdns_srv_item_t *s = a; s; s = s->next) {
+        if (!s->service->instance) {
             srv_count++;
         }
-        a = a->next;
     }
     if (!srv_count) {
         return;
     }
     mdns_srv_item_t *services[srv_count];
     size_t i = 0;
-    a = s_server->services;
-    while (a) {
+    while (a && i < srv_count) {
         if (!a->service->instance) {
             services[i++] = a;
         }
         a = a->next;
     }
-    mdns_priv_probe_all_pcbs(services, srv_count, false, true);
+    mdns_priv_probe_all_pcbs(services, i, false, true);
 }
 
 void mdns_priv_restart_all_pcbs(void)
 {
     mdns_priv_clear_tx_queue();
-    size_t srv_count = 0;
     mdns_srv_item_t *a = s_server->services;
-    while (a) {
+    size_t srv_count = 0;
+    for (mdns_srv_item_t *s = a; s; s = s->next) {
         srv_count++;
-        a = a->next;
     }
     if (srv_count == 0) {
         mdns_priv_probe_all_pcbs(NULL, 0, true, true);
@@ -250,13 +243,12 @@ void mdns_priv_restart_all_pcbs(void)
     }
     mdns_srv_item_t *services[srv_count];
     size_t l = 0;
-    a = s_server->services;
-    while (a) {
+    while (a && l < srv_count) {
         services[l++] = a;
         a = a->next;
     }
 
-    mdns_priv_probe_all_pcbs(services, srv_count, true, true);
+    mdns_priv_probe_all_pcbs(services, l, true, true);
 }
 
 /**
