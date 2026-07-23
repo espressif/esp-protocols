@@ -1,11 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+* SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
+*
+* SPDX-License-Identifier: Apache-2.0
+*/
 
 #include <stdio.h>
 
+#include "esp_heap_caps.h"
 #include "esp_websocket_client.h"
 #include "esp_transport.h"
 #include "esp_transport_tcp.h"
@@ -16,6 +17,7 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_tls_crypto.h"
@@ -24,6 +26,25 @@
 #include <arpa/inet.h>
 
 static const char *TAG = "websocket_client";
+
+#if CONFIG_ESP_WS_CLIENT_ALLOC_IN_EXT_RAM
+#define ESP_WS_CLIENT_OBJ_ALLOC(size) heap_caps_calloc(1, (size), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define ESP_WS_CLIENT_OBJ_FREE(ptr)   heap_caps_free(ptr)
+#else
+#define ESP_WS_CLIENT_OBJ_ALLOC(size) calloc(1, (size))
+#define ESP_WS_CLIENT_OBJ_FREE(ptr)   free(ptr)
+#endif
+
+/* The PSRAM task-stack option relies on the capability-aware FreeRTOS helpers
+ * xTaskCreatePinnedToCoreWithCaps() / vTaskDeleteWithCaps() so that IDF owns the
+ * stack (PSRAM) and TCB (internal RAM) allocations. ESP-IDF v5.3.1 or newer is
+ * required because it includes the fixes needed for safe WithCaps self-deletion. */
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 3, 0)
+#error "CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM requires ESP-IDF v5.3 or newer."
+#endif
+#include "freertos/idf_additions.h"
+#endif
 
 #define WEBSOCKET_TCP_DEFAULT_PORT      (80)
 #define WEBSOCKET_SSL_DEFAULT_PORT      (443)
@@ -488,7 +509,7 @@ static esp_err_t esp_websocket_client_destroy_config(esp_websocket_client_handle
     free(cfg->user_agent);
     free(cfg->headers);
     memset(cfg, 0, sizeof(websocket_config_storage_t));
-    free(client->config);
+    ESP_WS_CLIENT_OBJ_FREE(client->config);
     client->config = NULL;
     return ESP_OK;
 }
@@ -535,7 +556,7 @@ static void destroy_and_free_resources(esp_websocket_client_handle_t client)
         vEventGroupDelete(client->status_bits);
         client->status_bits = NULL;
     }
-    free(client);
+    ESP_WS_CLIENT_OBJ_FREE(client);
     client = NULL;
 }
 
@@ -554,7 +575,6 @@ static esp_err_t stop_wait_task(esp_websocket_client_handle_t client)
     client->state = WEBSOCKET_STATE_UNKNOW;
     return ESP_OK;
 }
-
 #if WS_TRANSPORT_HEADER_CALLBACK_SUPPORT
 static void websocket_header_hook(void * client, const char * line, int line_len)
 {
@@ -785,7 +805,7 @@ unlock_and_return:
 
 esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_client_config_t *config)
 {
-    esp_websocket_client_handle_t client = calloc(1, sizeof(struct esp_websocket_client));
+    esp_websocket_client_handle_t client = ESP_WS_CLIENT_OBJ_ALLOC(sizeof(struct esp_websocket_client));
     ESP_WS_CLIENT_MEM_CHECK(TAG, client, return NULL);
 
     esp_event_loop_args_t event_args = {
@@ -795,7 +815,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
 
     if (esp_event_loop_create(&event_args, &client->event_handle) != ESP_OK) {
         ESP_LOGE(TAG, "Error create event handler for websocket client");
-        free(client);
+        ESP_WS_CLIENT_OBJ_FREE(client);
         return NULL;
     }
 
@@ -820,7 +840,7 @@ esp_websocket_client_handle_t esp_websocket_client_init(const esp_websocket_clie
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->tx_lock, goto _websocket_init_fail);
 #endif
 
-    client->config = calloc(1, sizeof(websocket_config_storage_t));
+    client->config = ESP_WS_CLIENT_OBJ_ALLOC(sizeof(websocket_config_storage_t));
     ESP_WS_CLIENT_MEM_CHECK(TAG, client->config, goto _websocket_init_fail);
 
     if (config->transport == WEBSOCKET_TRANSPORT_OVER_TCP) {
@@ -1450,7 +1470,15 @@ static void esp_websocket_client_task(void *pv)
     } else {
         xEventGroupSetBits(client->status_bits, STOPPED_BIT);
     }
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+    /* The task was created with xTaskCreatePinnedToCoreWithCaps(), so it must be
+     * deleted with the matching API.  Supported IDF versions defer self-deletion
+     * cleanup until the task is no longer running, allowing the PSRAM stack and
+     * internal-RAM TCB to be released safely. */
+    vTaskDeleteWithCaps(NULL);
+#else
     vTaskDelete(NULL);
+#endif
 }
 
 esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
@@ -1458,6 +1486,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     if (client == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
+
     if (client->state >= WEBSOCKET_STATE_INIT) {
         ESP_LOGE(TAG, "The client has started");
         return ESP_FAIL;
@@ -1472,8 +1501,35 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
     }
 
     xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT | WAKEUP_BIT);
-    if (xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
-                                client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id) != pdTRUE) {
+
+    BaseType_t res = pdPASS;
+#if CONFIG_ESP_WS_CLIENT_TASK_STACK_IN_EXT_RAM
+    /* Let FreeRTOS allocate the task stack in PSRAM; the TCB always stays in
+     * internal RAM per the API contract.  There is no fallback to internal RAM:
+     * if the PSRAM stack cannot be allocated, start() fails.  On failure the API
+     * cleans up its own allocations, so no manual free is required here. */
+    res = xTaskCreatePinnedToCoreWithCaps(
+              esp_websocket_client_task,
+              client->config->task_name ? client->config->task_name : "websocket_task",
+              client->config->task_stack,
+              client,
+              client->config->task_prio,
+              &client->task_handle,
+              client->config->task_core_id,
+              MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (res == pdPASS && client->task_handle != NULL) {
+        ESP_LOGI(TAG, "Allocated %d bytes stack in PSRAM for WebSocket task", client->config->task_stack);
+    } else {
+        ESP_LOGE(TAG, "Failed to allocate PSRAM stack for WebSocket task");
+        res = pdFAIL;
+    }
+#else
+    res = xTaskCreatePinnedToCore(esp_websocket_client_task, client->config->task_name ? client->config->task_name : "websocket_task",
+                                  client->config->task_stack, client, client->config->task_prio, &client->task_handle, client->config->task_core_id);
+#endif
+
+    if (res != pdPASS || client->task_handle == NULL) {
+        client->task_handle = NULL;
         ESP_LOGE(TAG, "Error create websocket task");
         xEventGroupSetBits(client->status_bits, STOPPED_BIT);
         return ESP_FAIL;
