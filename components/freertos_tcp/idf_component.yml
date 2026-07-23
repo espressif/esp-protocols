@@ -1,6 +1,23 @@
-version: 0.1.0
+version: "4.4.0"
+description: "ESP-IDF port of FreeRTOS-Plus-TCP — lightweight TCP/IP stack as an alternative to lwIP."
 url: https://github.com/espressif/esp-protocols/tree/master/components/freertos_tcp
-description: The component provides FreeRTOS-plus-TCP port as a custom TCP/IP stack to esp-idf
+issues: https://github.com/espressif/esp-protocols/issues
+documentation: https://github.com/espressif/esp-protocols/blob/master/components/freertos_tcp/README.md
+repository: https://github.com/espressif/esp-protocols.git
+tags:
+  - freertos
+  - tcp
+  - freertos-plus-tcp
 dependencies:
   idf:
-    version: '>=5.0'
+    version: '>=5.5'
+
+# Files excluded from the registry tarball (saves bytes, avoids confusion).
+files:
+  exclude:
+    - "FreeRTOS-Plus-TCP/test/**"
+    - "FreeRTOS-Plus-TCP/tools/**"
+    - "FreeRTOS-Plus-TCP/docs/**"
+    - "FreeRTOS-Plus-TCP/**/.git*"
+    - "test_app/build*"
+    - "examples/*/build*"

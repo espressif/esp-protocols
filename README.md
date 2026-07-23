@@ -82,3 +82,7 @@ Please refer to instructions in [ESP-IDF](https://github.com/espressif/esp-idf)
 ### libsrtp
 
 * Brief introduction [README](components/libsrtp/README.md)
+
+### freertos_tcp
+
+* Brief introduction [README](components/freertos_tcp/README.md)
