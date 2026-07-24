@@ -12,7 +12,13 @@ endif()
 
 set(MDNS_MEMORY "mdns_mem_caps.c")
 
-set(MDNS_CORE "mdns_responder.c" "mdns_receive.c" "mdns_utils.c" "mdns_debug.c" "mdns_browser.c" "mdns_send.c" "mdns_netif.c"
+if(CONFIG_MDNS_ENABLE_BROWSE)
+    set(MDNS_BROWSER "mdns_browser.c")
+else()
+    set(MDNS_BROWSER "")
+endif()
+
+set(MDNS_CORE "mdns_responder.c" "mdns_receive.c" "mdns_utils.c" "mdns_debug.c" ${MDNS_BROWSER} "mdns_send.c" "mdns_netif.c"
                 "mdns_querier.c" "mdns_pcb.c" "mdns_service.c")
 
 idf_build_get_property(target IDF_TARGET)

@@ -14,7 +14,9 @@
 #include "mdns.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 #include "mdns_browser.h"
+#endif
 #include "mdns_netif.h"
 #include "mdns_send.h"
 #include "mdns_receive.h"
@@ -140,11 +142,13 @@ static void free_action(mdns_action_t *action)
     case ACTION_SEARCH_END:
         mdns_priv_query_action(action, ACTION_CLEANUP);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_END:
     case ACTION_BROWSE_SYNC:
         mdns_priv_browse_action(action, ACTION_CLEANUP);
         break;
+#endif
     case ACTION_TX_HANDLE:
         mdns_priv_send_action(action, ACTION_CLEANUP);
         break;
@@ -178,11 +182,13 @@ static void execute_action(mdns_action_t *action)
     case ACTION_SEARCH_END:
         mdns_priv_query_action(action, ACTION_RUN);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
         mdns_priv_browse_action(action, ACTION_RUN);
         break;
+#endif
 
     case ACTION_TX_HANDLE:
         mdns_priv_send_action(action, ACTION_RUN);
@@ -197,9 +203,11 @@ static void execute_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
         mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
         break;
+#endif
     default:
         break;
     }
@@ -433,7 +441,9 @@ void mdns_free(void)
     }
     mdns_priv_clear_tx_queue();
     mdns_priv_query_free();
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_priv_browse_free();
+#endif
     mdns_priv_responder_free();
 }
 

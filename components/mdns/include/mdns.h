@@ -1043,6 +1043,7 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif);
  */
 esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_action);
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 /**
  * @brief   Browse mDNS for a service `_service._proto`.
  *
@@ -1063,6 +1064,8 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
  * @note If one response packet contains answers for multiple active browses,
  *       only one browse is synchronized for that packet. This should not affect
  *       typical browse traffic, where packets answer one service type.
+ *
+ * @note Requires CONFIG_MDNS_ENABLE_BROWSE=y.
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
 
@@ -1074,8 +1077,11 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  *     - ESP_OK                 success.
  *     - ESP_ERR_FAIL           mDNS is not running or the browsing of `_service._proto` is never started.
  *     - ESP_ERR_NO_MEM         memory error.
+ *
+ * @note Requires CONFIG_MDNS_ENABLE_BROWSE=y.
  */
 esp_err_t mdns_browse_delete(const char *service, const char *proto);
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 #ifdef __cplusplus
 }
