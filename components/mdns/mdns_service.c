@@ -14,7 +14,9 @@
 #include "mdns.h"
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 #include "mdns_browser.h"
+#endif
 #include "mdns_netif.h"
 #include "mdns_send.h"
 #include "mdns_receive.h"
@@ -31,12 +33,21 @@
 #endif
 #define MDNS_TASK_AFFINITY          CONFIG_MDNS_TASK_AFFINITY
 
+/* Classic dynamic create only when the stack must stay internal and FreeRTOS won't place it in SPIRAM. */
+#if !CONFIG_MDNS_TASK_CREATE_FROM_SPIRAM && !CONFIG_FREERTOS_TASK_CREATE_ALLOW_EXT_MEM
+#define MDNS_TASK_USE_SIMPLE_CREATE 1
+#else
+#define MDNS_TASK_USE_SIMPLE_CREATE 0
+#endif
+
 #define MDNS_SERVICE_LOCK()     xSemaphoreTake(s_service_semaphore, portMAX_DELAY)
 #define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(s_service_semaphore)
 
 static volatile TaskHandle_t s_service_task_handle = NULL;
 static SemaphoreHandle_t s_service_semaphore = NULL;
+#if !MDNS_TASK_USE_SIMPLE_CREATE
 static StackType_t *s_stack_buffer;
+#endif
 static QueueHandle_t s_action_queue;
 static esp_timer_handle_t s_timer_handle;
 
@@ -131,11 +142,13 @@ static void free_action(mdns_action_t *action)
     case ACTION_SEARCH_END:
         mdns_priv_query_action(action, ACTION_CLEANUP);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_END:
     case ACTION_BROWSE_SYNC:
         mdns_priv_browse_action(action, ACTION_CLEANUP);
         break;
+#endif
     case ACTION_TX_HANDLE:
         mdns_priv_send_action(action, ACTION_CLEANUP);
         break;
@@ -169,11 +182,13 @@ static void execute_action(mdns_action_t *action)
     case ACTION_SEARCH_END:
         mdns_priv_query_action(action, ACTION_RUN);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_ADD:
     case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
         mdns_priv_browse_action(action, ACTION_RUN);
         break;
+#endif
 
     case ACTION_TX_HANDLE:
         mdns_priv_send_action(action, ACTION_RUN);
@@ -188,9 +203,11 @@ static void execute_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
         mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
         break;
+#endif
     default:
         break;
     }
@@ -259,12 +276,20 @@ static esp_err_t stop_timer(void)
 static esp_err_t create_task_with_caps(void)
 {
     esp_err_t ret = ESP_OK;
+
+#if MDNS_TASK_USE_SIMPLE_CREATE
+    BaseType_t res = xTaskCreatePinnedToCore(service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY,
+                                             (TaskHandle_t *)&s_service_task_handle, MDNS_TASK_AFFINITY);
+    ESP_RETURN_ON_FALSE(res == pdPASS && s_service_task_handle != NULL, ESP_FAIL, TAG, "failed to create task for the mDNS");
+    return ret;
+#else
     static StaticTask_t mdns_task_buffer;
 
     s_stack_buffer = mdns_mem_task_malloc(MDNS_SERVICE_STACK_DEPTH);
     ESP_GOTO_ON_FALSE(s_stack_buffer != NULL, ESP_FAIL, alloc_failed, TAG, "failed to allocate memory for the mDNS task's stack");
 
-    s_service_task_handle = xTaskCreateStaticPinnedToCore(service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY, s_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
+    s_service_task_handle = xTaskCreateStaticPinnedToCore(service_task, "mdns", MDNS_SERVICE_STACK_DEPTH, NULL, MDNS_TASK_PRIORITY,
+                                                          s_stack_buffer, &mdns_task_buffer, MDNS_TASK_AFFINITY);
     ESP_GOTO_ON_FALSE(s_service_task_handle != NULL, ESP_FAIL, err, TAG, "failed to create task for the mDNS");
 
     return ret;
@@ -274,6 +299,7 @@ alloc_failed:
 err:
     mdns_mem_task_free(s_stack_buffer);
     return ret;
+#endif
 }
 
 /**
@@ -295,12 +321,12 @@ static esp_err_t service_task_start(void)
 
     if (!s_service_task_handle) {
         ESP_GOTO_ON_ERROR(create_task_with_caps(), err_stop_timer, TAG, "Failed to start the mDNS service task");
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0) && !CONFIG_IDF_TARGET_LINUX
+#if !MDNS_TASK_USE_SIMPLE_CREATE && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0) && !CONFIG_IDF_TARGET_LINUX
         StackType_t *mdns_debug_stack_buffer;
         StaticTask_t *mdns_debug_task_buffer;
         xTaskGetStaticBuffers(s_service_task_handle, &mdns_debug_stack_buffer, &mdns_debug_task_buffer);
         ESP_LOGD(TAG, "mdns_debug_stack_buffer:%p mdns_debug_task_buffer:%p\n", mdns_debug_stack_buffer, mdns_debug_task_buffer);
-#endif // CONFIG_IDF_TARGET_LINUX
+#endif
     }
     MDNS_SERVICE_UNLOCK();
     return ret;
@@ -402,8 +428,9 @@ void mdns_free(void)
 
     mdns_service_remove_all();
     service_task_stop();
-    // at this point, the service task is deleted, so we can destroy the stack size
+#if !MDNS_TASK_USE_SIMPLE_CREATE
     mdns_mem_task_free(s_stack_buffer);
+#endif
     mdns_priv_pcb_deinit();
     if (s_action_queue) {
         mdns_action_t *c;
@@ -414,7 +441,9 @@ void mdns_free(void)
     }
     mdns_priv_clear_tx_queue();
     mdns_priv_query_free();
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_priv_browse_free();
+#endif
     mdns_priv_responder_free();
 }
 

@@ -15,7 +15,9 @@
 #include "mdns_debug.h"
 #include "mdns_netif.h"
 #include "mdns_send.h"
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 #include "mdns_browser.h"
+#endif
 #include "mdns_querier.h"
 #include "mdns_pcb.h"
 #include "mdns_responder.h"
@@ -597,6 +599,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
     const uint8_t *content = data + MDNS_HEAD_LEN;
     bool do_not_reply = false;
     mdns_search_once_t *search_result = NULL;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_browse_t *browse_result = NULL;
     /*
      * Browse packet limitations (see also mdns_browse_new() / mdns_browse_notify_t in mdns.h):
@@ -611,6 +614,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
     char *browse_result_proto = NULL;
     mdns_browse_sync_t *out_sync_browse = NULL;
     mdns_browse_staged_ip_t *staged_browse_ips = NULL;
+#endif
 
     DBG_RX_PACKET(packet, data, len);
 
@@ -765,7 +769,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 
         while (content < (data + len)) {
             search_result = NULL;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
             browse_result = NULL;
+#endif
 
             content = mdns_utils_parse_fqdn(data, content, name, len);
             if (!content) {
@@ -817,6 +823,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                     continue;
                 }
                 search_result = mdns_priv_query_find(name, type, packet->tcpip_if, packet->ip_protocol);
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 browse_result = mdns_priv_browse_find(name, type, packet->tcpip_if, packet->ip_protocol);
                 if (browse_result) {
                     packet_browse = browse_result;
@@ -853,14 +860,18 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                         memcpy(browse_result_instance, name->host, MDNS_NAME_BUF_LEN);
                     }
                 }
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
             }
 
             if (type == MDNS_TYPE_PTR) {
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 mdns_browse_t *browse_for_ptr = mdns_priv_browse_find_ptr(name);
+#endif
                 size_t rdata_bound = (size_t)(data_ptr + data_len - data);
                 if (!mdns_utils_parse_fqdn(data, data_ptr, name, rdata_bound)) {
                     continue;//error
                 }
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (browse_for_ptr) {
                     packet_browse = browse_for_ptr;
                     out_sync_browse = mdns_priv_browse_ensure_sync(browse_for_ptr, out_sync_browse);
@@ -871,6 +882,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                                                     browse_for_ptr->proto, packet->tcpip_if, packet->ip_protocol,
                                                     ttl, out_sync_browse);
                 } else if (search_result) {
+#else
+                if (search_result) {
+#endif
                     mdns_priv_query_result_add_ptr(search_result, name->host, name->service, name->proto,
                                                    packet->tcpip_if, packet->ip_protocol, ttl);
                 } else if ((discovery || ours) && !name->sub && is_ours(name)) {
@@ -961,6 +975,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 uint16_t weight = mdns_utils_read_u16(data_ptr, MDNS_SRV_WEIGHT_OFFSET);
                 uint16_t port = mdns_utils_read_u16(data_ptr, MDNS_SRV_PORT_OFFSET);
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (browse_result && !mdns_utils_str_null_or_empty(browse_result_instance)
                         && !mdns_utils_str_null_or_empty(browse_result_service)
                         && !mdns_utils_str_null_or_empty(browse_result_proto)) {
@@ -970,6 +985,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                                                     ttl,
                                                     out_sync_browse);
                 }
+#endif
                 if (search_result) {
                     if (search_result->type == MDNS_TYPE_PTR) {
                         if (!result->hostname) { // assign host/port for this entry only if not previously set
@@ -1041,6 +1057,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 size_t txt_count = 0;
 
                 mdns_result_t *result = NULL;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (browse_result && !mdns_utils_str_null_or_empty(browse_result_instance)
                         && !mdns_utils_str_null_or_empty(browse_result_service)
                         && !mdns_utils_str_null_or_empty(browse_result_proto)) {
@@ -1051,6 +1068,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                                                     packet->ip_protocol,
                                                     ttl, out_sync_browse);
                 }
+#endif
                 if (search_result) {
                     if (search_result->type == MDNS_TYPE_PTR) {
                         result = search_result->result;
@@ -1120,6 +1138,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 esp_ip_addr_t ip6;
                 ip6.type = ESP_IPADDR_TYPE_V6;
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_browse || browse_result) {
                     mdns_browse_t *browse_ip = browse_result ? browse_result : packet_browse;
                     out_sync_browse = mdns_priv_browse_ensure_sync(browse_ip, out_sync_browse);
@@ -1128,6 +1147,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                         goto clear_rx_packet;
                     }
                 }
+#endif
                 if (search_result) {
                     //check for more applicable searches (PTR & A/AAAA at the same time)
                     while (search_result) {
@@ -1186,6 +1206,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 esp_ip_addr_t ip;
                 ip.type = ESP_IPADDR_TYPE_V4;
                 memcpy(&(ip.u_addr.ip4.addr), data_ptr, 4);
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_browse || browse_result) {
                     mdns_browse_t *browse_ip = browse_result ? browse_result : packet_browse;
                     out_sync_browse = mdns_priv_browse_ensure_sync(browse_ip, out_sync_browse);
@@ -1194,6 +1215,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                         goto clear_rx_packet;
                     }
                 }
+#endif
                 if (search_result) {
                     //check for more applicable searches (PTR & A/AAAA at the same time)
                     while (search_result) {
@@ -1251,6 +1273,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
         }
     }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     if (staged_browse_ips) {
         mdns_browse_t *browse_apply = packet_browse;
         if (!browse_apply && out_sync_browse) {
@@ -1263,10 +1286,12 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
     }
     mdns_priv_browse_staged_ip_free(staged_browse_ips);
     staged_browse_ips = NULL;
+#endif
 
     if (!do_not_reply && mdns_priv_pcb_is_after_probing(packet) && (parsed_packet->questions || parsed_packet->discovery)) {
         mdns_priv_create_answer_from_parsed_packet(parsed_packet);
     }
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     if (out_sync_browse) {
         DBG_BROWSE_RESULTS_WITH_MSG(out_sync_browse->browse->result,
                                     "Browse %s%s total result:", out_sync_browse->browse->service, out_sync_browse->browse->proto);
@@ -1279,10 +1304,13 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
         }
         out_sync_browse = NULL;
     }
+#endif
 
 clear_rx_packet:
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_priv_browse_staged_ip_free(staged_browse_ips);
     staged_browse_ips = NULL;
+#endif
     while (parsed_packet->questions) {
         mdns_parsed_question_t *question = parsed_packet->questions;
         parsed_packet->questions = parsed_packet->questions->next;
@@ -1316,10 +1344,12 @@ clear_rx_packet:
         mdns_mem_free(record);
     }
     mdns_mem_free(parsed_packet);
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_mem_free(browse_result_instance);
     mdns_mem_free(browse_result_service);
     mdns_mem_free(browse_result_proto);
     mdns_priv_browse_sync_free(out_sync_browse);
+#endif
 }
 
 void mdns_priv_receive_action(mdns_action_t *action, mdns_action_subtype_t type)

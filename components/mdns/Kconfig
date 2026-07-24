@@ -162,6 +162,14 @@ menu "mDNS"
         help
             Enable for the console cli to be available on the device.
 
+    config MDNS_ENABLE_BROWSE
+        bool "Enable mDNS browse (daemon service discovery)"
+        default y
+        help
+            Enable continuous browse APIs (mdns_browse_new / mdns_browse_delete)
+            and the related receive/send paths. Disable to save ~3–4 KB of flash
+            when the application only advertises services or uses one-shot queries.
+
     config MDNS_RESPOND_REVERSE_QUERIES
         bool "Enable responding to IPv4 reverse queries"
         default n
