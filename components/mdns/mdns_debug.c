@@ -384,6 +384,7 @@ void mdns_debug_rx_packet(mdns_rx_packet_t *packet, const uint8_t* data, uint16_
     mdns_dbg_flush();
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 static void dbg_printf_result(mdns_result_t *r_t)
 {
     mdns_ip_addr_t *r_a = NULL;
@@ -434,3 +435,4 @@ void mdns_debug_printf_browse_result_all(mdns_result_t *r_t)
     }
     mdns_dbg_flush();
 }
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -18,17 +18,23 @@ extern "C" {
 
 /*  Define the debug macros for the mDNS module
  */
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 #define DBG_BROWSE_RESULTS(result, browse) mdns_debug_printf_browse_result(result, browse)
 
 #define DBG_BROWSE_RESULTS_WITH_MSG(result, ...) do { \
                                                      ESP_LOGD("mdns", __VA_ARGS__);               \
                                                      mdns_debug_printf_browse_result_all(result); \
                                                  } while(0)
+#else
+#define DBG_BROWSE_RESULTS(result, browse)
+#define DBG_BROWSE_RESULTS_WITH_MSG(result, ...)
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 #define DBG_TX_PACKET(packet, data, len) mdns_debug_tx_packet(packet, data, len)
 
 #define DBG_RX_PACKET(packet, data, len) mdns_debug_rx_packet(packet, data, len)
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 /**
  * @brief Print the browse results
  */
@@ -38,6 +44,7 @@ void mdns_debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t);
  * @brief Print all the browse results
  */
 void mdns_debug_printf_browse_result_all(mdns_result_t *r_t);
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 /**
  * @brief Print the tx packet
