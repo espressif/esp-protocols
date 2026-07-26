@@ -13,6 +13,7 @@
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
+#include "cxx_include/esp_modem_primitives.hpp"
 #include "uart_resource.hpp"
 
 static const char *TAG = "uart_terminal";
@@ -64,6 +65,7 @@ public:
 
     void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override
     {
+        Scoped<Lock> lock(on_read_lock);
         on_read = std::move(f);
     }
 
@@ -95,6 +97,10 @@ private:
     QueueHandle_t event_queue;
     uart_resource uart;
     SignalGroup signal;
+    /// Mutex to protect on_read callback from being updated while being called in \c task.
+    /// Must be recursive as the on_read callback may call set_read_cb to change the callback while being called.
+    /// Declared before task_handle so it outlives the UART task.
+    Lock on_read_lock;
     uart_task task_handle;
 };
 
@@ -121,8 +127,13 @@ void UartTerminal::task()
             switch (event.type) {
             case UART_DATA:
                 uart_get_buffered_data_len(uart.port, &len);
-                if (len && on_read) {
-                    on_read(nullptr, len);
+                {
+                    // Lock on_read_lock while checking and calling on_read to
+                    // prevent data-race between check and call
+                    Scoped<Lock> lock(on_read_lock);
+                    if (len && on_read) {
+                        on_read(nullptr, len);
+                    }
                 }
                 break;
             case UART_FIFO_OVF:
@@ -163,6 +174,8 @@ void UartTerminal::task()
             }
         } else {
             uart_get_buffered_data_len(uart.port, &len);
+
+            Scoped<Lock> lock(on_read_lock);
             if (len && on_read) {
                 on_read(nullptr, len);
             }
