@@ -80,8 +80,8 @@ add_subdirectory(libwebsockets)
 # The IDF build compiles everything with a global -Werror.  IDF v6's mbedtls
 # headers emit a harmless MBEDTLS_PSA_BUILTIN_ALG_HMAC redefinition warning
 # (esp_config.h vs tf-psa-crypto) that lws's sources pull in via libwebsockets.h
-# -> mbedtls/ssl.h; -Wno-error keeps that (and the unused 'vpt' in this pin's
-# pollfd.c) from failing the build.  See esp-idf esp_config.h redefinition bug.
+# -> mbedtls/ssl.h; -Wno-error keeps that from failing the build.  See esp-idf
+# esp_config.h redefinition bug.
 target_compile_options(websockets PRIVATE -Wno-unused-variable -Wno-error)
 
 # IDF v6's libc (picolibc) makes errno thread-local. With lws's LWIP_PROVIDE_ERRNO
