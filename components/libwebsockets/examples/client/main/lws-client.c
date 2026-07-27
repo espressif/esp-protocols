@@ -135,10 +135,10 @@ static void connect_cb(lws_sorted_usec_list_t *_sul)
 #if defined(CONFIG_WS_OVER_TLS_MUTUAL_AUTH) || defined(CONFIG_WS_OVER_TLS_SERVER_AUTH)
     connect_info.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED;
 
-/* Honour the skip-CN option for BOTH auth modes: the CI mutual-auth run
- * connects to the test server by IP with a fixed-CN certificate, so it
- * relies on this. The pre-v5.0.0 ESP TLS wrapper never verified CN, which
- * masked the missing flag; lws v5.0.0 uses mbedTLS verification directly. */
+    /* Honour the skip-CN option for BOTH auth modes: the CI mutual-auth run
+     * connects to the test server by IP with a fixed-CN certificate, so it
+     * relies on this. The pre-v5.0.0 ESP TLS wrapper never verified CN, which
+     * masked the missing flag; lws v5.0.0 uses mbedTLS verification directly. */
 #if defined(CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK)
     connect_info.ssl_connection |= LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK;
 #endif
@@ -313,7 +313,17 @@ void app_main(void)
         */
         int service_result = 0;
         while (service_result >= 0) {
+            /*
+             * lws_service() is not a busy-poll: the timeout argument is
+             * ignored by lws and the call blocks in select() until network
+             * activity or the next scheduled lws event (here the retry
+             * policy's keepalive ping, ~3s). That blocking wait can outlast
+             * the 5s task WDT, so feed the WDT each time we come back around
+             * rather than adding an artificial delay (which would only add
+             * servicing latency).
+             */
             service_result = lws_service(context, 0);
+            esp_task_wdt_reset();
         }
 
         lws_context_destroy(context);
