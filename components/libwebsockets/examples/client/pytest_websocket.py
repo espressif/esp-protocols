@@ -55,7 +55,7 @@ class Websocket(object):
             ssl_context.load_cert_chain(certfile='main/certs/server/server_cert.pem', keyfile='main/certs/server/server_key.pem')
             if self.client_verify is True:
                 ssl_context.load_verify_locations(cafile='main/certs/ca_cert.pem')
-                ssl_context.verify = ssl.CERT_REQUIRED
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
             ssl_context.check_hostname = False
             self.server = SimpleSSLWebSocketServer('', self.port, WebsocketTestEcho, ssl_context=ssl_context)
         else:
@@ -102,7 +102,10 @@ def test_examples_protocol_websocket(dut):
     # Test for clean closure of the WebSocket connection:
     # Ensures that the WebSocket can correctly receive a close frame and terminate the connection without issues.
     def test_close(dut):
-        dut.expect('__lws_lc_untag')
+        # Match the example's own close log rather than an lws-internal
+        # lifecycle string (__lws_lc_untag only prints under
+        # LWS_LOG_TAG_LIFECYCLE at INFO level, which the example doesn't enable).
+        dut.expect('Closing connection')
 
     # Test for JSON message handling:
     # Sends a JSON formatted string and verifies that the received message matches the expected JSON structure.
@@ -162,7 +165,10 @@ def test_examples_protocol_websocket(dut):
     # Test for receiving the first fragment of a large message:
     # Verifies the WebSocket's ability to correctly process the initial segment of a fragmented message.
     def test_recv_fragmented_msg1(dut):
-        dut.expect('Total payload length=2000, data_len=1024')
+        # The example only logs this when a receive is fragmented (remaining
+        # payload > 0); the first-chunk size tracks lws' rx buffer plus framing
+        # overhead and is not a fixed value, so match any data_len.
+        dut.expect(re.compile(rb'Total payload length=2000, data_len=\d+'))
 
     # Test for receiving fragmented text messages:
     # Checks if the WebSocket can accurately reconstruct a message sent in several smaller parts.

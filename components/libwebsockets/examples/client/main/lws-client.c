@@ -135,7 +135,11 @@ static void connect_cb(lws_sorted_usec_list_t *_sul)
 #if defined(CONFIG_WS_OVER_TLS_MUTUAL_AUTH) || defined(CONFIG_WS_OVER_TLS_SERVER_AUTH)
     connect_info.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED;
 
-#if defined(CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK) && defined(CONFIG_WS_OVER_TLS_SERVER_AUTH)
+/* Honour the skip-CN option for BOTH auth modes: the CI mutual-auth run
+ * connects to the test server by IP with a fixed-CN certificate, so it
+ * relies on this. The pre-v5.0.0 ESP TLS wrapper never verified CN, which
+ * masked the missing flag; lws v5.0.0 uses mbedTLS verification directly. */
+#if defined(CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK)
     connect_info.ssl_connection |= LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK;
 #endif
 #else
