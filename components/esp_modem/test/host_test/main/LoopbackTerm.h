@@ -39,6 +39,11 @@ public:
         pin_ok = false;
     }
 
+    const std::string &get_last_command() const
+    {
+        return last_command;
+    }
+
 private:
     enum class status_t {
         STARTED,
@@ -59,5 +64,6 @@ private:
     size_t delay_after_inject;
     std::vector<std::future<void>> async_results;
     Lock on_read_guard;
+    std::string last_command;
 
 };

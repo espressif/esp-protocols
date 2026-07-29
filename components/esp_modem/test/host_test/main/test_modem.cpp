@@ -67,6 +67,45 @@ TEST_CASE("Test polymorphic delete for custom device/dte", "[esp_modem]")
     delete custom_dte;
 }
 
+TEST_CASE("PDP context protocol and CID from DCE config", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>(true);
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("telstra.internet");
+    dce_config.protocol_type = "IPV6";
+    dce_config.context_id = 3;
+    auto device = std::make_unique<GenericModule>(dte, &dce_config);
+
+    CHECK(device->setup_data_mode());
+    CHECK(loopback->get_last_command() == "AT+CGDCONT=3,\"IPV6\",\"telstra.internet\"\r");
+
+    // set_apn keeps protocol type and CID
+    device->set_apn("other.apn");
+    CHECK(device->setup_data_mode());
+    CHECK(loopback->get_last_command() == "AT+CGDCONT=3,\"IPV6\",\"other.apn\"\r");
+
+    // Full PDP replace (dual stack, default CID)
+    auto new_pdp = std::make_unique<PdpContext>("verizon");
+    new_pdp->protocol_type = "IPV4V6";
+    device->configure_pdp_context(std::move(new_pdp));
+    CHECK(device->setup_data_mode());
+    CHECK(loopback->get_last_command() == "AT+CGDCONT=1,\"IPV4V6\",\"verizon\"\r");
+}
+
+TEST_CASE("PDP context defaults when CID/protocol omitted", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>(true);
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    esp_modem_dce_config_t dce_config = {};
+    dce_config.apn = "internet";
+    auto device = std::make_unique<GenericModule>(dte, &dce_config);
+
+    CHECK(device->setup_data_mode());
+    CHECK(loopback->get_last_command() == "AT+CGDCONT=1,\"IP\",\"internet\"\r");
+}
+
 TEST_CASE("DCE AT parser", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>(true);

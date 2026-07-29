@@ -74,6 +74,10 @@ typedef std::function<command_result(uint8_t *data, size_t len)> got_line_cb;
 
 /**
  * @brief PDP context used for configuring and setting the data mode up
+ *
+ * Sent as AT+CGDCONT=<context_id>,"<protocol_type>","<apn>" when entering data mode.
+ * protocol_type is typically "IP" (IPv4), "IPV6", or "IPV4V6" (dual stack).
+ * context_id is usually 1; some carriers (e.g. Verizon) require 3.
  */
 struct PdpContext {
     explicit PdpContext(std::string apn) : apn(std::move(apn)) {}

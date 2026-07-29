@@ -28,6 +28,7 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     }
     if (len > 2 && (data[len - 1] == '\r' || data[len - 1] == '+')) {  // Simple AT responder
         std::string command((char *)data, len);
+        last_command = command;
         std::string response;
         if (command == "+++") {
             response = "NO CARRIER\r\n";
