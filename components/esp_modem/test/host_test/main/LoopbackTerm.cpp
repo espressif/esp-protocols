@@ -10,18 +10,21 @@
 
 void LoopbackTerm::start()
 {
+    stopping = false;
     status = status_t::STARTED;
 }
 
 void LoopbackTerm::stop()
 {
     status = status_t::STOPPED;
+    // DTE::~DTE() calls stop() before clearing the read callback and expects that no callback
+    // is in flight once it returns, so the pending async replies must be joined here
+    finish_async();
 }
 
 int LoopbackTerm::write(uint8_t *data, size_t len)
 {
     if (inject_by) {    // injection test: ignore what we write, but respond with injected data
-        signal.clear(1);
         auto ret = std::async(&LoopbackTerm::batch_read, this);
         async_results.push_back(std::move(ret));
         return len;
@@ -86,7 +89,6 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
             data_len = response.length();
             loopback_data.resize(data_len);
             memcpy(&loopback_data[0], &response[0], data_len);
-            signal.clear(1);
             auto ret = std::async(on_read, nullptr, data_len);
             return len;
         }
@@ -105,7 +107,6 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     loopback_data.resize(data_len + len);
     memcpy(&loopback_data[data_len], data, len);
     data_len += len;
-    signal.clear(1);
     auto ret = std::async(on_read, nullptr, data_len);
     return len;
 }
@@ -127,14 +128,12 @@ int LoopbackTerm::read(uint8_t *data, size_t len)
     return read_len;
 }
 
-LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(is_bg96), inject_by(0)
+LoopbackTerm::LoopbackTerm(bool is_bg96): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(is_bg96), inject_by(0), stopping(false)
 {
-    init_signal();
 }
 
-LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(false), inject_by(0)
+LoopbackTerm::LoopbackTerm(): loopback_data(), data_len(0), pin_ok(false), needs_puk(false), is_bg96(false), inject_by(0), stopping(false)
 {
-    init_signal();
 }
 
 int LoopbackTerm::inject(uint8_t *data, size_t len, size_t injected_by, size_t delay_before, size_t delay_after)
@@ -155,37 +154,34 @@ int LoopbackTerm::inject(uint8_t *data, size_t len, size_t injected_by, size_t d
 
 void LoopbackTerm::batch_read()
 {
-    while (data_len > 0) {
+    while (!stopping && data_len > 0) {
         Task::Delay(delay_before_inject);
         {
-            Scoped<Lock> lock(on_read_guard);
+            // cb_lock is what Terminal uses to serialize (re)assignment of on_read against its
+            // invocation, so holding it here is what makes set_read_cb(nullptr) wait for us
+            Scoped<Lock> lock(cb_lock);
+            if (!on_read) {
+                break;      // callback cleared, nobody would consume the data anymore
+            }
             on_read(nullptr, std::min(inject_by, data_len));
         }
         Task::Delay(delay_after_inject);
     }
-    signal.set(1);
+}
+
+void LoopbackTerm::finish_async()
+{
+    stopping = true;
+    for (auto &result : async_results) {
+        if (result.valid()) {
+            result.wait();
+        }
+    }
+    async_results.clear();
+    data_len = 0;
 }
 
 LoopbackTerm::~LoopbackTerm()
 {
-    data_len = 0;
-    signal.wait(1, INT32_MAX); // wait "very long" to let the std::async() finish
-}
-
-void LoopbackTerm::init_signal()
-{
-    // This indicates, that we can safely exit
-    // we clear the signal upon an async operation, so the destructor needs to wait until
-    // it's finished
-    signal.set(1);
-}
-
-void LoopbackTerm::set_read_cb(std::function<bool(uint8_t *, size_t)> f)
-{
-    user_on_read = std::move(f);
-    on_read = [this](uint8_t *data, size_t len) {
-        auto ret = user_on_read(data, len);
-        signal.set(1);
-        return ret;
-    };
+    finish_async();
 }

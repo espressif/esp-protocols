@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include <atomic>
 #include "cxx_include/esp_modem_api.hpp"
 #include "cxx_include/esp_modem_terminal.hpp"
 
@@ -31,8 +32,6 @@ public:
 
     int read(uint8_t *data, size_t len) override;
 
-    void set_read_cb(std::function<bool(uint8_t *data, size_t len)> f) override;
-
     void set_sim_puk_locked(bool locked)
     {
         needs_puk = locked;
@@ -50,10 +49,16 @@ private:
         STOPPED
     };
     void batch_read();
-    std::function<bool(uint8_t *data, size_t len)> user_on_read;
+
+    /**
+     * @brief Stops the injection loop and waits for all pending async replies to complete
+     *
+     * Must be called before the read callback's owner (DTE) starts tearing itself down,
+     * so that no callback can fire into a half-destroyed object.
+     */
+    void finish_async();
+
     status_t status;
-    SignalGroup signal;
-    void init_signal();
     std::vector<uint8_t> loopback_data;
     size_t data_len;
     bool pin_ok;
@@ -63,7 +68,7 @@ private:
     size_t delay_before_inject;
     size_t delay_after_inject;
     std::vector<std::future<void>> async_results;
-    Lock on_read_guard;
+    std::atomic<bool> stopping;
     std::string last_command;
 
 };
