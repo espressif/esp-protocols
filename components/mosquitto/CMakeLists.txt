@@ -95,6 +95,8 @@ target_compile_options(${COMPONENT_LIB} PRIVATE "-Wno-format")
 # Enable linker wrapping for mosquitto_unpwd_check to allow connection callback interception
 # without modifying upstream code
 target_link_options(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=mosquitto_unpwd_check")
+# Defer mux__cleanup until after post-loop Will delivery in port/broker.c
+target_link_options(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=mux__cleanup")
 
 if(${idf_target} STREQUAL "linux")
     target_link_options(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=main")

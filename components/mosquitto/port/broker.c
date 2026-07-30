@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *
- * SPDX-FileContributor: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2024-2026 Espressif Systems (Shanghai) CO LTD
  */
 #include "mosquitto.h"
 #include "mosquitto_broker_internal.h"
@@ -110,6 +110,30 @@ void mosq_broker_stop(void)
 extern mosq_message_cb_t g_mosq_message_callback;
 extern mosq_connect_cb_t g_mosq_connect_callback;
 
+/*
+ * mosquitto_main_loop() calls mux__cleanup() as its final action, which frees
+ * the pollfd table. mosq_broker_run() then delivers Last-Will messages, and
+ * packet__write() -> mux__add_out() would NULL-deref on the poll backend.
+ * Defer the real cleanup until after Will delivery (linker --wrap).
+ */
+static int s_mux_cleanup_deferred;
+
+int __real_mux__cleanup(void);
+
+int __wrap_mux__cleanup(void)
+{
+    s_mux_cleanup_deferred = 1;
+    return MOSQ_ERR_SUCCESS;
+}
+
+static void mux_cleanup_deferred_run(void)
+{
+    if (s_mux_cleanup_deferred) {
+        s_mux_cleanup_deferred = 0;
+        (void)__real_mux__cleanup();
+    }
+}
+
 int mosq_broker_run(struct mosq_broker_config *broker_config)
 {
 
@@ -184,6 +208,9 @@ int mosq_broker_run(struct mosq_broker_config *broker_config)
         context__send_will(ctxt);
     }
     will_delay__send_all();
+
+    /* Tear down mux after Will delivery (see __wrap_mux__cleanup). */
+    mux_cleanup_deferred_run();
 
 #ifdef WITH_PERSISTENCE
     persist__backup(true);
