@@ -2,7 +2,9 @@
 
 ## Host test
 
-A simple Catch2 unit test runs on Linux and verifies the broker can start and stop. Build and run:
+A Catch2 unit test runs on Linux and verifies the broker can start, stop, restart,
+and shut down cleanly while clients with a Last-Will and matching subscribers are
+still connected. Build and run:
 
 ```bash
 cd host_test

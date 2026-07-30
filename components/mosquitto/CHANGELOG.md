@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.20~9](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_9)
+
+### Bug Fixes
+
+- Fix mosquitto teardown race with lwt ([92bead15](https://github.com/espressif/esp-protocols/commit/92bead15))
+- Remove __ctype_lookup config as it's supported in IDF ([1ee7f2f3](https://github.com/espressif/esp-protocols/commit/1ee7f2f3))
+
 ## [2.0.20~8](https://github.com/espressif/esp-protocols/commits/mosq-v2.0.20_8)
 
 ### Bug Fixes
