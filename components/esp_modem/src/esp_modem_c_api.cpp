@@ -38,6 +38,9 @@ using namespace esp_modem;
 
 extern "C" esp_modem_dce_t *esp_modem_new_dev(esp_modem_dce_device_t module, const esp_modem_dte_config_t *dte_config, const esp_modem_dce_config_t *dce_config, esp_netif_t *netif)
 {
+    if (dte_config == nullptr || dce_config == nullptr) {
+        return nullptr;
+    }
     auto dce_wrap = new (std::nothrow) esp_modem_dce_wrap;
     if (dce_wrap == nullptr) {
         return nullptr;
