@@ -104,8 +104,8 @@ esp_err_t esp_modem_send_sms(esp_modem_dce_t *dce, const char *number, const cha
  */
 esp_err_t esp_modem_resume_data_mode(esp_modem_dce_t *dce);
 /**
- * @brief Sets php context
- * @param[in] p1 PdP context struct to setup modem cellular connection
+ * @brief Sets PDP context (sends AT+CGDCONT and stores it for later set_mode(DATA))
+ * @param[in] pdp PDP context (APN, protocol type, context id) used for cellular connection
  * @return OK, FAIL or TIMEOUT
  */
 esp_err_t esp_modem_set_pdp_context(esp_modem_dce_t *dce, esp_modem_PdpContext_t *pdp);

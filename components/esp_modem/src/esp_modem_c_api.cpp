@@ -570,8 +570,12 @@ extern "C" esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce_wrap, cons
     }
 
     esp_modem::PdpContext pdp{pdp_context->apn};
-    pdp.context_id = pdp_context->context_id;
-    pdp.protocol_type = pdp_context->protocol_type;
+    if (pdp_context->context_id != 0) {
+        pdp.context_id = pdp_context->context_id;
+    }
+    if (pdp_context->protocol_type != nullptr) {
+        pdp.protocol_type = pdp_context->protocol_type;
+    }
     return command_response_to_esp_err(static_cast<SQNGM02S *>(dce_wrap->dce->get_module())->connect(pdp));
 }
 
@@ -585,12 +589,18 @@ extern "C" esp_err_t esp_modem_reset(esp_modem_dce_t *dce_wrap)
 
 extern "C" esp_err_t esp_modem_set_pdp_context(esp_modem_dce_t *dce_wrap, esp_modem_PdpContext_t *c_api_pdp)
 {
-    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || c_api_pdp == nullptr) {
+    if (dce_wrap == nullptr || dce_wrap->dce == nullptr || c_api_pdp == nullptr || c_api_pdp->apn == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    esp_modem::PdpContext pdp{c_api_pdp->apn};
-    pdp.context_id = c_api_pdp->context_id;
-    pdp.protocol_type = c_api_pdp->protocol_type;
+    auto new_pdp = std::make_unique<PdpContext>(c_api_pdp->apn);
+    if (c_api_pdp->context_id != 0) {
+        new_pdp->context_id = c_api_pdp->context_id;
+    }
+    if (c_api_pdp->protocol_type != nullptr) {
+        new_pdp->protocol_type = c_api_pdp->protocol_type;
+    }
+    PdpContext pdp = *new_pdp;
+    dce_wrap->dce->get_module()->configure_pdp_context(std::move(new_pdp));
     return command_response_to_esp_err(dce_wrap->dce->set_pdp_context(pdp));
 }
 
@@ -625,8 +635,7 @@ extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *ap
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || apn == nullptr) {
         return ESP_ERR_INVALID_ARG;
     }
-    auto new_pdp = std::unique_ptr<PdpContext>(new PdpContext(apn));
-    dce_wrap->dce->get_module()->configure_pdp_context(std::move(new_pdp));
+    dce_wrap->dce->get_module()->set_apn(apn);
     return ESP_OK;
 }
 

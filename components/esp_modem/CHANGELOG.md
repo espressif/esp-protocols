@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.0](https://github.com/espressif/esp-protocols/commits/modem-v2.1.0)
+
+### Features
+
+- Support for custom APN/proto config ([3684abae](https://github.com/espressif/esp-protocols/commit/3684abae))
+
+### Bug Fixes
+
+- Fix test loopback tear-down race ([6e98171b](https://github.com/espressif/esp-protocols/commit/6e98171b))
+- Make set_apn() update the PDP context ([b7087f86](https://github.com/espressif/esp-protocols/commit/b7087f86))
+- Fix terminal-callback use-after-free and harden task teardown ([01004182](https://github.com/espressif/esp-protocols/commit/01004182))
+- Update CI API check to ignore C comments ([ccc3d4a8](https://github.com/espressif/esp-protocols/commit/ccc3d4a8))
+- Add URC-handler host test ([93db64db](https://github.com/espressif/esp-protocols/commit/93db64db))
+
+### Updated
+
+- ci(modem): Use large app partition in examples ([a1d26ca7](https://github.com/espressif/esp-protocols/commit/a1d26ca7))
+- Reset last URC processed on consume all ([311611fe](https://github.com/espressif/esp-protocols/commit/311611fe))
+
 ## [2.0.2](https://github.com/espressif/esp-protocols/commits/modem-v2.0.2)
 
 ### Features

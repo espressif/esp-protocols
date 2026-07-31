@@ -220,6 +220,20 @@ Is defined using standard configuration structures for ``DTE`` and
 - :cpp:class:``esp_modem_dte_config_t``
 - :cpp:class:``esp_modem_dce_config_t``
 
+The DCE config holds the PDP context used when entering data mode
+(``AT+CGDCONT``): APN, protocol type (``"IP"`` / ``"IPV6"`` / ``"IPV4V6"``),
+and context id (CID). Defaults are IPv4 and CID ``1``. Override at create time:
+
+.. code-block:: c
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("telstra.internet");
+    dce_config.protocol_type = "IPV6";  // or "IPV4V6" for dual stack
+    dce_config.context_id = 3;          // e.g. Verizon
+
+Or update at runtime with ``esp_modem_set_pdp_context()`` (persists for later
+``esp_modem_set_mode(DATA)``). ``esp_modem_set_apn()`` changes only the APN
+and keeps the configured protocol type and CID.
+
 Known issues
 ------------
 

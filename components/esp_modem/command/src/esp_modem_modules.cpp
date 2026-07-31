@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,15 @@
 
 namespace esp_modem {
 GenericModule::GenericModule(std::shared_ptr<DTE> dte, const dce_config *config) :
-    dte(std::move(dte)), pdp(std::make_unique<PdpContext>(config->apn)) {}
+    dte(std::move(dte)), pdp(std::make_unique<PdpContext>(config->apn ? config->apn : ""))
+{
+    if (config->context_id != 0) {
+        pdp->context_id = config->context_id;
+    }
+    if (config->protocol_type != nullptr) {
+        pdp->protocol_type = config->protocol_type;
+    }
+}
 /**
  * @brief Sends the initial AT sequence to sync up with the device
  * @return OK, FAIL or TIMEOUT

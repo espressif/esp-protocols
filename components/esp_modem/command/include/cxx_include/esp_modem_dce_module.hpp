@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -92,6 +92,17 @@ public:
     void configure_pdp_context(std::unique_ptr<PdpContext> new_pdp)
     {
         pdp = std::move(new_pdp);
+    }
+    /**
+     * @brief Update only the APN on the stored PDP context (keeps protocol type and CID)
+     */
+    void set_apn(const std::string &apn)
+    {
+        if (pdp) {
+            pdp->apn = apn;
+        } else {
+            pdp = std::make_unique<PdpContext>(apn);
+        }
     }
     /**
      * @brief Simplified version of operator name (without the ACT, which is included in the command library)

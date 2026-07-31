@@ -20,10 +20,18 @@ extern "C" {
 
 typedef struct esp_modem_dce_wrap esp_modem_dce_t;
 
+/**
+ * @brief PDP context for AT+CGDCONT / network attach
+ *
+ * @note protocol_type: "IP" (IPv4), "IPV6", or "IPV4V6" (dual stack).
+ *       context_id: typically 1; some carriers (e.g. Verizon) use 3.
+ *       Zero context_id / NULL protocol_type keep defaults (1 / "IP"),
+ *       matching esp_modem_dce_config.
+ */
 typedef struct esp_modem_PdpContext_t {
-    size_t context_id;
-    const char *protocol_type;
-    const char *apn;
+    size_t context_id;          /*!< PDP context id (CID); 0 keeps default 1 */
+    const char *protocol_type;  /*!< "IP", "IPV6", or "IPV4V6"; NULL keeps default "IP" */
+    const char *apn;            /*!< Access Point Name */
 } esp_modem_PdpContext_t;
 
 /**
@@ -161,11 +169,13 @@ esp_err_t esp_modem_set_mode(esp_modem_dce_t *dce, esp_modem_dce_mode_t mode);
 esp_err_t esp_modem_command(esp_modem_dce_t *dce, const char *command, esp_err_t(*got_line_cb)(uint8_t *data, size_t len), uint32_t timeout_ms);
 
 /**
- * @brief Sets the APN and configures it into the modem's PDP context
+ * @brief Sets the APN on the stored PDP context (keeps protocol type and CID)
  *
  * @param dce Modem DCE handle
  * @param apn Access Point Name
  * @return ESP_OK on success
+ *
+ * @note To change protocol type or CID as well, use esp_modem_set_pdp_context().
  */
 esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 
