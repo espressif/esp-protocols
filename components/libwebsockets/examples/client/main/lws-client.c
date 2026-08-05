@@ -189,8 +189,22 @@ static int callback_minimal_echo(struct lws *wsi, enum lws_callback_reasons reas
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
 
         if (lws_frame_is_binary(wsi)) {
-            ESP_LOGI(TAG, "Received binary data");
-            ESP_LOG_BUFFER_HEX("Received binary data", in, len);
+            /* lws v5.0.0 may hand a binary message to this callback in several
+             * pieces (one per WS fragment, and again per rx-buffer chunk).
+             * Accumulate and only hex-dump once the whole message has arrived,
+             * so the complete payload lands on a single log line for the test
+             * to parse; logging each piece would expose a truncated prefix. */
+            static uint8_t bin_msg[64];
+            static size_t bin_msg_len;
+            if (len && bin_msg_len + len <= sizeof(bin_msg)) {
+                memcpy(bin_msg + bin_msg_len, in, len);
+                bin_msg_len += len;
+            }
+            if (lws_is_final_fragment(wsi) && lws_remaining_packet_payload(wsi) == 0) {
+                ESP_LOGI(TAG, "Received binary data");
+                ESP_LOG_BUFFER_HEX("Received binary data", bin_msg, bin_msg_len);
+                bin_msg_len = 0;
+            }
         } else {
             ESP_LOGW(TAG, "Received=%.*s\n\n", len, (char *)in);
         }
