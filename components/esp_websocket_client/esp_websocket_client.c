@@ -1496,6 +1496,37 @@ esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client)
     return stop_wait_task(client);
 }
 
+esp_err_t esp_websocket_client_request_stop(esp_websocket_client_handle_t client)
+{
+    if (client == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (xEventGroupGetBits(client->status_bits) & STOPPED_BIT) {
+        return ESP_OK;
+    }
+
+    /* A running client cannot be stopped from the websocket task/event handler */
+    if (xTaskGetCurrentTaskHandle() == client->task_handle) {
+        ESP_LOGE(TAG, "Client cannot be stopped from websocket task");
+        return ESP_FAIL;
+    }
+
+    client->run = false;
+    /* REQUESTED_STOP_BIT also wakes a WEBSOCKET_STATE_WAIT_TIMEOUT wait early,
+     * so a task idling between reconnect attempts exits immediately */
+    xEventGroupSetBits(client->status_bits, REQUESTED_STOP_BIT);
+    return ESP_OK;
+}
+
+bool esp_websocket_client_wait_stopped(esp_websocket_client_handle_t client, TickType_t timeout)
+{
+    if (client == NULL) {
+        return false;
+    }
+    return (STOPPED_BIT & xEventGroupWaitBits(client->status_bits, STOPPED_BIT, false, true, timeout)) != 0;
+}
+
 static int esp_websocket_client_send_close(esp_websocket_client_handle_t client, int code, const char *additional_data, int total_len, TickType_t timeout)
 {
     uint8_t *close_status_data = NULL;
