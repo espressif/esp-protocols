@@ -100,3 +100,7 @@ common_components/modem_sim/modem_sim_esp32/
 
 # repository release tools
 release_notes.txt
+
+# clangd cache and index files
+.cache/
+*.idx
