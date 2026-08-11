@@ -102,10 +102,10 @@ static void browse_send(mdns_browse_t *browse, mdns_if_t interface, mdns_ip_prot
 
 void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
 {
-    mdns_browse_t *browse = s_browse;
-    while (browse) {
-        browse_send(browse, mdns_if, ip_protocol);
-        browse = browse->next;
+    for (mdns_browse_t *browse = s_browse; browse; browse = browse->next) {
+        if (browse->state == BROWSE_RUNNING) {
+            browse_send(browse, mdns_if, ip_protocol);
+        }
     }
 }
 
@@ -126,25 +126,21 @@ void mdns_priv_browse_free(void)
 }
 
 /**
- * @brief  Mark browse as finished, remove and free it from browse chain
+ * @brief  Remove and free the browse from browse linked list
  */
 static void browse_finish(mdns_browse_t *browse)
 {
-    browse->state = BROWSE_OFF;
-    mdns_browse_t *b = s_browse;
-    mdns_browse_t *target_free = NULL;
-    while (b) {
-        if (strlen(b->service) == strlen(browse->service) && memcmp(b->service, browse->service, strlen(b->service)) == 0 &&
-                strlen(b->proto) == strlen(browse->proto) && memcmp(b->proto, browse->proto, strlen(b->proto)) == 0) {
-            target_free = b;
-            b = b->next;
-            queueDetach(mdns_browse_t, s_browse, target_free);
-            browse_item_free(target_free);
-        } else {
-            b = b->next;
+    if (!browse) {
+        return;
+    }
+
+    for (mdns_browse_t *it = s_browse; it; it = it->next) {
+        if (it == browse) {
+            queueDetach(mdns_browse_t, s_browse, it);
+            browse_item_free(it);
+            return;
         }
     }
-    browse_item_free(browse);
 }
 
 /**
@@ -183,33 +179,14 @@ static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_b
 }
 
 /**
- * @brief  Add new browse to the browse chain
+ * @brief  Send initial PTR queries for a registered browse.
  */
-static void browse_add(mdns_browse_t *browse)
+static void browse_start(mdns_browse_t *browse)
 {
-    browse->state = BROWSE_RUNNING;
-    mdns_browse_t *queue = s_browse;
-    bool found = false;
-    // looking for this browse in active browses
-    while (queue) {
-        if (strlen(queue->service) == strlen(browse->service) && memcmp(queue->service, browse->service, strlen(queue->service)) == 0 &&
-                strlen(queue->proto) == strlen(browse->proto) && memcmp(queue->proto, browse->proto, strlen(queue->proto)) == 0) {
-            found = true;
-            break;
-        }
-        queue = queue->next;
-    }
-    if (!found) {
-        browse->next = s_browse;
-        s_browse = browse;
-    }
     for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
         for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
             browse_send(browse, (mdns_if_t) interface_idx, (mdns_ip_protocol_t) protocol_idx);
         }
-    }
-    if (found) {
-        browse_item_free(browse);
     }
 }
 
@@ -230,7 +207,7 @@ mdns_browse_t *mdns_priv_browse_find_ptr(mdns_name_t *name)
     }
 
     while (b) {
-        if (!strcasecmp(name->service, b->service) && !strcasecmp(name->proto, b->proto)) {
+        if (b->state == BROWSE_RUNNING && !strcasecmp(name->service, b->service) && !strcasecmp(name->proto, b->proto)) {
             return b;
         }
         b = b->next;
@@ -380,6 +357,11 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
     }
     mdns_result_t *r = NULL;
     while (b) {
+        if (b->state != BROWSE_RUNNING) {
+            b = b->next;
+            continue;
+        }
+
         if (type == MDNS_TYPE_SRV || type == MDNS_TYPE_TXT) {
             if (strcasecmp(name->service, b->service)
                     || strcasecmp(name->proto, b->proto)) {
@@ -426,8 +408,8 @@ void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
         switch (action->type) {
-        case ACTION_BROWSE_ADD:
-            browse_add(action->data.browse_add.browse);
+        case ACTION_BROWSE_START:
+            browse_start(action->data.browse_add.browse);
             break;
         case ACTION_BROWSE_SYNC:
             browse_sync(action->data.browse_sync.browse_sync);
@@ -443,10 +425,10 @@ void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
     }
     if (type == ACTION_CLEANUP) {
         switch (action->type) {
-        case ACTION_BROWSE_ADD:
-        //fallthrough
+        case ACTION_BROWSE_START:
         case ACTION_BROWSE_END:
-            browse_item_free(action->data.browse_add.browse);
+            // Browse actions do not own the browse item.
+            // If a queued action is discarded during shutdown, the linked browse item is released by mdns_priv_browse_free().
             break;
         case ACTION_BROWSE_SYNC:
             sync_browse_result_link_free(action->data.browse_sync.browse_sync);
@@ -833,12 +815,32 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
         return NULL;
     }
 
-    if (send_browse_action(ACTION_BROWSE_ADD, browse)) {
-        browse_item_free(browse);
-        return NULL;
+    mdns_priv_service_lock();
+    // Check if the browse already exists before sending action
+    for (mdns_browse_t *it = s_browse; it; it = it->next) {
+        if (it->state == BROWSE_RUNNING
+                && strlen(it->service) == strlen(browse->service) && memcmp(it->service, browse->service, strlen(it->service)) == 0
+                && strlen(it->proto) == strlen(browse->proto) && memcmp(it->proto, browse->proto, strlen(it->proto)) == 0) {
+            ESP_LOGW(TAG, "Browse already exists: %s.%s", browse->service, browse->proto);
+            goto error;
+        }
     }
 
+    if (send_browse_action(ACTION_BROWSE_START, browse) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send browse start action");
+        goto error;
+    }
+
+    browse->state = BROWSE_RUNNING;
+    browse->next = s_browse;
+    s_browse = browse;
+    mdns_priv_service_unlock();
     return browse;
+
+error:
+    browse_item_free(browse);
+    mdns_priv_service_unlock();
+    return NULL;
 }
 
 esp_err_t mdns_browse_delete(const char *service, const char *proto)
@@ -849,14 +851,29 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto)
         return ESP_FAIL;
     }
 
-    browse = browse_init(service, proto, NULL);
+    mdns_priv_service_lock();
+    for (mdns_browse_t *it = s_browse; it; it = it->next) {
+        if (it->state == BROWSE_RUNNING
+                && strlen(it->service) == strlen(service) && memcmp(it->service, service, strlen(it->service)) == 0
+                && strlen(it->proto) == strlen(proto) && memcmp(it->proto, proto, strlen(it->proto)) == 0) {
+            browse = it;
+            break;
+        }
+    }
+
     if (!browse) {
+        mdns_priv_service_unlock();
+        return ESP_FAIL;
+    }
+
+    browse->state = BROWSE_OFF;
+
+    if (send_browse_action(ACTION_BROWSE_END, browse) != ESP_OK) {
+        browse->state = BROWSE_RUNNING;
+        mdns_priv_service_unlock();
         return ESP_ERR_NO_MEM;
     }
 
-    if (send_browse_action(ACTION_BROWSE_END, browse)) {
-        browse_item_free(browse);
-        return ESP_ERR_NO_MEM;
-    }
+    mdns_priv_service_unlock();
     return ESP_OK;
 }
