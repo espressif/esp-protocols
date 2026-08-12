@@ -98,11 +98,19 @@ mdns_host_item_t *mdns_priv_get_self_host(void)
 void mdns_priv_set_global_hostname(const char *hostname)
 {
     if (s_server) {
+        bool hostname_changed = s_server->hostname != hostname &&
+                                (!s_server->hostname || !hostname || strcmp(s_server->hostname, hostname) != 0);
         if (s_server->hostname) {
             mdns_mem_free((void *)s_server->hostname);
         }
         s_server->hostname = hostname;
         s_server->self_host.hostname = hostname;
+        if (hostname_changed) {
+            esp_err_t err = esp_event_post(MDNS_EVENT, MDNS_EVENT_HOSTNAME_CHANGED, NULL, 0, 0);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to post hostname changed event (%d)", err);
+            }
+        }
     }
 }
 
@@ -551,9 +559,7 @@ void mdns_priv_responder_action(mdns_action_t *action, mdns_action_subtype_t typ
         case ACTION_HOSTNAME_SET:
             send_bye_all_pcbs_no_instance(true);
             mdns_priv_remap_self_service_hostname(s_server->hostname, action->data.hostname_set.hostname);
-            mdns_mem_free((char *)s_server->hostname);
-            s_server->hostname = action->data.hostname_set.hostname;
-            s_server->self_host.hostname = action->data.hostname_set.hostname;
+            mdns_priv_set_global_hostname(action->data.hostname_set.hostname);
             mdns_priv_restart_all_pcbs();
             xSemaphoreGive(s_server->action_sema);
             break;

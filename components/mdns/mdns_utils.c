@@ -11,6 +11,8 @@
 #include "mdns_utils.h"
 #include "mdns_responder.h"
 
+ESP_EVENT_DEFINE_BASE(MDNS_EVENT);
+
 static const char *TAG = "mdns_utils";
 static const char *MDNS_DEFAULT_DOMAIN = "local";
 static const char *MDNS_SUB_STR = "_sub";
