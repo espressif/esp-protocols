@@ -42,6 +42,20 @@ static void yield_to_all_priorities(void)
     vTaskPrioritySet(NULL, test_task_prio_before);
 }
 
+typedef struct {
+    size_t count;
+    bool valid;
+} hostname_changed_event_context_t;
+
+static void hostname_changed_event_handler(void *arg, esp_event_base_t event_base,
+                                           int32_t event_id, void *event_data)
+{
+    hostname_changed_event_context_t *context = arg;
+
+    context->valid = event_base == MDNS_EVENT && event_id == MDNS_EVENT_HOSTNAME_CHANGED && event_data == NULL;
+    ++context->count;
+}
+
 
 TEST(mdns, api_fails_with_invalid_state)
 {
@@ -57,6 +71,37 @@ TEST(mdns, init_deinit)
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
     TEST_ASSERT_EQUAL(ESP_OK, mdns_init());
     yield_to_all_priorities(); // Make sure that mdns task has executed to complete initialization
+    mdns_free();
+    esp_event_loop_delete_default();
+}
+
+TEST(mdns, hostname_changed_event)
+{
+    hostname_changed_event_context_t context = { .valid = true };
+
+    test_case_uses_tcpip();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(MDNS_EVENT, MDNS_EVENT_HOSTNAME_CHANGED,
+                                                         hostname_changed_event_handler, &context));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_init());
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+    yield_to_all_priorities();
+    TEST_ASSERT_TRUE(context.valid);
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+    yield_to_all_priorities();
+    TEST_ASSERT_TRUE(context.valid);
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    yield_to_all_priorities();
+    TEST_ASSERT_TRUE(context.valid);
+    TEST_ASSERT_EQUAL_UINT(2, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_unregister(MDNS_EVENT, MDNS_EVENT_HOSTNAME_CHANGED,
+                                                           hostname_changed_event_handler));
     mdns_free();
     esp_event_loop_delete_default();
 }
