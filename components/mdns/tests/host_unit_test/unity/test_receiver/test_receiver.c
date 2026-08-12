@@ -10,6 +10,39 @@
 #include "mock_mdns_pcb.h"
 #include "mock_mdns_send.h"
 #include "mdns_private.h"
+#include "esp_event_mock.h"
+
+typedef struct {
+    size_t count;
+    bool valid;
+} hostname_changed_event_context_t;
+
+static void hostname_changed_event_handler(void *arg, esp_event_base_t event_base,
+                                           int32_t event_id, void *event_data)
+{
+    hostname_changed_event_context_t *context = arg;
+
+    context->valid = event_base == MDNS_EVENT && event_id == MDNS_EVENT_HOSTNAME_CHANGED && event_data == NULL;
+    ++context->count;
+}
+
+static void test_hostname_changed_event(void)
+{
+    hostname_changed_event_context_t context = { .valid = true };
+
+    mdns_test_esp_event_reset();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_register(MDNS_EVENT, MDNS_EVENT_HOSTNAME_CHANGED,
+                                                         hostname_changed_event_handler, &context));
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    TEST_ASSERT_TRUE(context.valid);
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_handler_unregister(MDNS_EVENT, MDNS_EVENT_HOSTNAME_CHANGED,
+                                                           hostname_changed_event_handler));
+}
 
 static void test_mdns_hostname_queries(void)
 {
@@ -106,6 +139,8 @@ void run_unity_tests(void)
 
     // Run hostname queries test
     RUN_TEST(test_mdns_hostname_queries);
+
+    RUN_TEST(test_hostname_changed_event);
 
     // Run test with answers
     RUN_TEST(test_mdns_with_answers);
