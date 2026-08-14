@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <string.h>
-#include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_browser.h"
 #include "mdns_mem_caps.h"
@@ -16,6 +15,12 @@
 #include "mdns_service.h"
 #include "esp_log.h"
 #include "mdns_cache.h"
+
+#define MDNS_CACHE_RECORD_BROWSE_MASK \
+    ((mdns_cache_record_mask_t)(MDNS_CACHE_RECORD_PTR | \
+                                MDNS_CACHE_RECORD_SRV | \
+                                MDNS_CACHE_RECORD_TXT | \
+                                MDNS_CACHE_RECORD_ADDR))
 
 static const char *TAG = "mdns_browser";
 
@@ -56,30 +61,6 @@ static void browse_item_free(mdns_browse_t *browse)
     mdns_mem_free(browse->service);
     mdns_mem_free(browse->proto);
     mdns_mem_free(browse);
-}
-
-/**
- * @brief Deliver browse updates to the user notifier
- *
- * Invokes the notifier once per changed result accumulated for the current
- * packet. The passed @c result pointer is a temporary projection of the internal mDNS cache,
- * which is only valid during the lifetime of this callback and is freed immediately after the callback returns.
- */
-static void browse_sync(mdns_browse_sync_t *browse_sync)
-{
-    mdns_browse_t *browse = browse_sync->browse;
-
-    for (mdns_browse_result_sync_t *sync_result = browse_sync->sync_result; sync_result; sync_result = sync_result->next) {
-        mdns_result_t *result = sync_result->result;
-        DBG_BROWSE_RESULTS(result, browse_sync->browse);
-
-        if (browse->notifier) {
-            browse->notifier(result);
-        }
-
-        result->next = NULL;
-        mdns_priv_query_results_free(result);
-    }
 }
 
 /**
@@ -160,6 +141,7 @@ static void browse_finish(mdns_browse_t *browse)
     for (mdns_browse_t *it = s_browse; it; it = it->next) {
         if (it == browse) {
             queueDetach(mdns_browse_t, s_browse, it);
+            mdns_priv_cache_remove_service_cache_if_unused(it->service, it->proto);
             browse_item_free(it);
             return;
         }
@@ -206,14 +188,13 @@ static mdns_browse_t *browse_init(const char *service, const char *proto, mdns_b
  */
 static void browse_start(mdns_browse_t *browse)
 {
+    mdns_priv_cache_notify_browse(browse);
     for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
         for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
             browse_send(browse, (mdns_if_t) interface_idx, (mdns_ip_protocol_t) protocol_idx);
         }
     }
 }
-
-static esp_err_t add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r);
 
 /**
  * @brief  Called from packet parser to find matching running search
@@ -236,23 +217,6 @@ mdns_browse_t *mdns_priv_browse_find_ptr(mdns_name_t *name)
         b = b->next;
     }
     return NULL;
-}
-
-mdns_browse_sync_t *mdns_priv_browse_ensure_sync(mdns_browse_t *browse, mdns_browse_sync_t *sync)
-{
-    if (!browse) {
-        return sync;
-    }
-    if (!sync) {
-        sync = (mdns_browse_sync_t *)mdns_mem_malloc(sizeof(mdns_browse_sync_t));
-        if (!sync) {
-            HOOK_MALLOC_FAILED;
-            return NULL;
-        }
-        sync->browse = browse;
-        sync->sync_result = NULL;
-    }
-    return sync;
 }
 
 mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
@@ -288,42 +252,12 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
     return NULL;
 }
 
-static void sync_browse_result_link_free(mdns_browse_sync_t *browse_sync)
-{
-    mdns_browse_result_sync_t *current = browse_sync->sync_result;
-
-    while (current) {
-        mdns_browse_result_sync_t *next = current->next;
-        mdns_mem_free(current);
-        current = next;
-    }
-
-    mdns_mem_free(browse_sync);
-}
-
-void mdns_priv_browse_sync_free(mdns_browse_sync_t *browse_sync)
-{
-    if (!browse_sync) {
-        return;
-    }
-
-    for (mdns_browse_result_sync_t *sync_result = browse_sync->sync_result; sync_result; sync_result = sync_result->next) {
-        mdns_priv_query_results_free(sync_result->result);
-    }
-
-    sync_browse_result_link_free(browse_sync);
-}
-
 void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
 {
     if (type == ACTION_RUN) {
         switch (action->type) {
         case ACTION_BROWSE_START:
             browse_start(action->data.browse_add.browse);
-            break;
-        case ACTION_BROWSE_SYNC:
-            browse_sync(action->data.browse_sync.browse_sync);
-            sync_browse_result_link_free(action->data.browse_sync.browse_sync);
             break;
         case ACTION_BROWSE_END:
             browse_finish(action->data.browse_add.browse);
@@ -340,66 +274,12 @@ void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
             // Browse actions do not own the browse item.
             // If a queued action is discarded during shutdown, the linked browse item is released by mdns_priv_browse_free().
             break;
-        case ACTION_BROWSE_SYNC:
-            // free the sync linked list and result components
-            mdns_priv_browse_sync_free(action->data.browse_sync.browse_sync);
-            break;
         default:
             abort();
         }
         return;
     }
 
-}
-
-/**
- * @brief  Add result to browse, only add when the result is a new one.
- */
-static esp_err_t add_browse_result(mdns_browse_sync_t *sync_browse, mdns_result_t *r)
-{
-    mdns_browse_result_sync_t *sync_r = sync_browse->sync_result;
-    while (sync_r) {
-        if (sync_r->result == r) {
-            break;
-        }
-        sync_r = sync_r->next;
-    }
-    if (!sync_r) {
-        // Do not find, need to add the result to the list
-        mdns_browse_result_sync_t *new =
-            (mdns_browse_result_sync_t *)mdns_mem_malloc(sizeof(mdns_browse_result_sync_t));
-
-        if (!new) {
-            HOOK_MALLOC_FAILED;
-            return ESP_ERR_NO_MEM;
-        }
-        new->result = r;
-        new->next = sync_browse->sync_result;
-        sync_browse->sync_result = new;
-    }
-    return ESP_OK;
-}
-
-/**
- * @brief  Browse sync result
- */
-esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync)
-{
-    mdns_action_t *action = NULL;
-
-    action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
-    if (!action) {
-        HOOK_MALLOC_FAILED;
-        return ESP_ERR_NO_MEM;
-    }
-
-    action->type = ACTION_BROWSE_SYNC;
-    action->data.browse_sync.browse_sync = browse_sync;
-    if (!mdns_priv_queue_action(action)) {
-        mdns_mem_free(action);
-        return ESP_ERR_NO_MEM;
-    }
-    return ESP_OK;
 }
 
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier)
@@ -472,4 +352,96 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto)
 
     mdns_priv_service_unlock();
     return ESP_OK;
+}
+
+static bool browse_matches_service_cache(const mdns_browse_t *browse, const mdns_service_cache_t *service)
+{
+    return browse && service && browse->state == BROWSE_RUNNING && browse->notifier
+           && !mdns_utils_str_null_or_empty(browse->service)
+           && !mdns_utils_str_null_or_empty(browse->proto)
+           && !mdns_utils_str_null_or_empty(service->service)
+           && !mdns_utils_str_null_or_empty(service->proto)
+           && !strcasecmp(browse->service, service->service)
+           && !strcasecmp(browse->proto, service->proto);
+}
+
+/**
+ * @brief Build a temporary result from the service cache and queue it for sync.
+ */
+static bool browse_build_and_notify_temp_result(mdns_browse_t *browse, const mdns_cache_entry_t *entry,
+                                                const mdns_service_cache_t *service, bool goodbye)
+{
+    mdns_result_t *result = NULL;
+    esp_err_t ret = mdns_priv_service_cache_to_result(entry, service, &result);
+    if (ret != ESP_OK) {
+        return false;
+    }
+
+    result->next = NULL;
+    if (goodbye) {
+        result->ttl = 0;
+    }
+
+    DBG_BROWSE_RESULTS(result, browse);
+    if (browse->notifier) {
+        browse->notifier(result);
+    }
+
+    mdns_priv_query_results_free(result);
+    return true;
+}
+
+bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                mdns_cache_record_mask_t records)
+{
+    if (!entry || !service) {
+        return false;
+    }
+
+    if (!(records & MDNS_CACHE_RECORD_BROWSE_MASK)) {
+        return true;
+    }
+
+    bool updated = true;
+
+    for (mdns_browse_t *browse = s_browse; browse; browse = browse->next) {
+        if (browse_matches_service_cache(browse, service)) {
+            updated &= browse_build_and_notify_temp_result(browse, entry, service, false);
+        }
+    }
+
+    return updated;
+}
+
+bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                mdns_browse_t *browse)
+{
+    if (!entry || !service || !browse) {
+        return false;
+    }
+
+    if (!browse_matches_service_cache(browse, service)) {
+        return true;
+    }
+
+    return browse_build_and_notify_temp_result(browse, entry, service, false);
+}
+
+bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
+                                                            const mdns_service_cache_t *service)
+{
+    if (!entry || !service) {
+        return false;
+    }
+    bool notified = true;
+
+    for (mdns_browse_t *browse = s_browse; browse; browse = browse->next) {
+        if (!browse_matches_service_cache(browse, service)) {
+            continue;
+        }
+
+        notified &= browse_build_and_notify_temp_result(browse, entry, service, true);
+    }
+
+    return notified;
 }

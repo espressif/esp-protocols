@@ -148,7 +148,6 @@ static void free_action(mdns_action_t *action)
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_START:
     case ACTION_BROWSE_END:
-    case ACTION_BROWSE_SYNC:
         mdns_priv_browse_action(action, ACTION_CLEANUP);
         break;
 #endif
@@ -187,7 +186,6 @@ static void execute_action(mdns_action_t *action)
         break;
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_START:
-    case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
         mdns_priv_browse_action(action, ACTION_RUN);
         break;

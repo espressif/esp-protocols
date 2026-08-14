@@ -150,6 +150,28 @@ void mdns_priv_cache_clear(void);
 esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
                                             mdns_result_t **out_result);
 
+/**
+ * @brief Process all pending synchronization cache entries.
+ *
+ * @note This function is called by the MDNS task to process all pending synchronization cache entries.
+ *       It will generate temporary results, notify corresponding consumers, and clear the sync out flags.
+ */
+void mdns_priv_cache_process_sync(void);
+
+/**
+ * @brief Replay all currently visible cache services to a newly registered browse.
+ *
+ * @return true if successfully notified, false otherwise
+ */
+bool mdns_priv_cache_notify_browse(mdns_browse_t *browse);
+
+/**
+ * @brief Remove specific service cache entries if no consumers subscribe to them.
+ *
+ * @param service Service name.
+ * @param proto Protocol name.
+ */
+void mdns_priv_cache_remove_service_cache_if_unused(const char *service, const char *proto);
 #ifdef __cplusplus
 }
 #endif

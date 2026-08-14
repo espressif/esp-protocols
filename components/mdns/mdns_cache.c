@@ -432,6 +432,16 @@ mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_net
             return MDNS_CACHE_NO_CHANGE;
         }
 
+        if (!service_entry->ptr_present) {
+            return MDNS_CACHE_NO_CHANGE;
+        }
+
+        // Notify PTR goodbye before the service cache is removed.
+        bool notified = mdns_priv_browse_notify_ptr_goodbye_from_service_cache(owner_entry, service_entry);
+        if (!notified) {
+            ESP_LOGE(TAG, "Failed to notify PTR goodbye");
+        }
+
         // A PTR goodbye removes the whole service cache entry.
         if (owner_entry->service_cache_list == service_entry && !service_entry->next) {
             cache_free_addr_list(owner_entry);
@@ -923,4 +933,49 @@ error:
     HOOK_MALLOC_FAILED;
     mdns_priv_query_results_free(result);
     return ret;
+}
+
+void mdns_priv_cache_process_sync(void)
+{
+    for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
+        for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
+            if (service->sync_consumers & MDNS_CACHE_CONSUMER_BROWSE) {
+                mdns_cache_record_mask_t records = service->sync_records;
+                if (mdns_priv_browse_update_from_service_cache(entry, service, records)) {
+                    service_cache_clear_sync_out(service, MDNS_CACHE_CONSUMER_BROWSE, 0);
+                }
+            }
+            // TODO: When resolver is implemented, add resolver sync processing here.
+        }
+    }
+}
+
+bool mdns_priv_cache_notify_browse(mdns_browse_t *browse)
+{
+    if (!browse) {
+        return false;
+    }
+
+    bool notified = true;
+
+    for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
+        for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
+            notified &= mdns_priv_browse_notify_from_service_cache(entry, service, browse);
+        }
+    }
+
+    return notified;
+}
+
+void mdns_priv_cache_remove_service_cache_if_unused(const char *service, const char *proto)
+{
+    if (mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+        return;
+    }
+
+    if (mdns_priv_browse_has_service(service, proto)) {
+        return;
+    }
+
+    remove_service_caches(service, proto);
 }

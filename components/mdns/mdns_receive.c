@@ -25,6 +25,15 @@
 #include "mdns_cache.h"
 #endif
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+typedef struct mdns_rx_staged_ip_s {
+    char hostname[MDNS_NAME_BUF_LEN];
+    esp_ip_addr_t ip;
+    uint32_t ttl;
+    struct mdns_rx_staged_ip_s *next;
+} mdns_rx_staged_ip_t;
+#endif
+
 static const char *TAG = "mdns_receive";
 
 /**
@@ -341,6 +350,7 @@ handle_error :
     mdns_mem_free(txt);
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 static bool result_txt_linked_list_create(const uint8_t *data, size_t len, mdns_txt_linked_item_t **out_txt)
 {
     *out_txt = NULL;
@@ -399,6 +409,7 @@ error:
     mdns_utils_free_txt_linked_list(txt_linked_list);
     return false;
 }
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 #ifdef CONFIG_LWIP_IPV4
 /**
@@ -668,6 +679,48 @@ static void remove_parsed_question(mdns_parsed_packet_t *parsed_packet, uint16_t
     }
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+static void rx_staged_ip_free(mdns_rx_staged_ip_t *staged_ip)
+{
+    while (staged_ip) {
+        mdns_rx_staged_ip_t *next = staged_ip->next;
+        mdns_mem_free(staged_ip);
+        staged_ip = next;
+    }
+}
+
+static void rx_staged_ip_add(mdns_rx_staged_ip_t **staged_ip, const char *hostname, const esp_ip_addr_t *ip, uint32_t ttl)
+{
+    if (!staged_ip || mdns_utils_str_null_or_empty(hostname) || !ip) {
+        return;
+    }
+
+    mdns_rx_staged_ip_t *new_staged_ip = (mdns_rx_staged_ip_t *)mdns_mem_calloc(1, sizeof(mdns_rx_staged_ip_t));
+    if (!new_staged_ip) {
+        HOOK_MALLOC_FAILED;
+        return;
+    }
+
+    strncpy(new_staged_ip->hostname, hostname, MDNS_NAME_BUF_LEN - 1);
+    new_staged_ip->ip = *ip;
+    new_staged_ip->ttl = ttl;
+    new_staged_ip->next = *staged_ip;
+    *staged_ip = new_staged_ip;
+}
+
+static void rx_staged_ips_apply(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
+                                const mdns_rx_staged_ip_t *staged_ips)
+{
+    if (!esp_netif || !staged_ips) {
+        return;
+    }
+
+    for (const mdns_rx_staged_ip_t *it = staged_ips; it; it = it->next) {
+        (void)mdns_priv_cache_update_existing_addr(esp_netif, ip_protocol, it->hostname, &it->ip, it->ttl);
+    }
+}
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
+
 /**
  * @brief  main packet parser
  *
@@ -684,6 +737,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
     mdns_search_once_t *search_result = NULL;
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_browse_t *browse_result = NULL;
+    mdns_rx_staged_ip_t *staged_ips = NULL;
 
     mdns_browse_t *packet_browse = NULL;
     char *browse_result_instance = NULL;
@@ -1208,8 +1262,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_browse || browse_result) {
-                    (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
-                                                      name->host, &ip6, ttl);
+                    rx_staged_ip_add(&staged_ips, name->host, &ip6, ttl);
                 }
 #endif
                 if (search_result) {
@@ -1272,8 +1325,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 memcpy(&(ip.u_addr.ip4.addr), data_ptr, 4);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_browse || browse_result) {
-                    (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
-                                                      name->host, &ip, ttl);
+                    rx_staged_ip_add(&staged_ips, name->host, &ip, ttl);
                 }
 #endif
                 if (search_result) {
@@ -1338,6 +1390,11 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
     }
 
 clear_rx_packet:
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    rx_staged_ips_apply(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol, staged_ips);
+    mdns_priv_cache_process_sync();
+    rx_staged_ip_free(staged_ips);
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
     while (parsed_packet->questions) {
         mdns_parsed_question_t *question = parsed_packet->questions;
         parsed_packet->questions = parsed_packet->questions->next;

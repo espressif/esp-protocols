@@ -45,20 +45,6 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
 mdns_browse_t *mdns_priv_browse_find_ptr(mdns_name_t *name);
 
 /**
- * @brief Allocate a browse sync object, or return @p sync when provided
- *
- * @note Currently this function is called to create a browse sync object
- *       for each temporary browse result to carry the result to be synced.
- *       The sync object will be immediately queued for notification and freed after notification.
- */
-mdns_browse_sync_t *mdns_priv_browse_ensure_sync(mdns_browse_t *browse, mdns_browse_sync_t *sync);
-
-/**
- * @brief Free browse sync object and its pending result list
- */
-void mdns_priv_browse_sync_free(mdns_browse_sync_t *browse_sync);
-
-/**
  * @brief Send out all browse queries
  *
  * @note Called from the network events (mdns_netif.c)
@@ -75,20 +61,41 @@ void mdns_priv_browse_send_all(mdns_if_t mdns_if);
 void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
 
 /**
- * @brief Sync browse results
- *
- * @note Called from the packet parser
- * @note Queue a sync action for the browse sync object
- */
-esp_err_t mdns_priv_browse_sync(mdns_browse_sync_t *browse_sync);
-
-/**
  * @brief Perform action from mdns service queue
  *
  * @note Called by `free_action()` and `execute_action()` in mdns_service.c
  */
 void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type);
 
+/**
+ * @brief  Build temporary result and queue for sync from service cache
+ *
+ * @param entry Owner cache entry.
+ * @param service Updated service cache.
+ * @param records Bitmask of cache record types to sync.
+ *
+ * @note Called from mdns_priv_cache_process_sync() in mdns_cache.c
+ *
+ * @return true if all matching browses have been notified about the updated service, false otherwise
+ */
+bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                mdns_cache_record_mask_t records);
+
+/**
+ * @brief Notify one browse about one visible cache service.
+ *
+ * @return true if browse is successfully notified, false otherwise
+ */
+bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                mdns_browse_t *browse);
+
+/**
+ * @brief Notify the affected browse about a PTR goodbye.
+ *
+ * @note Must be called before the PTR service cache is removed to avoid UAF.
+ */
+bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
+                                                            const mdns_service_cache_t *service);
 #ifdef __cplusplus
 }
 #endif
