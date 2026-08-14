@@ -23,7 +23,6 @@ static void execute_action(mdns_action_t *action)
         mdns_priv_query_action(action, ACTION_RUN);
         break;
     case ACTION_BROWSE_START:
-    case ACTION_BROWSE_SYNC:
     case ACTION_BROWSE_END:
         mdns_priv_browse_action(action, ACTION_RUN);
         break;
