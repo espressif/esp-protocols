@@ -171,6 +171,7 @@ static void on_ip_event(void *arg, esp_event_base_t base, int32_t event_id, void
     if (event_id == IP_EVENT_PPP_GOT_IP) {
         ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s(%s)\" address: " IPSTR, esp_netif_get_desc(netif),
                  esp_netif_get_ifkey(netif), IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
         xEventGroupSetBits(s_event_group, GOT_IPV4 << (netif_cnt * 2));
     } else if (event_id == IP_EVENT_PPP_LOST_IP) {
         ESP_LOGI(TAG, "Disconnected");
@@ -229,6 +230,13 @@ esp_netif_t *eppp_init(eppp_type_t role, eppp_config_t *config)
         ESP_LOGE(TAG, "Invalid configuration or role");
         return NULL;
     }
+    // Every fresh eppp_init() call starts a brand new connection attempt, so
+    // any retry count accumulated by a previous, now-torn-down session must
+    // not carry over. s_retry_num is a module-static that was never reset
+    // here, so a caller that repeatedly deinits/reinits an endpoint (e.g. to
+    // switch transports) could inherit a stale count and reach
+    // CONFIG_EPPP_LINK_CONN_MAX_RETRY / report CONNECTION_FAILED prematurely.
+    s_retry_num = 0;
 
     eppp_transport_handle_t h = EPPP_TRANSPORT_INIT(config);
     ESP_GOTO_ON_FALSE(h, ESP_ERR_NO_MEM, err, TAG, "Failed to init EPPP transport");
