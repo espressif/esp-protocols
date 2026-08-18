@@ -135,7 +135,11 @@ static void connect_cb(lws_sorted_usec_list_t *_sul)
 #if defined(CONFIG_WS_OVER_TLS_MUTUAL_AUTH) || defined(CONFIG_WS_OVER_TLS_SERVER_AUTH)
     connect_info.ssl_connection = LCCSCF_USE_SSL | LCCSCF_ALLOW_SELFSIGNED;
 
-#if defined(CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK) && defined(CONFIG_WS_OVER_TLS_SERVER_AUTH)
+    /* Honour the skip-CN option for BOTH auth modes: the CI mutual-auth run
+     * connects to the test server by IP with a fixed-CN certificate, so it
+     * relies on this. The pre-v5.0.0 ESP TLS wrapper never verified CN, which
+     * masked the missing flag; lws v5.0.0 uses mbedTLS verification directly. */
+#if defined(CONFIG_WS_OVER_TLS_SKIP_COMMON_NAME_CHECK)
     connect_info.ssl_connection |= LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK;
 #endif
 #else
@@ -185,8 +189,22 @@ static int callback_minimal_echo(struct lws *wsi, enum lws_callback_reasons reas
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
 
         if (lws_frame_is_binary(wsi)) {
-            ESP_LOGI(TAG, "Received binary data");
-            ESP_LOG_BUFFER_HEX("Received binary data", in, len);
+            /* lws v5.0.0 may hand a binary message to this callback in several
+             * pieces (one per WS fragment, and again per rx-buffer chunk).
+             * Accumulate and only hex-dump once the whole message has arrived,
+             * so the complete payload lands on a single log line for the test
+             * to parse; logging each piece would expose a truncated prefix. */
+            static uint8_t bin_msg[64];
+            static size_t bin_msg_len;
+            if (len && bin_msg_len + len <= sizeof(bin_msg)) {
+                memcpy(bin_msg + bin_msg_len, in, len);
+                bin_msg_len += len;
+            }
+            if (lws_is_final_fragment(wsi) && lws_remaining_packet_payload(wsi) == 0) {
+                ESP_LOGI(TAG, "Received binary data");
+                ESP_LOG_BUFFER_HEX("Received binary data", bin_msg, bin_msg_len);
+                bin_msg_len = 0;
+            }
         } else {
             ESP_LOGW(TAG, "Received=%.*s\n\n", len, (char *)in);
         }
@@ -309,7 +327,17 @@ void app_main(void)
         */
         int service_result = 0;
         while (service_result >= 0) {
+            /*
+             * lws_service() is not a busy-poll: the timeout argument is
+             * ignored by lws and the call blocks in select() until network
+             * activity or the next scheduled lws event (here the retry
+             * policy's keepalive ping, ~3s). That blocking wait can outlast
+             * the 5s task WDT, so feed the WDT each time we come back around
+             * rather than adding an artificial delay (which would only add
+             * servicing latency).
+             */
             service_result = lws_service(context, 0);
+            esp_task_wdt_reset();
         }
 
         lws_context_destroy(context);
