@@ -5,11 +5,9 @@
 # disable rules below skip the build on older IDF releases so the repo-wide
 # CI matrix (v5.1 / v5.2 / v5.3 / v5.4 / v5.5 / latest) doesn't try them.
 #
-# IDF v6+ is also disabled for now: libsrtp 2.x's mbedTLS adapters
-# (aes_gcm_mbedtls.c, aes_icm_mbedtls.c, hmac_mbedtls.c) include the
-# classic <mbedtls/aes.h> / <mbedtls/gcm.h> headers which moved under the
-# TF-PSA-Crypto split in mbedTLS 4.x (shipped by IDF v6+). Re-enable once
-# libsrtp adapts or we ship a port-side compatibility shim.
+# IDF v6+ (mbedTLS 4.x) is supported: the submodule pin (2_x_dev,
+# post-v2.8.0) carries mbedTLS 4 / PSA Crypto adapters (cisco/libsrtp#813)
+# which self-select on MBEDTLS_VERSION_MAJOR.
 
 components/libsrtp/examples/get_started:
   enable:
@@ -18,8 +16,6 @@ components/libsrtp/examples/get_started:
   disable:
     - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
       reason: "libsrtp requires ESP-IDF 5.4+."
-    - if: IDF_VERSION_MAJOR >= 6
-      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
 
 components/libsrtp/test_apps:
   enable:
@@ -28,8 +24,6 @@ components/libsrtp/test_apps:
   disable:
     - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
       reason: "libsrtp requires ESP-IDF 5.4+."
-    - if: IDF_VERSION_MAJOR >= 6
-      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
 
 components/libsrtp/host_test:
   enable:
@@ -39,4 +33,4 @@ components/libsrtp/host_test:
     - if: IDF_VERSION_MAJOR <= 5 and IDF_VERSION_MINOR < 4
       reason: "libsrtp requires ESP-IDF 5.4+."
     - if: IDF_VERSION_MAJOR >= 6
-      reason: "libsrtp 2.x mbedTLS adapters not yet ported to mbedTLS 4.x (TF-PSA-Crypto split)."
+      reason: "IDF v6 linux target fails to link PSA apps: libtfpsacrypto.a needs mbedtls_ms_time/esp_mbedtls_mem_* from archives earlier on the link line (IDF-side ordering issue, not libsrtp)."

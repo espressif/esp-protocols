@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        idf_ver: ["release-v5.4", "release-v5.5"]
+        idf_ver: ["release-v5.4", "release-v5.5", "release-v6.0"]
         app:
           - { name: "get_started",  path: "components/libsrtp/examples/get_started" }
           - { name: "test_apps",    path: "components/libsrtp/test_apps" }
