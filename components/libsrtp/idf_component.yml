@@ -1,4 +1,4 @@
-version: "2.8.0"
+version: "2.8.0~1"
 description: "libsrtp (Cisco) wrapper for ESP-IDF — mbedTLS crypto backend with AES-GCM + AES-CM + HMAC-SHA1. SRTP/SRTCP packet protection for WebRTC and other RTP-based protocols."
 url: https://github.com/espressif/esp-protocols/tree/master/components/libsrtp
 issues: https://github.com/espressif/esp-protocols/issues
@@ -11,12 +11,11 @@ tags:
   - webrtc
   - mbedtls
 dependencies:
-  # Upper bound is intentional. libsrtp v2.x's mbedTLS adapters use the
-  # legacy <mbedtls/aes.h> / <mbedtls/gcm.h> headers; ESP-IDF v6 ships
-  # mbedTLS 4 which reorganised those into the TF-PSA-Crypto split.
-  # Bump the bound once the component tracks a libsrtp release that
-  # speaks mbedTLS 4 (see cisco/libsrtp#812 for context).
-  idf: ">=5.4,<6"
+  # The submodule pin (2_x_dev, post-v2.8.0) carries mbedTLS 4 / PSA
+  # Crypto support (cisco/libsrtp#813), so ESP-IDF v6 (mbedTLS 4) is
+  # supported alongside v5.x (mbedTLS 3) — the adapters self-select on
+  # MBEDTLS_VERSION_MAJOR.
+  idf: ">=5.4"
 
 # SBOM manifest for the wrapped upstream — see sbom_libsrtp.yml.
 sbom:
