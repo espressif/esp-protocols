@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.8.0~1](https://github.com/espressif/esp-protocols/commits/libsrtp-v2.8.0_1)
+
+### Features
+
+- bump submodule for mbedTLS 4 support; allow IDF v6.0 ([0174d34a](https://github.com/espressif/esp-protocols/commit/0174d34a))
+
 ## [2.8.0](https://github.com/espressif/esp-protocols/commits/libsrtp-v2.8.0)
 
 ### Features
