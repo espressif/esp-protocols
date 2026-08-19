@@ -103,6 +103,38 @@ static void mdns_dbg_printf(const char *fmt, ...)
 #define mdns_dbg_flush()
 #endif
 
+static void dbg_print_name_and_type(const char *prefix, const mdns_name_t *name, uint16_t type)
+{
+    if (type == MDNS_TYPE_A) {
+        dbg_printf("%s%s.%s. A ", prefix, name->host, name->domain);
+    } else if (type == MDNS_TYPE_AAAA) {
+        dbg_printf("%s%s.%s. AAAA ", prefix, name->host, name->domain);
+    } else if (type == MDNS_TYPE_OPT) {
+        dbg_printf("%s. OPT ", prefix);
+    } else {
+        const char *type_name = NULL;
+        if (type == MDNS_TYPE_PTR) {
+            type_name = "PTR";
+        } else if (type == MDNS_TYPE_SRV) {
+            type_name = "SRV";
+        } else if (type == MDNS_TYPE_TXT) {
+            type_name = "TXT";
+        } else if (type == MDNS_TYPE_NSEC) {
+            type_name = "NSEC";
+        } else if (type == MDNS_TYPE_ANY) {
+            type_name = "ANY";
+        }
+
+        dbg_printf("%s%s%s%s%s.%s.%s. ", prefix, name->host, name->host[0] ? "." : "",
+                   name->sub ? "_sub." : "", name->service, name->proto, name->domain);
+        if (type_name) {
+            dbg_printf("%s ", type_name);
+        } else {
+            dbg_printf("%04X ", type);
+        }
+    }
+}
+
 void static dbg_packet(const uint8_t *data, size_t len)
 {
     static mdns_name_t n;
@@ -153,23 +185,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
             if (unicast) {
                 dbg_printf("*U* ");
             }
-            if (type == MDNS_TYPE_PTR) {
-                dbg_printf("%s.%s%s.%s.%s. PTR ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_SRV) {
-                dbg_printf("%s.%s%s.%s.%s. SRV ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_TXT) {
-                dbg_printf("%s.%s%s.%s.%s. TXT ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_A) {
-                dbg_printf("%s.%s. A ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_AAAA) {
-                dbg_printf("%s.%s. AAAA ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_NSEC) {
-                dbg_printf("%s.%s%s.%s.%s. NSEC ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_ANY) {
-                dbg_printf("%s.%s%s.%s.%s. ANY ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain);
-            } else {
-                dbg_printf("%s.%s%s.%s.%s. %04X ", name->host, name->sub ? "_sub." : "", name->service, name->proto, name->domain, type);
-            }
+            dbg_print_name_and_type("", name, type);
 
             if (mdns_class == 0x0001) {
                 dbg_printf("IN");
@@ -227,25 +243,7 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 dbg_printf("    A");
             }
 
-            if (type == MDNS_TYPE_PTR) {
-                dbg_printf(": %s%s%s.%s.%s. PTR ", name->host, name->host[0] ? "." : "", name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_SRV) {
-                dbg_printf(": %s.%s.%s.%s. SRV ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_TXT) {
-                dbg_printf(": %s.%s.%s.%s. TXT ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_A) {
-                dbg_printf(": %s.%s. A ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_AAAA) {
-                dbg_printf(": %s.%s. AAAA ", name->host, name->domain);
-            } else if (type == MDNS_TYPE_NSEC) {
-                dbg_printf(": %s.%s.%s.%s. NSEC ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_ANY) {
-                dbg_printf(": %s.%s.%s.%s. ANY ", name->host, name->service, name->proto, name->domain);
-            } else if (type == MDNS_TYPE_OPT) {
-                dbg_printf(": . OPT ");
-            } else {
-                dbg_printf(": %s.%s.%s.%s. %04X ", name->host, name->service, name->proto, name->domain, type);
-            }
+            dbg_print_name_and_type(": ", name, type);
 
             if (mdns_class == 0x0001) {
                 dbg_printf("IN ");
