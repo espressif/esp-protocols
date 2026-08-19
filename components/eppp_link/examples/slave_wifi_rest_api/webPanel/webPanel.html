@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ESP32 Wi-Fi Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 30px auto; background: #f6f7fa; color: #222;}
+        h1 { text-align: center; }
+        #networks { margin: 16px 0; }
+        .net { padding: 8px; border-bottom: 1px solid #ccc; }
+        .connected { background: #d3ffd3; }
+        .btn { padding: 5px 10px; margin-left: 5px; cursor: pointer; }
+        input[type=text], input[type=password] { padding: 4px; margin-right: 8px;}
+        #status { margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <h1>ESP32 Wi-Fi Manager</h1>
+    <div id="status">Status: ...</div>
+    <button onclick="scanNetworks()">Scan Networks</button>
+    <div id="networks"></div>
+
+    <h3>Connect to Wi-Fi</h3>
+    <form id="connectForm" onsubmit="connectWifi(event)">
+        <input type="text" id="ssid" placeholder="SSID" required>
+        <input type="password" id="password" placeholder="Password">
+        <button type="submit" class="btn">Connect</button>
+        <button type="button" onclick="disconnectWifi()" class="btn">Disconnect</button>
+    </form>
+
+    <script>
+        // Change to your ESP32 IP if needed
+        const API_BASE = "http://<YOUR_ESP32_IP_IN_PPP_NETWORK>";
+
+        async function getStatus() {
+            let st = document.getElementById('status');
+            st.innerText = 'Status: ...';
+            try {
+                let resp = await fetch(`${API_BASE}/wifi/status`);
+                let data = await resp.json();
+                if (data.status === "connected") {
+                    st.innerHTML = `Status: <b>Connected</b> to <b>${data.ssid}</b>, RSSI: ${data.rssi}`;
+                } else {
+                    st.innerHTML = `Status: <b>Disconnected</b>`;
+                }
+            } catch (e) {
+                st.innerText = 'ESP32 request error';
+            }
+        }
+
+        async function scanNetworks() {
+            let netDiv = document.getElementById('networks');
+            netDiv.innerHTML = "Scanning for networks...";
+            try {
+                let resp = await fetch(`${API_BASE}/wifi/scan`);
+                let arr = await resp.json();
+                netDiv.innerHTML = arr.length ? "" : "No networks nearby";
+                arr.forEach(net => {
+                    netDiv.innerHTML += `
+                      <div class="net">
+                        <b>SSID:</b> ${net.ssid} 
+                        <b>RSSI:</b> ${net.rssi}
+                        <b>Auth:</b> ${net.auth}
+                        <button class="btn" onclick="selectSSID('${net.ssid}')">Select</button>
+                      </div>`;
+                });
+            } catch (e) {
+                netDiv.innerHTML = "Error scanning for networks";
+            }
+        }
+
+        function selectSSID(ssid) {
+            document.getElementById('ssid').value = ssid;
+        }
+
+        async function connectWifi(e) {
+            e.preventDefault();
+            const ssid = document.getElementById('ssid').value;
+            const password = document.getElementById('password').value;
+            try {
+                let resp = await fetch(`${API_BASE}/wifi/connect`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ssid, password})
+                });
+                let data = await resp.json();
+                alert("Connect command sent");
+                setTimeout(getStatus, 2000);
+            } catch (e) {
+                alert("Connection error");
+            }
+        }
+
+        async function disconnectWifi() {
+            try {
+                let resp = await fetch(`${API_BASE}/wifi/disconnect`, {method: "POST"});
+                let data = await resp.json();
+                alert("Disconnected from Wi-Fi");
+                setTimeout(getStatus, 2000);
+            } catch (e) {
+                alert("Error during disconnect");
+            }
+        }
+
+        // Initial actions
+        getStatus();
+        scanNetworks();
+    </script>
+</body>
+</html>
