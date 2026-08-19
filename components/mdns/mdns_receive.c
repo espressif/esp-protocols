@@ -734,7 +734,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 continue;
             }
 
-            if (type == MDNS_TYPE_ANY && !mdns_utils_str_null_or_empty(name->host)) {
+            if (type == MDNS_TYPE_ANY && !name->sub && !mdns_utils_str_null_or_empty(name->host)) {
                 parsed_packet->probe = true;
             }
 

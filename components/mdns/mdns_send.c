@@ -257,7 +257,7 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
 {
     mdns_host_item_t *host = get_host_item(service->hostname);
     bool is_delegated = (host != mdns_priv_get_self_host());
-    bool is_instance_question = !mdns_utils_str_null_or_empty(question->host);
+    bool is_instance_question = !question->sub && !mdns_utils_str_null_or_empty(question->host);
     if ((question->type == MDNS_TYPE_ANY) && is_instance_question) {
         // Instance-scoped ANY queries expect the resolved data (SRV/TXT) to be
         // part of the answer section so that queriers can stop searching as soon
