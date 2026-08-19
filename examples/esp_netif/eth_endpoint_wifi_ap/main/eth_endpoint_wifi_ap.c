@@ -21,6 +21,7 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_mac.h"
+#include "esp_idf_version.h"
 #include "nvs_flash.h"
 #include "dhcpserver/dhcpserver.h"
 #include "dhcpserver/dhcpserver_options.h"
@@ -31,6 +32,14 @@ static const char *TAG = "eth_endpoint_wifi_ap";
 
 /** Event group bit: set when Ethernet endpoint receives IPv4 (IP_EVENT_ETH_GOT_IP). */
 #define EXAMPLE_ETH_ENDPOINT_GOT_IP_BIT (1U << 0)
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+#define EXAMPLE_IP_EVENT_ASSIGNED_IP_TO_CLIENT IP_EVENT_ASSIGNED_IP_TO_CLIENT
+typedef ip_event_assigned_ip_to_client_t example_ap_staipassigned_event_t;
+#else
+#define EXAMPLE_IP_EVENT_ASSIGNED_IP_TO_CLIENT IP_EVENT_AP_STAIPASSIGNED
+typedef ip_event_ap_staipassigned_t example_ap_staipassigned_event_t;
+#endif
 
 static EventGroupHandle_t event_group = NULL;
 
@@ -120,8 +129,8 @@ static void wifi_ap_event_handler(void *arg, esp_event_base_t event_base,
             ESP_LOGW(TAG, "Unhandled Wi-Fi AP event: id=%ld", event_id);
             break;
         }
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_ASSIGNED_IP_TO_CLIENT) {
-        ip_event_assigned_ip_to_client_t* event = (ip_event_assigned_ip_to_client_t*) event_data;
+    } else if (event_base == IP_EVENT && event_id == EXAMPLE_IP_EVENT_ASSIGNED_IP_TO_CLIENT) {
+        example_ap_staipassigned_event_t *event = (example_ap_staipassigned_event_t *) event_data;
         ESP_LOGI(TAG, "Wi-Fi AP assigned IP to client: " IPSTR, IP2STR(&event->ip));
     }
 }
@@ -302,7 +311,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STOP, wifi_ap_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STACONNECTED, wifi_ap_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_AP_STADISCONNECTED, wifi_ap_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ASSIGNED_IP_TO_CLIENT, wifi_ap_event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, EXAMPLE_IP_EVENT_ASSIGNED_IP_TO_CLIENT, wifi_ap_event_handler, NULL));
 
     // Initialize WiFi AP netif
     esp_netif_t *ap_netif = wifi_init_ap();

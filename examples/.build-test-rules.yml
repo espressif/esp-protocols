@@ -1,3 +1,20 @@
+.wifi_no_h2_p4: &wifi_no_h2_p4
+  disable:
+    - if: IDF_TARGET in ["esp32h2", "esp32p4"]
+      reason: target has no native Wi-Fi
+
 examples/esp_netif/multiple_netifs:
   disable:
     - if: IDF_TARGET != "esp32"
+
+examples/esp_netif/eth_endpoint_wifi_ap:
+  <<: *wifi_no_h2_p4
+
+examples/esp_netif/eth_endpoint_wifi_sta:
+  <<: *wifi_no_h2_p4
+
+examples/esp_netif/eth_gateway_wifi_ap:
+  <<: *wifi_no_h2_p4
+
+examples/esp_netif/eth_gateway_wifi_sta:
+  <<: *wifi_no_h2_p4
