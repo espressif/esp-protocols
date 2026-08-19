@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.0.0](https://github.com/espressif/esp-protocols/commits/lws-v5.0.0)
+
+### Features
+
+- pin submodule to the v5.0.0 release tag ([02493cd3](https://github.com/espressif/esp-protocols/commit/02493cd3))
+- mbedTLS 4 / IDF v6 support ([1de9a711](https://github.com/espressif/esp-protocols/commit/1de9a711))
+
+### Bug Fixes
+
+- accumulate fragmented binary receive in client example ([f1d4b543](https://github.com/espressif/esp-protocols/commit/f1d4b543))
+- feed the task WDT in the client example service loop ([51240787](https://github.com/espressif/esp-protocols/commit/51240787))
+- mutual-auth pytest — request client cert and honour skip-CN check ([7b957f58](https://github.com/espressif/esp-protocols/commit/7b957f58))
+- provide if_nametoindex fallback for IDF <= v5.3 ([77317b6e](https://github.com/espressif/esp-protocols/commit/77317b6e))
+
 ## [4.3.3~3](https://github.com/espressif/esp-protocols/commits/lws-v4.3.3_3)
 
 ### Features
