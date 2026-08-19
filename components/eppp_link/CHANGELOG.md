@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.6](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.6)
+
+### Updated
+
+- eppp_link: reset s_retry_num in on_ip_event() and eppp_init() ([7030ff8a](https://github.com/espressif/esp-protocols/commit/7030ff8a), [#1126](https://github.com/espressif/esp-protocols/issues/1126))
+
 ## [1.1.5](https://github.com/espressif/esp-protocols/commits/eppp-v1.1.5)
 
 ### Bug Fixes
