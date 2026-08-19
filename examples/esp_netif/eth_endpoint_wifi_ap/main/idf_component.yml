@@ -1,6 +1,10 @@
 dependencies:
   idf: ">=5.0"
   espressif/ethernet_init:
-    version: "~1.2.0"
+    matches:
+      - if: idf_version >=6.0
+        version: ^1.0.0
+      - if: idf_version <6.0
+        version: "==0.3.0"
     rules:
       - if: "target != linux"
