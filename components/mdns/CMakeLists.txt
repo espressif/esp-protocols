@@ -16,10 +16,13 @@ set(MDNS_CORE "mdns_responder.c" "mdns_receive.c" "mdns_utils.c" "mdns_debug.c" 
                 "mdns_querier.c" "mdns_pcb.c" "mdns_service.c")
 
 if(CONFIG_MDNS_ENABLE_BROWSE)
-    list(APPEND MDNS_CORE "mdns_browser.c" "mdns_cache.c")
+    list(APPEND MDNS_CORE "mdns_browser.c")
 endif()
 if(CONFIG_MDNS_ENABLE_RESOLVER)
     list(APPEND MDNS_CORE "mdns_resolver.c")
+endif()
+if(CONFIG_MDNS_ENABLE_BROWSE OR CONFIG_MDNS_ENABLE_RESOLVER)
+    list(APPEND MDNS_CORE "mdns_cache.c")
 endif()
 
 idf_build_get_property(target IDF_TARGET)

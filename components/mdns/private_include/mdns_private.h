@@ -444,6 +444,7 @@ typedef struct {
     } data;
 } mdns_action_t;
 
+#if defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)
 typedef enum {
     MDNS_CACHE_CONSUMER_BROWSE     = (1U << 0),
     MDNS_CACHE_CONSUMER_RESOLVER   = (1U << 1),
@@ -548,3 +549,4 @@ typedef enum {
     MDNS_CACHE_REMOVED,     /*!< existing service cache entry removed */
     MDNS_CACHE_ERROR,       /*!< error occurred while updating the cache */
 } mdns_cache_update_result_t;
+#endif // defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)

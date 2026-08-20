@@ -8,12 +8,30 @@
 #include <strings.h>
 #include "esp_check.h"
 #include "esp_log.h"
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 #include "mdns_browser.h"
+#endif
 #include "mdns_cache.h"
 #include "mdns_mem_caps.h"
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+#include "mdns_resolver.h"
+#endif
 #include "mdns_utils.h"
 
 #define MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC 300 // Maximum lifetime of cache records without consumers
+
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+#define MDNS_CACHE_RECORD_RESOLVER_MASK \
+    ((mdns_cache_record_mask_t)(MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE))
+#endif
+
+#if defined(CONFIG_MDNS_ENABLE_BROWSE) && defined(CONFIG_MDNS_ENABLE_RESOLVER)
+#define MDNS_CACHE_CONSUMERS (MDNS_CACHE_CONSUMER_BROWSE | MDNS_CACHE_CONSUMER_RESOLVER)
+#elif defined(CONFIG_MDNS_ENABLE_BROWSE)
+#define MDNS_CACHE_CONSUMERS MDNS_CACHE_CONSUMER_BROWSE
+#else
+#define MDNS_CACHE_CONSUMERS MDNS_CACHE_CONSUMER_RESOLVER
+#endif
 
 static const char *TAG = "mdns_cache";
 
@@ -550,19 +568,47 @@ static void cache_remove_service_if_empty(mdns_cache_entry_t *entry, mdns_servic
 
 static bool cache_service_has_consumer(const mdns_service_cache_t *service)
 {
-    return service && mdns_priv_browse_has_service(service->service, service->proto);
+    if (!service) {
+        return false;
+    }
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    if (mdns_priv_browse_has_service(service->service, service->proto)) {
+        return true;
+    }
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    if (mdns_priv_resolver_has_service(service->service, service->proto)) {
+        return true;
+    }
+#endif
+    return false;
+}
+
+static bool cache_ptr_has_consumer(const mdns_service_cache_t *service, const char *subtype)
+{
+    if (!service) {
+        return false;
+    }
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    if (mdns_priv_browse_has_subtype(service->service, service->proto, subtype)) {
+        return true;
+    }
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    if (mdns_priv_resolver_find(service->service, service->proto, subtype, MDNS_RESOLVER_TYPE_PTR)) {
+        return true;
+    }
+#endif
+    return false;
 }
 
 static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
 {
     switch (node->record_mask) {
     case MDNS_CACHE_RECORD_PTR:
-        // Base PTR is only consumed by browses without subtype
-        return node->service && !node->subtype
-               && mdns_priv_browse_has_subtype(node->service->service, node->service->proto, NULL);
+        return cache_ptr_has_consumer(node->service, NULL);
     case MDNS_CACHE_RECORD_SUBTYPE:
-        return node->service && node->subtype
-               && mdns_priv_browse_has_subtype(node->service->service, node->service->proto, node->subtype->subtype);
+        return node->subtype && cache_ptr_has_consumer(node->service, node->subtype->subtype);
     case MDNS_CACHE_RECORD_ADDR:
         for (const mdns_service_cache_t *it = node->entry->service_cache_list; it; it = it->next) {
             if (cache_service_has_consumer(it)) {
@@ -573,6 +619,22 @@ static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
     default:
         return cache_service_has_consumer(node->service);
     }
+}
+
+static void notify_ptr_removed(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service, const char *subtype)
+{
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    if (!mdns_priv_browse_notify_ptr_goodbye_from_service_cache(entry, service, subtype)) {
+        ESP_LOGE(TAG, "Failed to notify browse PTR goodbye");
+    }
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    mdns_cache_record_mask_t record_mask = mdns_utils_str_null_or_empty(subtype)
+                                           ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE;
+    if (!mdns_priv_resolver_notify_goodbye_from_service_cache(entry, service, record_mask, subtype)) {
+        ESP_LOGE(TAG, "Failed to notify resolver PTR goodbye");
+    }
+#endif
 }
 
 mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
@@ -653,7 +715,7 @@ mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_net
     }
     service_cache_mark_sync_out(service_entry, result,
                                 base_ptr_updated ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE,
-                                MDNS_CACHE_CONSUMER_BROWSE);
+                                MDNS_CACHE_CONSUMERS);
     return result;
 }
 
@@ -751,7 +813,9 @@ mdns_cache_update_result_t mdns_priv_cache_update_srv(const esp_netif_t *esp_net
         result = srv_result;
     }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     service_cache_mark_sync_out(service_entry, result, MDNS_CACHE_RECORD_SRV, MDNS_CACHE_CONSUMER_BROWSE);
+#endif
     return result;
 }
 
@@ -884,7 +948,9 @@ mdns_cache_update_result_t mdns_priv_cache_update_txt(const esp_netif_t *esp_net
         result = MDNS_CACHE_ADDED;
     }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     service_cache_mark_sync_out(service_entry, result, MDNS_CACHE_RECORD_TXT, MDNS_CACHE_CONSUMER_BROWSE);
+#endif
     return result;
 }
 
@@ -956,10 +1022,11 @@ static mdns_cache_update_result_t cache_update_addr(const esp_netif_t *esp_netif
     }
 
     result = (addr_added || ttl_changed) ? MDNS_CACHE_UPDATED : MDNS_CACHE_NO_CHANGE;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
         service_cache_mark_sync_out(service, result, MDNS_CACHE_RECORD_ADDR, MDNS_CACHE_CONSUMER_BROWSE);
     }
-
+#endif
     return result;
 }
 
@@ -979,7 +1046,7 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
 
     // Only update ADDR records if consumers exist
     for (const mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
-        if (mdns_priv_browse_has_service(service->service, service->proto)) {
+        if (cache_service_has_consumer(service)) {
             return cache_update_addr(esp_netif, ip_protocol, hostname, addr, ttl, false);
         }
     }
@@ -1009,18 +1076,14 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
             }
             service->ptr_present = false;
             service->ptr_ttl = 0;
-            if (!mdns_priv_browse_notify_ptr_goodbye_from_service_cache(entry, service, NULL)) {
-                ESP_LOGE(TAG, "Failed to notify PTR expiration");
-            }
+            notify_ptr_removed(entry, service, NULL);
             break;
         case MDNS_CACHE_RECORD_SUBTYPE: {
             if (!service || !subtype) {
                 mdns_mem_free(node);
                 continue;
             }
-            if (!mdns_priv_browse_notify_ptr_goodbye_from_service_cache(entry, service, subtype->subtype)) {
-                ESP_LOGE(TAG, "Failed to notify subtype PTR expiration");
-            }
+            notify_ptr_removed(entry, service, subtype->subtype);
             queueDetach(mdns_cache_subtype_t, service->subtype_list, subtype);
             mdns_mem_free(subtype->subtype);
             mdns_mem_free(subtype);
@@ -1055,9 +1118,11 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
             queueDetach(mdns_cache_addr_t, entry->addr_list, addr);
             mdns_mem_free(addr);
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
             for (mdns_service_cache_t *it = entry->service_cache_list; it; it = it->next) {
                 service_cache_mark_sync_out(it, MDNS_CACHE_UPDATED, MDNS_CACHE_RECORD_ADDR, MDNS_CACHE_CONSUMER_BROWSE);
             }
+#endif
             cache_remove_entry_if_empty(entry);
             break;
         }
@@ -1065,8 +1130,10 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
         if (service && service_cache_is_empty(service)) {
             cache_remove_service_if_empty(entry, service);
         } else if ((record & (MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE)) == 0) {
-            // PTR removal is already reported through the goodbye path
+            // PTR removal is already reported through the goodbye path.
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
             service_cache_mark_sync_out(service, MDNS_CACHE_UPDATED, record, MDNS_CACHE_CONSUMER_BROWSE);
+#endif
         }
         mdns_mem_free(node);
     }
@@ -1263,6 +1330,7 @@ void mdns_priv_cache_process_sync(void)
 
     for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
         for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
             if (service->sync_consumers & MDNS_CACHE_CONSUMER_BROWSE) {
                 mdns_cache_record_mask_t records = service->sync_records;
                 if (!mdns_priv_browse_update_from_service_cache(entry, service, records)) {
@@ -1270,11 +1338,23 @@ void mdns_priv_cache_process_sync(void)
                 }
                 service_cache_clear_sync_out(service, MDNS_CACHE_CONSUMER_BROWSE);
             }
-            // TODO: When resolver is implemented, add resolver sync processing here.
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+            if (service->sync_consumers & MDNS_CACHE_CONSUMER_RESOLVER) {
+                mdns_cache_record_mask_t resolver_records = service->sync_records & MDNS_CACHE_RECORD_RESOLVER_MASK;
+                mdns_cache_record_mask_t completed_records = mdns_priv_resolver_update_from_service_cache(entry, service,
+                                                                                                          resolver_records);
+                if ((resolver_records & completed_records) != resolver_records) {
+                    ESP_LOGW(TAG, "Failed to notify resolver, dropping sync mark");
+                }
+                service_cache_clear_sync_out(service, MDNS_CACHE_CONSUMER_RESOLVER);
+            }
+#endif
         }
     }
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 bool mdns_priv_cache_notify_browse(mdns_browse_t *browse)
 {
     if (!browse) {
@@ -1291,3 +1371,23 @@ bool mdns_priv_cache_notify_browse(mdns_browse_t *browse)
 
     return notified;
 }
+#endif
+
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+bool mdns_priv_cache_notify_resolver(mdns_resolver_t *resolver)
+{
+    if (!resolver) {
+        return false;
+    }
+
+    bool notified = true;
+
+    for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
+        for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
+            notified &= mdns_priv_resolver_notify_from_service_cache(entry, service, resolver);
+        }
+    }
+
+    return notified;
+}
+#endif
