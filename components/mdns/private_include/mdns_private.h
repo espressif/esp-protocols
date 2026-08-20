@@ -169,6 +169,7 @@ typedef enum {
     ACTION_BROWSE_SEND_BY_IP_PROTOCOL,
     ACTION_RESOLVER_START,
     ACTION_RESOLVER_END,
+    ACTION_RESOLVER_SEND_BY_IP_PROTOCOL,
     ACTION_MAX
 } mdns_action_type_t;
 
@@ -435,7 +436,7 @@ typedef struct {
         struct {
             mdns_if_t interface;
             mdns_ip_protocol_t ip_protocol;
-        } browse_send;
+        } send_by_ip_protocol;
 #ifdef CONFIG_MDNS_ENABLE_RESOLVER
         struct {
             mdns_resolver_t *resolver;

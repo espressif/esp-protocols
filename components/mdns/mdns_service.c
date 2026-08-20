@@ -219,13 +219,16 @@ static void execute_action(mdns_action_t *action)
         break;
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
-        mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
+        mdns_priv_browse_send_by_ip_protocol(action->data.send_by_ip_protocol.interface, action->data.send_by_ip_protocol.ip_protocol);
         break;
 #endif
 #ifdef CONFIG_MDNS_ENABLE_RESOLVER
     case ACTION_RESOLVER_START:
     case ACTION_RESOLVER_END:
         mdns_priv_resolver_action(action, ACTION_RUN);
+        break;
+    case ACTION_RESOLVER_SEND_BY_IP_PROTOCOL:
+        mdns_priv_resolver_send_by_ip_protocol(action->data.send_by_ip_protocol.interface, action->data.send_by_ip_protocol.ip_protocol);
         break;
 #endif
     default:

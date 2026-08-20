@@ -320,6 +320,13 @@ void mdns_priv_resolver_action(mdns_action_t *action, mdns_action_subtype_t type
     }
 }
 
+void mdns_priv_resolver_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+{
+    for (mdns_resolver_t *it = s_resolver; it; it = it->next) {
+        resolver_send(it, mdns_if, ip_protocol);
+    }
+}
+
 mdns_resolver_t *mdns_priv_resolver_find(const char *service, const char *proto, const char *subtype,
                                          mdns_resolver_type_t type)
 {

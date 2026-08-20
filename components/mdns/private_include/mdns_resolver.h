@@ -28,6 +28,17 @@ void mdns_priv_resolver_free(void);
 void mdns_priv_resolver_action(mdns_action_t *action, mdns_action_subtype_t type);
 
 /**
+ * @brief Send out resolver queries by IP protocol
+ *
+ * @note Called from the network events (mdns_netif.c)
+ * @note Calls (indirectly) search-send from mdns_querier.c, which sends out the query
+ *
+ * @param mdns_if Interface index.
+ * @param ip_protocol IP protocol.
+ */
+void mdns_priv_resolver_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
+
+/**
  * @brief Find a running resolver by service, protocol, and possible subtype.
  *
  * @param service Service name.
