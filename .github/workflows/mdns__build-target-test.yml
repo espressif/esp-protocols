@@ -32,6 +32,10 @@ jobs:
           python -m pip install idf-build-apps
           # Build default configs for all targets
           python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r default -d
+          # Build-only configs (compile check; discard artifacts so pytest won't run them)
+          if compgen -G "components/mdns/${{ matrix.test.path }}/sdkconfig.build_only.*" > /dev/null; then
+            python ./ci/build_apps.py components/mdns/${{ matrix.test.path }} -r 'sdkconfig.build_only.*=' -d
+          fi
           # Build specific configs for test targets
           python ./ci/build_apps.py components/mdns/${{ matrix.test.path }}
           cd components/mdns/${{ matrix.test.path }}

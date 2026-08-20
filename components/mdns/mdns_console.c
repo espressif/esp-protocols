@@ -1335,6 +1335,7 @@ static void register_mdns_service_subtype_set(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_service_sub));
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 static struct {
     struct arg_str *service;
     struct arg_str *proto;
@@ -1413,6 +1414,7 @@ static void register_mdns_browse_del(void)
 
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_browse_del));
 }
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 void mdns_console_register(void)
 {
@@ -1434,8 +1436,10 @@ void mdns_console_register(void)
     register_mdns_undelegate_host();
     register_mdns_service_subtype_set();
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
     register_mdns_browse();
     register_mdns_browse_del();
+#endif
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();
