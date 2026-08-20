@@ -375,6 +375,7 @@ typedef struct mdns_browse_s {
  */
 typedef enum {
     MDNS_RESOLVER_TYPE_PTR,
+    MDNS_RESOLVER_TYPE_SRV,
 } mdns_resolver_type_t;
 
 /**
@@ -394,12 +395,14 @@ typedef struct mdns_resolver_s {
     mdns_resolver_type_t type;              /*!< Record type to resolve */
     mdns_resolver_state_t state;            /*!< Resolver lifecycle state */
 
+    char *instance;                         /*!< Instance name */
     char *service;                          /*!< Service name */
     char *proto;                            /*!< Protocol name */
     char *subtype;                          /*!< Subtype */
 
     union {
         mdns_ptr_resolver_notify_t ptr;     /*!< PTR result notifier */
+        mdns_srv_resolver_notify_t srv;     /*!< SRV result notifier */
     } notifier;
 
     struct mdns_resolver_s *next;           /*!< Next resolver in the linked list */

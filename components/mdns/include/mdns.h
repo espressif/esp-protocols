@@ -136,6 +136,11 @@ typedef struct mdns_result_s {
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
     // PTR extra
     char *subtype;                          /*!< consumer subtype, or NULL for normal PTR */
+    // SRV extra
+    uint16_t priority;                      /*!< priority */
+    uint16_t weight;                        /*!< weight */
+    // Specific TTLs
+    uint32_t srv_ttl;                       /*!< time to live of SRV record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -179,6 +184,18 @@ typedef struct mdns_resolver_s mdns_resolver_t;
  *          For example, resolvers new/delete APIs.
  */
 typedef void (*mdns_ptr_resolver_notify_t)(mdns_result_t *result);
+
+/**
+ * @brief SRV resolver result change notifier
+ *
+ * @note Ownership of @p result is transferred to the caller when the callback is invoked.
+ *       Users must free the result with `mdns_results_free()` after handling it.
+ *
+ * @warning This callback is called in the mDNS service task.
+ *          Users must not call APIs that acquire mDNS service lock from this callback.
+ *          For example, resolvers new/delete APIs.
+ */
+typedef void (*mdns_srv_resolver_notify_t)(mdns_result_t *result);
 #endif // CONFIG_MDNS_ENABLE_RESOLVER
 
 /**
@@ -1225,6 +1242,21 @@ esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto
  */
 mdns_resolver_t *mdns_ptr_resolver_new(const char *service, const char *proto, const char *subtype,
                                        mdns_ptr_resolver_notify_t notifier);
+
+/**
+ * @brief Start a continuous SRV resolver for a service `_instance._service._proto`.
+ * @param instance          Service instance name
+ * @param service           Service type, e.g. `_http`, `_ftp` etc.
+ * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
+ * @param notifier          Callback invoked on SRV updates and goodbye messages.
+ *                          See @ref mdns_srv_resolver_notify_t for callback semantics and limitations.
+ * @return Pointer to the new SRV resolver if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+mdns_resolver_t *mdns_srv_resolver_new(const char *instance, const char *service, const char *proto,
+                                       mdns_srv_resolver_notify_t notifier);
 
 /**
  * @brief Stop the continuous resolver.
