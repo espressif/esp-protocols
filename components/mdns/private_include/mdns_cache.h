@@ -154,8 +154,8 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
  * @param now_us The current time in microseconds from esp_timer_get_time().
  *
  * @note This function is called in mDNS service task while holding service lock.
- *       PTR expiration notifies matching browses and resolvers immediately,
- *       other records are marked to-sync for browses.
+ *       PTR expiration notifies matching browses and resolvers immediately.
+ *       Other expirations notify corresponding resolvers immediately and mark to-sync for browses.
  */
 void mdns_priv_cache_remove_expired_records(int64_t now_us);
 

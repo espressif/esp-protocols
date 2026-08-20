@@ -39,25 +39,27 @@ void mdns_priv_resolver_action(mdns_action_t *action, mdns_action_subtype_t type
 void mdns_priv_resolver_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
 
 /**
- * @brief Find a running resolver by service, protocol, and possible subtype.
+ * @brief Find a running resolver by instance, service, protocol, and possible subtype.
  *
+ * @param instance Instance name. NULL for PTR resolvers.
  * @param service Service name.
  * @param proto Protocol name.
  * @param subtype Subtype name. NULL if no subtype is required.
  * @param type Type of the resolver.
  * @return Pointer to the resolver if found, NULL otherwise.
  */
-mdns_resolver_t *mdns_priv_resolver_find(const char *service, const char *proto, const char *subtype,
-                                         mdns_resolver_type_t type);
+mdns_resolver_t *mdns_priv_resolver_find(const char *instance, const char *service, const char *proto,
+                                         const char *subtype, mdns_resolver_type_t type);
 
 /**
- * @brief Check if a running PTR resolver exists for `_service._proto`.
- *
+ * @brief Check if a running resolver consumes a service instance.
  * @param service Service name.
  * @param proto Protocol name.
- * @return true if a running resolver exists, false otherwise.
+ *
+ * PTR resolvers consume all instances of their service/protocol;
+ * Other resolvers only consume only their registered instance.
  */
-bool mdns_priv_resolver_has_service(const char *service, const char *proto);
+bool mdns_priv_resolver_has_service(const char *instance, const char *service, const char *proto);
 
 /**
  * @brief Find a running PTR resolver to store additional SRV, TXT, ADDR records.

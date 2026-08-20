@@ -27,6 +27,8 @@ static mdns_cache_record_type_t resolver_type_to_record_type(mdns_resolver_t *re
     switch (resolver->type) {
     case MDNS_RESOLVER_TYPE_PTR:
         return mdns_utils_str_null_or_empty(resolver->subtype) ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE;
+    case MDNS_RESOLVER_TYPE_SRV:
+        return MDNS_CACHE_RECORD_SRV;
     default:
         return 0;
     }
@@ -66,6 +68,11 @@ static bool resolver_matches_service_cache(const mdns_resolver_t *resolver, cons
                && mdns_utils_str_case_equal(resolver->proto, service->proto)
                && (goodbye || (mdns_utils_str_null_or_empty(resolver->subtype) ? service->ptr_present
                                : mdns_priv_cache_service_find_subtype(service, resolver->subtype) != NULL));
+    case MDNS_RESOLVER_TYPE_SRV:
+        return service->srv_present && resolver->notifier.srv
+               && mdns_utils_str_case_equal(resolver->instance, service->instance_name)
+               && mdns_utils_str_case_equal(resolver->service, service->service)
+               && mdns_utils_str_case_equal(resolver->proto, service->proto);
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
         return false;
@@ -241,15 +248,10 @@ static esp_err_t send_resolver_action(mdns_action_type_t type, mdns_resolver_t *
 }
 
 static mdns_result_t *build_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                   const char *subtype, bool goodbye)
+                                   const char *subtype, bool goodbye, mdns_resolver_type_t type)
 {
     esp_err_t ret __attribute__((unused)) = ESP_OK;
     if (!entry || !service) {
-        return NULL;
-    }
-    const bool has_subtype = !mdns_utils_str_null_or_empty(subtype);
-    const mdns_cache_subtype_t *subtype_cache = has_subtype ? mdns_priv_cache_service_find_subtype(service, subtype) : NULL;
-    if (!goodbye && (has_subtype ? subtype_cache == NULL : !service->ptr_present)) {
         return NULL;
     }
 
@@ -271,12 +273,31 @@ static mdns_result_t *build_result(const mdns_cache_entry_t *entry, const mdns_s
     result->proto = mdns_mem_strdup(service->proto);
     ESP_GOTO_ON_FALSE(result->proto, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate protocol");
 
-    if (has_subtype) {
-        result->subtype = mdns_mem_strdup(subtype);
-        ESP_GOTO_ON_FALSE(result->subtype, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate subtype");
+    switch (type) {
+    case MDNS_RESOLVER_TYPE_PTR:
+        const bool has_subtype = !mdns_utils_str_null_or_empty(subtype);
+        const mdns_cache_subtype_t *subtype_cache = has_subtype ? mdns_priv_cache_service_find_subtype(service, subtype) : NULL;
+        ESP_GOTO_ON_FALSE(goodbye || (has_subtype ? subtype_cache != NULL : service->ptr_present),
+                          ESP_ERR_INVALID_STATE, error, TAG, "PTR cache unavailable");
+
+        if (has_subtype) {
+            result->subtype = mdns_mem_strdup(subtype);
+            ESP_GOTO_ON_FALSE(result->subtype, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate subtype");
+        }
+        result->ttl = goodbye ? 0 : (has_subtype ? subtype_cache->ttl : service->ptr_ttl);
+        break;
+    case MDNS_RESOLVER_TYPE_SRV:
+        if (entry->hostname) {
+            result->hostname = mdns_mem_strdup(entry->hostname);
+            ESP_GOTO_ON_FALSE(result->hostname, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate hostname");
+        }
+        result->port = service->port;
+        result->priority = service->priority;
+        result->weight = service->weight;
+        result->srv_ttl = goodbye ? 0 : service->srv_ttl;
+        break;
     }
 
-    result->ttl = goodbye ? 0 : (has_subtype ? subtype_cache->ttl : service->ptr_ttl);
     return result;
 
 error:
@@ -299,12 +320,24 @@ static bool resolver_notify(mdns_resolver_t *resolver, const mdns_cache_entry_t 
             return false;
         }
 
-        result = build_result(entry, service, resolver->subtype, goodbye);
+        result = build_result(entry, service, resolver->subtype, goodbye, resolver->type);
         if (!result) {
             return false;
         }
 
         resolver->notifier.ptr(result);
+        return true;
+    case MDNS_RESOLVER_TYPE_SRV:
+        if (!resolver->notifier.srv) {
+            return false;
+        }
+
+        result = build_result(entry, service, NULL, goodbye, resolver->type);
+        if (!result) {
+            return false;
+        }
+
+        resolver->notifier.srv(result);
         return true;
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
@@ -346,8 +379,8 @@ void mdns_priv_resolver_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_
     }
 }
 
-mdns_resolver_t *mdns_priv_resolver_find(const char *service, const char *proto, const char *subtype,
-                                         mdns_resolver_type_t type)
+mdns_resolver_t *mdns_priv_resolver_find(const char *instance, const char *service, const char *proto,
+                                         const char *subtype, mdns_resolver_type_t type)
 {
     for (mdns_resolver_t *it = s_resolver; it; it = it->next) {
         if (it->type != type || it->state != RESOLVER_RUNNING) {
@@ -361,6 +394,12 @@ mdns_resolver_t *mdns_priv_resolver_find(const char *service, const char *proto,
                 return it;
             }
             break;
+        case MDNS_RESOLVER_TYPE_SRV:
+            if (mdns_utils_str_case_equal(it->instance, instance) && mdns_utils_str_case_equal(it->service, service)
+                    && mdns_utils_str_case_equal(it->proto, proto)) {
+                return it;
+            }
+            break;
         default:
             ESP_LOGE(TAG, "Invalid resolver type: %d", it->type);
             break;
@@ -369,10 +408,13 @@ mdns_resolver_t *mdns_priv_resolver_find(const char *service, const char *proto,
     return NULL;
 }
 
-bool mdns_priv_resolver_has_service(const char *service, const char *proto)
+bool mdns_priv_resolver_has_service(const char *instance, const char *service, const char *proto)
 {
     for (const mdns_resolver_t *it = s_resolver; it; it = it->next) {
-        if (it->state == RESOLVER_RUNNING && mdns_utils_str_case_equal(it->service, service) && mdns_utils_str_case_equal(it->proto, proto)) {
+        if (it->state == RESOLVER_RUNNING
+                && mdns_utils_str_case_equal(it->service, service)
+                && mdns_utils_str_case_equal(it->proto, proto)
+                && (it->type == MDNS_RESOLVER_TYPE_PTR || mdns_utils_str_case_equal(it->instance, instance))) {
             return true;
         }
     }
@@ -524,7 +566,10 @@ static mdns_resolver_t *resolver_new(const char *instance, const char *service, 
 
     for (mdns_resolver_t *it = s_resolver; it; it = it->next) {
         if (it->state != RESOLVER_OFF && resolvers_match(it, resolver)) {
-            ESP_LOGW(TAG, "Resolver already exists: %s.%s %s", resolver->service, resolver->proto,
+            ESP_LOGW(TAG, "Resolver already exists: %s%s%s.%s %s",
+                     resolver->instance ? resolver->instance : "",
+                     resolver->instance ? "." : "",
+                     resolver->service, resolver->proto,
                      resolver->subtype ? resolver->subtype : "");
             goto error;
         }

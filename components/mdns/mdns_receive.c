@@ -1005,8 +1005,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 #ifdef CONFIG_MDNS_ENABLE_RESOLVER
                 mdns_resolver_t *resolver_for_ptr = NULL;
                 if (!name->sub || !mdns_utils_str_null_or_empty(name->host)) {
-                    resolver_for_ptr = mdns_priv_resolver_find(name->service, name->proto, name->sub ? name->host : NULL,
-                                                               MDNS_RESOLVER_TYPE_PTR);
+                    resolver_for_ptr = mdns_priv_resolver_find(NULL, name->service, name->proto,
+                                                               name->sub ? name->host : NULL, MDNS_RESOLVER_TYPE_PTR);
                 }
                 const char *resolver_subtype = name->sub && resolver_for_ptr ? resolver_for_ptr->subtype : NULL;
 #endif
@@ -1113,6 +1113,19 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                         }
                     }
                 }
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                if (!cache_owner_stored) {
+                    mdns_resolver_t *srv_resolver = mdns_priv_resolver_find(name->host, name->service, name->proto,
+                                                                            NULL, MDNS_RESOLVER_TYPE_SRV);
+                    if (srv_resolver) {
+                        packet_has_cache_consumer = true;
+                        cache_owner_store(cache_owner_instance, cache_owner_service, cache_owner_proto,
+                                          srv_resolver->instance, srv_resolver->service, srv_resolver->proto,
+                                          MDNS_TYPE_SRV);
+                        cache_owner_stored = true;
+                    }
+                }
+#endif
                 bool is_selfhosted = is_name_selfhosted(name);
                 size_t rdata_bound = (size_t)(data_ptr + data_len - data);
                 if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, rdata_bound)) {
