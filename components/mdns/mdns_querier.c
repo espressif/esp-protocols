@@ -22,7 +22,7 @@ static mdns_search_once_t *s_search_once;
 static esp_err_t send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 static void search_free(mdns_search_once_t *search);
 
-void mdns_priv_query_results_free(mdns_result_t *results)
+void mdns_results_free(mdns_result_t *results)
 {
     mdns_result_t *r;
     mdns_ip_addr_t *a;
@@ -204,7 +204,7 @@ void mdns_priv_search_once_free(mdns_search_once_t *search)
     mdns_mem_free(search->proto);
     vSemaphoreDelete(search->done_semaphore);
     if (search->result) {
-        mdns_priv_query_results_free(search->result);
+        mdns_results_free(search->result);
     }
     mdns_mem_free(search);
 }
@@ -219,7 +219,7 @@ void mdns_priv_query_free(void)
         mdns_mem_free(h->proto);
         vSemaphoreDelete(h->done_semaphore);
         if (h->result) {
-            mdns_priv_query_results_free(h->result);
+            mdns_results_free(h->result);
         }
         mdns_mem_free(h);
     }
@@ -781,7 +781,7 @@ mdns_ip_addr_t *mdns_priv_result_addr_create_ip(esp_ip_addr_t *ip)
 void mdns_query_results_free(mdns_result_t *results)
 {
     mdns_priv_service_lock();
-    mdns_priv_query_results_free(results);
+    mdns_results_free(results);
     mdns_priv_service_unlock();
 }
 

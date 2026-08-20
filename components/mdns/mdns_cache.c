@@ -11,7 +11,6 @@
 #include "mdns_browser.h"
 #include "mdns_cache.h"
 #include "mdns_mem_caps.h"
-#include "mdns_querier.h"
 #include "mdns_utils.h"
 
 #define MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC 300 // Maximum lifetime of cache records without consumers
@@ -1251,7 +1250,7 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
 
 error:
     HOOK_MALLOC_FAILED;
-    mdns_priv_query_results_free(result);
+    mdns_results_free(result);
     return ret;
 }
 

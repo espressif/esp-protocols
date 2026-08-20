@@ -1095,7 +1095,7 @@ static mdns_result_t *lookup_service(const char *instance, const char *service, 
     }
     return results;
 handle_error:
-    mdns_priv_query_results_free(results);
+    mdns_results_free(results);
     return NULL;
 }
 

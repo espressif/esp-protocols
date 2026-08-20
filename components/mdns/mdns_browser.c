@@ -368,7 +368,7 @@ static bool browse_build_and_notify_temp_result(mdns_browse_t *browse, const mdn
         result->subtype = mdns_mem_strdup(browse->subtype);
         if (!result->subtype) {
             HOOK_MALLOC_FAILED;
-            mdns_priv_query_results_free(result);
+            mdns_results_free(result);
             return false;
         }
     }
@@ -383,7 +383,7 @@ static bool browse_build_and_notify_temp_result(mdns_browse_t *browse, const mdn
         browse->notifier(result);
     }
 
-    mdns_priv_query_results_free(result);
+    mdns_results_free(result);
     return true;
 }
 

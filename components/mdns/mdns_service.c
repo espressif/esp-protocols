@@ -26,6 +26,9 @@
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
 #include "mdns_cache.h"
 #endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+#include "mdns_resolver.h"
+#endif
 
 #define MDNS_SERVICE_STACK_DEPTH    CONFIG_MDNS_TASK_STACK_SIZE
 #define MDNS_TASK_PRIORITY          CONFIG_MDNS_TASK_PRIORITY
@@ -168,6 +171,12 @@ static void free_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_ADD:
         mdns_priv_responder_action(action, ACTION_CLEANUP);
         break;
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    case ACTION_RESOLVER_START:
+    case ACTION_RESOLVER_END:
+        mdns_priv_resolver_action(action, ACTION_CLEANUP);
+        break;
+#endif
     default:
         break;
     }
@@ -211,6 +220,12 @@ static void execute_action(mdns_action_t *action)
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
         mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
+        break;
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    case ACTION_RESOLVER_START:
+    case ACTION_RESOLVER_END:
+        mdns_priv_resolver_action(action, ACTION_RUN);
         break;
 #endif
     default:
@@ -463,6 +478,9 @@ void mdns_free(void)
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_priv_browse_free();
     mdns_priv_cache_clear();
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    mdns_priv_resolver_free();
 #endif
     mdns_priv_responder_free();
 }

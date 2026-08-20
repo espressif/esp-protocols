@@ -167,6 +167,8 @@ typedef enum {
     ACTION_DELEGATE_HOSTNAME_REMOVE,
     ACTION_DELEGATE_HOSTNAME_SET_ADDR,
     ACTION_BROWSE_SEND_BY_IP_PROTOCOL,
+    ACTION_RESOLVER_START,
+    ACTION_RESOLVER_END,
     ACTION_MAX
 } mdns_action_type_t;
 
@@ -366,6 +368,43 @@ typedef struct mdns_browse_s {
     char *subtype;
 } mdns_browse_t;
 
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+/**
+ * @brief Continuous resolver types
+ */
+typedef enum {
+    MDNS_RESOLVER_TYPE_PTR,
+} mdns_resolver_type_t;
+
+/**
+ * @brief Resolver lifecycle states
+ */
+typedef enum {
+    RESOLVER_OFF,       /*!< resolver is stopped or pending removal */
+    RESOLVER_INIT,      /*!< resolver is initialized but not started */
+    RESOLVER_RUNNING,   /*!< resolver is running and able to notify updates */
+    RESOLVER_MAX
+} mdns_resolver_state_t;
+
+/**
+ * @brief Continuous resolver handle object.
+ */
+typedef struct mdns_resolver_s {
+    mdns_resolver_type_t type;              /*!< Record type to resolve */
+    mdns_resolver_state_t state;            /*!< Resolver lifecycle state */
+
+    char *service;                          /*!< Service name */
+    char *proto;                            /*!< Protocol name */
+    char *subtype;                          /*!< Subtype */
+
+    union {
+        mdns_ptr_resolver_notify_t ptr;     /*!< PTR result notifier */
+    } notifier;
+
+    struct mdns_resolver_s *next;           /*!< Next resolver in the linked list */
+} mdns_resolver_t;
+#endif // CONFIG_MDNS_ENABLE_RESOLVER
+
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -397,11 +436,17 @@ typedef struct {
             mdns_if_t interface;
             mdns_ip_protocol_t ip_protocol;
         } browse_send;
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+        struct {
+            mdns_resolver_t *resolver;
+        } resolver_add_end;
+#endif
     } data;
 } mdns_action_t;
 
 typedef enum {
     MDNS_CACHE_CONSUMER_BROWSE     = (1U << 0),
+    MDNS_CACHE_CONSUMER_RESOLVER   = (1U << 1),
 } mdns_cache_consumer_type_t;
 
 typedef uint8_t mdns_cache_consumer_mask_t;

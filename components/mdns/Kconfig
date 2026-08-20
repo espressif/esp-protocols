@@ -170,6 +170,14 @@ menu "mDNS"
             and the related receive/send paths. Disable to save ~3–4 KB of flash
             when the application only advertises services or uses one-shot queries.
 
+    config MDNS_ENABLE_RESOLVER
+        bool "Enable mDNS resolver"
+        default y
+        help
+            Enable resolver APIs (mdns_*_resolver_new / mdns_resolver_delete)
+            and the related receive/send paths. Disable to save flash memory
+            when the application only advertises services or uses one-shot queries.
+
     config MDNS_RESPOND_REVERSE_QUERIES
         bool "Enable responding to IPv4 reverse queries"
         default n
