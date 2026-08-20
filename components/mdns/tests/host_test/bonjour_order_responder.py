@@ -9,6 +9,9 @@ Default response order mimics Bonjour browse answers:
 
 Use ``--goodbye-after N`` to answer the first N browse queries normally and then
 reply with a standalone PTR TTL=0 (Bonjour service removal).
+
+Use ``--unsolicited-goodbye-after N`` to answer N browse queries normally and then
+multicast an unsolicited PTR TTL=0 announcement (keeps the active browse item).
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import logging
 import socket
 import struct
 import sys
+import time
 
 import dns.flags
 import dns.message
@@ -64,6 +68,24 @@ def build_goodbye_response(
         dns.rrset.from_text(service_name, 0, dns.rdataclass.IN, dns.rdatatype.PTR, instance_name)
     )
     return response
+
+
+def build_unsolicited_goodbye(
+    *,
+    service: str,
+    proto: str,
+    instance: str,
+) -> dns.message.Message:
+    """Build a multicast goodbye announcement (QR+AA, no question section)."""
+    service_name = _fqdn(service, proto)
+    instance_name = _fqdn(instance, service, proto)
+
+    msg = dns.message.Message(id=0)
+    msg.flags = dns.flags.QR | dns.flags.AA
+    msg.answer.append(
+        dns.rrset.from_text(service_name, 0, dns.rdataclass.IN, dns.rdatatype.PTR, instance_name)
+    )
+    return msg
 
 
 def build_ptr_response(
@@ -150,11 +172,34 @@ def send_mdns_response(sock: socket.socket, payload: bytes, source: tuple[str, i
     logger.info('Sent %d byte response to %s (query source %s:%d)', len(payload), destination, *source)
 
 
+def send_mdns_multicast(sock: socket.socket, payload: bytes) -> None:
+    destination = (MDNS_ADDR, MDNS_PORT)
+    sock.sendto(payload, destination)
+    logger.info('Sent %d byte multicast announcement to %s', len(payload), destination)
+
+
+def maybe_send_unsolicited_goodbye(sock: socket.socket, args: argparse.Namespace, response_count: int) -> bool:
+    """After N normal answers, multicast one unsolicited PTR TTL=0. Returns True if sent."""
+    if args.unsolicited_goodbye_after < 0 or response_count != args.unsolicited_goodbye_after:
+        return False
+    if args.unsolicited_goodbye_delay > 0:
+        time.sleep(args.unsolicited_goodbye_delay)
+    goodbye = build_unsolicited_goodbye(
+        service=args.service,
+        proto=args.proto,
+        instance=args.instance,
+    )
+    send_mdns_multicast(sock, goodbye.to_wire())
+    logger.info('Multicasted unsolicited PTR goodbye (TTL=0)')
+    return True
+
+
 def serve(args: argparse.Namespace) -> None:
     sock = create_socket(args.interface)
     order = 'SRV, TXT, A, AAAA' if args.srv_first else 'A, AAAA, SRV, TXT'
     logger.info(
-        'Listening on %s:%d (%s) for PTR %s.%s.local; additional order: %s; goodbye-after=%s',
+        'Listening on %s:%d (%s) for PTR %s.%s.local; additional order: %s; '
+        'goodbye-after=%s; unsolicited-goodbye-after=%s',
         MDNS_ADDR,
         MDNS_PORT,
         args.interface or 'all interfaces',
@@ -162,9 +207,11 @@ def serve(args: argparse.Namespace) -> None:
         args.proto,
         order,
         args.goodbye_after,
+        args.unsolicited_goodbye_after,
     )
 
     response_count = 0
+    unsolicited_goodbye_sent = False
     while True:
         try:
             data, source = sock.recvfrom(9000)
@@ -209,6 +256,9 @@ def serve(args: argparse.Namespace) -> None:
         send_mdns_response(sock, response.to_wire(), source)
         response_count += 1
 
+        if not unsolicited_goodbye_sent:
+            unsolicited_goodbye_sent = maybe_send_unsolicited_goodbye(sock, args, response_count)
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -231,6 +281,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=-1,
         help='After N normal browse responses, reply with PTR TTL=0 only (-1 disables)',
+    )
+    parser.add_argument(
+        '--unsolicited-goodbye-after',
+        type=int,
+        default=-1,
+        help='After N normal browse responses, multicast one unsolicited PTR TTL=0 (-1 disables)',
+    )
+    parser.add_argument(
+        '--unsolicited-goodbye-delay',
+        type=float,
+        default=0.5,
+        help='Seconds to wait after the Nth normal response before multicasting goodbye',
     )
     return parser.parse_args(argv)
 
