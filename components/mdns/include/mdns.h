@@ -161,6 +161,10 @@ typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
  *          (including strings and addresses). Goodbye entries may be freed when
  *          the callback returns.
  *
+ * @warning This callback runs in the mDNS service task and holds the mDNS service lock.
+ *          Users must not call APIs that acquire mDNS service lock in this callback.
+ *          For example, mdns_browse_new() and mdns_browse_delete().
+ *
  * @param result  The browse result that changed. See the warnings above for
  *                use of @c result->next.
  */
@@ -1066,6 +1070,8 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
  *       typical browse traffic, where packets answer one service type.
  *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
 
@@ -1079,6 +1085,8 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  *     - ESP_ERR_NO_MEM         memory error.
  *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 esp_err_t mdns_browse_delete(const char *service, const char *proto);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
