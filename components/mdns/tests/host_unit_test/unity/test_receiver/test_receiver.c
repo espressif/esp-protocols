@@ -10,6 +10,7 @@
 #include "mock_mdns_pcb.h"
 #include "mock_mdns_send.h"
 #include "mdns_private.h"
+#include "mdns_utils.h"
 
 static void test_mdns_hostname_queries(void)
 {
@@ -82,9 +83,38 @@ static void test_mdns_reject_short_packet(void)
     }
 }
 
+static void test_mdns_subtype_any_question_is_not_a_probe(void)
+{
+    mdns_test_query_t queries[] = {
+        { "subtype._sub._http._tcp.local", MDNS_TYPE_ANY, 1 },
+    };
+    size_t packet_len;
+    uint8_t *packet = create_mdns_test_packet(queries, 1, NULL, 0, NULL, 0, &packet_len);
+
+    send_test_packet_multiple(packet, packet_len);
+}
+
+static void test_mdns_reject_misplaced_sub_label(void)
+{
+    uint8_t fqdn[MDNS_NAME_BUF_LEN] = {};
+    mdns_name_t name = {};
+    size_t fqdn_len = encode_dns_name(fqdn, "instance._http._sub._tcp.local");
+
+    TEST_ASSERT_NOT_NULL(mdns_utils_parse_fqdn(fqdn, fqdn, &name, fqdn_len));
+    TEST_ASSERT_TRUE(name.invalid);
+
+    fqdn_len = encode_dns_name(fqdn, "subtype._sub._http._tcp.local");
+    TEST_ASSERT_NOT_NULL(mdns_utils_parse_fqdn(fqdn, fqdn, &name, fqdn_len));
+    TEST_ASSERT_FALSE(name.invalid);
+    TEST_ASSERT_TRUE(name.sub);
+}
+
 static void mdns_priv_create_answer_from_parsed_packet_Callback(mdns_parsed_packet_t* parsed_packet, int cmock_num_calls)
 {
     printf("callback\n");
+    if (parsed_packet->questions && parsed_packet->questions->sub && parsed_packet->questions->type == MDNS_TYPE_ANY) {
+        TEST_ASSERT_FALSE(parsed_packet->probe);
+    }
 }
 
 void setup_cmock(void)
@@ -111,6 +141,10 @@ void run_unity_tests(void)
     RUN_TEST(test_mdns_with_answers);
 
     RUN_TEST(test_mdns_reject_short_packet);
+
+    RUN_TEST(test_mdns_subtype_any_question_is_not_a_probe);
+
+    RUN_TEST(test_mdns_reject_misplaced_sub_label);
 
     UNITY_END();
 }

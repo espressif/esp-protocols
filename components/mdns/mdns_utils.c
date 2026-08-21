@@ -51,7 +51,13 @@ static const uint8_t *mdns_utils_read_fqdn_impl(const uint8_t *packet, const uin
                 strlcat(name->host, ".", sizeof(name->host));
                 strlcat(name->host, buf, sizeof(name->host));
             } else if (strcasecmp(buf, MDNS_SUB_STR) == 0) {
-                name->sub = 1;
+                // A DNS-SD subtype name has the form <subtype>._sub.<service>.<proto>.<domain>.
+                // Keep the subtype label in host, but reject _sub in any other position.
+                if (name->parts != 1 || name->sub) {
+                    name->invalid = true;
+                } else {
+                    name->sub = 1;
+                }
             } else if (!name->invalid) {
                 char *mdns_name_ptrs[] = {name->host, name->service, name->proto, name->domain};
                 memcpy(mdns_name_ptrs[name->parts++], buf, len + 1);
@@ -100,6 +106,9 @@ const uint8_t *mdns_utils_parse_fqdn(const uint8_t *packet, const uint8_t *start
     const uint8_t *next_data = (uint8_t *) mdns_utils_read_fqdn(packet, start, name, buf, packet_len);
     if (!next_data) {
         return 0;
+    }
+    if (name->sub && name->parts != 4) {
+        name->invalid = true;
     }
     if (!name->parts || name->invalid) {
         return next_data;
