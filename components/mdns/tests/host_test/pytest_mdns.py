@@ -63,7 +63,11 @@ class MdnsConsole:
         assert self.process.exitstatus == 0
 
 
-def _bonjour_responder_cmd(srv_first: bool = False, goodbye_after: int = -1) -> list[str]:
+def _bonjour_responder_cmd(
+    srv_first: bool = False,
+    goodbye_after: int = -1,
+    unsolicited_goodbye_after: int = -1,
+) -> list[str]:
     cmd = [
         sys.executable,
         str(Path(__file__).with_name('bonjour_order_responder.py')),
@@ -78,12 +82,24 @@ def _bonjour_responder_cmd(srv_first: bool = False, goodbye_after: int = -1) -> 
         cmd.append('--srv-first')
     if goodbye_after >= 0:
         cmd.extend(['--goodbye-after', str(goodbye_after)])
+    if unsolicited_goodbye_after >= 0:
+        cmd.extend(['--unsolicited-goodbye-after', str(unsolicited_goodbye_after)])
     return cmd
 
 
-def _run_bonjour_responder(*, srv_first: bool = False, goodbye_after: int = -1, label: str):
+def _run_bonjour_responder(
+    *,
+    srv_first: bool = False,
+    goodbye_after: int = -1,
+    unsolicited_goodbye_after: int = -1,
+    label: str,
+):
     proc = subprocess.Popen(
-        _bonjour_responder_cmd(srv_first=srv_first, goodbye_after=goodbye_after),
+        _bonjour_responder_cmd(
+            srv_first=srv_first,
+            goodbye_after=goodbye_after,
+            unsolicited_goodbye_after=unsolicited_goodbye_after,
+        ),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -119,7 +135,10 @@ def bonjour_responder_srv_first():
 
 @pytest.fixture
 def bonjour_responder_goodbye():
-    proc = _run_bonjour_responder(goodbye_after=1, label='Goodbye responder')
+    proc = _run_bonjour_responder(
+        unsolicited_goodbye_after=1,
+        label='Unsolicited-goodbye responder',
+    )
     yield proc
     _stop_bonjour_responder(proc)
 
@@ -335,18 +354,37 @@ def test_browse_srv_first_includes_ip(mdns_console, bonjour_responder_srv_first)
 
 
 def test_browse_ptr_goodbye_notifies_removal(mdns_console, bonjour_responder_goodbye):
-    """Bonjour service removal via standalone PTR TTL=0 must notify browse consumers."""
+    """Same live browse must see normal result then unsolicited PTR TTL=0 removal."""
     service = DEFAULTS['service']
     proto = DEFAULTS['proto']
     mdns_console.send_input(f'mdns_browse_del {service} {proto}')
     mdns_console.get_output('mdns>')
     mdns_console.send_input(f'mdns_browse {service} {proto}')
     mdns_console.wait_for_browse_result(timeout=10)
-    mdns_console.send_input(f'mdns_browse {service} {proto}')
     output = mdns_console.wait_for_browse_goodbye(timeout=10)
     assert _console_line('PTR : ', DEFAULTS['instance']) in output
     mdns_console.send_input(f'mdns_browse_del {service} {proto}')
     mdns_console.get_output('mdns>')
+
+
+def test_browse_duplicate_rejected(mdns_console, bonjour_responder):
+    """Duplicate mdns_browse_new() for the same service/proto must fail and leave the original active."""
+    service = DEFAULTS['service']
+    proto = DEFAULTS['proto']
+    mdns_console.send_input(f'mdns_browse_del {service} {proto}')
+    mdns_console.get_output('mdns>')
+    mdns_console.send_input(f'mdns_browse {service} {proto}')
+    mdns_console.wait_for_browse_result(timeout=10)
+
+    mdns_console.send_input(f'mdns_browse {service} {proto}')
+    mdns_console.get_output('Browse already exists')
+    mdns_console.get_output('Command returned non-zero error code')
+    mdns_console.get_output('mdns>')
+
+    # Original browse remains usable (delete must succeed).
+    mdns_console.send_input(f'mdns_browse_del {service} {proto}')
+    out = mdns_console.get_output('mdns>')
+    assert 'Command returned non-zero' not in out
 
 
 if __name__ == '__main__':
