@@ -409,6 +409,7 @@ static esp_err_t esp_websocket_client_set_config(esp_websocket_client_handle_t c
     }
 
     if (config->host) {
+        free(cfg->host);
         cfg->host = strdup(config->host);
         ESP_WS_CLIENT_MEM_CHECK(TAG, cfg->host, return ESP_ERR_NO_MEM);
     }
