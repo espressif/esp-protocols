@@ -153,3 +153,10 @@ static inline uint8_t mdns_utils_append_u8(uint8_t *packet, uint16_t *index, uin
     *index += 1;
     return 1;
 }
+
+/**
+ * @brief Free a TXT linked list.
+ *
+ * @param txt Pointer to the TXT linked list.
+ */
+void mdns_utils_free_txt_linked_list(mdns_txt_linked_item_t *txt);
