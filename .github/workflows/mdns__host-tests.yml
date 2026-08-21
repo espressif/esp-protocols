@@ -37,6 +37,22 @@ jobs:
           # Next we run the pytest (using the console app)
           pytest
 
+  check_lock_safety:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+    name: Check lock safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install tree-sitter tree-sitter-c
+      - name: Run lock re-entry analysis
+        run: python components/mdns/ci/check_lock_reentry.py components/mdns
+
   host_compat_checks:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Set of compatibility checks
