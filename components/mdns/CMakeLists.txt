@@ -26,7 +26,7 @@ if(${target} STREQUAL "linux")
     set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 else()
     set(dependencies lwip console esp_netif)
-    set(private_dependencies esp_timer esp_wifi)
+    set(private_dependencies esp_timer)
     set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 endif()
 
@@ -43,6 +43,20 @@ endif()
 
 if(CONFIG_ETH_ENABLED)
     idf_component_optional_requires(PRIVATE esp_eth)
+endif()
+
+# esp_wifi is only used by the predefined STA/AP interface event handlers in
+# mdns_netif.c; mirror the MDNS_ESP_WIFI_ENABLED condition used there so
+# builds without Wi-Fi do not pull the Wi-Fi stack into the build.
+if(NOT ${target} STREQUAL "linux")
+    if("${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}" VERSION_GREATER "5.1")
+        if(CONFIG_ESP_WIFI_ENABLED OR CONFIG_ESP_WIFI_REMOTE_ENABLED)
+            idf_component_optional_requires(PRIVATE esp_wifi)
+        endif()
+    elseif(CONFIG_SOC_WIFI_SUPPORTED)
+        # ESP_WIFI_ENABLED is not available on IDF <= 5.1
+        idf_component_optional_requires(PRIVATE esp_wifi)
+    endif()
 endif()
 
 idf_component_get_property(MDNS_VERSION ${COMPONENT_NAME} COMPONENT_VERSION)
