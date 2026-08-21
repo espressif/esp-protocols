@@ -1,0 +1,24 @@
+# Mull mutation-testing config for mdns host unit tests.
+# See README.md "Mutation testing (Mull)" for build/run steps.
+#
+# Scope: production mdns sources only. Stubs, Unity/CMock, and generated mocks
+# are excluded so the score reflects real component logic.
+
+mutators:
+  - cxx_boundary
+  - cxx_comparison
+  - cxx_increment
+  - cxx_arithmetic
+
+includePaths:
+  - .*/components/mdns/mdns_.*\.c$
+
+excludePaths:
+  - .*/tests/.*
+  - .*/stubs/.*
+  - .*/mocks/.*
+  - .*/unity/.*
+  - .*/size_compare/.*
+  - .*/BBP#.*
+
+quiet: true
