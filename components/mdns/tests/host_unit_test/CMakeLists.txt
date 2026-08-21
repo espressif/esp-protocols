@@ -53,6 +53,7 @@ include_directories(
 set(SOURCES
     ${STUB_DIR}/mdns_mem_caps.c
     ${STUB_DIR}/esp_idf.c
+    ${STUB_DIR}/esp_event.c
     ${STUB_DIR}/mdns_networking.c
     ${STUB_DIR}/mdns_engine.c
     ${MDNS_DIR}/mdns_receive.c

@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "sdkconfig.h"
+#include "esp_event.h"
 #include <esp_netif.h>
 
 #define MDNS_TYPE_A                 0x0001
@@ -28,6 +29,15 @@ extern "C" {
 #define MDNS_NAME_MAX_LEN           64                      // Maximum string length of hostname, instance, service and proto
 #endif
 #define MDNS_NAME_BUF_LEN           (MDNS_NAME_MAX_LEN+1)   // Maximum char buffer size to hold hostname, instance, service or proto
+
+ESP_EVENT_DECLARE_BASE(MDNS_EVENT);
+
+/**
+ * @brief mDNS event IDs
+ */
+typedef enum {
+    MDNS_EVENT_HOSTNAME_CHANGED,    /*!< The responder hostname has changed */
+} mdns_event_id_t;
 
 /**
  * @brief   Asynchronous query handle
