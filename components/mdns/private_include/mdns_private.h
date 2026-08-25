@@ -362,6 +362,7 @@ typedef enum {
     MDNS_BROWSE_TYPE_SERVICE, /* service browse */
     MDNS_BROWSE_TYPE_RECORD_PTR, /* PTR record browse */
     MDNS_BROWSE_TYPE_RECORD_SRV, /* SRV record browse */
+    MDNS_BROWSE_TYPE_RECORD_TXT, /* TXT record browse */
 } mdns_browse_type_t;
 
 typedef struct mdns_browse_s {
