@@ -87,6 +87,9 @@ static void browse_send(mdns_browse_t *browse, mdns_if_t interface, mdns_ip_prot
     case MDNS_BROWSE_TYPE_RECORD_SRV:
         record_type = MDNS_TYPE_SRV;
         break;
+    case MDNS_BROWSE_TYPE_RECORD_TXT:
+        record_type = MDNS_TYPE_TXT;
+        break;
     default:
         return;
     }
@@ -154,6 +157,7 @@ static bool browse_match(const mdns_browse_t *browse, const char *instance, cons
                && mdns_utils_str_case_equal(browse->proto, proto)
                && mdns_utils_str_case_equal_nullable(browse->subtype, subtype);
     case MDNS_BROWSE_TYPE_RECORD_SRV:
+    case MDNS_BROWSE_TYPE_RECORD_TXT:
         return mdns_utils_str_case_equal(browse->instance, instance)
                && mdns_utils_str_case_equal(browse->service, service)
                && mdns_utils_str_case_equal(browse->proto, proto);
@@ -211,6 +215,8 @@ static mdns_cache_record_mask_t get_browse_record_mask(const mdns_browse_t *brow
         return mdns_utils_str_null_or_empty(browse->subtype) ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE;
     case MDNS_BROWSE_TYPE_RECORD_SRV:
         return MDNS_CACHE_RECORD_SRV;
+    case MDNS_BROWSE_TYPE_RECORD_TXT:
+        return MDNS_CACHE_RECORD_TXT;
     default:
         return MDNS_CACHE_RECORD_INVALID;
     }
@@ -383,20 +389,15 @@ mdns_browse_t *mdns_priv_browse_find_consumer(mdns_name_t *name, uint16_t type, 
             break;
         }
         case MDNS_TYPE_SRV:
-            if (it->type == MDNS_BROWSE_TYPE_SERVICE || it->type == MDNS_BROWSE_TYPE_RECORD_PTR) {
-                if (mdns_utils_str_case_equal(name->service, it->service) && mdns_utils_str_case_equal(name->proto, it->proto)) {
-                    return it;
-                }
-            } else if (it->type == MDNS_BROWSE_TYPE_RECORD_SRV) {
-                if (mdns_utils_str_case_equal(name->host, it->instance) && mdns_utils_str_case_equal(name->service, it->service)
-                        && mdns_utils_str_case_equal(name->proto, it->proto)) {
-                    return it;
-                }
-            }
-            break;
         case MDNS_TYPE_TXT:
             if (it->type == MDNS_BROWSE_TYPE_SERVICE || it->type == MDNS_BROWSE_TYPE_RECORD_PTR) {
                 if (mdns_utils_str_case_equal(name->service, it->service) && mdns_utils_str_case_equal(name->proto, it->proto)) {
+                    return it;
+                }
+            } else if ((type == MDNS_TYPE_SRV && it->type == MDNS_BROWSE_TYPE_RECORD_SRV)
+                       || (type == MDNS_TYPE_TXT && it->type == MDNS_BROWSE_TYPE_RECORD_TXT)) {
+                if (mdns_utils_str_case_equal(name->host, it->instance) && mdns_utils_str_case_equal(name->service, it->service)
+                        && mdns_utils_str_case_equal(name->proto, it->proto)) {
                     return it;
                 }
             }
@@ -448,6 +449,11 @@ static bool browse_matches_service_cache(const mdns_browse_t *browse, const mdns
                && mdns_utils_str_case_equal(browse->proto, service->proto);
     case MDNS_BROWSE_TYPE_RECORD_SRV:
         return service->srv_present
+               && mdns_utils_str_case_equal(browse->service, service->service)
+               && mdns_utils_str_case_equal(browse->proto, service->proto)
+               && mdns_utils_str_case_equal(browse->instance, service->instance_name);
+    case MDNS_BROWSE_TYPE_RECORD_TXT:
+        return service->txt_present
                && mdns_utils_str_case_equal(browse->service, service->service)
                && mdns_utils_str_case_equal(browse->proto, service->proto)
                && mdns_utils_str_case_equal(browse->instance, service->instance_name);
@@ -535,6 +541,8 @@ static bool browse_need_update(const mdns_browse_t *browse, const mdns_service_c
         return ptr_need_update;
     case MDNS_BROWSE_TYPE_RECORD_SRV:
         return (records & MDNS_CACHE_RECORD_SRV) != 0;
+    case MDNS_BROWSE_TYPE_RECORD_TXT:
+        return (records & MDNS_CACHE_RECORD_TXT) != 0;
     default:
         return false;
     }
@@ -699,7 +707,8 @@ static esp_err_t browse_delete(const char *instance, const char *service, const 
     mdns_browse_t *browse = NULL;
 
     if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)
-            || (type == MDNS_BROWSE_TYPE_RECORD_SRV && mdns_utils_str_null_or_empty(instance))) {
+            || ((type == MDNS_BROWSE_TYPE_RECORD_SRV || type == MDNS_BROWSE_TYPE_RECORD_TXT)
+                && mdns_utils_str_null_or_empty(instance))) {
         return ESP_FAIL;
     }
 
@@ -738,7 +747,8 @@ static esp_err_t browse_delete_notifier(const char *instance, const char *servic
                                         mdns_browse_type_t type, const mdns_browse_notifier_t *notifier)
 {
     if (mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto) || !notifier
-            || (type == MDNS_BROWSE_TYPE_RECORD_SRV && mdns_utils_str_null_or_empty(instance))) {
+            || ((type == MDNS_BROWSE_TYPE_RECORD_SRV || type == MDNS_BROWSE_TYPE_RECORD_TXT)
+                && mdns_utils_str_null_or_empty(instance))) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -870,6 +880,36 @@ mdns_browse_t *mdns_browse_record_srv_new(const char *instance, const char *serv
         .context = context,
     };
     return browse_new(instance, service, proto, NULL, &spec, MDNS_BROWSE_TYPE_RECORD_SRV);
+}
+
+mdns_browse_t *mdns_browse_record_txt_new(const char *instance, const char *service, const char *proto,
+                                          mdns_browse_handler_t handler, void *context)
+{
+    if (mdns_utils_str_null_or_empty(instance)) {
+        return NULL;
+    }
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_new(instance, service, proto, NULL, &spec, MDNS_BROWSE_TYPE_RECORD_TXT);
+}
+
+esp_err_t mdns_browse_record_txt_delete(const char *instance, const char *service, const char *proto)
+{
+    return browse_delete(instance, service, proto, NULL, MDNS_BROWSE_TYPE_RECORD_TXT);
+}
+
+esp_err_t mdns_browse_record_txt_delete_handler(const char *instance, const char *service, const char *proto,
+                                                mdns_browse_handler_t handler, void *context)
+{
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_delete_notifier(instance, service, proto, NULL, MDNS_BROWSE_TYPE_RECORD_TXT, &spec);
 }
 
 esp_err_t mdns_browse_record_srv_delete(const char *instance, const char *service, const char *proto)

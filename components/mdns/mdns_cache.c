@@ -1040,6 +1040,9 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
                 mdns_mem_free(node);
                 continue;
             }
+            if (!mdns_priv_browse_notify_record_removed_from_service_cache(entry, service, NULL, MDNS_CACHE_RECORD_TXT)) {
+                ESP_LOGE(TAG, "Failed to notify TXT expiration");
+            }
             service->txt_present = false;
             mdns_utils_free_txt_linked_list(service->txt_list);
             service->txt_list = NULL;
@@ -1253,6 +1256,7 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
     if ((projection_records & MDNS_CACHE_RECORD_TXT) && service->txt_present) {
         ESP_GOTO_ON_FALSE(project_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
                           ESP_ERR_NO_MEM, error, TAG, "Failed to project TXT");
+        result->txt_ttl = (removed_records & MDNS_CACHE_RECORD_TXT) ? 0 : service->txt_ttl;
     }
 
     if ((projection_records & MDNS_CACHE_RECORD_ADDR) && (!(projection_records & MDNS_CACHE_RECORD_SRV) || service->srv_present)) {
