@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -155,7 +155,15 @@ esp_err_t eppp_transport_tx(void *h, void *buffer, size_t len)
     if (len > ETH_MAX_PAYLOAD_LEN) {
         return ESP_FAIL;
     }
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
+    esp_eth_buf_desc_t bufs[] = {
+        { .buf = out_buffer, .len = ETH_HEADER_LEN },
+        { .buf = (uint8_t *)buffer, .len = len },
+    };
+    return esp_eth_transmit_ctrl_bufs(s_eth_handles[0], NULL, bufs, 2);
+#else
     return esp_eth_transmit_vargs(s_eth_handles[0], 2, out_buffer, ETH_HEADER_LEN, buffer, len);
+#endif
 }
 
 static esp_err_t start_driver(esp_netif_t *esp_netif)
