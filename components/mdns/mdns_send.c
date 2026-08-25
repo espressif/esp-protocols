@@ -257,7 +257,7 @@ static bool create_answer_from_service(mdns_tx_packet_t *packet, mdns_service_t 
 {
     mdns_host_item_t *host = get_host_item(service->hostname);
     bool is_delegated = (host != mdns_priv_get_self_host());
-    bool is_instance_question = !mdns_utils_str_null_or_empty(question->host);
+    bool is_instance_question = !question->sub && !mdns_utils_str_null_or_empty(question->host);
     if ((question->type == MDNS_TYPE_ANY) && is_instance_question) {
         // Instance-scoped ANY queries expect the resolved data (SRV/TXT) to be
         // part of the answer section so that queriers can stop searching as soon
@@ -540,6 +540,12 @@ void mdns_priv_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_pac
     uint32_t out_record_nums = 0;
     while (q) {
         shared = q->type == MDNS_TYPE_PTR || q->type == MDNS_TYPE_SDPTR || !parsed_packet->probe;
+        // DNS-SD subtypes only define PTR records at the subtype owner name.
+        // Do not interpret the subtype label as an instance name for SRV/TXT.
+        if (q->sub && (q->type == MDNS_TYPE_SRV || q->type == MDNS_TYPE_TXT)) {
+            q = q->next;
+            continue;
+        }
         if (q->type == MDNS_TYPE_SRV || q->type == MDNS_TYPE_TXT) {
             mdns_srv_item_t *service = mdns_utils_get_service_item_instance(q->host, q->service, q->proto, NULL);
             if (service == NULL) {  // Service not found, but we continue to the next question
