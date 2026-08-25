@@ -171,6 +171,21 @@ typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
 typedef void (*mdns_browse_notify_t)(mdns_result_t *result);
 
 /**
+ * @brief Hostname change notifier
+ *
+ * Called from the mDNS service task after the hostname changes.
+ * The @p hostname argument is the new hostname. It remains valid until the
+ * callback returns.
+ *
+ * @warning Do not call mDNS APIs from this callback. The callback runs while
+ *          the mDNS service is processing an action.
+ *
+ * @param hostname  The new responder hostname.
+ * @param arg       User context supplied when registering the callback.
+ */
+typedef void (*mdns_hostname_changed_cb_t)(const char *hostname, void *arg);
+
+/**
  * @brief  Initialize mDNS on given interface
  *
  * @return
@@ -199,6 +214,24 @@ void mdns_free(void);
  *     - ESP_ERR_NO_MEM memory error
  */
 esp_err_t mdns_hostname_set(const char *hostname);
+
+/**
+ * @brief Register a callback notified when the hostname changes
+ *
+ * Multiple callbacks can be registered. Registering the same callback and
+ * context more than once has no effect. Callbacks cannot be unregistered and
+ * remain registered until mdns_free() is called.
+ *
+ * @param cb   Callback to invoke when the hostname changes.
+ * @param arg  User context passed to @p cb.
+ *
+ * @return
+ *     - ESP_OK on success
+ *     - ESP_ERR_INVALID_STATE when mDNS is not initialized
+ *     - ESP_ERR_INVALID_ARG when @p cb is NULL
+ *     - ESP_ERR_NO_MEM when the callback cannot be registered
+ */
+esp_err_t mdns_register_hostname_changed_callback(mdns_hostname_changed_cb_t cb, void *arg);
 
 /**
  * @brief Get the hostname for mDNS server
