@@ -1195,8 +1195,8 @@ void mdns_priv_cache_clear(void)
     s_sync_pending = false;
 }
 
-static bool project_txt(const mdns_txt_linked_item_t *txt_list, mdns_txt_item_t **out_txt, uint8_t **out_value_len,
-                        size_t *out_count)
+bool mdns_priv_cache_copy_txt(const mdns_txt_linked_item_t *txt_list, mdns_txt_item_t **out_txt, uint8_t **out_value_len,
+                              size_t *out_count)
 {
     esp_err_t __attribute__((unused))ret = ESP_OK;
     *out_txt = NULL;
@@ -1319,7 +1319,7 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
     }
 
     if (service->txt_present) {
-        ESP_GOTO_ON_FALSE(project_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
+        ESP_GOTO_ON_FALSE(mdns_priv_cache_copy_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
                           ESP_ERR_NO_MEM, error, TAG, "Failed to project TXT");
     }
 

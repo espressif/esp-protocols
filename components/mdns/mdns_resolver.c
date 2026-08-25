@@ -29,6 +29,8 @@ static mdns_cache_record_type_t resolver_type_to_record_type(mdns_resolver_t *re
         return mdns_utils_str_null_or_empty(resolver->subtype) ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE;
     case MDNS_RESOLVER_TYPE_SRV:
         return MDNS_CACHE_RECORD_SRV;
+    case MDNS_RESOLVER_TYPE_TXT:
+        return MDNS_CACHE_RECORD_TXT;
     default:
         return 0;
     }
@@ -46,6 +48,7 @@ static bool resolvers_match(const mdns_resolver_t *a, const mdns_resolver_t *b)
                && mdns_utils_str_case_equal(a->proto, b->proto)
                && mdns_utils_str_case_equal_nullable(a->subtype, b->subtype);
     case MDNS_RESOLVER_TYPE_SRV:
+    case MDNS_RESOLVER_TYPE_TXT:
         return mdns_utils_str_case_equal(a->instance, b->instance)
                && mdns_utils_str_case_equal(a->service, b->service)
                && mdns_utils_str_case_equal(a->proto, b->proto);
@@ -70,6 +73,11 @@ static bool resolver_matches_service_cache(const mdns_resolver_t *resolver, cons
                                : mdns_priv_cache_service_find_subtype(service, resolver->subtype) != NULL));
     case MDNS_RESOLVER_TYPE_SRV:
         return service->srv_present && resolver->notifier.srv
+               && mdns_utils_str_case_equal(resolver->instance, service->instance_name)
+               && mdns_utils_str_case_equal(resolver->service, service->service)
+               && mdns_utils_str_case_equal(resolver->proto, service->proto);
+    case MDNS_RESOLVER_TYPE_TXT:
+        return service->txt_present && resolver->notifier.txt
                && mdns_utils_str_case_equal(resolver->instance, service->instance_name)
                && mdns_utils_str_case_equal(resolver->service, service->service)
                && mdns_utils_str_case_equal(resolver->proto, service->proto);
@@ -296,6 +304,11 @@ static mdns_result_t *build_result(const mdns_cache_entry_t *entry, const mdns_s
         result->weight = service->weight;
         result->srv_ttl = goodbye ? 0 : service->srv_ttl;
         break;
+    case MDNS_RESOLVER_TYPE_TXT:
+        ESP_GOTO_ON_FALSE(mdns_priv_cache_copy_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
+                          ESP_ERR_NO_MEM, error, TAG, "Failed to allocate TXT list");
+        result->txt_ttl = goodbye ? 0 : service->txt_ttl;
+        break;
     }
 
     return result;
@@ -338,6 +351,18 @@ static bool resolver_notify(mdns_resolver_t *resolver, const mdns_cache_entry_t 
         }
 
         resolver->notifier.srv(result);
+        return true;
+    case MDNS_RESOLVER_TYPE_TXT:
+        if (!resolver->notifier.txt) {
+            return false;
+        }
+
+        result = build_result(entry, service, NULL, goodbye, resolver->type);
+        if (!result) {
+            return false;
+        }
+
+        resolver->notifier.txt(result);
         return true;
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
@@ -395,6 +420,7 @@ mdns_resolver_t *mdns_priv_resolver_find(const char *instance, const char *servi
             }
             break;
         case MDNS_RESOLVER_TYPE_SRV:
+        case MDNS_RESOLVER_TYPE_TXT:
             if (mdns_utils_str_case_equal(it->instance, instance) && mdns_utils_str_case_equal(it->service, service)
                     && mdns_utils_str_case_equal(it->proto, proto)) {
                 return it;
@@ -539,6 +565,10 @@ static mdns_resolver_t *resolver_new(const char *instance, const char *service, 
         return NULL;
     }
 
+    if (mdns_utils_str_null_or_empty(instance) && (type == MDNS_RESOLVER_TYPE_SRV || type == MDNS_RESOLVER_TYPE_TXT)) {
+        return NULL;
+    }
+
     // Subtype identifier length limit defined in RFC 6763 Section 7.2
     if (subtype && strlen(subtype) > 63) {
         ESP_LOGE(TAG, "Subtype string length must not exceed 63 bytes");
@@ -556,6 +586,9 @@ static mdns_resolver_t *resolver_new(const char *instance, const char *service, 
         break;
     case MDNS_RESOLVER_TYPE_SRV:
         resolver->notifier.srv = (mdns_srv_resolver_notify_t)notifier;
+        break;
+    case MDNS_RESOLVER_TYPE_TXT:
+        resolver->notifier.txt = (mdns_txt_resolver_notify_t)notifier;
         break;
     default:
         resolver_item_free(resolver);
@@ -608,6 +641,15 @@ mdns_resolver_t *mdns_srv_resolver_new(const char *instance, const char *service
         return NULL;
     }
     return resolver_new(instance, service, proto, NULL, MDNS_RESOLVER_TYPE_SRV, notifier);
+}
+
+mdns_resolver_t *mdns_txt_resolver_new(const char *instance, const char *service, const char *proto,
+                                       mdns_txt_resolver_notify_t notifier)
+{
+    if (mdns_utils_str_null_or_empty(instance)) {
+        return NULL;
+    }
+    return resolver_new(instance, service, proto, NULL, MDNS_RESOLVER_TYPE_TXT, notifier);
 }
 
 esp_err_t mdns_resolver_delete(mdns_resolver_t *resolver)
