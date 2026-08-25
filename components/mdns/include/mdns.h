@@ -146,6 +146,8 @@ typedef struct mdns_result_s {
     uint16_t priority;                      /*!< priority */
     uint16_t weight;                        /*!< weight */
     uint32_t srv_ttl;                       /*!< time to live of SRV record */
+    // TXT extra
+    uint32_t txt_ttl;                       /*!< time to live of TXT record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -1327,6 +1329,31 @@ esp_err_t mdns_browse_record_srv_delete(const char *instance, const char *servic
  * @note Removing the last active subscription stops the browse and schedules its deletion.
  */
 esp_err_t mdns_browse_record_srv_delete_handler(const char *instance, const char *service, const char *proto,
+                                                mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Start a continuous TXT record browse for `instance._service._proto`.
+ *
+ * A TXT record browse will update TXT cache and notify on TXT record changes.
+ *
+ * @copydetails mdns_browse_record_srv_new
+ */
+mdns_browse_t *mdns_browse_record_txt_new(const char *instance, const char *service, const char *proto,
+                                          mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Stop the continuous TXT record browse for `instance._service._proto` and all its callbacks.
+ *
+ * @copydetails mdns_browse_record_srv_delete
+ */
+esp_err_t mdns_browse_record_txt_delete(const char *instance, const char *service, const char *proto);
+
+/**
+ * @brief Remove one handler-context pair from the matching TXT record browse.
+ *
+ * @copydetails mdns_browse_record_srv_delete_handler
+ */
+esp_err_t mdns_browse_record_txt_delete_handler(const char *instance, const char *service, const char *proto,
                                                 mdns_browse_handler_t handler, void *context);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
 

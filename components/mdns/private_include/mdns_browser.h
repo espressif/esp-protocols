@@ -26,7 +26,7 @@ void mdns_priv_browse_free(void);
  * @param service Service name.
  * @param proto Protocol name.
  * @return true if a matching running browse exists.
- *         Service and PTR record browses match all service instances; SRV record browses match only the named instance.
+ *         Service and PTR record browses match all service instances; SRV and TXT record browses match only the named instance.
  */
 bool mdns_priv_browse_has_service(const char *instance, const char *service, const char *proto);
 
