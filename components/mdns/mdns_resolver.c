@@ -139,6 +139,9 @@ static void resolver_send(mdns_resolver_t *resolver, mdns_if_t mdns_if, mdns_ip_
     case MDNS_RESOLVER_TYPE_SRV:
         record_type = MDNS_TYPE_SRV;
         break;
+    case MDNS_RESOLVER_TYPE_TXT:
+        record_type = MDNS_TYPE_TXT;
+        break;
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
         return;

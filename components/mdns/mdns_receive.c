@@ -1219,6 +1219,19 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 size_t txt_count = 0;
 
                 mdns_result_t *result = NULL;
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                if (!cache_owner_stored) {
+                    mdns_resolver_t *txt_resolver = mdns_priv_resolver_find(name->host, name->service, name->proto,
+                                                                            NULL, MDNS_RESOLVER_TYPE_TXT);
+                    if (txt_resolver) {
+                        packet_has_cache_consumer = true;
+                        cache_owner_store(cache_owner_instance, cache_owner_service, cache_owner_proto,
+                                          txt_resolver->instance, txt_resolver->service, txt_resolver->proto,
+                                          MDNS_TYPE_TXT);
+                        cache_owner_stored = true;
+                    }
+                }
+#endif
 #if defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)
                 mdns_txt_linked_item_t *txt_linked_list = NULL;
                 if (cache_owner_stored

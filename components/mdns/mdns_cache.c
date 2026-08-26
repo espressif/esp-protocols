@@ -22,7 +22,7 @@
 
 #ifdef CONFIG_MDNS_ENABLE_RESOLVER
 #define MDNS_CACHE_RECORD_RESOLVER_MASK \
-    ((mdns_cache_record_mask_t)(MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE | MDNS_CACHE_RECORD_SRV))
+    ((mdns_cache_record_mask_t)(MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE | MDNS_CACHE_RECORD_SRV | MDNS_CACHE_RECORD_TXT))
 #endif
 
 #if defined(CONFIG_MDNS_ENABLE_BROWSE) && defined(CONFIG_MDNS_ENABLE_RESOLVER)
@@ -956,9 +956,7 @@ mdns_cache_update_result_t mdns_priv_cache_update_txt(const esp_netif_t *esp_net
         result = MDNS_CACHE_ADDED;
     }
 
-#ifdef CONFIG_MDNS_ENABLE_BROWSE
-    service_cache_mark_sync_out(service_entry, result, MDNS_CACHE_RECORD_TXT, MDNS_CACHE_CONSUMER_BROWSE);
-#endif
+    service_cache_mark_sync_out(service_entry, result, MDNS_CACHE_RECORD_TXT, MDNS_CACHE_CONSUMERS);
     return result;
 }
 
@@ -1116,6 +1114,9 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
                 mdns_mem_free(node);
                 continue;
             }
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+            notify_service_removed(entry, service, MDNS_CACHE_RECORD_TXT);
+#endif
             service->txt_present = false;
             mdns_utils_free_txt_linked_list(service->txt_list);
             service->txt_list = NULL;
