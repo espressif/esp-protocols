@@ -42,6 +42,19 @@ static void yield_to_all_priorities(void)
     vTaskPrioritySet(NULL, test_task_prio_before);
 }
 
+typedef struct {
+    size_t count;
+    char hostname[MDNS_NAME_BUF_LEN];
+} hostname_changed_callback_context_t;
+
+static void hostname_changed_callback(const char *hostname, void *arg)
+{
+    hostname_changed_callback_context_t *context = arg;
+
+    ++context->count;
+    strncpy(context->hostname, hostname, sizeof(context->hostname));
+    context->hostname[sizeof(context->hostname) - 1] = '\0';
+}
 
 TEST(mdns, api_fails_with_invalid_state)
 {
@@ -49,6 +62,7 @@ TEST(mdns, api_fails_with_invalid_state)
     TEST_ASSERT_NOT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
     TEST_ASSERT_NOT_EQUAL(ESP_OK, mdns_instance_name_set(MDNS_INSTANCE));
     TEST_ASSERT_NOT_EQUAL(ESP_OK, mdns_service_add(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT, NULL, 0));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, mdns_register_hostname_changed_callback(hostname_changed_callback, NULL));
 }
 
 TEST(mdns, init_deinit)
@@ -57,6 +71,34 @@ TEST(mdns, init_deinit)
     TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
     TEST_ASSERT_EQUAL(ESP_OK, mdns_init());
     yield_to_all_priorities(); // Make sure that mdns task has executed to complete initialization
+    mdns_free();
+    esp_event_loop_delete_default();
+}
+
+TEST(mdns, hostname_changed_callback)
+{
+    hostname_changed_callback_context_t context = { 0 };
+
+    test_case_uses_tcpip();
+    TEST_ASSERT_EQUAL(ESP_OK, esp_event_loop_create_default());
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_init());
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, mdns_register_hostname_changed_callback(NULL, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_register_hostname_changed_callback(hostname_changed_callback, &context));
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+    yield_to_all_priorities();
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+    TEST_ASSERT_EQUAL_STRING(MDNS_HOSTNAME, context.hostname);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set(MDNS_HOSTNAME));
+    yield_to_all_priorities();
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    yield_to_all_priorities();
+    TEST_ASSERT_EQUAL_UINT(2, context.count);
+    TEST_ASSERT_EQUAL_STRING("renamed-hostname", context.hostname);
+
     mdns_free();
     esp_event_loop_delete_default();
 }

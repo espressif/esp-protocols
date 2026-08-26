@@ -12,6 +12,38 @@
 #include "mdns_private.h"
 #include "mdns_utils.h"
 
+typedef struct {
+    size_t count;
+    char hostname[MDNS_NAME_BUF_LEN];
+} hostname_changed_callback_context_t;
+
+static void hostname_changed_callback(const char *hostname, void *arg)
+{
+    hostname_changed_callback_context_t *context = arg;
+
+    ++context->count;
+    strncpy(context->hostname, hostname, sizeof(context->hostname));
+    context->hostname[sizeof(context->hostname) - 1] = '\0';
+}
+
+static void test_hostname_changed_callback(void)
+{
+    hostname_changed_callback_context_t context = { 0 };
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_register_hostname_changed_callback(hostname_changed_callback, &context));
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+    TEST_ASSERT_EQUAL_STRING("renamed-hostname", context.hostname);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname"));
+    TEST_ASSERT_EQUAL_UINT(1, context.count);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_hostname_set("renamed-hostname-again"));
+    TEST_ASSERT_EQUAL_UINT(2, context.count);
+    TEST_ASSERT_EQUAL_STRING("renamed-hostname-again", context.hostname);
+}
+
 static void test_mdns_hostname_queries(void)
 {
     // Define the queries for test4.local and test.local
@@ -136,6 +168,8 @@ void run_unity_tests(void)
 
     // Run hostname queries test
     RUN_TEST(test_mdns_hostname_queries);
+
+    RUN_TEST(test_hostname_changed_callback);
 
     // Run test with answers
     RUN_TEST(test_mdns_with_answers);

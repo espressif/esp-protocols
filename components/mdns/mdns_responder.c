@@ -16,8 +16,15 @@
 #include "mdns_pcb.h"
 #include "mdns_service.h"
 
+typedef struct mdns_hostname_changed_callback_s {
+    mdns_hostname_changed_cb_t cb;
+    void *arg;
+    struct mdns_hostname_changed_callback_s *next;
+} mdns_hostname_changed_callback_t;
+
 typedef struct mdns_server_s {
     const char *hostname;
+    mdns_hostname_changed_callback_t *hostname_changed_cbs;
     const char *instance;
     mdns_srv_item_t *services;
     mdns_host_item_t *host_list;
@@ -59,6 +66,17 @@ static void free_delegated_hostnames(void)
     s_server->host_list = NULL;
 }
 
+static void free_hostname_changed_callbacks(void)
+{
+    mdns_hostname_changed_callback_t *callback = s_server->hostname_changed_cbs;
+    while (callback != NULL) {
+        mdns_hostname_changed_callback_t *next = callback->next;
+        mdns_mem_free(callback);
+        callback = next;
+    }
+    s_server->hostname_changed_cbs = NULL;
+}
+
 void mdns_priv_responder_free(void)
 {
     if (s_server->action_sema != NULL) {
@@ -71,6 +89,7 @@ void mdns_priv_responder_free(void)
     mdns_mem_free((char *)s_server->hostname);
     mdns_mem_free((char *)s_server->instance);
     free_delegated_hostnames();
+    free_hostname_changed_callbacks();
     mdns_mem_free(s_server);
     s_server = NULL;
 }
@@ -98,11 +117,19 @@ mdns_host_item_t *mdns_priv_get_self_host(void)
 void mdns_priv_set_global_hostname(const char *hostname)
 {
     if (s_server) {
+        bool hostname_changed = s_server->hostname != hostname &&
+                                (!s_server->hostname || !hostname || strcmp(s_server->hostname, hostname) != 0);
         if (s_server->hostname) {
             mdns_mem_free((void *)s_server->hostname);
         }
         s_server->hostname = hostname;
         s_server->self_host.hostname = hostname;
+        if (hostname_changed) {
+            for (mdns_hostname_changed_callback_t *callback = s_server->hostname_changed_cbs;
+                    callback != NULL; callback = callback->next) {
+                callback->cb(hostname, callback->arg);
+            }
+        }
     }
 }
 
@@ -551,9 +578,7 @@ void mdns_priv_responder_action(mdns_action_t *action, mdns_action_subtype_t typ
         case ACTION_HOSTNAME_SET:
             send_bye_all_pcbs_no_instance(true);
             mdns_priv_remap_self_service_hostname(s_server->hostname, action->data.hostname_set.hostname);
-            mdns_mem_free((char *)s_server->hostname);
-            s_server->hostname = action->data.hostname_set.hostname;
-            s_server->self_host.hostname = action->data.hostname_set.hostname;
+            mdns_priv_set_global_hostname(action->data.hostname_set.hostname);
             mdns_priv_restart_all_pcbs();
             xSemaphoreGive(s_server->action_sema);
             break;
@@ -640,6 +665,38 @@ esp_err_t mdns_hostname_set(const char *hostname)
         return ESP_ERR_NO_MEM;
     }
     xSemaphoreTake(s_server->action_sema, portMAX_DELAY);
+    return ESP_OK;
+}
+
+esp_err_t mdns_register_hostname_changed_callback(mdns_hostname_changed_cb_t cb, void *arg)
+{
+    if (!s_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!cb) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    mdns_priv_service_lock();
+    for (mdns_hostname_changed_callback_t *callback = s_server->hostname_changed_cbs;
+            callback != NULL; callback = callback->next) {
+        if (callback->cb == cb && callback->arg == arg) {
+            mdns_priv_service_unlock();
+            return ESP_OK;
+        }
+    }
+
+    mdns_hostname_changed_callback_t *callback = mdns_mem_malloc(sizeof(*callback));
+    if (!callback) {
+        HOOK_MALLOC_FAILED;
+        mdns_priv_service_unlock();
+        return ESP_ERR_NO_MEM;
+    }
+    callback->cb = cb;
+    callback->arg = arg;
+    callback->next = s_server->hostname_changed_cbs;
+    s_server->hostname_changed_cbs = callback;
+    mdns_priv_service_unlock();
     return ESP_OK;
 }
 
