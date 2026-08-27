@@ -11,8 +11,11 @@ jobs:
   host_test_mdns:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Host test build
+    strategy:
+      matrix:
+        idf_ver: ["latest", "release-v5.3", "release-v5.4", "release-v5.5"]
     runs-on: ubuntu-22.04
-    container: espressif/idf:release-v5.3
+    container: espressif/idf:${{ matrix.idf_ver }}
 
     steps:
       - name: Checkout esp-protocols

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -20,8 +22,15 @@ static EventGroupHandle_t s_exit_signal = NULL;
 
 static int exit_console(int argc, char **argv)
 {
+#ifdef CONFIG_IDF_TARGET_LINUX
+    /* Host tests do not need graceful REPL teardown; exit hard so leftover
+     * console_repl / linenoise threads cannot keep the process alive. */
+    ESP_LOGI(TAG, "Exit");
+    exit(0);
+#else
     xEventGroupSetBits(s_exit_signal, 1);
     return 0;
+#endif
 }
 
 #else
@@ -109,12 +118,16 @@ static void mdns_test_app(esp_netif_t *interface)
 #ifdef CONFIG_TEST_CONSOLE
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
-    esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     s_exit_signal = xEventGroupCreate();
 
     repl_config.prompt = "mdns>";
     // init console REPL environment
+#if CONFIG_IDF_TARGET_LINUX && ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 1, 0)
+    ESP_ERROR_CHECK(esp_console_new_repl_stdio(&repl_config, &repl));
+#else
+    esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
+#endif
 
     const esp_console_cmd_t cmd_exit = {
         .command = "exit",
