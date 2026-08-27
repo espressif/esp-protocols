@@ -57,6 +57,23 @@ static void browse_item_free(mdns_browse_t *browse)
 }
 
 /**
+ * @brief Check that a browse is still linked in @c s_browse
+ *
+ * Sync batches borrow @c browse_sync->browse. ACTION_BROWSE_END may detach and
+ * free that browse while a later ACTION_BROWSE_SYNC is still queued, so the
+ * sync handler must not touch the pointer without checking.
+ */
+static bool browse_is_in_list(const mdns_browse_t *browse)
+{
+    for (const mdns_browse_t *b = s_browse; b != NULL; b = b->next) {
+        if (b == browse) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * @brief Check that a result node is still linked in the browse cache
  *
  * Sync entries hold a borrowed pointer to a node in @c browse->result. One node
@@ -85,6 +102,10 @@ static bool result_is_cached(const mdns_browse_t *browse, const mdns_result_t *r
 static void browse_sync(mdns_browse_sync_t *browse_sync)
 {
     mdns_browse_t *browse = browse_sync->browse;
+    // END may have already detached+freed this browse, or delete marked it off
+    if (!browse_is_in_list(browse) || browse->state != BROWSE_RUNNING) {
+        return;
+    }
     mdns_browse_result_sync_t *sync_result = browse_sync->sync_result;
     while (sync_result) {
         mdns_result_t *result = sync_result->result;
