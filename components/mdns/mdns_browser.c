@@ -57,6 +57,24 @@ static void browse_item_free(mdns_browse_t *browse)
 }
 
 /**
+ * @brief Check that a result node is still linked in the browse cache
+ *
+ * Sync entries hold a borrowed pointer to a node in @c browse->result. One node
+ * can be referenced by several queued sync batches, and the first batch to see
+ * it with @c ttl==0 detaches and frees it, so a later batch must not use its
+ * pointer without checking.
+ */
+static bool result_is_cached(const mdns_browse_t *browse, const mdns_result_t *result)
+{
+    for (const mdns_result_t *r = browse->result; r != NULL; r = r->next) {
+        if (r == result) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * @brief Deliver browse updates to the user notifier
  *
  * Invokes the notifier once per changed result accumulated for the current
@@ -70,6 +88,11 @@ static void browse_sync(mdns_browse_sync_t *browse_sync)
     mdns_browse_result_sync_t *sync_result = browse_sync->sync_result;
     while (sync_result) {
         mdns_result_t *result = sync_result->result;
+        if (!result_is_cached(browse, result)) {
+            // Already removed and freed by an earlier sync batch
+            sync_result = sync_result->next;
+            continue;
+        }
         DBG_BROWSE_RESULTS(result, browse_sync->browse);
         browse->notifier(result);
         if (result->ttl == 0) {
