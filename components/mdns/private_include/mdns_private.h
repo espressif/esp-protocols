@@ -363,6 +363,8 @@ typedef enum {
     MDNS_BROWSE_TYPE_RECORD_PTR, /* PTR record browse */
     MDNS_BROWSE_TYPE_RECORD_SRV, /* SRV record browse */
     MDNS_BROWSE_TYPE_RECORD_TXT, /* TXT record browse */
+    MDNS_BROWSE_TYPE_RECORD_A, /* A record browse */
+    MDNS_BROWSE_TYPE_RECORD_AAAA, /* AAAA record browse */
 } mdns_browse_type_t;
 
 typedef struct mdns_browse_s {
@@ -372,7 +374,7 @@ typedef struct mdns_browse_s {
     mdns_browse_state_t state;
     mdns_browse_notify_t notifier;
 
-    char *instance;
+    char *instance; /*!< Instance name, or hostname for A/AAAA record browses. */
     char *service;
     char *proto;
     char *subtype;
@@ -420,7 +422,9 @@ typedef enum {
     // Other record update flags
     MDNS_CACHE_RECORD_SRV           = (1U << 2),
     MDNS_CACHE_RECORD_TXT           = (1U << 3),
-    MDNS_CACHE_RECORD_ADDR          = (1U << 4),
+    MDNS_CACHE_RECORD_A             = (1U << 4),
+    MDNS_CACHE_RECORD_AAAA          = (1U << 5),
+    MDNS_CACHE_RECORD_ADDR          = MDNS_CACHE_RECORD_A | MDNS_CACHE_RECORD_AAAA,
 } mdns_cache_record_type_t;
 
 typedef uint8_t mdns_cache_record_mask_t;
@@ -495,6 +499,7 @@ typedef struct mdns_cache_entry_s {
     mdns_ip_protocol_t ip_protocol;
 
     mdns_cache_addr_t *addr_list;
+    mdns_cache_record_mask_t addr_sync_records; /*!< Pending A/AAAA record browse updates. */
     mdns_service_cache_t *service_cache_list;
     struct mdns_cache_entry_s *next;
 } mdns_cache_entry_t;

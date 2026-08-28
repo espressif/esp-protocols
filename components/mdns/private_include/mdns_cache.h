@@ -177,19 +177,20 @@ void mdns_priv_cache_trim_unsubscribed_records(int64_t now_us);
 void mdns_priv_cache_clear(void);
 
 /**
- * @brief Convert a service cache to a mdns_result_t.
+ * @brief Project cached records into a temporary mdns_result_t.
  *
  * @param entry       Pointer to the cache entry.
- * @param service     Pointer to the service cache.
- * @param subtype     Pointer to the subtype item.
+ * @param service     Service cache, or NULL for address-only projections.
+ * @param subtype     Subtype item; required when projecting MDNS_CACHE_RECORD_SUBTYPE.
  * @param projection_records Mask of cache records to be projected in result.
  * @param removed_records    Mask of cache records whose TTL will be set to 0.
  * @param out_result  Pointer to the output mdns_result_t.
- * @return ESP_OK on success, ESP_ERR_NO_MEM on allocation failure.
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG for inconsistent parameters,
+ *         or ESP_ERR_NO_MEM on allocation failure.
  */
-esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                            const mdns_cache_subtype_t *subtype, mdns_cache_record_mask_t projection_records,
-                                            mdns_cache_record_mask_t removed_records, mdns_result_t **out_result);
+esp_err_t mdns_priv_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                    const mdns_cache_subtype_t *subtype, mdns_cache_record_mask_t projection_records,
+                                    mdns_cache_record_mask_t removed_records, mdns_result_t **out_result);
 
 /**
  * @brief Process all pending synchronization cache entries.
@@ -200,7 +201,7 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
 void mdns_priv_cache_process_sync(void);
 
 /**
- * @brief Replay all currently visible cache services to a newly registered browse.
+ * @brief Replay matching cached service records or address lists to a newly registered browse.
  */
 esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse);
 #ifdef __cplusplus

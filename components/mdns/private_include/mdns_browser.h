@@ -31,6 +31,11 @@ void mdns_priv_browse_free(void);
 bool mdns_priv_browse_has_service(const char *instance, const char *service, const char *proto);
 
 /**
+ * @brief Check whether a running A/AAAA record browse consumes a hostname and A/AAAA family.
+ */
+bool mdns_priv_browse_has_hostname(const char *hostname, mdns_browse_type_t type);
+
+/**
  * @brief Check if a running browse `_service._proto` with the given subtype exists.
  *
  * @param service Service name.
@@ -65,38 +70,39 @@ void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t 
 void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type);
 
 /**
- * @brief  Build temporary result and queue for sync from service cache
+ * @brief Build temporary results and synchronously notify matching browses from cache.
  *
  * @param entry Owner cache entry.
- * @param service Updated service cache.
+ * @param service Updated service cache, or NULL for hostname-level A/AAAA updates.
  * @param records Bitmask of cache record types to sync.
  *
  * @note Called from mdns_priv_cache_process_sync() in mdns_cache.c
  *
  * @return true if all matching browses have been notified about the updated service, false otherwise
  */
-bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                mdns_cache_record_mask_t records);
+bool mdns_priv_browse_update_from_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                        mdns_cache_record_mask_t records);
 
 /**
- * @brief Notify one browse about one visible cache service.
+ * @brief Notify one browse about cached service records, or addresses when service is NULL.
+ * @return ESP_OK on success, ESP_ERR_NOT_FOUND when no matching record is present,
+ *         ESP_ERR_INVALID_ARG for invalid arguments, or the result projection error.
  */
-esp_err_t mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                     mdns_browse_t *browse);
+esp_err_t mdns_priv_browse_notify_from_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                             mdns_browse_t *browse);
 
 /**
- * @brief Notify the affected normal/subtype browse about a PTR goodbye.
+ * @brief Notify matching record browses about goodbye or natural expiration.
  *
- * @param subtype The PTR subtype, or NULL for the base PTR.
+ * @param service Service cache, or NULL for hostname-level A/AAAA removal.
+ * @param subtype The PTR subtype, or NULL for other records.
+ * @param removed_record The record type removed.
  *
- * @note Used for both goodbye and natural expiration.
- *
- * @note Must be called before the PTR/subtype is removed from the cache to avoid UAF.
+ * @note Service records are projected before their data is freed. Addresses are projected after
+ *       removing the address from the list, but before freeing the owner entry, to report survivors.
  */
-bool mdns_priv_browse_notify_record_removed_from_service_cache(const mdns_cache_entry_t *entry,
-                                                               const mdns_service_cache_t *service,
-                                                               const mdns_cache_subtype_t *subtype,
-                                                               mdns_cache_record_type_t removed_record);
+bool mdns_priv_browse_notify_record_removed_from_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                       const mdns_cache_subtype_t *subtype, mdns_cache_record_type_t removed_record);
 #ifdef __cplusplus
 }
 #endif

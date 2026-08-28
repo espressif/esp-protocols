@@ -101,6 +101,7 @@ typedef struct {
 typedef struct mdns_ip_addr_s {
     esp_ip_addr_t addr;                     /*!< IP address */
     struct mdns_ip_addr_s *next;            /*!< next IP, or NULL for the last IP in the list */
+    uint32_t ttl;                           /*!< cached address TTL for browses, or 0 when unavailable */
 } mdns_ip_addr_t;
 
 /**
@@ -1279,6 +1280,48 @@ mdns_browse_t *mdns_browse_record_srv_new(const char *instance, const char *serv
  */
 mdns_browse_t *mdns_browse_record_txt_new(const char *instance, const char *service, const char *proto,
                                           mdns_browse_notify_t notifier);
+
+#ifdef CONFIG_LWIP_IPV4
+/**
+ * @brief Start a continuous A (IPv4 address) record browse for a hostname.
+ *
+ * @param hostname          Hostname to browse, without the .local suffix. Must not be NULL or empty.
+ * @param notifier          Callback invoked on address changes and removal. Must not be NULL.
+ * @return Pointer to the new record browse if initiated successfully, NULL otherwise.
+ *
+ * @note If matching addresses already present in the internal mDNS cache,
+ *       the notifier will be called once after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_a_new(const char *hostname, mdns_browse_notify_t notifier);
+#endif
+
+#ifdef CONFIG_LWIP_IPV6
+/**
+ * @brief Start a continuous AAAA (IPv6 address) record browse for a hostname.
+ *
+ * @param hostname Hostname to browse, without the .local suffix. Must not be NULL or empty.
+ * @param notifier Callback invoked on address changes and removal. Must not be NULL.
+ * @return Pointer to the new record browse if initiated successfully, NULL otherwise.
+ *
+ * @note If matching addresses already present in the internal mDNS cache,
+ *       the notifier will be called once after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_aaaa_new(const char *hostname, mdns_browse_notify_t notifier);
+#endif
 
 /**
  * @brief Stop a continuous service or record browse.
