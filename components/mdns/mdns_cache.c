@@ -556,13 +556,24 @@ static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
     case MDNS_CACHE_RECORD_SUBTYPE:
         return node->service && node->subtype
                && mdns_priv_browse_has_subtype(node->service->service, node->service->proto, node->subtype->subtype);
-    case MDNS_CACHE_RECORD_ADDR:
+    case MDNS_CACHE_RECORD_ADDR: {
+        mdns_browse_type_t type = MDNS_BROWSE_TYPE_SERVICE;
+        if (node->addr->addr.type == ESP_IPADDR_TYPE_V4) {
+            type = MDNS_BROWSE_TYPE_RECORD_A;
+        } else if (node->addr->addr.type == ESP_IPADDR_TYPE_V6) {
+            type = MDNS_BROWSE_TYPE_RECORD_AAAA;
+        }
+
+        if (node->addr && mdns_priv_browse_has_hostname(node->entry->hostname, type)) {
+            return true;
+        }
         for (const mdns_service_cache_t *it = node->entry->service_cache_list; it; it = it->next) {
             if (cache_service_has_consumer(it)) {
                 return true;
             }
         }
         return false;
+    }
     default:
         return cache_service_has_consumer(node->service);
     }
@@ -570,7 +581,7 @@ static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
 
 static void notify_ptr_removed(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service, const mdns_cache_subtype_t *subtype)
 {
-    if (!mdns_priv_browse_notify_record_removed_from_service_cache(entry, service, subtype, subtype ? MDNS_CACHE_RECORD_SUBTYPE : MDNS_CACHE_RECORD_PTR)) {
+    if (!mdns_priv_browse_notify_record_removed_from_cache(entry, service, subtype, subtype ? MDNS_CACHE_RECORD_SUBTYPE : MDNS_CACHE_RECORD_PTR)) {
         ESP_LOGE(TAG, "Failed to notify browse PTR goodbye");
     }
 }
@@ -887,6 +898,22 @@ mdns_cache_update_result_t mdns_priv_cache_update_txt(const esp_netif_t *esp_net
     return result;
 }
 
+/**
+ * @brief Map an address family to its cache record mask.
+ */
+static mdns_cache_record_type_t get_addr_cache_record_type(const esp_ip_addr_t *addr)
+{
+    if (addr) {
+        if (addr->type == ESP_IPADDR_TYPE_V4) {
+            return MDNS_CACHE_RECORD_A;
+        }
+        if (addr->type == ESP_IPADDR_TYPE_V6) {
+            return MDNS_CACHE_RECORD_AAAA;
+        }
+    }
+    return MDNS_CACHE_RECORD_INVALID;
+}
+
 static mdns_cache_update_result_t cache_update_addr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                     const char *hostname, const esp_ip_addr_t *addr, uint32_t ttl,
                                                     bool create_if_absent)
@@ -895,6 +922,10 @@ static mdns_cache_update_result_t cache_update_addr(const esp_netif_t *esp_netif
     bool addr_added = false;
     bool ttl_changed = false;
     mdns_cache_update_result_t result = MDNS_CACHE_NO_CHANGE;
+    mdns_cache_record_type_t record = get_addr_cache_record_type(addr);
+    if (record == MDNS_CACHE_RECORD_INVALID) {
+        return MDNS_CACHE_ERROR;
+    }
 
     if (ttl == 0) {
         entry = cache_find_entry(hostname, esp_netif, ip_protocol);
@@ -955,6 +986,10 @@ static mdns_cache_update_result_t cache_update_addr(const esp_netif_t *esp_netif
     }
 
     result = (addr_added || ttl_changed) ? MDNS_CACHE_UPDATED : MDNS_CACHE_NO_CHANGE;
+    if (result == MDNS_CACHE_UPDATED) {
+        entry->addr_sync_records |= record;
+        s_sync_pending = true;
+    }
     for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
         service_cache_mark_sync_out(service, result, MDNS_CACHE_RECORD_ADDR);
     }
@@ -1026,7 +1061,7 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
                 mdns_mem_free(node);
                 continue;
             }
-            if (!mdns_priv_browse_notify_record_removed_from_service_cache(entry, service, NULL, MDNS_CACHE_RECORD_SRV)) {
+            if (!mdns_priv_browse_notify_record_removed_from_cache(entry, service, NULL, MDNS_CACHE_RECORD_SRV)) {
                 ESP_LOGE(TAG, "Failed to notify SRV expiration");
             }
             service->srv_present = false;
@@ -1040,7 +1075,7 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
                 mdns_mem_free(node);
                 continue;
             }
-            if (!mdns_priv_browse_notify_record_removed_from_service_cache(entry, service, NULL, MDNS_CACHE_RECORD_TXT)) {
+            if (!mdns_priv_browse_notify_record_removed_from_cache(entry, service, NULL, MDNS_CACHE_RECORD_TXT)) {
                 ESP_LOGE(TAG, "Failed to notify TXT expiration");
             }
             service->txt_present = false;
@@ -1048,19 +1083,26 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
             service->txt_list = NULL;
             service->txt_ttl = 0;
             break;
-        case MDNS_CACHE_RECORD_ADDR:
+        case MDNS_CACHE_RECORD_ADDR: {
             if (!addr) {
                 mdns_mem_free(node);
                 continue;
             }
+            mdns_cache_record_type_t addr_record = get_addr_cache_record_type(&addr->addr);
             queueDetach(mdns_cache_addr_t, entry->addr_list, addr);
             mdns_mem_free(addr);
 
+            // Report the remaining list, including the final empty snapshot, before freeing the entry.
+            if (!mdns_priv_browse_notify_record_removed_from_cache(entry, NULL, NULL, addr_record)) {
+                ESP_LOGE(TAG, "Failed to notify address expiration");
+            }
+            entry->addr_sync_records &= ~(mdns_cache_record_mask_t)addr_record;
             for (mdns_service_cache_t *it = entry->service_cache_list; it; it = it->next) {
                 service_cache_mark_sync_out(it, MDNS_CACHE_UPDATED, MDNS_CACHE_RECORD_ADDR);
             }
             cache_remove_entry_if_empty(entry);
             break;
+        }
         }
 
         if (service && service_cache_is_empty(service)) {
@@ -1179,7 +1221,8 @@ cleanup:
     return false;
 }
 
-static bool project_addr(const mdns_cache_addr_t *addr_list, mdns_ip_addr_t **out_addr_list)
+static bool project_addr(const mdns_cache_addr_t *addr_list, mdns_cache_record_mask_t records,
+                         mdns_ip_addr_t **out_addr_list)
 {
     mdns_ip_addr_t *head = NULL;
     mdns_ip_addr_t **tail = &head;
@@ -1187,6 +1230,9 @@ static bool project_addr(const mdns_cache_addr_t *addr_list, mdns_ip_addr_t **ou
     *out_addr_list = NULL;
 
     for (const mdns_cache_addr_t *addr = addr_list; addr; addr = addr->next) {
+        if (!(records & get_addr_cache_record_type(&addr->addr))) {
+            continue;
+        }
         mdns_ip_addr_t *new_addr = mdns_mem_calloc(1, sizeof(mdns_ip_addr_t));
         if (!new_addr) {
             HOOK_MALLOC_FAILED;
@@ -1198,6 +1244,7 @@ static bool project_addr(const mdns_cache_addr_t *addr_list, mdns_ip_addr_t **ou
             return false;
         }
         new_addr->addr = addr->addr;
+        new_addr->ttl = addr->ttl;
         *tail = new_addr;
         tail = &new_addr->next;
     }
@@ -1206,10 +1253,19 @@ static bool project_addr(const mdns_cache_addr_t *addr_list, mdns_ip_addr_t **ou
     return true;
 }
 
-esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                            const mdns_cache_subtype_t *subtype, mdns_cache_record_mask_t projection_records,
-                                            mdns_cache_record_mask_t removed_records, mdns_result_t **out_result)
+esp_err_t mdns_priv_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                    const mdns_cache_subtype_t *subtype, mdns_cache_record_mask_t projection_records,
+                                    mdns_cache_record_mask_t removed_records, mdns_result_t **out_result)
 {
+    if (!out_result) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    *out_result = NULL;
+    if (!entry || (!service && (projection_records & (MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE
+                                                      | MDNS_CACHE_RECORD_SRV | MDNS_CACHE_RECORD_TXT)))
+            || ((projection_records & MDNS_CACHE_RECORD_SUBTYPE) && !subtype)) {
+        return ESP_ERR_INVALID_ARG;
+    }
     esp_err_t ret = ESP_OK;
     mdns_result_t *result = mdns_mem_calloc(1, sizeof(mdns_result_t));
     ESP_GOTO_ON_FALSE(result, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate result");
@@ -1217,7 +1273,7 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
     result->esp_netif = entry->esp_netif;
     result->ip_protocol = entry->ip_protocol;
 
-    if (projection_records & MDNS_CACHE_RECORD_PTR) {
+    if (service && (projection_records & MDNS_CACHE_RECORD_PTR)) {
         result->ttl = (removed_records & MDNS_CACHE_RECORD_PTR) ? 0 : service->ptr_ttl;
     } else if (projection_records & MDNS_CACHE_RECORD_SUBTYPE) {
         result->ttl = (removed_records & MDNS_CACHE_RECORD_SUBTYPE) ? 0 : subtype->ttl;
@@ -1242,25 +1298,26 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
         }
     }
 
-    if ((projection_records & MDNS_CACHE_RECORD_SRV) && service->srv_present) {
-        if (entry->hostname) {
-            result->hostname = mdns_mem_strdup(entry->hostname);
-            ESP_GOTO_ON_FALSE(result->hostname, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate hostname");
-        }
+    bool project_srv = (projection_records & MDNS_CACHE_RECORD_SRV) && service && service->srv_present;
+    if ((project_srv || (!service && (projection_records & MDNS_CACHE_RECORD_ADDR))) && entry->hostname) {
+        result->hostname = mdns_mem_strdup(entry->hostname);
+        ESP_GOTO_ON_FALSE(result->hostname, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate hostname");
+    }
+    if (project_srv) {
         result->port = service->port;
         result->priority = service->priority;
         result->weight = service->weight;
         result->srv_ttl = (removed_records & MDNS_CACHE_RECORD_SRV) ? 0 : service->srv_ttl;
     }
 
-    if ((projection_records & MDNS_CACHE_RECORD_TXT) && service->txt_present) {
+    if ((projection_records & MDNS_CACHE_RECORD_TXT) && service && service->txt_present) {
         ESP_GOTO_ON_FALSE(project_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
                           ESP_ERR_NO_MEM, error, TAG, "Failed to project TXT");
         result->txt_ttl = (removed_records & MDNS_CACHE_RECORD_TXT) ? 0 : service->txt_ttl;
     }
 
-    if ((projection_records & MDNS_CACHE_RECORD_ADDR) && (!(projection_records & MDNS_CACHE_RECORD_SRV) || service->srv_present)) {
-        ESP_GOTO_ON_FALSE(project_addr(entry->addr_list, &result->addr), ESP_ERR_NO_MEM, error, TAG,
+    if ((projection_records & MDNS_CACHE_RECORD_ADDR) && (!(projection_records & MDNS_CACHE_RECORD_SRV) || project_srv)) {
+        ESP_GOTO_ON_FALSE(project_addr(entry->addr_list, projection_records, &result->addr), ESP_ERR_NO_MEM, error, TAG,
                           "Failed to project address list");
     }
 
@@ -1281,12 +1338,23 @@ void mdns_priv_cache_process_sync(void)
     s_sync_pending = false;
 
     for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
+        for (mdns_cache_record_mask_t record = MDNS_CACHE_RECORD_A; record <= MDNS_CACHE_RECORD_AAAA; record <<= 1) {
+            if (!(entry->addr_sync_records & record)) {
+                continue;
+            }
+            if (mdns_priv_browse_update_from_cache(entry, NULL, record)) {
+                entry->addr_sync_records &= ~record;
+            } else {
+                ESP_LOGW(TAG, "Failed to notify address browse, retaining sync mark");
+                s_sync_pending = true;
+            }
+        }
         for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
             mdns_cache_record_mask_t records = service->sync_records;
             if (records == MDNS_CACHE_RECORD_INVALID) {
                 continue;
             }
-            if (!mdns_priv_browse_update_from_service_cache(entry, service, records)) {
+            if (!mdns_priv_browse_update_from_cache(entry, service, records)) {
                 ESP_LOGW(TAG, "Failed to notify browse, dropping sync mark");
             }
             service_cache_clear_sync_out(service);
@@ -1301,10 +1369,16 @@ esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse, const mdns_browse
     }
 
     bool notified = true;
+    const bool address_browse = browse->type == MDNS_BROWSE_TYPE_RECORD_A || browse->type == MDNS_BROWSE_TYPE_RECORD_AAAA;
 
     for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
+        if (address_browse) {
+            esp_err_t ret = mdns_priv_browse_notify_from_cache(entry, NULL, browse, notifier);
+            notified &= (ret == ESP_OK || ret == ESP_ERR_NOT_FOUND);
+            continue;
+        }
         for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
-            esp_err_t ret = mdns_priv_browse_notify_from_service_cache(entry, service, browse, notifier);
+            esp_err_t ret = mdns_priv_browse_notify_from_cache(entry, service, browse, notifier);
             notified &= (ret == ESP_OK || ret == ESP_ERR_NOT_FOUND);
         }
     }
