@@ -316,3 +316,22 @@ bool mdns_utils_str_case_equal_nullable(const char *a, const char *b)
 {
     return (mdns_utils_str_null_or_empty(a) && mdns_utils_str_null_or_empty(b)) || mdns_utils_str_case_equal(a, b);
 }
+
+bool mdns_utils_addr_equal(const esp_ip_addr_t *a, const esp_ip_addr_t *b)
+{
+    if (!a || !b || a->type != b->type) {
+        return false;
+    }
+
+#ifdef CONFIG_LWIP_IPV6
+    if (a->type == ESP_IPADDR_TYPE_V6) {
+        return !memcmp(a->u_addr.ip6.addr, b->u_addr.ip6.addr, sizeof(a->u_addr.ip6.addr));
+    }
+#endif
+#ifdef CONFIG_LWIP_IPV4
+    if (a->type == ESP_IPADDR_TYPE_V4) {
+        return a->u_addr.ip4.addr == b->u_addr.ip4.addr;
+    }
+#endif
+    return false;
+}

@@ -82,36 +82,36 @@ mdns_resolver_t *mdns_priv_resolver_find_ptr(mdns_name_t *name, uint16_t type, m
  * @brief Update the resolver from the service cache.
  *
  * @param entry Pointer to the cache entry.
- * @param service Pointer to the service cache.
+ * @param service Pointer to the service cache. Can be NULL for A/AAAA resolvers.
  * @param record_mask Bitmask of records to update.
  * @return Bitmask of records that were updated.
  */
-mdns_cache_record_mask_t mdns_priv_resolver_update_from_service_cache(const mdns_cache_entry_t *entry,
-                                                                      const mdns_service_cache_t *service,
-                                                                      mdns_cache_record_mask_t record_mask);
+mdns_cache_record_mask_t mdns_priv_resolver_update_from_cache(const mdns_cache_entry_t *entry,
+                                                              const mdns_service_cache_t *service,
+                                                              mdns_cache_record_mask_t record_mask);
 
 /**
  * @brief Notify the resolver from the service cache.
  *
  * @param entry Pointer to the cache entry.
- * @param service Pointer to the service cache.
+ * @param service Pointer to the service cache. Can be NULL for A/AAAA resolvers.
  * @param resolver Pointer to the resolver.
  * @return true if successfully notified, false otherwise.
  */
-bool mdns_priv_resolver_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                  mdns_resolver_t *resolver);
+bool mdns_priv_resolver_notify_from_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                          mdns_resolver_t *resolver);
 
 /**
  * @brief Notify the resolver from the service cache for a goodbye message.
  *
  * @param entry Pointer to the cache entry.
- * @param service Pointer to the service cache.
+ * @param service Pointer to the service cache. Can be NULL for A/AAAA resolvers.
  * @param record_mask Bitmask of records to update.
  * @param subtype Subtype name. NULL if no subtype is required.
  * @return true if successfully notified, false otherwise.
  */
-bool mdns_priv_resolver_notify_goodbye_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                          mdns_cache_record_mask_t record_mask, const char *subtype);
+bool mdns_priv_resolver_notify_goodbye_from_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                  mdns_cache_record_mask_t record_mask, const char *subtype);
 #ifdef __cplusplus
 }
 #endif

@@ -1315,6 +1315,14 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 esp_ip_addr_t ip6;
                 ip6.type = ESP_IPADDR_TYPE_V6;
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                mdns_resolver_t *addr_resolver = mdns_priv_resolver_find(name->host, NULL, NULL, NULL,
+                                                                         MDNS_RESOLVER_TYPE_AAAA);
+                if (addr_resolver) {
+                    (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
+                                                      name->host, &ip6, ttl);
+                }
+#endif
 #if defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)
                 if (packet_has_cache_consumer) {
                     rx_staged_ip_add(&staged_ips, name->host, &ip6, ttl);
@@ -1378,6 +1386,14 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 esp_ip_addr_t ip;
                 ip.type = ESP_IPADDR_TYPE_V4;
                 memcpy(&(ip.u_addr.ip4.addr), data_ptr, 4);
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                mdns_resolver_t *addr_resolver = mdns_priv_resolver_find(name->host, NULL, NULL, NULL,
+                                                                         MDNS_RESOLVER_TYPE_A);
+                if (addr_resolver) {
+                    (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
+                                                      name->host, &ip, ttl);
+                }
+#endif
 #if defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)
                 if (packet_has_cache_consumer) {
                     rx_staged_ip_add(&staged_ips, name->host, &ip, ttl);

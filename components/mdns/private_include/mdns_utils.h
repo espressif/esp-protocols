@@ -170,3 +170,8 @@ bool mdns_utils_str_case_equal(const char *a, const char *b);
  * @brief Check if two strings are either both null or valid and case-insensitivly equal
  */
 bool mdns_utils_str_case_equal_nullable(const char *a, const char *b);
+
+/**
+ * @brief Check if two IP addresses have the same type and value.
+ */
+bool mdns_utils_addr_equal(const esp_ip_addr_t *a, const esp_ip_addr_t *b);

@@ -214,6 +214,11 @@ typedef void (*mdns_txt_resolver_notify_t)(mdns_result_t *result);
 /**
  * @brief A/AAAA resolver result change notifier
  *
+ * @note The `result->addr` linked list represents the complete currently cached addresses for
+ *       the requested record type, for the corresponding netif and IP protocol.
+ *       When an address is removed, it is omitted from the reported list.
+ *       The list will be NULL after the last address is removed.
+ *
  * @note Ownership of @p result is transferred to the caller when the callback is invoked.
  *       Users must free the result with `mdns_results_free()` after handling it.
  *
