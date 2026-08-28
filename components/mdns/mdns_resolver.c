@@ -52,6 +52,9 @@ static bool resolvers_match(const mdns_resolver_t *a, const mdns_resolver_t *b)
         return mdns_utils_str_case_equal(a->instance, b->instance)
                && mdns_utils_str_case_equal(a->service, b->service)
                && mdns_utils_str_case_equal(a->proto, b->proto);
+    case MDNS_RESOLVER_TYPE_A:
+    case MDNS_RESOLVER_TYPE_AAAA:
+        return mdns_utils_str_case_equal(a->hostname, b->hostname);
     default:
         return false;
     }
@@ -81,6 +84,10 @@ static bool resolver_matches_service_cache(const mdns_resolver_t *resolver, cons
                && mdns_utils_str_case_equal(resolver->instance, service->instance_name)
                && mdns_utils_str_case_equal(resolver->service, service->service)
                && mdns_utils_str_case_equal(resolver->proto, service->proto);
+    case MDNS_RESOLVER_TYPE_A:
+    case MDNS_RESOLVER_TYPE_AAAA:
+        // Address resolvers consume hostname-level cache entries.
+        return false;
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
         return false;
@@ -97,7 +104,7 @@ static void resolver_item_free(mdns_resolver_t *resolver)
     mdns_mem_free(resolver->service);
     mdns_mem_free(resolver->proto);
     mdns_mem_free(resolver->subtype);
-
+    mdns_mem_free(resolver->hostname);
     mdns_mem_free(resolver);
 }
 
@@ -142,16 +149,28 @@ static void resolver_send(mdns_resolver_t *resolver, mdns_if_t mdns_if, mdns_ip_
     case MDNS_RESOLVER_TYPE_TXT:
         record_type = MDNS_TYPE_TXT;
         break;
+    case MDNS_RESOLVER_TYPE_A:
+        record_type = MDNS_TYPE_A;
+        break;
+    case MDNS_RESOLVER_TYPE_AAAA:
+        record_type = MDNS_TYPE_AAAA;
+        break;
     default:
         ESP_LOGE(TAG, "Invalid resolver type: %d", resolver->type);
         return;
     }
 
-    resolver_send_question(resolver->instance, resolver->service, resolver->proto, resolver->subtype, record_type, mdns_if, ip_protocol);
+    if (resolver->type == MDNS_RESOLVER_TYPE_A || resolver->type == MDNS_RESOLVER_TYPE_AAAA) {
+        // mDNS query uses `instance` to hold hostname for A and AAAA queries.
+        resolver_send_question(resolver->hostname, NULL, NULL, NULL, record_type, mdns_if, ip_protocol);
+    } else {
+        resolver_send_question(resolver->instance, resolver->service, resolver->proto, resolver->subtype,
+                               record_type, mdns_if, ip_protocol);
+    }
 }
 
 static mdns_resolver_t *resolver_init(const char *instance, const char *service, const char *proto, const char *subtype,
-                                      mdns_resolver_type_t type)
+                                      const char *hostname, mdns_resolver_type_t type)
 {
     mdns_resolver_t *resolver = (mdns_resolver_t *)mdns_mem_calloc(1, sizeof(mdns_resolver_t));
     if (!resolver) {
@@ -192,6 +211,15 @@ static mdns_resolver_t *resolver_init(const char *instance, const char *service,
     if (!mdns_utils_str_null_or_empty(subtype)) {
         resolver->subtype = mdns_mem_strndup(subtype, MDNS_NAME_MAX_LEN);
         if (!resolver->subtype) {
+            HOOK_MALLOC_FAILED;
+            resolver_item_free(resolver);
+            return NULL;
+        }
+    }
+
+    if (!mdns_utils_str_null_or_empty(hostname)) {
+        resolver->hostname = mdns_mem_strndup(hostname, MDNS_NAME_MAX_LEN);
+        if (!resolver->hostname) {
             HOOK_MALLOC_FAILED;
             resolver_item_free(resolver);
             return NULL;
@@ -311,6 +339,10 @@ static mdns_result_t *build_result(const mdns_cache_entry_t *entry, const mdns_s
         ESP_GOTO_ON_FALSE(mdns_priv_cache_copy_txt(service->txt_list, &result->txt, &result->txt_value_len, &result->txt_count),
                           ESP_ERR_NO_MEM, error, TAG, "Failed to allocate TXT list");
         result->txt_ttl = goodbye ? 0 : service->txt_ttl;
+        break;
+    case MDNS_RESOLVER_TYPE_A:
+    case MDNS_RESOLVER_TYPE_AAAA:
+        // TODO
         break;
     }
 
@@ -450,6 +482,20 @@ bool mdns_priv_resolver_has_service(const char *instance, const char *service, c
     return false;
 }
 
+bool mdns_priv_resolver_has_hostname(const char *hostname, mdns_resolver_type_t type)
+{
+    if (mdns_utils_str_null_or_empty(hostname) || (type != MDNS_RESOLVER_TYPE_A && type != MDNS_RESOLVER_TYPE_AAAA)) {
+        return false;
+    }
+
+    for (mdns_resolver_t *it = s_resolver; it; it = it->next) {
+        if (it->state != RESOLVER_OFF && it->type == type && mdns_utils_str_case_equal(it->hostname, hostname)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 mdns_resolver_t *mdns_priv_resolver_find_ptr(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
     if (!name || (type != MDNS_TYPE_SRV && type != MDNS_TYPE_TXT && type != MDNS_TYPE_A && type != MDNS_TYPE_AAAA)) {
@@ -559,16 +605,11 @@ bool mdns_priv_resolver_notify_goodbye_from_service_cache(const mdns_cache_entry
 }
 
 static mdns_resolver_t *resolver_new(const char *instance, const char *service, const char *proto, const char *subtype,
-                                     mdns_resolver_type_t type, void *notifier)
+                                     const char *hostname, mdns_resolver_type_t type, void *notifier)
 {
     mdns_resolver_t *resolver = NULL;
 
-    if (!mdns_priv_is_server_init() || !notifier || mdns_utils_str_null_or_empty(service)
-            || mdns_utils_str_null_or_empty(proto)) {
-        return NULL;
-    }
-
-    if (mdns_utils_str_null_or_empty(instance) && (type == MDNS_RESOLVER_TYPE_SRV || type == MDNS_RESOLVER_TYPE_TXT)) {
+    if (!mdns_priv_is_server_init() || !notifier) {
         return NULL;
     }
 
@@ -578,7 +619,7 @@ static mdns_resolver_t *resolver_new(const char *instance, const char *service, 
         return NULL;
     }
 
-    resolver = resolver_init(instance, service, proto, subtype, type);
+    resolver = resolver_init(instance, service, proto, subtype, hostname, type);
     if (!resolver) {
         return NULL;
     }
@@ -592,6 +633,10 @@ static mdns_resolver_t *resolver_new(const char *instance, const char *service, 
         break;
     case MDNS_RESOLVER_TYPE_TXT:
         resolver->notifier.txt = (mdns_txt_resolver_notify_t)notifier;
+        break;
+    case MDNS_RESOLVER_TYPE_A:
+    case MDNS_RESOLVER_TYPE_AAAA:
+        resolver->notifier.addr = (mdns_addr_resolver_notify_t)notifier;
         break;
     default:
         resolver_item_free(resolver);
@@ -634,26 +679,49 @@ error:
 mdns_resolver_t *mdns_ptr_resolver_new(const char *service, const char *proto, const char *subtype,
                                        mdns_ptr_resolver_notify_t notifier)
 {
-    return resolver_new(NULL, service, proto, subtype, MDNS_RESOLVER_TYPE_PTR, notifier);
+    if (mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
+        return NULL;
+    }
+    return resolver_new(NULL, service, proto, subtype, NULL, MDNS_RESOLVER_TYPE_PTR, notifier);
 }
 
 mdns_resolver_t *mdns_srv_resolver_new(const char *instance, const char *service, const char *proto,
                                        mdns_srv_resolver_notify_t notifier)
 {
-    if (mdns_utils_str_null_or_empty(instance)) {
+    if (mdns_utils_str_null_or_empty(instance) || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
-    return resolver_new(instance, service, proto, NULL, MDNS_RESOLVER_TYPE_SRV, notifier);
+    return resolver_new(instance, service, proto, NULL, NULL, MDNS_RESOLVER_TYPE_SRV, notifier);
 }
 
 mdns_resolver_t *mdns_txt_resolver_new(const char *instance, const char *service, const char *proto,
                                        mdns_txt_resolver_notify_t notifier)
 {
-    if (mdns_utils_str_null_or_empty(instance)) {
+    if (mdns_utils_str_null_or_empty(instance) || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
     }
-    return resolver_new(instance, service, proto, NULL, MDNS_RESOLVER_TYPE_TXT, notifier);
+    return resolver_new(instance, service, proto, NULL, NULL, MDNS_RESOLVER_TYPE_TXT, notifier);
 }
+
+#ifdef CONFIG_LWIP_IPV4
+mdns_resolver_t *mdns_a_resolver_new(const char *hostname, mdns_addr_resolver_notify_t notifier)
+{
+    if (mdns_utils_str_null_or_empty(hostname)) {
+        return NULL;
+    }
+    return resolver_new(NULL, NULL, NULL, NULL, hostname, MDNS_RESOLVER_TYPE_A, notifier);
+}
+#endif
+
+#ifdef CONFIG_LWIP_IPV6
+mdns_resolver_t *mdns_aaaa_resolver_new(const char *hostname, mdns_addr_resolver_notify_t notifier)
+{
+    if (mdns_utils_str_null_or_empty(hostname)) {
+        return NULL;
+    }
+    return resolver_new(NULL, NULL, NULL, NULL, hostname, MDNS_RESOLVER_TYPE_AAAA, notifier);
+}
+#endif
 
 esp_err_t mdns_resolver_delete(mdns_resolver_t *resolver)
 {

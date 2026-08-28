@@ -101,6 +101,7 @@ typedef struct {
 typedef struct mdns_ip_addr_s {
     esp_ip_addr_t addr;                     /*!< IP address */
     struct mdns_ip_addr_s *next;            /*!< next IP, or NULL for the last IP in the list */
+    uint32_t ttl;                           /*!< time to live of the IP address */
 } mdns_ip_addr_t;
 
 /**
@@ -209,6 +210,18 @@ typedef void (*mdns_srv_resolver_notify_t)(mdns_result_t *result);
  *          For example, resolvers new/delete APIs.
  */
 typedef void (*mdns_txt_resolver_notify_t)(mdns_result_t *result);
+
+/**
+ * @brief A/AAAA resolver result change notifier
+ *
+ * @note Ownership of @p result is transferred to the caller when the callback is invoked.
+ *       Users must free the result with `mdns_results_free()` after handling it.
+ *
+ * @warning This callback is called in the mDNS service task.
+ *          Users must not call APIs that acquire mDNS service lock from this callback.
+ *          For example, resolvers new/delete APIs.
+ */
+typedef void (*mdns_addr_resolver_notify_t)(mdns_result_t *result);
 #endif // CONFIG_MDNS_ENABLE_RESOLVER
 
 /**
@@ -1286,6 +1299,35 @@ mdns_resolver_t *mdns_srv_resolver_new(const char *instance, const char *service
  */
 mdns_resolver_t *mdns_txt_resolver_new(const char *instance, const char *service, const char *proto,
                                        mdns_txt_resolver_notify_t notifier);
+#ifdef CONFIG_LWIP_IPV4
+/**
+ * @brief Start a continuous A (IPv4 address) resolver for a hostname.
+ *
+ * @param hostname  Hostname to resolve.
+ * @param notifier  Callback invoked on address updates and goodbye messages.
+ *                  See @ref mdns_addr_resolver_notify_t for callback semantics and limitations.
+ * @return Pointer to the new address resolver if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+mdns_resolver_t *mdns_a_resolver_new(const char *hostname, mdns_addr_resolver_notify_t notifier);
+#endif
+
+#ifdef CONFIG_LWIP_IPV6
+/**
+ * @brief Start a continuous AAAA (IPv6 address) resolver for a hostname.
+ *
+ * @param hostname  Hostname to resolve.
+ * @param notifier  Callback invoked on address updates and goodbye messages.
+ *                  See @ref mdns_addr_resolver_notify_t for callback semantics and limitations.
+ * @return Pointer to the new address resolver if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+mdns_resolver_t *mdns_aaaa_resolver_new(const char *hostname, mdns_addr_resolver_notify_t notifier);
+#endif
 
 /**
  * @brief Stop the continuous resolver.

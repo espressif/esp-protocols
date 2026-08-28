@@ -62,6 +62,15 @@ mdns_resolver_t *mdns_priv_resolver_find(const char *instance, const char *servi
 bool mdns_priv_resolver_has_service(const char *instance, const char *service, const char *proto);
 
 /**
+ * @brief Check if a running address resolver `hostname` exists.
+ *
+ * @param hostname Hostname.
+ * @param type Type of the resolver.
+ * @return true if a running address resolver `hostname` exists, false otherwise.
+ */
+bool mdns_priv_resolver_has_hostname(const char *hostname, mdns_resolver_type_t type);
+
+/**
  * @brief Find a running PTR resolver to store additional SRV, TXT, ADDR records.
  *
  * @return Pointer to the resolver if found, NULL otherwise.
