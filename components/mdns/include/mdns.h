@@ -101,6 +101,7 @@ typedef struct {
 typedef struct mdns_ip_addr_s {
     esp_ip_addr_t addr;                     /*!< IP address */
     struct mdns_ip_addr_s *next;            /*!< next IP, or NULL for the last IP in the list */
+    uint32_t ttl;                           /*!< cached address TTL for browses, or 0 when unavailable */
 } mdns_ip_addr_t;
 
 /**
@@ -1576,6 +1577,144 @@ esp_err_t mdns_browse_record_srv_delete_handler(const char *instance, const char
  */
 mdns_browse_t *mdns_browse_record_txt_new(const char *instance, const char *service, const char *proto,
                                           mdns_browse_handler_t handler, void *context);
+
+#ifdef CONFIG_LWIP_IPV4
+/**
+ * @brief Start a continuous A record browse for `hostname`.
+ *
+ * An A record browse will update address cache and notify on address changes.
+ *
+ * @param hostname  Hostname of the A record browse, without the .local suffix. Must not be NULL or empty.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the record browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `hostname`, `handler` and `context` exists.
+ *
+ * @note Registering a different callback or context for the same browse returns the existing handle,
+ *       and triggers another query and cache replay only to the newly registered callback and context.
+ *
+ * @note If matching addresses already present in the internal mDNS cache,
+ *       the notifier will be called once for each matching cached address list after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_handler_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_a_new(const char *hostname, mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Stop the continuous A record browse for `hostname`.
+ * @param hostname  Hostname of the A record browse, without the .local suffix. Must not be NULL or empty.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_FAIL               invalid names, mDNS is not running, or the A record browse is not found.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note This function deletes the matching A record browse and all its callbacks.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_a_delete(const char *hostname);
+
+/**
+ * @brief Remove one handler-context pair from the matching A record browse.
+ *
+ * @param hostname  Hostname of the A record browse, without the .local suffix. Must not be NULL or empty.
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the A record browse or handler-context pair is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note The browse item will be deleted if no legacy or handler-context pair exist under the browse.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_a_delete_handler(const char *hostname,
+                                              mdns_browse_handler_t handler, void *context);
+#endif
+
+#ifdef CONFIG_LWIP_IPV6
+/**
+ * @brief Start a continuous AAAA record browse for `hostname`.
+ *
+ * An AAAA record browse will update address cache and notify on address changes.
+ *
+ * @param hostname  Hostname of the AAAA record browse, without the .local suffix. Must not be NULL or empty.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the record browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `hostname`, `handler` and `context` exists.
+ *
+ * @note Registering a different callback or context for the same browse returns the existing handle,
+ *       and triggers another query and cache replay only to the newly registered callback and context.
+ *
+ * @note If matching addresses already present in the internal mDNS cache,
+ *       the notifier will be called once for each matching cached address list after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_handler_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_aaaa_new(const char *hostname, mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Stop the continuous AAAA record browse for `hostname`.
+ * @param hostname  Hostname of the AAAA record browse, without the .local suffix. Must not be NULL or empty.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_FAIL               invalid names, mDNS is not running, or the AAAA record browse is not found.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note This function deletes the matching AAAA record browse and all its callbacks.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_aaaa_delete(const char *hostname);
+
+/**
+ * @brief Remove one handler-context pair from the matching AAAA record browse.
+ *
+ * @param hostname  Hostname of the AAAA record browse, without the .local suffix. Must not be NULL or empty.
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the AAAA record browse or handler-context pair is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note The browse item will be deleted if no legacy or handler-context pair exist under the browse.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_aaaa_delete_handler(const char *hostname,
+                                                 mdns_browse_handler_t handler, void *context);
+#endif
 
 /**
  * @brief Stop the continuous TXT record browse for `instance._service._proto`.
