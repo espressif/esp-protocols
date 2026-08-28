@@ -838,7 +838,10 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
             }
 
             if (is_discovery(name, type)) {
-                //service discovery
+                // Already expanded this packet's DNS-SD enumeration questions.
+                if (parsed_packet->discovery) {
+                    continue;
+                }
                 parsed_packet->discovery = true;
                 mdns_srv_item_t *a = mdns_priv_get_services();
                 while (a) {
