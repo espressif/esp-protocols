@@ -10,4 +10,7 @@ def test_examples_ping_command(dut):
     dut.expect('esp>', timeout=30)
     dut.write('ping 127.0.0.1')
     dut.expect('5 packets transmitted, 5 received, 0% packet loss, time 0ms', timeout=30)
-    pass
+    dut.expect('esp>', timeout=30)
+    dut.write('getdnsserver')
+    dut.expect(r'\[global\] unavailable', timeout=30)
+    dut.expect('esp>', timeout=30)
