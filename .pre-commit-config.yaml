@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: isort
   - repo: https://github.com/myint/eradicate/
-    rev: 3.0.0
+    rev: 3.0.1
     hooks:
       - id: eradicate
   - repo: https://github.com/espressif/check-copyright/
