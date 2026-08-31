@@ -44,10 +44,7 @@ char *mdns_mem_strndup(const char *s, size_t n)
         return NULL;
     }
 
-    size_t len = strlen(s);
-    if (len > n) {
-        len = n;
-    }
+    size_t len = strnlen(s, n);
 
     char *new_str = mdns_mem_malloc(len + 1);
     if (new_str == NULL) {
