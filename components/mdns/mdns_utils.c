@@ -294,3 +294,14 @@ uint8_t mdns_utils_append_u16(uint8_t *packet, uint16_t *index, uint16_t value)
     mdns_utils_append_u8(packet, index, value & 0xFF);
     return 2;
 }
+
+void mdns_utils_free_txt_linked_list(mdns_txt_linked_item_t *txt)
+{
+    while (txt) {
+        mdns_txt_linked_item_t *next = txt->next;
+        mdns_mem_free((char *)txt->key);
+        mdns_mem_free(txt->value);
+        mdns_mem_free(txt);
+        txt = next;
+    }
+}

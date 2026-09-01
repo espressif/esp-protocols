@@ -157,7 +157,6 @@ typedef enum {
     ACTION_SEARCH_SEND,
     ACTION_SEARCH_END,
     ACTION_BROWSE_START,
-    ACTION_BROWSE_SYNC,
     ACTION_BROWSE_END,
     ACTION_TX_HANDLE,
     ACTION_RX_HANDLE,
@@ -363,16 +362,6 @@ typedef struct mdns_browse_s {
     mdns_result_t *result;
 } mdns_browse_t;
 
-typedef struct mdns_browse_result_sync_t {
-    mdns_result_t *result;
-    struct mdns_browse_result_sync_t *next;
-} mdns_browse_result_sync_t;
-
-typedef struct mdns_browse_sync {
-    mdns_browse_t *browse;
-    mdns_browse_result_sync_t *sync_result;
-} mdns_browse_sync_t;
-
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -401,11 +390,82 @@ typedef struct {
             mdns_browse_t *browse;
         } browse_add;
         struct {
-            mdns_browse_sync_t *browse_sync;
-        } browse_sync;
-        struct {
             mdns_if_t interface;
             mdns_ip_protocol_t ip_protocol;
         } browse_send;
     } data;
 } mdns_action_t;
+
+typedef enum {
+    MDNS_CACHE_CONSUMER_BROWSE     = (1U << 0),
+} mdns_cache_consumer_type_t;
+
+typedef uint8_t mdns_cache_consumer_mask_t;
+
+typedef enum {
+    MDNS_CACHE_RECORD_PTR       = (1U << 0),
+    MDNS_CACHE_RECORD_SRV       = (1U << 1),
+    MDNS_CACHE_RECORD_TXT       = (1U << 2),
+    MDNS_CACHE_RECORD_ADDR      = (1U << 3)
+} mdns_cache_record_type_t;
+
+typedef uint8_t mdns_cache_record_mask_t;
+
+/**
+ * @brief   mDNS cache ADDR list structure
+ */
+typedef struct mdns_cache_addr_s {
+    esp_ip_addr_t addr;
+    uint32_t ttl;
+    struct mdns_cache_addr_s *next;
+} mdns_cache_addr_t;
+
+/**
+ * @brief   mDNS cache service structure, contains PTR, SRV and TXT records
+ */
+typedef struct mdns_service_cache_s {
+    char *instance_name;
+    char *service;
+    char *proto;
+    // PTR
+    bool ptr_present;   /*!< true if PTR record is present */
+    uint32_t ptr_ttl;
+    // SRV
+    bool srv_present;   /*!< true if SRV record is present */
+    uint16_t priority;
+    uint16_t weight;
+    uint16_t port;
+    uint32_t srv_ttl;
+    // TXT
+    bool txt_present;   /*!< true if TXT record is present */
+    mdns_txt_linked_item_t *txt_list;
+    uint32_t txt_ttl;
+    // To-sync flags
+    mdns_cache_record_mask_t sync_records;      /*!< bitmask of records to sync, see @ref mdns_cache_record_type_t */
+    mdns_cache_consumer_mask_t sync_consumers;  /*!< bitmask of consumers to sync, see @ref mdns_cache_consumer_type_t */
+    struct mdns_service_cache_s *next;
+} mdns_service_cache_t;
+
+/**
+ * @brief   mDNS cache entry structure, contains hostname, IP address list and service cache list
+ */
+typedef struct mdns_cache_entry_s {
+    char *hostname;
+    esp_netif_t *esp_netif;
+    mdns_ip_protocol_t ip_protocol;
+
+    mdns_cache_addr_t *addr_list;
+    mdns_service_cache_t *service_cache_list;
+    struct mdns_cache_entry_s *next;
+} mdns_cache_entry_t;
+
+/**
+ * @brief   mDNS cache update result structure
+ */
+typedef enum {
+    MDNS_CACHE_NO_CHANGE,   /*!< no change to the cache */
+    MDNS_CACHE_ADDED,       /*!< new cache entry or service cache appended */
+    MDNS_CACHE_UPDATED,     /*!< existing service cache entry updated */
+    MDNS_CACHE_REMOVED,     /*!< existing service cache entry removed */
+    MDNS_CACHE_ERROR,       /*!< error occurred while updating the cache */
+} mdns_cache_update_result_t;

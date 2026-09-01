@@ -63,6 +63,7 @@ set(SOURCES
     ${MDNS_DIR}/mdns_send.c
     ${MDNS_DIR}/mdns_pcb.c
     ${MDNS_DIR}/mdns_netif.c
+    ${MDNS_DIR}/mdns_cache.c
 )
 
 if(ENABLE_UNIT_TESTS)
