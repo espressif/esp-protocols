@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,20 +7,41 @@
 #include <stdlib.h>
 #include <string.h>
 #include "mdns_mem_caps.h"
+#include "mdns_mem_caps_test.h"
+
+static size_t s_allocation_counts;
+
+size_t mdns_mem_get_allocation_counts(void)
+{
+    return s_allocation_counts;
+}
 
 void *mdns_mem_malloc(size_t size)
 {
-    return malloc(size);
+    void *ptr = malloc(size);
+    if (ptr) {
+        s_allocation_counts++;
+    }
+    return ptr;
 }
 
 void *mdns_mem_calloc(size_t num, size_t size)
 {
-    return calloc(num, size);
+    void *ptr = calloc(num, size);
+    if (ptr) {
+        s_allocation_counts++;
+    }
+    return ptr;
 }
 
 void mdns_mem_free(void *ptr)
 {
-    free(ptr);
+    if (ptr) {
+        if (s_allocation_counts > 0) {
+            s_allocation_counts--;
+        }
+        free(ptr);
+    }
 }
 
 char *mdns_mem_strdup(const char *s)
@@ -59,10 +80,10 @@ char *mdns_mem_strndup(const char *s, size_t n)
 
 void *mdns_mem_task_malloc(size_t size)
 {
-    return malloc(size);
+    return mdns_mem_malloc(size);
 }
 
 void mdns_mem_task_free(void *ptr)
 {
-    free(ptr);
+    mdns_mem_free(ptr);
 }
