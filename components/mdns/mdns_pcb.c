@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -126,25 +126,23 @@ static esp_err_t deinit_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_proto)
  */
 static void restart_pcb(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
-    size_t srv_count = 0;
     mdns_srv_item_t *a = mdns_priv_get_services();
-    while (a) {
+    size_t srv_count = 0;
+    for (mdns_srv_item_t *s = a; s; s = s->next) {
         srv_count++;
-        a = a->next;
     }
     if (srv_count == 0) {
-        // proble only IP
+        // probe only IP
         mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, NULL, 0, true);
         return;
     }
     mdns_srv_item_t *services[srv_count];
     size_t i = 0;
-    a = mdns_priv_get_services();
-    while (a) {
+    while (a && i < srv_count) {
         services[i++] = a;
         a = a->next;
     }
-    mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, services, srv_count, true);
+    mdns_priv_init_pcb_probe(tcpip_if, ip_protocol, services, i, true);
 }
 
 /**
