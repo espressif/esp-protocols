@@ -4,4 +4,4 @@ dependencies:
   espressif/net_connect: "^0.1.1"
   esp_dns:
     version: "*"
-    override_path: '../../../'
+    override_path: '../../../../'
