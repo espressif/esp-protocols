@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Build with IDF-${{ matrix.idf_ver }}
         env:
-          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full"
+          EXPECTED_WARNING: "The smallest .+ partition is nearly full"
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
