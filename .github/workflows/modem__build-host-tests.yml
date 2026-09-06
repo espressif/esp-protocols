@@ -27,7 +27,7 @@ jobs:
       - name: Build ${{ matrix.example }} with IDF-${{ matrix.idf_ver }}
         shell: bash
         env:
-          EXPECTED_WARNING: "Warning: The smallest app partition is nearly full\nwarning: unknown kconfig symbol 'ESP32_PANIC_PRINT_HALT'"
+          EXPECTED_WARNING: "The smallest .+ partition is nearly full\nwarning: unknown kconfig symbol 'ESP32_PANIC_PRINT_HALT'"
         run: |
           . ${IDF_PATH}/export.sh
           python -m pip install idf-build-apps

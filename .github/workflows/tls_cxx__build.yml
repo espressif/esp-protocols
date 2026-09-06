@@ -23,6 +23,8 @@ jobs:
         with:
           submodules: recursive
       - name: Build ${{ matrix.test.app }} with IDF-${{ matrix.idf_ver }}
+        env:
+          EXPECTED_WARNING: "The smallest .+ partition is nearly full"
         shell: bash
         run: |
           . ${IDF_PATH}/export.sh
