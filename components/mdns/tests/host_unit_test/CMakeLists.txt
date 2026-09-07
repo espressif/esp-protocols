@@ -10,12 +10,16 @@ endif()
 
 project(mdns_host_unit_test C)
 
-# Set ENABLE_UNIT_TESTS with a default of OFF
-if(NOT DEFINED UNIT_TESTS)
-    set(UNIT_TESTS "OFF" CACHE STRING "Unit tests: OFF, test_receiver, test_sender")
-else()
+# Unit tests are enabled only for a real suite name (fuzz builds leave this OFF).
+set(UNIT_TESTS "OFF" CACHE STRING "Unit tests: OFF, test_receiver, test_sender, test_browse")
+set_property(CACHE UNIT_TESTS PROPERTY STRINGS OFF test_receiver test_sender test_browse)
+
+if(UNIT_TESTS AND NOT UNIT_TESTS STREQUAL "OFF")
     set(ENABLE_UNIT_TESTS 1)
     message(STATUS "Unit testing enabled with UNIT_TESTS=${UNIT_TESTS}")
+else()
+    unset(ENABLE_UNIT_TESTS)
+    message(STATUS "Unit testing disabled (fuzz/harness build)")
 endif()
 
 # Set variables for directories
@@ -69,6 +73,17 @@ set(SOURCES
 if(ENABLE_UNIT_TESTS)
     include(unity/unit_test.cmake)
 else()
+    # Fuzz harness target: receive (parse/query) or browse (cache/TXT path)
+    set(FUZZ_TARGET "receive" CACHE STRING "Fuzz harness: receive, browse")
+    set_property(CACHE FUZZ_TARGET PROPERTY STRINGS receive browse)
+    if(FUZZ_TARGET STREQUAL "browse")
+        add_definitions(-DFUZZ_TARGET_BROWSE=1)
+    elseif(FUZZ_TARGET STREQUAL "receive")
+        add_definitions(-DFUZZ_TARGET_RECEIVE=1)
+    else()
+        message(FATAL_ERROR "FUZZ_TARGET must be 'receive' or 'browse' (got '${FUZZ_TARGET}')")
+    endif()
+    message(STATUS "Fuzz harness target: ${FUZZ_TARGET}")
     list(APPEND SOURCES main.c)
 endif()
 
@@ -84,8 +99,12 @@ endif()
 
 # Sanitizers for AFL fuzzing (unit tests enable these in unity/enable_testing.cmake)
 if(NOT ENABLE_UNIT_TESTS)
-    target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)
-    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address -fsanitize=undefined)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        -g3
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address,undefined)
 endif()
 
 # Enable testing if unit tests are enabled

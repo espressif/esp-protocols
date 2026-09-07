@@ -112,10 +112,12 @@ jobs:
 
   fuzz_test:
     if: contains(github.event.pull_request.labels.*.name, 'mdns-fuzz') || github.event_name == 'push'
-    name: Fuzzer tests for mdns lib
+    name: Fuzzer (${{ matrix.fuzz_target }})
     strategy:
+      fail-fast: false
       matrix:
         idf_ver: ["latest"]
+        fuzz_target: [receive, browse]
 
     runs-on: ubuntu-22.04
     container: aflplusplus/aflplusplus:v4.34c
@@ -135,20 +137,27 @@ jobs:
           apt-get update -y
           apt-get install -y libbsd-dev
 
-      - name: Run AFL++
+      - name: Run AFL++ (${{ matrix.fuzz_target }})
         shell: bash
+        env:
+          ASAN_OPTIONS: abort_on_error=1:halt_on_error=1:symbolize=0:detect_stack_use_after_return=1:max_malloc_fill_size=1073741824
+          UBSAN_OPTIONS: halt_on_error=1:abort_on_error=1
         run: |
           export IDF_PATH=$GITHUB_WORKSPACE/idf
           cd components/mdns/tests/host_unit_test/
           pip install dnslib
           cd input && python generate_cases.py && cd ..
-          cmake -B build2 -S . -G "Ninja" -DCMAKE_C_COMPILER=afl-cc
-          cmake --build build2
-          timeout 10m afl-fuzz -i input -o out -- build2/mdns_host_unit_test || \
+          BUILD_DIR=build_fuzz_${{ matrix.fuzz_target }}
+          OUT_DIR=out_${{ matrix.fuzz_target }}
+          cmake -B "${BUILD_DIR}" -S . -G Ninja \
+            -DCMAKE_C_COMPILER=afl-clang-fast \
+            -DFUZZ_TARGET=${{ matrix.fuzz_target }}
+          cmake --build "${BUILD_DIR}"
+          timeout 10m afl-fuzz -i input -o "${OUT_DIR}" -- "${BUILD_DIR}/mdns_host_unit_test" || \
           if [ $? -eq 124 ]; then  # timeout exit code
-            if [ -n "$(find out/default/crashes -type f 2>/dev/null)" ]; then
+            if [ -n "$(find "${OUT_DIR}/default/crashes" -type f 2>/dev/null)" ]; then
               echo "Crashes found!";
-              tar -czf out/default/crashes.tar.gz -C out/default crashes;
+              tar -czf "${OUT_DIR}/default/crashes.tar.gz" -C "${OUT_DIR}/default" crashes;
               exit 1;
             fi
           else
@@ -159,6 +168,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: fuzz-crashes
-          path: components/mdns/tests/host_unit_test/out/default/crashes.tar.gz
+          name: fuzz-crashes-${{ matrix.fuzz_target }}
+          path: components/mdns/tests/host_unit_test/out_${{ matrix.fuzz_target }}/default/crashes.tar.gz
           if-no-files-found: ignore

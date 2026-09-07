@@ -52,29 +52,38 @@ Repeat with `-DUNIT_TESTS=test_sender` or `-DUNIT_TESTS=test_browse` in a separa
 
 ## Fuzzer tests
 
-Build the AFL-instrumented harness (no `-DUNIT_TESTS`; uses `main.c`):
+See [fuzzing.md](fuzzing.md) for the AFL++ effectiveness checklist and rationale.
+
+Build separate harnesses for **receive** (parse/query) and **browse** (cache/TXT). Prefer `afl-clang-fast`. Set sanitizer options before fuzzing or reproducing:
 
 ```bash
 export IDF_PATH=/path/to/esp-idf   # required in the fuzz container
+export ASAN_OPTIONS="abort_on_error=1:halt_on_error=1:symbolize=0:detect_stack_use_after_return=1:max_malloc_fill_size=$((1<<30))"
+export UBSAN_OPTIONS="halt_on_error=1:abort_on_error=1"
 
 cd input && python generate_cases.py && cd ..
 
-cmake -B build2 -S . -G Ninja -DCMAKE_C_COMPILER=afl-cc
-cmake --build build2
+cmake -B build_fuzz_recv -S . -G Ninja \
+  -DCMAKE_C_COMPILER=afl-clang-fast -DFUZZ_TARGET=receive
+cmake --build build_fuzz_recv
+afl-fuzz -i input -o out_recv -- build_fuzz_recv/mdns_host_unit_test
 
-afl-fuzz -i input -o out -- build2/mdns_host_unit_test
+cmake -B build_fuzz_browse -S . -G Ninja \
+  -DCMAKE_C_COMPILER=afl-clang-fast -DFUZZ_TARGET=browse
+cmake --build build_fuzz_browse
+afl-fuzz -i input -o out_browse -- build_fuzz_browse/mdns_host_unit_test
 ```
 
-The harness reads packets from stdin and exercises IPv4/IPv6 and port 5353/53 combinations. Crashes are written to `out/default/crashes/`.
+Each execution feeds one packet (exact-size copy) into `mdns_packet_push`, with IPv4/IPv6 and port 53/5353 derived from the input. Crashes land under `out_*/default/crashes/`.
 
 ### Reproducing a crash
 
-Build the non-unit-test binary with a normal compiler, then pass a crash file:
+Build the same `FUZZ_TARGET` with a normal compiler, keep `ASAN_OPTIONS` set, then pass the crash file:
 
 ```bash
-cmake -B build2 -S .
-cmake --build build2
-./build2/mdns_host_unit_test out/default/crashes/id_000000,...
+cmake -B build_repro -S . -G Ninja -DFUZZ_TARGET=receive
+cmake --build build_repro
+./build_repro/mdns_host_unit_test out_recv/default/crashes/id_000000,...
 ```
 
 With sanitizers enabled, ASan/UBSan report buffer overruns and undefined behaviour directly during unit tests and fuzzing.
