@@ -112,6 +112,8 @@
 
 #define MDNS_TIMER_PERIOD_US        (CONFIG_MDNS_TIMER_PERIOD_MS*1000)
 
+#define MDNS_US_PER_SEC             1000000LL
+
 #define queueToEnd(type, queue, item)       \
     if (!queue) {                           \
         queue = item;                       \
@@ -410,6 +412,20 @@ typedef enum {
 } mdns_cache_record_type_t;
 
 typedef uint8_t mdns_cache_record_mask_t;
+
+/**
+ * @brief   mDNS cache expiry structure
+ */
+typedef struct mdns_cache_expiry_s {
+    bool queued;
+    mdns_cache_record_mask_t record_mask;
+    struct mdns_cache_expiry_s *next;
+
+    struct mdns_cache_entry_s *entry;
+    struct mdns_service_cache_s *service;
+    struct mdns_cache_addr_s *addr;
+    int64_t expires_at_us;  /*!< record absolute expiration time in microseconds */
+} mdns_cache_expiry_t;
 
 /**
  * @brief   mDNS cache ADDR list structure

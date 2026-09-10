@@ -1396,7 +1396,6 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
 clear_rx_packet:
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     rx_staged_ips_apply(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol, staged_ips);
-    mdns_priv_cache_process_sync();
     rx_staged_ip_free(staged_ips);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
     while (parsed_packet->questions) {
