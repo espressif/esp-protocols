@@ -6,6 +6,24 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "freertos/FreeRTOS.h"
+#include "mdns_test_clock.h"
+
+static int64_t s_clock_us = 0;
+
+void mdns_test_clock_reset(void)
+{
+    s_clock_us = 0;
+}
+
+bool mdns_test_clock_advance_us(int64_t delta_us)
+{
+    if (delta_us < 0 || delta_us > INT64_MAX - s_clock_us) {
+        return false;
+    }
+
+    s_clock_us += delta_us;
+    return true;
+}
 
 void esp_log(esp_log_config_t config, const char* tag, const char* format, ...)
 {}
@@ -49,7 +67,7 @@ uint32_t esp_random(void)
 
 TickType_t xTaskGetTickCount(void)
 {
-    return 0;
+    return (TickType_t)(s_clock_us / 1000 / portTICK_PERIOD_MS);
 }
 
 int esp_netif_get_all_ip6(esp_netif_t *esp_netif, esp_ip6_addr_t if_ip6[])
@@ -79,4 +97,9 @@ QueueHandle_t xSemaphoreCreateBinary(void)
 
 void vQueueDelete(QueueHandle_t xQueue)
 {
+}
+
+int64_t esp_timer_get_time(void)
+{
+    return s_clock_us;
 }
