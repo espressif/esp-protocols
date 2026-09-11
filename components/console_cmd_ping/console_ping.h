@@ -37,7 +37,7 @@ esp_err_t console_cmd_getaddrinfo_register(void);
 esp_err_t console_cmd_setdnsserver_register(void);
 
 /**
- * @brief Registers the setdnsserver command.
+ * @brief Registers the getdnsserver command.
  *
  * @return
  *          - esp_err_t
