@@ -37,8 +37,13 @@ extern esp_dns_handle_t g_dns_handle;
 /**
  * @brief Custom DNS resolution hook for lwIP network connections
  *
+ * LWIP_HOOK_NETCONN_EXTERNAL_RESOLVE passes ip_addr_t *addr but not addr_cnt.
+ * Callers may provide a single-element buffer (e.g. netconn_gethostbyname with
+ * addr_cnt == 1) even when CONFIG_LWIP_DNS_MAX_HOST_IP > 1, so dns_resolve_*
+ * must not write more than MAX_ANSWERS (1) addresses.
+ *
  * @param name Hostname to resolve
- * @param addr Pointer to store resolved IP address
+ * @param addr Pointer to store resolved IP address(es)
  * @param addrtype Type of address to resolve (IPv4/IPv6)
  * @param err Pointer to store error code
  *
@@ -46,6 +51,7 @@ extern esp_dns_handle_t g_dns_handle;
  */
 int lwip_hook_netconn_external_resolve(const char *name, ip_addr_t *addr, u8_t addrtype, err_t *err)
 {
+    const u8_t addr_cnt = MAX_ANSWERS;
     if (g_dns_handle == NULL) {
         ESP_LOGD(TAG, "ESP_DNS module not initialized, resolving through native DNS");
         *err = ERR_OK;
@@ -91,13 +97,13 @@ int lwip_hook_netconn_external_resolve(const char *name, ip_addr_t *addr, u8_t a
         /* Return zero as lwIP DNS can handle UDP DNS */
         return 0;
     case ESP_DNS_PROTOCOL_TCP:
-        *err = dns_resolve_tcp(g_dns_handle, name, addr, rrtype);
+        *err = dns_resolve_tcp(g_dns_handle, name, addr, addr_cnt, rrtype);
         break;
     case ESP_DNS_PROTOCOL_DOT:
-        *err = dns_resolve_dot(g_dns_handle, name, addr, rrtype);
+        *err = dns_resolve_dot(g_dns_handle, name, addr, addr_cnt, rrtype);
         break;
     case ESP_DNS_PROTOCOL_DOH:
-        *err = dns_resolve_doh(g_dns_handle, name, addr, rrtype);
+        *err = dns_resolve_doh(g_dns_handle, name, addr, addr_cnt, rrtype);
         break;
     default:
         ESP_LOGE(TAG, "Invalid transport type");

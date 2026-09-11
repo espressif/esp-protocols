@@ -163,6 +163,14 @@ if (ret != 0) {
 | `server_cert` | SSL server certificate in PEM format |
 | `alpn_protos` | ALPN protocols for DoH (typically `"h2"`) |
 
+When using the certificate bundle with public DoT/DoH resolvers (e.g. Google, Cloudflare), enable cross-signed chain verification in your project `sdkconfig.defaults`:
+
+```
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y
+```
+
+This is an IDF mbedTLS option (not an esp_dns Kconfig). The bundled example and concurrent test ship with it enabled. Disable it in menuconfig (**Component config → mbedTLS → Certificate Bundle → Support cross-signed certificate verification**) only if you use PEM pinning or a resolver that does not present cross-signed chains.
+
 ### Protocol-Specific Options
 
 #### DoH Options
@@ -181,8 +189,9 @@ When using secure DNS protocols (DoT and DoH), you have two certificate options:
 
 - The UDP DNS protocol implementation relies on the native LWIP DNS resolver.
 - Transport protocol selection must be configured through `esp_dns_init_xxx()` rather than `getaddrinfo()` parameters due to LWIP resolver hook limitations.
-- Maximum response size is limited by the buffer size (default: 512 bytes) for DNS over TLS (DOT) and TCP protocols.
+- Maximum response size is limited by `CONFIG_ESP_DNS_BUFFER_SIZE` (default: 512 bytes) for DNS over TLS (DOT) and TCP protocols.
 - Only one DNS protocol can be active at a time.
+- **Multi-IP results (TCP/DoT/DoH):** `dns_resolve_*` accepts `addr_cnt` and clamps it via `esp_dns_clamp_addr_cnt()` to `MAX_ANSWERS` (1). The lwIP hook passes `MAX_ANSWERS` because `LWIP_HOOK_NETCONN_EXTERNAL_RESOLVE` does not yet forward the caller's `addr_cnt`. When lwIP adds that parameter, update `lwip_hook_netconn_external_resolve` to pass it through.
 
 - **Resolution Speed**:
   - UDP DNS is fastest but least secure
@@ -213,6 +222,7 @@ Once you add this component to your project, it will replace the default LWIP DN
 - **Certificate Errors**:
   - Verify that the correct certificate is provided for secure protocols
   - For public DNS servers, use the certificate bundle approach
+  - If you see `No matching trusted root certificate found` when using the certificate bundle (e.g. with `dns.google` or Cloudflare), the server likely uses a cross-signed chain. Add `CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY=y` to your project `sdkconfig.defaults` (see **TLS Configuration** above). The esp_dns examples enable this by default.
 
 - **Timeout Errors**:
   - Increase the timeout value for slow network connections
