@@ -87,6 +87,7 @@ jobs:
           - test_receiver
           - test_sender
           - test_cache
+          - test_browse
 
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
