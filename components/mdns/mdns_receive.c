@@ -702,6 +702,7 @@ static void rx_staged_ip_add(mdns_rx_staged_ip_t **staged_ip, const char *hostna
     }
 
     strncpy(new_staged_ip->hostname, hostname, MDNS_NAME_BUF_LEN - 1);
+    new_staged_ip->hostname[MDNS_NAME_BUF_LEN - 1] = '\0';
     new_staged_ip->ip = *ip;
     new_staged_ip->ttl = ttl;
     new_staged_ip->next = *staged_ip;
