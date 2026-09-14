@@ -11,6 +11,7 @@
 #include "mock_mdns_send.h"
 #include "mdns_private.h"
 #include "mdns_utils.h"
+#include "mdns_responder.h"
 
 typedef struct {
     size_t count;
@@ -149,6 +150,63 @@ static void mdns_priv_create_answer_from_parsed_packet_Callback(mdns_parsed_pack
     }
 }
 
+static size_t count_registered_services(void)
+{
+    size_t count = 0;
+    for (mdns_srv_item_t *a = mdns_priv_get_services(); a; a = a->next) {
+        count++;
+    }
+    return count;
+}
+
+static size_t s_parsed_question_count;
+static size_t s_parsed_sdptr_count;
+
+static void discovery_dedup_answer_callback(mdns_parsed_packet_t *parsed_packet, int cmock_num_calls)
+{
+    (void)cmock_num_calls;
+    s_parsed_question_count = 0;
+    s_parsed_sdptr_count = 0;
+    TEST_ASSERT_TRUE(parsed_packet->discovery);
+    for (mdns_parsed_question_t *q = parsed_packet->questions; q; q = q->next) {
+        s_parsed_question_count++;
+        if (q->type == MDNS_TYPE_SDPTR) {
+            s_parsed_sdptr_count++;
+        }
+    }
+}
+
+/*
+ * Duplicate _services._dns-sd._udp.local PTR questions must expand the service
+ * list only once. Without the guard, each copy allocates one SDPTR question per
+ * registered service (heap amplification).
+ */
+static void test_mdns_discovery_questions_deduped(void)
+{
+    size_t service_count = count_registered_services();
+    TEST_ASSERT_GREATER_THAN(0, service_count);
+
+    mdns_test_query_t queries[] = {
+        { "_services._dns-sd._udp.local", MDNS_TYPE_PTR, 1 },
+        { "_services._dns-sd._udp.local", MDNS_TYPE_PTR, 1 },
+        { "_services._dns-sd._udp.local", MDNS_TYPE_PTR, 1 },
+        { "_services._dns-sd._udp.local", MDNS_TYPE_PTR, 1 },
+    };
+
+    mdns_priv_create_answer_from_parsed_packet_Stub(discovery_dedup_answer_callback);
+
+    size_t packet_len;
+    uint8_t *packet = create_mdns_test_packet(queries, 4, NULL, 0, NULL, 0, &packet_len);
+    TEST_ASSERT_NOT_NULL(packet);
+    send_packet(true, true, packet, packet_len);
+    free(packet);
+
+    TEST_ASSERT_EQUAL(service_count, s_parsed_sdptr_count);
+    TEST_ASSERT_EQUAL(service_count, s_parsed_question_count);
+
+    mdns_priv_create_answer_from_parsed_packet_Stub(mdns_priv_create_answer_from_parsed_packet_Callback);
+}
+
 void setup_cmock(void)
 {
     mdns_priv_probe_all_pcbs_CMockIgnore();
@@ -179,6 +237,8 @@ void run_unity_tests(void)
     RUN_TEST(test_mdns_subtype_any_question_is_not_a_probe);
 
     RUN_TEST(test_mdns_reject_misplaced_sub_label);
+
+    RUN_TEST(test_mdns_discovery_questions_deduped);
 
     UNITY_END();
 }

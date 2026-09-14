@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.13.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.13.0)
+
+### Features
+
+- Use mdns_cache for browse notifications ([ff5bf666](https://github.com/espressif/esp-protocols/commit/ff5bf666))
+
+### Bug Fixes
+
+- Fix mdns parser to expand per one service question ([c56c725d](https://github.com/espressif/esp-protocols/commit/c56c725d))
+- Fix mdns_mem_strndup() in host unit test stub ([18d5421d](https://github.com/espressif/esp-protocols/commit/18d5421d))
+
 ## [1.12.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.12.0)
 
 ### Features
