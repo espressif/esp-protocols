@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -109,6 +109,83 @@ static void register_mdns_query_a(void)
         .hint = NULL,
         .func = &cmd_mdns_query_a,
         .argtable = &mdns_query_a_args
+    };
+
+    ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
+}
+
+static struct {
+    struct arg_str *hostname;
+    struct arg_int *timeout;
+    struct arg_end *end;
+} mdns_query_a_async_args;
+
+static int cmd_mdns_query_a_async(int argc, char **argv)
+{
+    int nerrors = arg_parse(argc, argv, (void **) &mdns_query_a_async_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, mdns_query_a_async_args.end, argv[0]);
+        return 1;
+    }
+
+    const char *hostname = mdns_query_a_async_args.hostname->sval[0];
+    int timeout = mdns_query_a_async_args.timeout->ival[0];
+
+    if (!hostname || !hostname[0]) {
+        printf("ERROR: Hostname not supplied\n");
+        return 1;
+    }
+
+    if (timeout <= 0) {
+        timeout = 1000;
+    }
+
+    printf("Query A async: %s.local, Timeout: %d\n", hostname, timeout);
+
+    mdns_search_once_t *search = mdns_query_async_new(hostname, NULL, NULL, MDNS_TYPE_A, timeout, 1, NULL);
+    if (!search) {
+        printf("ERROR: Failed to start async query\n");
+        return 1;
+    }
+
+    mdns_result_t *result = NULL;
+    /* Wait past search->timeout so SEARCH_OFF / done_semaphore are set before
+     * delete. mdns_query_async_delete() requires SEARCH_OFF; a too-short wait
+     * under timer/action-queue latency would leave the search on the global list. */
+    bool done = mdns_query_async_get_results(search, timeout + 1000, &result, NULL);
+    if (!done || !result) {
+        printf("ERROR: Host was not found!\n");
+        if (!done) {
+            /* Still running — wait for the search's own timeout to finish. */
+            mdns_query_async_get_results(search, 1000, &result, NULL);
+        }
+        mdns_query_async_delete(search);
+        return 0;
+    }
+
+    for (mdns_ip_addr_t *a = result->addr; a; a = a->next) {
+        if (a->addr.type == ESP_IPADDR_TYPE_V4) {
+            printf("Async query resolved to A:" IPSTR "\n", IP2STR(&(a->addr.u_addr.ip4)));
+        }
+    }
+
+    mdns_query_results_free(result);
+    mdns_query_async_delete(search);
+    return 0;
+}
+
+static void register_mdns_query_a_async(void)
+{
+    mdns_query_a_async_args.hostname = arg_str1(NULL, NULL, "<hostname>", "Hostname that is searched for");
+    mdns_query_a_async_args.timeout = arg_int0("t", "timeout", "<timeout>", "Timeout for this query");
+    mdns_query_a_async_args.end = arg_end(2);
+
+    const esp_console_cmd_t cmd_init = {
+        .command = "mdns_query_a_async",
+        .help = "Query MDNS for IPv4 asynchronously",
+        .hint = NULL,
+        .func = &cmd_mdns_query_a_async,
+        .argtable = &mdns_query_a_async_args
     };
 
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd_init));
@@ -1443,6 +1520,7 @@ void mdns_console_register(void)
 
 #ifdef CONFIG_LWIP_IPV4
     register_mdns_query_a();
+    register_mdns_query_a_async();
 #endif
 #ifdef CONFIG_LWIP_IPV6
     register_mdns_query_aaaa();
