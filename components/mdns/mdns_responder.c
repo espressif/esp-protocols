@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -1002,7 +1002,21 @@ static mdns_ip_addr_t *copy_delegated_host_address_list(char *hostname)
     return NULL;
 }
 
-static mdns_result_t *lookup_service(const char *instance, const char *service, const char *proto, size_t max_results, bool selfhost)
+static bool service_has_subtype(const mdns_service_t *service, const char *subtype)
+{
+    if (!subtype) {
+        return true;
+    }
+    for (const mdns_subtype_t *item = service->subtype; item; item = item->next) {
+        if (!strcasecmp(item->subtype, subtype)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static mdns_result_t *lookup_service(const char *instance, const char *service, const char *proto, const char *subtype,
+                                     size_t max_results, bool selfhost)
 {
     if (mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)) {
         return NULL;
@@ -1019,7 +1033,7 @@ static mdns_result_t *lookup_service(const char *instance, const char *service, 
         bool is_service_selfhosted = !mdns_utils_str_null_or_empty(s_server->hostname) && !strcasecmp(s_server->hostname, srv->hostname);
         bool is_service_delegated = mdns_utils_str_null_or_empty(s_server->hostname) || strcasecmp(s_server->hostname, srv->hostname);
         if ((selfhost && is_service_selfhosted) || (!selfhost && is_service_delegated)) {
-            if (!strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) &&
+            if (!strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) && service_has_subtype(srv, subtype) &&
                     (mdns_utils_str_null_or_empty(instance) || mdns_utils_instance_name_match(srv->instance, instance))) {
                 mdns_result_t *item = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
                 if (!item) {
@@ -1659,7 +1673,23 @@ esp_err_t mdns_lookup_delegated_service(const char *instance, const char *servic
         return ESP_ERR_INVALID_ARG;
     }
     mdns_priv_service_lock();
-    *result = lookup_service(instance, service, proto, max_results, false);
+    *result = lookup_service(instance, service, proto, NULL, max_results, false);
+    mdns_priv_service_unlock();
+    return ESP_OK;
+}
+
+esp_err_t mdns_lookup_delegated_service_with_subtype(const char *instance, const char *service, const char *proto,
+                                                     const char *subtype, size_t max_results, mdns_result_t **result)
+{
+    if (!s_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!result || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto) ||
+            mdns_utils_str_null_or_empty(subtype)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    mdns_priv_service_lock();
+    *result = lookup_service(instance, service, proto, subtype, max_results, false);
     mdns_priv_service_unlock();
     return ESP_OK;
 }
@@ -1674,7 +1704,23 @@ esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *servi
         return ESP_ERR_INVALID_ARG;
     }
     mdns_priv_service_lock();
-    *result = lookup_service(instance, service, proto, max_results, true);
+    *result = lookup_service(instance, service, proto, NULL, max_results, true);
+    mdns_priv_service_unlock();
+    return ESP_OK;
+}
+
+esp_err_t mdns_lookup_selfhosted_service_with_subtype(const char *instance, const char *service, const char *proto,
+                                                      const char *subtype, size_t max_results, mdns_result_t **result)
+{
+    if (!s_server) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (!result || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto) ||
+            mdns_utils_str_null_or_empty(subtype)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    mdns_priv_service_lock();
+    *result = lookup_service(instance, service, proto, subtype, max_results, true);
     mdns_priv_service_unlock();
     return ESP_OK;
 }

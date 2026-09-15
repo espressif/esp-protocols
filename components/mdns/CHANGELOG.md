@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.0)
+
+### Features
+
+- Add subtype-aware lookup APIs for self-hosted and delegated services ([f5b4fe48](https://github.com/espressif/esp-protocols/commit/f5b4fe48))
+
 ## [1.13.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.13.0)
 
 ### Features
