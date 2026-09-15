@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.13.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.13.1)
+
+### Bug Fixes
+
+- Completely remove test_apps ([19cc175e](https://github.com/espressif/esp-protocols/commit/19cc175e))
+- Migrate test_apps to host tests ([9cdec857](https://github.com/espressif/esp-protocols/commit/9cdec857))
+- Ensure buffer is always NUL-terminated in rx_staged_ip_add() ([b370a9ab](https://github.com/espressif/esp-protocols/commit/b370a9ab))
+
 ## [1.13.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.13.0)
 
 ### Features
