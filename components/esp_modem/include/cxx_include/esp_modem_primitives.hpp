@@ -30,6 +30,8 @@ struct Lock {
     using MutexT = QueueHandle_t;
     explicit Lock();
     ~Lock();
+    Lock(const Lock &) = delete;
+    Lock &operator=(const Lock &) = delete;
     void lock();
     void unlock();
 private:
@@ -57,6 +59,9 @@ public:
         lock.unlock();
     }
 
+    Scoped(const Scoped &) = delete;
+    Scoped &operator=(const Scoped &) = delete;
+
 private:
     T &lock;
 };
@@ -65,6 +70,9 @@ class Task {
 public:
     explicit Task(size_t stack_size, size_t priority, void *task_param, TaskFunction_t task_function);
     ~Task();
+
+    Task(const Task &) = delete;
+    Task &operator=(const Task &) = delete;
 
     static void Delete();
     static void Relinquish();
@@ -96,6 +104,9 @@ public:
     bool wait_any(uint32_t flags, uint32_t time_ms);
 
     ~SignalGroup();
+
+    SignalGroup(const SignalGroup &) = delete;
+    SignalGroup &operator=(const SignalGroup &) = delete;
 
 private:
     SignalT event_group;

@@ -35,6 +35,9 @@ struct uart_task {
         }
     }
 
+    uart_task(const uart_task &) = delete;
+    uart_task &operator=(const uart_task &) = delete;
+
     TaskHandle_t task_handle;       /*!< UART event task handle */
 };
 
