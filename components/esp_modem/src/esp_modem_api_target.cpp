@@ -23,6 +23,7 @@ static const char *TAG = "modem_api_target";
 std::shared_ptr<DTE> create_uart_dte(const dte_config *config)
 {
     TRY_CATCH_RET_NULL(
+        ESP_MODEM_THROW_IF_FALSE(config != nullptr, "Invalid argument: dte config cannot be null");
         auto term = create_uart_terminal(config);
         return std::make_shared<DTE>(config, std::move(term));
     )
