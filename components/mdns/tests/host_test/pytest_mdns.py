@@ -10,6 +10,7 @@ import pexpect
 import pytest
 from bonjour_order_responder import DEFAULTS
 from dnsfixture import DnsPythonWrapper
+from querier_responder import DEFAULTS as QUERIER_DEFAULTS
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -117,6 +118,30 @@ def _stop_bonjour_responder(proc):
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait(timeout=3)
+
+
+def _run_querier_responder():
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            str(Path(__file__).with_name('querier_responder.py')),
+            '--interface',
+            'eth0',
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    time.sleep(0.5)
+    assert proc.poll() is None, 'Querier responder failed to start (need eth0 and port 5353?)'
+    return proc
+
+
+@pytest.fixture
+def querier_responder():
+    proc = _run_querier_responder()
+    yield proc
+    _stop_bonjour_responder(proc)
 
 
 @pytest.fixture
@@ -385,6 +410,46 @@ def test_browse_duplicate_rejected(mdns_console, bonjour_responder):
     mdns_console.send_input(f'mdns_browse_del {service} {proto}')
     out = mdns_console.get_output('mdns>')
     assert 'Command returned non-zero' not in out
+
+
+def test_query_a_against_peer(mdns_console, querier_responder):
+    """DUT-side sync mdns_query_a against a controlled peer (replaces test_apps QUERY_HOST)."""
+    host = QUERIER_DEFAULTS['hostname']
+    ipv4 = QUERIER_DEFAULTS['ipv4']
+    # Safe if suite already called mdns_init; required when this test runs alone.
+    mdns_console.send_input('mdns_init -h hostname')
+    mdns_console.get_output('mdns>')
+    mdns_console.send_input(f'mdns_query_a {host} -t 2000')
+    mdns_console.get_output(f'Query A: {host}.local')
+    mdns_console.get_output(ipv4)
+    mdns_console.get_output('mdns>')
+
+
+def test_query_a_async_against_peer(mdns_console, querier_responder):
+    """DUT-side async A query against a controlled peer (replaces test_apps QUERY_HOST_ASYNC)."""
+    host = QUERIER_DEFAULTS['hostname']
+    ipv4 = QUERIER_DEFAULTS['ipv4']
+    mdns_console.send_input('mdns_init -h hostname')
+    mdns_console.get_output('mdns>')
+    mdns_console.send_input(f'mdns_query_a_async {host} -t 2000')
+    mdns_console.get_output(f'Query A async: {host}.local')
+    mdns_console.get_output(f'Async query resolved to A:{ipv4}')
+    mdns_console.get_output('mdns>')
+
+
+def test_query_srv_against_peer(mdns_console, querier_responder):
+    """DUT-side mdns_query_srv against a controlled peer (replaces test_apps QUERY_SERVICE)."""
+    instance = QUERIER_DEFAULTS['instance']
+    service = QUERIER_DEFAULTS['service']
+    proto = QUERIER_DEFAULTS['proto']
+    hostname = QUERIER_DEFAULTS['hostname']
+    port = QUERIER_DEFAULTS['port']
+    mdns_console.send_input('mdns_init -h hostname')
+    mdns_console.get_output('mdns>')
+    mdns_console.send_input(f'mdns_query_srv {instance} {service} {proto} -t 2000')
+    mdns_console.get_output(f'Query SRV: {instance}.{service}.{proto}.local')
+    mdns_console.get_output(_console_line('SRV : ', f'{hostname}.local:{port}'))
+    mdns_console.get_output('mdns>')
 
 
 if __name__ == '__main__':
