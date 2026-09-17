@@ -71,6 +71,9 @@ test_multi_heap_host
 # VS Code Settings
 .vscode/
 
+# clangd / LSP cache
+.cache/
+
 # VIM files
 *.swp
 *.swo
