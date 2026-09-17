@@ -1,17 +1,19 @@
 /*
- * SPDX-FileCopyrightText: 2023-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include "sdkconfig.h"
+#include "esp_idf_version.h"
 #include "lwip/inet.h"
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
 #include "esp_console.h"
 #include "esp_netif.h"
-#include "lwip/netdb.h"
 #include "esp_log.h"
 #include "argtable3/argtable3.h"
 #include <netdb.h>
@@ -54,6 +56,8 @@ static esp_err_t console_cmd_dnscmd_register(void)
  * @brief Structure to hold arguments for the setdnsserver command.
  */
 static struct {
+    struct arg_str *ifkey;
+    struct arg_lit *global;
     struct arg_str *main;
     struct arg_str *backup;
     struct arg_str *fallback;
@@ -61,68 +65,197 @@ static struct {
 } setdnsserver_args;
 
 /**
- * @brief Sets the DNS server address for all network interfaces.
- *
- * This function iterates over all network interfaces available on the ESP32 device
- * and sets the DNS server address for the specified DNS type (main, backup, or fallback).
- * The DNS address is only set if a valid address is provided (non-zero and not equal to IPADDR_NONE).
- *
- * @param server IP address of the DNS server.
- * @param type Type of the DNS server (main, backup, fallback).
- *
- * @return esp_err_t Returns ESP_OK on success, or an error code on failure.
+ * @brief Structure to hold arguments for the getdnsserver command.
  */
-static esp_err_t set_dns_server(const char *server, esp_netif_dns_type_t type)
-{
-    int ret = 0;
-    struct addrinfo hint = {0};
-    struct addrinfo *res = NULL, *res_tmp = NULL;
-    esp_netif_t *esp_netif = NULL;
-    esp_netif_dns_info_t dns;
-    int addr_cnt = 0;
+static struct {
+    struct arg_str *target;
+    struct arg_end *end;
+} getdnsserver_args;
 
-    ret = getaddrinfo(server, NULL, &hint, &res);
-    if (ret != 0) {
-        printf("setdnsserver: Failure host:%s(ERROR: %d)\n", server, ret);
-        ESP_LOGE(TAG, "Failure host");
-        return 1;
+static esp_netif_t *netif_next(esp_netif_t *esp_netif)
+{
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
+    return esp_netif_next_unsafe(esp_netif);
+#else
+    return esp_netif_next(esp_netif);
+#endif
+}
+
+static esp_netif_t *get_default_netif(void)
+{
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
+    return esp_netif_get_default_netif();
+#else
+    return NULL;
+#endif
+}
+
+static void print_available_ifkeys(void)
+{
+    printf("Available interface keys:\n");
+    for (esp_netif_t *esp_netif = netif_next(NULL); esp_netif != NULL; esp_netif = netif_next(esp_netif)) {
+        const char *if_key = esp_netif_get_ifkey(esp_netif);
+        if (if_key != NULL) {
+            printf("  %s\n", if_key);
+        }
+    }
+}
+
+static esp_netif_t *resolve_ifkey(const char *key)
+{
+    esp_netif_t *esp_netif = esp_netif_get_handle_from_ifkey(key);
+    if (esp_netif == NULL) {
+        printf("Unknown if_key '%s'\n", key);
+        print_available_ifkeys();
+    }
+    return esp_netif;
+}
+
+static void print_one_dns_type(const char *label, const esp_netif_dns_info_t *info)
+{
+    if (info->ip.type == ESP_IPADDR_TYPE_V4) {
+        printf("%s : " IPSTR "\n", label, IP2STR(&info->ip.u_addr.ip4));
+    } else if (info->ip.type == ESP_IPADDR_TYPE_V6) {
+        printf("%s : " IPV6STR "\n", label, IPV62STR(info->ip.u_addr.ip6));
+    } else {
+        printf("%s : 0.0.0.0\n", label);
+    }
+}
+
+static void print_dns_slot(const char *label, esp_netif_t *esp_netif, esp_netif_dns_type_t type)
+{
+    esp_netif_dns_info_t info = {0};
+    esp_err_t ret = esp_netif_get_dns_info(esp_netif, type, &info);
+    if (ret != ESP_OK) {
+        printf("%s : unavailable (err=0x%x)\n", label, ret);
+        return;
+    }
+    print_one_dns_type(label, &info);
+}
+
+static void print_dns_table(esp_netif_t *esp_netif)
+{
+    if (esp_netif == NULL) {
+        esp_netif_dns_info_t info = {0};
+        esp_err_t ret = esp_netif_get_dns_info(NULL, ESP_NETIF_DNS_MAIN, &info);
+        if (ret != ESP_OK) {
+            printf("[global] unavailable (needs CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF=y, IDF >= 5.4)\n");
+            return;
+        }
+        printf("[global]\n");
+        print_one_dns_type("Main DNS server", &info);
+        print_dns_slot("Backup DNS server", NULL, ESP_NETIF_DNS_BACKUP);
+        print_dns_slot("Fallback DNS server", NULL, ESP_NETIF_DNS_FALLBACK);
+        return;
     }
 
-    for (res_tmp = res; res_tmp != NULL; res_tmp = res_tmp->ai_next) {
+    print_dns_slot("Main DNS server", esp_netif, ESP_NETIF_DNS_MAIN);
+    print_dns_slot("Backup DNS server", esp_netif, ESP_NETIF_DNS_BACKUP);
+    print_dns_slot("Fallback DNS server", esp_netif, ESP_NETIF_DNS_FALLBACK);
+}
 
-        if (addr_cnt == 0) {
-            if (res_tmp->ai_family == AF_INET) {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
-                while ((esp_netif = esp_netif_next_unsafe(esp_netif)) != NULL) {
-#else
-                while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
-#endif
-                    struct sockaddr_in *ipv4 = (struct sockaddr_in *)res_tmp->ai_addr;
-                    dns.ip.u_addr.ip4.addr = ipv4->sin_addr.s_addr;
-                    dns.ip.type = IPADDR_TYPE_V4;
-                    ESP_ERROR_CHECK(esp_netif_set_dns_info(esp_netif, type, &dns));
-                }
-            } else if (res_tmp->ai_family == AF_INET6) {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
-                while ((esp_netif = esp_netif_next_unsafe(esp_netif)) != NULL) {
-#else
-                while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
-#endif
-                    struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res_tmp->ai_addr;
-                    memcpy(dns.ip.u_addr.ip6.addr, &ipv6->sin6_addr, sizeof(dns.ip.u_addr.ip6.addr));
-                    dns.ip.type = IPADDR_TYPE_V6;
-                    ESP_ERROR_CHECK(esp_netif_set_dns_info(esp_netif, type, &dns));
-                }
-            } else {
-                ESP_LOGE(TAG, "ai_family Unknown: %d\n", res_tmp->ai_family);
-            }
-        }
-        addr_cnt++;
+static void print_netif_header(esp_netif_t *esp_netif, esp_netif_t *default_netif)
+{
+    char interface[10] = {0};
+    esp_err_t ret = esp_netif_get_netif_impl_name(esp_netif, interface);
+    if (ret == ESP_OK) {
+        printf("Interface Name: %s\n", interface);
+    } else {
+        printf("Interface Name: ?\n");
+    }
+
+    const char *if_key = esp_netif_get_ifkey(esp_netif);
+    const bool is_default = (default_netif != NULL && esp_netif == default_netif);
+    const bool is_dhcps = (esp_netif_get_flags(esp_netif) & ESP_NETIF_DHCP_SERVER) != 0;
+
+    printf("  if_key: %s%s%s\n",
+           if_key ? if_key : "?",
+           is_dhcps ? " (dhcps)" : "",
+           is_default ? " [default]" : "");
+}
+
+static void print_netif_dns(esp_netif_t *esp_netif, esp_netif_t *default_netif)
+{
+    print_netif_header(esp_netif, default_netif);
+    print_dns_table(esp_netif);
+}
+
+/**
+ * @brief Resolve a DNS server name or address into a dns_info structure.
+ *
+ * Uses only the first getaddrinfo result.
+ */
+static esp_err_t fill_dns_from_server(const char *server, esp_netif_dns_info_t *dns)
+{
+    struct addrinfo hint = {0};
+    struct addrinfo *res = NULL;
+
+    int ret = getaddrinfo(server, NULL, &hint, &res);
+    if (ret != 0 || res == NULL) {
+        printf("setdnsserver: Failure host:%s(ERROR: %d)\n", server, ret);
+        ESP_LOGE(TAG, "Failure host");
+        return ESP_FAIL;
+    }
+
+    memset(dns, 0, sizeof(*dns));
+    if (res->ai_family == AF_INET) {
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *)res->ai_addr;
+        dns->ip.u_addr.ip4.addr = ipv4->sin_addr.s_addr;
+        dns->ip.type = IPADDR_TYPE_V4;
+    } else if (res->ai_family == AF_INET6) {
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
+        memcpy(dns->ip.u_addr.ip6.addr, &ipv6->sin6_addr, sizeof(dns->ip.u_addr.ip6.addr));
+        dns->ip.type = IPADDR_TYPE_V6;
+    } else {
+        ESP_LOGE(TAG, "ai_family Unknown: %d\n", res->ai_family);
+        freeaddrinfo(res);
+        return ESP_ERR_INVALID_ARG;
     }
 
     freeaddrinfo(res);
-
     return ESP_OK;
+}
+
+/* dns is not const: esp_netif_set_dns_info() takes a non-const pointer */
+static esp_err_t apply_dns_info(esp_netif_t *target, esp_netif_dns_type_t type, esp_netif_dns_info_t *dns)
+{
+    esp_err_t err = esp_netif_set_dns_info(target, type, dns);
+    if (err != ESP_OK) {
+        const char *key = (target != NULL) ? esp_netif_get_ifkey(target) : "global";
+        printf("setdnsserver: Failed to set DNS on %s (err=0x%x)\n", key ? key : "?", err);
+    }
+    return err;
+}
+
+/**
+ * @brief Sets the DNS server address for one target, or for every interface.
+ *
+ * @param server  IP address or hostname of the DNS server.
+ * @param type    Type of the DNS server (main, backup, fallback).
+ * @param all_ifaces  If true, apply to every interface (compat path).
+ * @param target  Specific netif, or NULL when setting the lwIP global table.
+ *
+ * @return ESP_OK on success, or an error code if any write failed.
+ */
+static esp_err_t set_dns_server(const char *server, esp_netif_dns_type_t type, bool all_ifaces, esp_netif_t *target)
+{
+    esp_netif_dns_info_t dns;
+    esp_err_t err = fill_dns_from_server(server, &dns);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    if (!all_ifaces) {
+        return apply_dns_info(target, type, &dns);
+    }
+
+    esp_err_t overall = ESP_OK;
+    for (esp_netif_t *esp_netif = netif_next(NULL); esp_netif != NULL; esp_netif = netif_next(esp_netif)) {
+        if (apply_dns_info(esp_netif, type, &dns) != ESP_OK) {
+            overall = ESP_FAIL;
+        }
+    }
+    return overall;
 }
 
 /**
@@ -141,17 +274,38 @@ static int do_setdnsserver_cmd(int argc, char **argv)
         return 1;
     }
 
-    set_dns_server(setdnsserver_args.main->sval[0], ESP_NETIF_DNS_MAIN);
+    if (setdnsserver_args.ifkey->count > 0 && setdnsserver_args.global->count > 0) {
+        printf("setdnsserver: --if and --global are mutually exclusive\n");
+        return 1;
+    }
+
+    bool all_ifaces = (setdnsserver_args.ifkey->count == 0 && setdnsserver_args.global->count == 0);
+    esp_netif_t *target = NULL;
+    if (setdnsserver_args.ifkey->count > 0) {
+        target = resolve_ifkey(setdnsserver_args.ifkey->sval[0]);
+        if (target == NULL) {
+            return 1;
+        }
+    }
+
+    int failed = 0;
+    if (set_dns_server(setdnsserver_args.main->sval[0], ESP_NETIF_DNS_MAIN, all_ifaces, target) != ESP_OK) {
+        failed = 1;
+    }
 
     if (setdnsserver_args.backup->count > 0) {
-        set_dns_server(setdnsserver_args.backup->sval[0], ESP_NETIF_DNS_BACKUP);
+        if (set_dns_server(setdnsserver_args.backup->sval[0], ESP_NETIF_DNS_BACKUP, all_ifaces, target) != ESP_OK) {
+            failed = 1;
+        }
     }
 
     if (setdnsserver_args.fallback->count > 0) {
-        set_dns_server(setdnsserver_args.fallback->sval[0], ESP_NETIF_DNS_FALLBACK);
+        if (set_dns_server(setdnsserver_args.fallback->sval[0], ESP_NETIF_DNS_FALLBACK, all_ifaces, target) != ESP_OK) {
+            failed = 1;
+        }
     }
 
-    return 0;
+    return failed;
 }
 
 
@@ -164,13 +318,16 @@ esp_err_t console_cmd_setdnsserver_register(void)
 {
     esp_err_t ret;
 
+    /* long-only: -i is --interval and -I is --interface on ping in this same REPL */
+    setdnsserver_args.ifkey = arg_str0(NULL, "if", "<if_key>", "Set only this interface (e.g. WIFI_STA_DEF)");
+    setdnsserver_args.global = arg_lit0(NULL, "global", "Set lwIP global table (esp_netif=NULL)");
     setdnsserver_args.main = arg_str1(NULL, NULL, "<main>", "The main DNS server IP address.");
     setdnsserver_args.backup = arg_str0(NULL, NULL, "backup", "The secondary DNS server IP address (optional).");
     setdnsserver_args.fallback = arg_str0(NULL, NULL, "fallback", "The fallback DNS server IP address (optional).");
-    setdnsserver_args.end = arg_end(1);
+    setdnsserver_args.end = arg_end(3);
     const esp_console_cmd_t setdnsserver_cmd = {
         .command = "setdnsserver",
-        .help = "Usage: setdnsserver <main> [backup] [fallback]",
+        .help = "Usage: setdnsserver [--if <if_key>|--global] <main> [backup] [fallback]",
         .hint = NULL,
         .func = &do_setdnsserver_cmd,
         .argtable = &setdnsserver_args
@@ -184,14 +341,6 @@ esp_err_t console_cmd_setdnsserver_register(void)
     return ret;
 }
 
-
-/**
- * @brief Structure to hold arguments for the getdnsserver command.
- */
-static struct {
-    struct arg_end *end;
-} getdnsserver_args;
-
 /**
  * @brief Command handler for getting DNS server addresses.
  *
@@ -202,53 +351,33 @@ static struct {
  */
 static int do_getdnsserver_cmd(int argc, char **argv)
 {
-    esp_netif_t *esp_netif = NULL;
-    esp_netif_dns_info_t dns_info;
-    char interface[10];
-    esp_err_t ret = ESP_FAIL;
-
     int nerrors = arg_parse(argc, argv, (void **)&getdnsserver_args);
     if (nerrors != 0) {
         arg_print_errors(stderr, getdnsserver_args.end, argv[0]);
         return 1;
     }
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
-    while ((esp_netif = esp_netif_next_unsafe(esp_netif)) != NULL) {
-#else
-    while ((esp_netif = esp_netif_next(esp_netif)) != NULL) {
-#endif
+    const char *filter = (getdnsserver_args.target->count > 0) ? getdnsserver_args.target->sval[0] : NULL;
+    esp_netif_t *default_netif = get_default_netif();
 
-        /* Print Interface Name and Number */
-        ret = esp_netif_get_netif_impl_name(esp_netif, interface);
-        if ((ESP_FAIL == ret) || (NULL == esp_netif)) {
-            ESP_LOGE(TAG, "No interface available");
-            return 1;
+    if (filter == NULL) {
+        print_dns_table(NULL);
+        for (esp_netif_t *esp_netif = netif_next(NULL); esp_netif != NULL; esp_netif = netif_next(esp_netif)) {
+            print_netif_dns(esp_netif, default_netif);
         }
-
-        printf("Interface Name: %s\n", interface);
-        ESP_ERROR_CHECK(esp_netif_get_dns_info(esp_netif, ESP_NETIF_DNS_MAIN, &dns_info));
-        if (dns_info.ip.type == ESP_IPADDR_TYPE_V4) {
-            printf("Main DNS server : " IPSTR "\n", IP2STR(&dns_info.ip.u_addr.ip4));
-        } else if (dns_info.ip.type == ESP_IPADDR_TYPE_V6) {
-            printf("Main DNS server : " IPV6STR "\n", IPV62STR(dns_info.ip.u_addr.ip6));
-        }
-
-        ESP_ERROR_CHECK(esp_netif_get_dns_info(esp_netif, ESP_NETIF_DNS_BACKUP, &dns_info));
-        if (dns_info.ip.type == ESP_IPADDR_TYPE_V4) {
-            printf("Backup DNS server : " IPSTR "\n", IP2STR(&dns_info.ip.u_addr.ip4));
-        } else if (dns_info.ip.type == ESP_IPADDR_TYPE_V6) {
-            printf("Backup DNS server : " IPV6STR "\n", IPV62STR(dns_info.ip.u_addr.ip6));
-        }
-
-        ESP_ERROR_CHECK(esp_netif_get_dns_info(esp_netif, ESP_NETIF_DNS_FALLBACK, &dns_info));
-        if (dns_info.ip.type == ESP_IPADDR_TYPE_V4) {
-            printf("Fallback DNS server : " IPSTR "\n", IP2STR(&dns_info.ip.u_addr.ip4));
-        } else if (dns_info.ip.type == ESP_IPADDR_TYPE_V6) {
-            printf("Fallback DNS server : " IPV6STR "\n", IPV62STR(dns_info.ip.u_addr.ip6));
-        }
+        return 0;
     }
 
+    if (strcasecmp(filter, "global") == 0) {
+        print_dns_table(NULL);
+        return 0;
+    }
+
+    esp_netif_t *esp_netif = resolve_ifkey(filter);
+    if (esp_netif == NULL) {
+        return 1;
+    }
+    print_netif_dns(esp_netif, default_netif);
     return 0;
 }
 
@@ -261,10 +390,11 @@ esp_err_t console_cmd_getdnsserver_register(void)
 {
     esp_err_t ret;
 
+    getdnsserver_args.target = arg_str0(NULL, NULL, "ifkey|global", "Print only this table: 'global' or an interface key (e.g. WIFI_STA_DEF).");
     getdnsserver_args.end = arg_end(1);
     const esp_console_cmd_t getdnsserver_cmd = {
         .command = "getdnsserver",
-        .help = "Usage: getdnsserver",
+        .help = "Usage: getdnsserver [ifkey|global]",
         .hint = NULL,
         .func = &do_getdnsserver_cmd,
         .argtable = &getdnsserver_args
