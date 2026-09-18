@@ -27,6 +27,10 @@ struct File {
             deleter(fd, resource);
         }
     }
+
+    File(const File &) = delete;
+    File &operator=(const File &) = delete;
+
     int fd;
     void (*deleter)(int fd, struct esp_modem_vfs_resource *res);
     struct esp_modem_vfs_resource *resource;

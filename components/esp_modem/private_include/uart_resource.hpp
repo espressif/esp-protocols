@@ -21,6 +21,9 @@ struct uart_resource {
 
     ~uart_resource();
 
+    uart_resource(const uart_resource &) = delete;
+    uart_resource &operator=(const uart_resource &) = delete;
+
     uart_port_t port{};
 };
 
