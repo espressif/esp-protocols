@@ -966,13 +966,16 @@ static mdns_txt_item_t *copy_txt_items(mdns_txt_linked_item_t *items, uint8_t **
         memcpy(key, tmp->key, key_len);
         key[key_len] = 0;
         ret[ret_index].key = key;
-        char *value = (char *)mdns_mem_malloc(tmp->value_len + 1);
-        if (!value) {
-            HOOK_MALLOC_FAILED;
-            goto handle_error;
+        char *value = NULL;
+        if (tmp->value) {
+            value = (char *)mdns_mem_malloc(tmp->value_len + 1);
+            if (!value) {
+                HOOK_MALLOC_FAILED;
+                goto handle_error;
+            }
+            memcpy(value, tmp->value, tmp->value_len);
+            value[tmp->value_len] = 0;
         }
-        memcpy(value, tmp->value, tmp->value_len);
-        value[tmp->value_len] = 0;
         ret[ret_index].value = value;
         (*txt_value_len)[ret_index] = tmp->value_len;
         ret_index++;
@@ -1179,10 +1182,11 @@ esp_err_t mdns_service_txt_item_set_for_host_with_explicit_value_len(const char 
     ESP_GOTO_ON_FALSE(s, ESP_ERR_NOT_FOUND, err, TAG, "Service doesn't exist");
 
     mdns_service_t *srv = s->service;
-    if (value_len > 0) {
-        value = (char *) mdns_mem_malloc(value_len);
+    if (value_arg) {
+        value = (char *) mdns_mem_malloc(value_len + 1);
         ESP_GOTO_ON_FALSE(value, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
         memcpy(value, value_arg, value_len);
+        value[value_len] = '\0';
     } else {
         value_len = 0;
     }

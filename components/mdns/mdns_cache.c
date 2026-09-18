@@ -827,10 +827,10 @@ static bool project_txt(const mdns_txt_linked_item_t *txt_list, mdns_txt_item_t 
         ESP_GOTO_ON_FALSE(txt_items[i].key, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate key");
 
         value_len[i] = txt->value_len;
-        if (txt->value_len == 0) {
+        if (!txt->value) {
+            ESP_GOTO_ON_FALSE(txt->value_len == 0, ESP_ERR_INVALID_ARG, cleanup, TAG, "Invalid value");
             continue;
         }
-        ESP_GOTO_ON_FALSE(txt->value, ESP_ERR_INVALID_ARG, cleanup, TAG, "Invalid value");
 
         txt_items[i].value = mdns_mem_calloc(txt->value_len + 1, sizeof(char));
         ESP_GOTO_ON_FALSE(txt_items[i].value, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate value");
