@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -13,12 +13,22 @@
 #include "mdns_responder.h"
 #include "mdns_mem_caps.h"
 
+// Weak set-up and tear-down functions that can be overridden by unit tests
+void __attribute__((weak)) mdns_test_set_up(void)
+{
+}
+void __attribute__((weak)) mdns_test_tear_down(void)
+{
+}
+
 void setUp(void)
 {
+    mdns_test_set_up();
 }
 
 void tearDown(void)
 {
+    mdns_test_tear_down();
 }
 
 // Sample test case - update based on the actual functionality in mdns_receive.c
@@ -138,8 +148,12 @@ int main(int argc, char **argv)
 
         init_responder();
         run_unity_tests();
+
+        // Propagate Unity assertion failures to CTest through the process exit code.
+        const int test_status = Unity.TestFailures == 0U ? 0 : 1;
+
         deinit_responder();
-        return 0;
+        return test_status;
     }
     printf("Unit test configuration: run with --test argument\n");
     return 1;
