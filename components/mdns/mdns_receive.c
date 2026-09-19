@@ -1158,7 +1158,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                                         mdns_priv_set_instance(new_instance);
                                     }
                                     mdns_priv_restart_all_pcbs_no_instance();
-                                } else {
+                                } else if (strcasecmp(name->host, mdns_priv_get_global_hostname()) == 0) {
                                     char *new_host = mangle_name((char *) mdns_priv_get_global_hostname());
                                     if (new_host) {
                                         mdns_priv_remap_self_service_hostname(mdns_priv_get_global_hostname(), new_host);
@@ -1299,7 +1299,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                     } else if (col == 1) {
                         do_not_reply = true;
                         if (mdns_priv_pcb_is_probing(packet)) {
-                            if (col && (parsed_packet->probe || parsed_packet->authoritative)) {
+                            if (col && (parsed_packet->probe || parsed_packet->authoritative)) &&
+                                strcasecmp(name->host, mdns_priv_get_global_hostname()) == 0) {
                                 mdns_priv_pcb_set_probe_failed(packet);
                                 char *new_host = mangle_name((char *) mdns_priv_get_global_hostname());
                                 if (new_host) {
@@ -1362,7 +1363,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                     } else if (col == 1) {
                         do_not_reply = true;
                         if (mdns_priv_pcb_is_probing(packet)) {
-                            if (col && (parsed_packet->probe || parsed_packet->authoritative)) {
+                            if (col && (parsed_packet->probe || parsed_packet->authoritative) &&
+                                strcasecmp(name->host, mdns_priv_get_global_hostname()) == 0) {
                                 mdns_priv_pcb_set_probe_failed(packet);
                                 char *new_host = mangle_name((char *) mdns_priv_get_global_hostname());
                                 if (new_host) {
