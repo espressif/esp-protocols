@@ -199,18 +199,18 @@ static int get_txt_items_count(const uint8_t *data, size_t len)
     }
 
     int num_items = 0;
-    uint16_t i = 0;
-    size_t partLen = 0;
+    size_t i = 0;
 
     while (i < len) {
-        partLen = data[i++];
-        if (!partLen) {
-            break;
+        uint8_t item_len = data[i++];
+        if (!item_len) {
+            // Single byte '\0' is an empty string, ignored
+            continue;
         }
-        if ((i + partLen) > len) {
+        if (item_len > len - i) {
             return -1;//error
         }
-        i += partLen;
+        i += item_len;
         num_items++;
     }
     return num_items;
@@ -252,7 +252,7 @@ static esp_err_t parse_txt_item_data(const uint8_t *data, size_t item_len, const
     uint8_t value_len = item_len > value_index ? item_len - value_index : 0;
     *value_len_out = value_len;
 
-    if (value_len > 0) {
+    if (key_len < item_len) {
         *value_out = (char *)mdns_mem_calloc(value_len + 1, sizeof(char));
         if (!*value_out) {
             HOOK_MALLOC_FAILED;
@@ -306,7 +306,7 @@ static void result_txt_create(const uint8_t *data, size_t len, mdns_txt_item_t *
     while (data_index < len && txt_num < num_items) {
         uint8_t item_len = data[data_index++];
         if (item_len == 0) {
-            break;
+            continue;
         }
 
         if ((data_index + item_len) > len) {
@@ -371,7 +371,7 @@ static bool result_txt_linked_list_create(const uint8_t *data, size_t len, mdns_
     while (data_index < len && txt_num < num_items) {
         uint8_t item_len = data[data_index++];
         if (item_len == 0) {
-            break;
+            continue;
         }
         if ((data_index + item_len) > len) {
             goto error;
