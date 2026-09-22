@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.3.0)
+
+### Features
+
+- Show global and per-interface DNS tables in get/setdnsserver ([3f8f7b17](https://github.com/espressif/esp-protocols/commit/3f8f7b17))
+
 ## [1.2.0](https://github.com/espressif/esp-protocols/commits/console_cmd_ping-v1.2.0)
 
 ### Features
