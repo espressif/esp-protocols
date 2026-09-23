@@ -160,3 +160,13 @@ static inline uint8_t mdns_utils_append_u8(uint8_t *packet, uint16_t *index, uin
  * @param txt Pointer to the TXT linked list.
  */
 void mdns_utils_free_txt_linked_list(mdns_txt_linked_item_t *txt);
+
+/**
+ * @brief Check if two strings are valid and case-insensitivly equal
+ */
+bool mdns_utils_str_case_equal(const char *a, const char *b);
+
+/**
+ * @brief Check if two strings are either both null or valid and case-insensitivly equal
+ */
+bool mdns_utils_str_case_equal_nullable(const char *a, const char *b);
