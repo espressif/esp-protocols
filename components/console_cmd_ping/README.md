@@ -66,20 +66,29 @@ getaddrinfo  [-f <AF>] [-F <FLAGS>]... [-p <port>] <hostname>
   -p, --port=<port>  String containing a numeric port number.
     <hostname>  Host address
 
-setdnsserver  <main> [backup] [fallback]
-  Usage: setdnsserver <main> [backup] [fallback]
+setdnsserver  [--if=<iface>] [--global] <main> [backup] [fallback]
+  Usage: setdnsserver [--if <iface>|--global] <main> [backup] [fallback]
+  --if=<iface>  Set only this interface (impl name or if_key, e.g. st2 or WIFI_STA_DEF)
+      --global  Set lwIP global table (esp_netif=NULL)
         <main>  The main DNS server IP address.
         backup  The secondary DNS server IP address (optional).
       fallback  The fallback DNS server IP address (optional).
 
-getdnsserver
-  Usage: getdnsserver
+getdnsserver  [iface|global]
+  Usage: getdnsserver [iface|global]
+  iface|global  Print only this table: 'global', impl name (e.g. st2), or if_key (e.g. WIFI_STA_DEF).
 ```
 These commands allow you to configure and retrieve DNS server settings on your ESP32 device, in addition to the existing ping functionality.
 
+With `CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF=y` (IDF >= 5.4), lwIP keeps a global DNS table used by hostname lookups (`getaddrinfo`, `ping` of a name) separately from each interface's stored `dns[]`. `getdnsserver` prints `[global]` first, then every interface (`Interface Name:` plus `if_key`). The default netif is marked `[default]`. Without that Kconfig, `[global]` is unavailable and each interface shows the shared lwIP table. `--if` and the optional `getdnsserver` argument accept the impl name (`ifconfig` / `Interface Name:`) or `if_key`.
+
+Without `CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF` (the default, and IDF < 5.4), `setdnsserver --if` on a client interface still runs, but prints a warning: the address is written to the shared lwIP DNS table, not only the named interface. A DHCP-server interface is unchanged; `--if` there still sets the DNS that server offers.
+
+`dns_clear_servers(true)` (used when a DHCP client starts) wipes global Main/Backup but leaves Fallback in place. After a non-default STA DHCP, `getdnsserver` may show global Main/Backup as `0.0.0.0` while Fallback and the WAN interface `dns[]` still look valid — that is the expected split, not a failed print.
+
 ## Usage
 ### Using the setdnsserver command:
-1. To set the main DNS server:
+1. To set the main DNS server on every interface (compat):
 ```
 setdnsserver 8.8.8.8
 ```
@@ -96,10 +105,32 @@ setdnsserver 8.8.8.8 fe80::b0be:83ff:fe77:dd64
 setdnsserver 8.8.8.8 fe80::b0be:83ff:fe77:dd64 www.xyz.com
 ```
 
+4. To set DNS on one interface only (impl name; `WIFI_STA_DEF` also works):
+
+```
+setdnsserver --if st2 8.8.8.8 8.8.4.4
+```
+
+5. To set the lwIP global table only (`CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF=y`):
+
+```
+setdnsserver --global 1.1.1.1
+```
+
 ### Using the getdnsserver command:
-To get the current DNS server settings:
+To print the global table and every interface:
 ```
 getdnsserver
+```
+
+To print only the lwIP global table:
+```
+getdnsserver global
+```
+
+To print only one interface (equivalent: `getdnsserver WIFI_STA_DEF`):
+```
+getdnsserver st2
 ```
 
 ### Using the getaddrinfo command:

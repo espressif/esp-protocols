@@ -25,8 +25,10 @@ void app_main(void)
     // Initialize console REPL
     ESP_ERROR_CHECK(console_cmd_init());
 
-    // Register ping command
+    // Register ping and DNS commands
     ESP_ERROR_CHECK(console_cmd_ping_register());
+    ESP_ERROR_CHECK(console_cmd_setdnsserver_register());
+    ESP_ERROR_CHECK(console_cmd_getdnsserver_register());
 
     // start console REPL
     ESP_ERROR_CHECK(console_cmd_start());
