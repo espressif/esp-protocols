@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -18,6 +18,7 @@
 #define MDNS_INSTANCE "test-instance"
 #define MDNS_SERVICE_NAME  "_http"
 #define MDNS_SERVICE_PROTO "_tcp"
+#define MDNS_SERVICE_SUBTYPE "_printer"
 #define MDNS_SERVICE_PORT   80
 
 TEST_GROUP(mdns);
@@ -242,6 +243,17 @@ TEST(mdns, add_remove_service)
     TEST_ASSERT_EQUAL(NULL, results->txt);
     mdns_query_results_free(results);
 
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_subtype_add_for_host(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                NULL, MDNS_SERVICE_SUBTYPE));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_lookup_selfhosted_service_with_subtype(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                          MDNS_SERVICE_SUBTYPE, 1, &results));
+    TEST_ASSERT_NOT_EQUAL(NULL, results);
+    TEST_ASSERT_EQUAL_STRING(MDNS_INSTANCE, results->instance_name);
+    mdns_query_results_free(results);
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_lookup_selfhosted_service_with_subtype(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                          "_unknown", 1, &results));
+    TEST_ASSERT_EQUAL(NULL, results);
+
     // Update service properties: port
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_port_set(MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_SERVICE_PORT + 1));
     yield_to_all_priorities();  // Make sure that mdns task has executed to add the hostname
@@ -314,6 +326,17 @@ TEST(mdns, add_remove_deleg_service)
     TEST_ASSERT_EQUAL(MDNS_SERVICE_PORT, results->port);
     TEST_ASSERT_EQUAL(NULL, results->txt);
     mdns_query_results_free(results);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_subtype_add_for_host(MDNS_INSTANCE, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                MDNS_DELEGATE_HOSTNAME, MDNS_SERVICE_SUBTYPE));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_lookup_delegated_service_with_subtype(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                         MDNS_SERVICE_SUBTYPE, 1, &results));
+    TEST_ASSERT_NOT_EQUAL(NULL, results);
+    TEST_ASSERT_EQUAL_STRING(MDNS_INSTANCE, results->instance_name);
+    mdns_query_results_free(results);
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_lookup_delegated_service_with_subtype(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO,
+                                                                         "_unknown", 1, &results));
+    TEST_ASSERT_EQUAL(NULL, results);
 
     // Update service properties: port
     TEST_ASSERT_EQUAL(ESP_OK, mdns_service_port_set_for_host(NULL, MDNS_SERVICE_NAME, MDNS_SERVICE_PROTO, MDNS_DELEGATE_HOSTNAME, MDNS_SERVICE_PORT + 1));
