@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "sdkconfig.h"
@@ -26,6 +27,19 @@ typedef struct {
     /* A function which performs auto-registration of console commands */
     esp_err_t (*plugin_regd_fn)(void);
 } console_cmd_plugin_desc_t;
+
+/**
+ * Place a plugin descriptor in .console_cmd_desc.
+ * Use from a .c file. reg_fn is a bare function name defined earlier in that file.
+ * plugin_name must remain valid for the life of the program (a string literal).
+ */
+#define CONSOLE_CMD_REGISTER_PLUGIN(plugin_name, reg_fn)                         \
+    static const console_cmd_plugin_desc_t                                       \
+    __attribute__((section(".console_cmd_desc"), used))                          \
+    _console_cmd_plugin_##reg_fn = {                                             \
+        .name = (plugin_name),                                                   \
+        .plugin_regd_fn = &(reg_fn),                                             \
+    }
 
 /**
  * @brief Optional overrides for console_cmd_init_with_config()
@@ -193,6 +207,39 @@ esp_err_t console_cmd_run(const char *cmdline, int *cmd_ret);
  *      - error code from the first plugin registration function that fails
  */
 esp_err_t console_cmd_all_register(void);
+
+typedef bool (*console_cmd_plugin_cb_t)(const console_cmd_plugin_desc_t *desc, void *ctx);
+
+/**
+ * @brief Return the number of plugins linked into .console_cmd_desc
+ */
+size_t console_cmd_plugin_count(void);
+
+/**
+ * @brief Walk plugins in linker order
+ *
+ * @param[in] cb  Called for each plugin. Return false to stop. Must not be NULL.
+ * @param[in] ctx Passed through to cb.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_INVALID_ARG if cb is NULL
+ */
+esp_err_t console_cmd_plugin_foreach(console_cmd_plugin_cb_t cb, void *ctx);
+
+/**
+ * @brief Call one plugin's register function
+ *
+ * Name match is exact. Does not check that the console is initialized;
+ * same rule as console_cmd_all_register().
+ *
+ * @return
+ *      - ESP_OK on success, including a match whose register function is NULL
+ *      - ESP_ERR_INVALID_ARG if plugin_name is NULL
+ *      - ESP_ERR_NOT_FOUND if no descriptor has that name
+ *      - error code from the plugin register function
+ */
+esp_err_t console_cmd_register_plugin(const char *plugin_name);
 
 
 /**

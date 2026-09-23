@@ -53,6 +53,14 @@ int do_ctx(void *context, int argc, char **argv)
 }
 #endif
 
+/* Linked into .console_cmd_desc. console_cmd_all_register() calls this. */
+static esp_err_t example_plugin_register(void)
+{
+    return console_cmd_register("plug", "Registered by the example plugin", NULL, do_user_cmd);
+}
+
+CONSOLE_CMD_REGISTER_PLUGIN("example_plugin", example_plugin_register);
+
 void app_main(void)
 {
     /* Console history and some IDF services expect NVS and the default event loop. */
@@ -109,8 +117,15 @@ void app_main(void)
     int cmd_ret = -1;
     ESP_ERROR_CHECK(console_cmd_run("user", &cmd_ret));
 
-    /* Plugins linked into .console_cmd_desc. This example has none; the call is still required
-     * by the usual startup sequence and returns ESP_OK when the section is empty. */
+    /* Missing name must fail and must not abort. */
+    esp_err_t missing_plugin = console_cmd_register_plugin("not_a_plugin");
+    if (missing_plugin != ESP_ERR_NOT_FOUND) {
+        ESP_LOGE(TAG, "expected missing plugin, got %s", esp_err_to_name(missing_plugin));
+    }
+
+    ESP_LOGI(TAG, "Plugin count: %u", (unsigned)console_cmd_plugin_count());
+
+    /* Walks .console_cmd_desc and calls example_plugin_register(), which adds "plug". */
     ESP_ERROR_CHECK(console_cmd_all_register());
     /* Starts the background REPL task and returns. The prompt is "cfg> ". */
     ESP_ERROR_CHECK(console_cmd_start());

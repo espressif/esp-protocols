@@ -3,6 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <string.h>
 #include "sdkconfig.h"
 #include "esp_console.h"
 #include "esp_err.h"
@@ -205,13 +206,22 @@ esp_err_t console_cmd_run(const char *cmdline, int *cmd_ret)
     return ret;
 }
 
-esp_err_t console_cmd_all_register(void)
+static const console_cmd_plugin_desc_t *plugin_array_begin(void)
 {
     extern const console_cmd_plugin_desc_t _console_cmd_array_start;
-    extern const console_cmd_plugin_desc_t _console_cmd_array_end;
+    return &_console_cmd_array_start;
+}
 
+static const console_cmd_plugin_desc_t *plugin_array_end(void)
+{
+    extern const console_cmd_plugin_desc_t _console_cmd_array_end;
+    return &_console_cmd_array_end;
+}
+
+esp_err_t console_cmd_all_register(void)
+{
     ESP_LOGI(TAG, "List of Console commands:");
-    for (const console_cmd_plugin_desc_t *it = &_console_cmd_array_start; it != &_console_cmd_array_end; ++it) {
+    for (const console_cmd_plugin_desc_t *it = plugin_array_begin(); it != plugin_array_end(); ++it) {
         ESP_LOGI(TAG, "- Command '%s', function plugin_regd_fn=%p", it->name, it->plugin_regd_fn);
         if (it->plugin_regd_fn == NULL) {
             continue;
@@ -225,6 +235,45 @@ esp_err_t console_cmd_all_register(void)
     }
 
     return ESP_OK;
+}
+
+size_t console_cmd_plugin_count(void)
+{
+    return (size_t)(plugin_array_end() - plugin_array_begin());
+}
+
+esp_err_t console_cmd_plugin_foreach(console_cmd_plugin_cb_t cb, void *ctx)
+{
+    if (cb == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    for (const console_cmd_plugin_desc_t *it = plugin_array_begin(); it != plugin_array_end(); ++it) {
+        if (!cb(it, ctx)) {
+            break;
+        }
+    }
+    return ESP_OK;
+}
+
+esp_err_t console_cmd_register_plugin(const char *plugin_name)
+{
+    if (plugin_name == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    for (const console_cmd_plugin_desc_t *it = plugin_array_begin(); it != plugin_array_end(); ++it) {
+        if (it->name == NULL || strcmp(it->name, plugin_name) != 0) {
+            continue;
+        }
+        if (it->plugin_regd_fn == NULL) {
+            return ESP_OK;
+        }
+        esp_err_t ret = it->plugin_regd_fn();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to register plugin '%s': %s", it->name, esp_err_to_name(ret));
+        }
+        return ret;
+    }
+    return ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t console_cmd_start(void)
