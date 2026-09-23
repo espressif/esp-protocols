@@ -101,6 +101,22 @@ void console_cmd_internal_clear_repl(void)
 }
 #endif
 
+static esp_err_t register_cmd(const esp_console_cmd_t *cmd)
+{
+    if (s_repl == NULL) {
+        ESP_LOGE(TAG, "console_cmd_init() must be called first");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t ret = esp_console_cmd_register(cmd);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Unable to register cmd '%s': %s",
+                 (cmd && cmd->command) ? cmd->command : "(null)",
+                 esp_err_to_name(ret));
+    }
+    return ret;
+}
+
 esp_err_t console_cmd_user_register(const char *user_cmd, esp_console_cmd_func_t do_user_cmd)
 {
     const esp_console_cmd_t cmd = {
@@ -109,13 +125,83 @@ esp_err_t console_cmd_user_register(const char *user_cmd, esp_console_cmd_func_t
         .hint = NULL,
         .func = do_user_cmd,
     };
+    return register_cmd(&cmd);
+}
 
-    esp_err_t ret = esp_console_cmd_register(&cmd);
+esp_err_t console_cmd_register(const char *cmd, const char *help, const char *hint,
+                               esp_console_cmd_func_t func)
+{
+    const esp_console_cmd_t desc = {
+        .command = cmd,
+        .help = help,
+        .hint = hint,
+        .func = func,
+    };
+    return register_cmd(&desc);
+}
+
+esp_err_t console_cmd_register_with_args(const char *cmd, const char *help, void *argtable,
+                                         esp_console_cmd_func_t func)
+{
+    const esp_console_cmd_t desc = {
+        .command = cmd,
+        .help = help,
+        .hint = NULL,
+        .func = func,
+        .argtable = argtable,
+    };
+    return register_cmd(&desc);
+}
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+esp_err_t console_cmd_register_with_context(const char *cmd, const char *help, const char *hint,
+                                            esp_console_cmd_func_with_context_t func, void *context)
+{
+    const esp_console_cmd_t desc = {
+        .command = cmd,
+        .help = help,
+        .hint = hint,
+        .func = NULL,
+        .func_w_context = func,
+        .context = context,
+    };
+    return register_cmd(&desc);
+}
+#endif
+
+esp_err_t console_cmd_unregister(const char *cmd)
+{
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 4, 0)
+    (void)cmd;
+    ESP_LOGE(TAG, "console_cmd_unregister() requires ESP-IDF >= 5.4");
+    return ESP_ERR_NOT_SUPPORTED;
+#else
+    if (s_repl == NULL) {
+        ESP_LOGE(TAG, "console_cmd_init() must be called first");
+        return ESP_ERR_INVALID_STATE;
+    }
+    esp_err_t ret = esp_console_cmd_deregister(cmd);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Unable to register user cmd '%s': %s",
-                 user_cmd ? user_cmd : "(null)", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Unable to unregister cmd '%s': %s",
+                 cmd ? cmd : "(null)", esp_err_to_name(ret));
+    }
+    return ret;
+#endif
+}
+
+esp_err_t console_cmd_run(const char *cmdline, int *cmd_ret)
+{
+    if (s_repl == NULL) {
+        ESP_LOGE(TAG, "console_cmd_init() must be called first");
+        return ESP_ERR_INVALID_STATE;
     }
 
+    esp_err_t ret = esp_console_run(cmdline, cmd_ret);
+    if (ret == ESP_ERR_NOT_FOUND) {
+        ESP_LOGW(TAG, "Command not found: '%s'", cmdline ? cmdline : "(null)");
+    } else if (ret == ESP_OK && cmd_ret != NULL && *cmd_ret != 0) {
+        ESP_LOGW(TAG, "Command '%s' returned %d", cmdline, *cmd_ret);
+    }
     return ret;
 }
 
