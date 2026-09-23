@@ -972,6 +972,25 @@ esp_err_t mdns_lookup_delegated_service(const char *instance, const char *servic
                                         mdns_result_t **result);
 
 /**
+ * @brief Look up delegated services with a particular subtype.
+ *
+ * @param  instance         instance name (NULL for uncertain instance)
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  subtype          service subtype (must not be NULL or empty)
+ * @param  max_results      maximum results to be collected
+ * @param  result           pointer to the result of the search
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running
+ *     - ESP_ERR_NO_MEM         memory error
+ *     - ESP_ERR_INVALID_ARG    parameter error
+ */
+esp_err_t mdns_lookup_delegated_service_with_subtype(const char *instance, const char *service_type, const char *proto,
+                                                     const char *subtype, size_t max_results, mdns_result_t **result);
+
+/**
  * @brief Look up self hosted services.
  *
  * @param  instance         instance name (NULL for uncertain instance)
@@ -988,6 +1007,25 @@ esp_err_t mdns_lookup_delegated_service(const char *instance, const char *servic
  */
 esp_err_t mdns_lookup_selfhosted_service(const char *instance, const char *service_type, const char *proto, size_t max_results,
                                          mdns_result_t **result);
+
+/**
+ * @brief Look up self hosted services with a particular subtype.
+ *
+ * @param  instance         instance name (NULL for uncertain instance)
+ * @param  service_type     service type (_http, _ftp, etc)
+ * @param  proto            service protocol (_tcp, _udp)
+ * @param  subtype          service subtype (must not be NULL or empty)
+ * @param  max_results      maximum results to be collected
+ * @param  result           pointer to the result of the search
+ *
+ * @return
+ *     - ESP_OK success
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running
+ *     - ESP_ERR_NO_MEM         memory error
+ *     - ESP_ERR_INVALID_ARG    parameter error
+ */
+esp_err_t mdns_lookup_selfhosted_service_with_subtype(const char *instance, const char *service_type, const char *proto,
+                                                      const char *subtype, size_t max_results, mdns_result_t **result);
 
 /**
  * @brief  Query mDNS for A record
