@@ -10,4 +10,7 @@ def test_examples_user_command(dut):
     dut.expect('esp>', timeout=30)
     dut.write('user')
     dut.expect('Hello from user command', timeout=30)
-    pass
+    dut.write('help')
+    dut.expect('User defined command', timeout=30)
+    dut.write('not_a_command')
+    dut.expect('Unrecognized command', timeout=30)
