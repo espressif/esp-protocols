@@ -48,9 +48,9 @@ typedef struct {
  * NULL / 0 fields keep the IDF REPL defaults. Pointers that are set must
  * remain valid until the console is deinitialized.
  *
- * @note task_core_id of 0 means "do not override". That cannot pin the REPL
- *       to CPU 0; use 1 (or another core) to pin, or -1 for no affinity.
- *       The field is ignored on ESP-IDF < 5.3.
+ * @note task_core_id of 0 keeps the IDF default (tskNO_AFFINITY). A positive
+ *       N pins the REPL task to core N. For no affinity, pass tskNO_AFFINITY,
+ *       not -1. The field is ignored on ESP-IDF < 5.3.
  * @note max_cmdline_args is ignored on ESP-IDF < 6.1.
  */
 typedef struct {
@@ -59,7 +59,7 @@ typedef struct {
     uint32_t max_history_len;       /*!< 0 -> IDF default (32) */
     uint32_t task_stack_size;       /*!< 0 -> IDF default (4096) */
     uint32_t task_priority;         /*!< 0 -> IDF default (2) */
-    int task_core_id;               /*!< 0 -> do not override; -1 = no affinity */
+    int task_core_id;               /*!< 0 -> keep IDF default (tskNO_AFFINITY); N -> pin to core N */
     size_t max_cmdline_length;      /*!< 0 -> IDF default */
     size_t max_cmdline_args;        /*!< 0 -> IDF default */
 } console_cmd_config_t;
@@ -257,13 +257,14 @@ esp_err_t console_cmd_start(void);
  * @brief Stop and delete the console REPL
  *
  * Available only when CONFIG_CONSOLE_SIMPLE_INIT_ENABLE_STOP is enabled.
- * On ESP-IDF < 5.5 this returns ESP_ERR_NOT_SUPPORTED.
+ * Works on every supported ESP-IDF version: ESP-IDF >= 5.5 calls
+ * esp_console_stop_repl(), older versions call the REPL del() handle,
+ * which is what esp_console_stop_repl() wraps.
  *
  * @return
  *      - ESP_OK on success
  *      - ESP_ERR_INVALID_STATE if the console is not initialized
- *      - ESP_ERR_NOT_SUPPORTED on ESP-IDF < 5.5
- *      - other error codes from esp_console_stop_repl()
+ *      - other error codes from the underlying REPL teardown
  */
 esp_err_t console_cmd_stop(void);
 #endif

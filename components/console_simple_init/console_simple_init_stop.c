@@ -15,22 +15,22 @@ static const char *TAG = "console_simple_init";
 
 esp_err_t console_cmd_stop(void)
 {
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 5, 0)
-    ESP_LOGE(TAG, "console_cmd_stop() requires ESP-IDF >= 5.5");
-    return ESP_ERR_NOT_SUPPORTED;
-#else
     esp_console_repl_t *repl = console_cmd_get_repl();
     if (repl == NULL) {
         ESP_LOGE(TAG, "console_cmd_init() must be called first");
         return ESP_ERR_INVALID_STATE;
     }
-
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 5, 0)
     esp_err_t ret = esp_console_stop_repl(repl);
+#else
+    /* esp_console_stop_repl() (IDF >= 5.5) is a one-line wrapper around
+     * repl->del(repl), which exists on every supported IDF version. */
+    esp_err_t ret = repl->del(repl);
+#endif
     if (ret == ESP_OK) {
         console_cmd_internal_clear_repl();
     } else {
         ESP_LOGE(TAG, "Failed to stop console: %s", esp_err_to_name(ret));
     }
     return ret;
-#endif
 }

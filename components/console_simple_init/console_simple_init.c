@@ -206,16 +206,18 @@ esp_err_t console_cmd_run(const char *cmdline, int *cmd_ret)
     return ret;
 }
 
+/* Linker symbols from SURROUND(console_cmd_array). Declared as arrays so
+ * walking the section is not an out-of-bounds access of a single object. */
 static const console_cmd_plugin_desc_t *plugin_array_begin(void)
 {
-    extern const console_cmd_plugin_desc_t _console_cmd_array_start;
-    return &_console_cmd_array_start;
+    extern const console_cmd_plugin_desc_t _console_cmd_array_start[];
+    return (const console_cmd_plugin_desc_t *)(uintptr_t)_console_cmd_array_start;
 }
 
 static const console_cmd_plugin_desc_t *plugin_array_end(void)
 {
-    extern const console_cmd_plugin_desc_t _console_cmd_array_end;
-    return &_console_cmd_array_end;
+    extern const console_cmd_plugin_desc_t _console_cmd_array_end[];
+    return (const console_cmd_plugin_desc_t *)(uintptr_t)_console_cmd_array_end;
 }
 
 esp_err_t console_cmd_all_register(void)
@@ -239,7 +241,11 @@ esp_err_t console_cmd_all_register(void)
 
 size_t console_cmd_plugin_count(void)
 {
-    return (size_t)(plugin_array_end() - plugin_array_begin());
+    size_t count = 0;
+    for (const console_cmd_plugin_desc_t *it = plugin_array_begin(); it != plugin_array_end(); ++it) {
+        count++;
+    }
+    return count;
 }
 
 esp_err_t console_cmd_plugin_foreach(console_cmd_plugin_cb_t cb, void *ctx)
