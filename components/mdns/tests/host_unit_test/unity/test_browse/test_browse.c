@@ -219,6 +219,8 @@ static void test_browse_goodbye_and_rediscovery(void)
     // Cache goodbye should notify the browse.
     TEST_ASSERT_NOT_EQUAL(MDNS_CACHE_ERROR, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
                                                                        INSTANCE, SERVICE, PROTO, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(2, s_notify_calls);
     TEST_ASSERT_EQUAL_UINT32(0, s_last_ttl);
 

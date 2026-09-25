@@ -41,8 +41,8 @@ bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *e
  * @note The PTR record will be marked to-sync when:
  *      - A new service is added to the cache.
  *      - The PTR TTL is updated.
- *      - Receives a TTL=0 goodbye: all subscribing browsers will be notified of the goodbye.
- *        Then the whole service cache entry will be removed.
+ *
+ * @note A TTL=0 goodbye will notify all subscribing browsers and remove the PTR record.
  */
 mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                       const char *instance, const char *service, const char *proto,
@@ -124,7 +124,8 @@ mdns_cache_update_result_t mdns_priv_cache_update_addr(const esp_netif_t *esp_ne
  * @param ttl           The TTL.
  *
  * @return The result of the update, see @ref mdns_cache_update_result_t.
- *         If the cache entry does not exist, return MDNS_CACHE_NO_CHANGE.
+ *         If the cache entry does not exist, or no consumers subscribe to the hostname or service under the hostname,
+ *         return MDNS_CACHE_NO_CHANGE.
  *
  * @note When an A/AAAA record is updated (added, removed, or updated),
  *       all services under this cache entry will be marked to-sync for browses.
@@ -133,6 +134,16 @@ mdns_cache_update_result_t mdns_priv_cache_update_addr(const esp_netif_t *esp_ne
  */
 mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                                 const char *hostname, const esp_ip_addr_t *addr, uint32_t ttl);
+
+/**
+ * @brief Remove expired records from the entire cache.
+ *
+ * @param now_us The current time in microseconds from esp_timer_get_time().
+ *
+ * @note This function is called in mDNS service task while holding service lock.
+ *       PTR expiration notifies browses immediately, other records are marked to-sync for browses.
+ */
+void mdns_priv_cache_remove_expired_records(int64_t now_us);
 
 /**
  * @brief Clear all cache entries.
@@ -164,14 +175,6 @@ void mdns_priv_cache_process_sync(void);
  * @return true if successfully notified, false otherwise
  */
 bool mdns_priv_cache_notify_browse(mdns_browse_t *browse);
-
-/**
- * @brief Remove specific service cache entries if no consumers subscribe to them.
- *
- * @param service Service name.
- * @param proto Protocol name.
- */
-void mdns_priv_cache_remove_service_cache_if_unused(const char *service, const char *proto);
 #ifdef __cplusplus
 }
 #endif
