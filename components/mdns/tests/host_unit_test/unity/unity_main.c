@@ -12,6 +12,7 @@
 #include "mdns_receive.h"
 #include "mdns_responder.h"
 #include "mdns_mem_caps.h"
+#include "mdns_test_clock.h"
 
 // Weak set-up and tear-down functions that can be overridden by unit tests
 void __attribute__((weak)) mdns_test_set_up(void)
@@ -144,6 +145,7 @@ void setup_cmock(void);
 int main(int argc, char **argv)
 {
     if (argc >= 2 && strcmp(argv[1], "--test") == 0) {
+        mdns_test_clock_reset();
         setup_cmock();
 
         init_responder();

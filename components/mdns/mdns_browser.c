@@ -90,13 +90,6 @@ void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t 
     }
 }
 
-void mdns_priv_browse_send_all(mdns_if_t mdns_if)
-{
-    for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
-        mdns_priv_browse_send_by_ip_protocol(mdns_if, (mdns_ip_protocol_t) protocol_idx);
-    }
-}
-
 void mdns_priv_browse_free(void)
 {
     while (s_browse) {
@@ -122,7 +115,7 @@ static bool browse_matches_identity(const mdns_browse_t *browse, const char *ser
 bool mdns_priv_browse_has_service(const char *service, const char *proto)
 {
     for (const mdns_browse_t *it = s_browse; it; it = it->next) {
-        if (it->state != BROWSE_OFF && browse_matches_identity(it, service, proto)) {
+        if (it->state == BROWSE_RUNNING && browse_matches_identity(it, service, proto)) {
             return true;
         }
     }
@@ -141,7 +134,6 @@ static void browse_finish(mdns_browse_t *browse)
     for (mdns_browse_t *it = s_browse; it; it = it->next) {
         if (it == browse) {
             queueDetach(mdns_browse_t, s_browse, it);
-            mdns_priv_cache_remove_service_cache_if_unused(it->service, it->proto);
             browse_item_free(it);
             return;
         }
@@ -357,15 +349,16 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto)
     return ESP_OK;
 }
 
+static bool browse_matches_service_identity(const mdns_browse_t *browse, const mdns_service_cache_t *service)
+{
+    return browse && service && browse->state == BROWSE_RUNNING && browse->notifier
+           && names_equal(browse->service, service->service)
+           && names_equal(browse->proto, service->proto);
+}
+
 static bool browse_matches_service_cache(const mdns_browse_t *browse, const mdns_service_cache_t *service)
 {
-    return browse && service && browse->state == BROWSE_RUNNING && browse->notifier && service->ptr_present
-           && !mdns_utils_str_null_or_empty(browse->service)
-           && !mdns_utils_str_null_or_empty(browse->proto)
-           && !mdns_utils_str_null_or_empty(service->service)
-           && !mdns_utils_str_null_or_empty(service->proto)
-           && !strcasecmp(browse->service, service->service)
-           && !strcasecmp(browse->proto, service->proto);
+    return browse_matches_service_identity(browse, service) && service->ptr_present;
 }
 
 /**
@@ -439,7 +432,7 @@ bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_ent
     bool notified = true;
 
     for (mdns_browse_t *browse = s_browse; browse; browse = browse->next) {
-        if (!browse_matches_service_cache(browse, service)) {
+        if (!browse_matches_service_identity(browse, service)) {
             continue;
         }
 

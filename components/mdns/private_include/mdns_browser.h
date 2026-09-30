@@ -45,14 +45,6 @@ mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t
 mdns_browse_t *mdns_priv_browse_find_ptr(mdns_name_t *name);
 
 /**
- * @brief Send out all browse queries
- *
- * @note Called from the network events (mdns_netif.c)
- * @note Calls (indirectly) search-send from mdns_querier.c, which sends out the query
- */
-void mdns_priv_browse_send_all(mdns_if_t mdns_if);
-
-/**
  * @brief Send out browse queries by IP protocol
  *
  * @note Called from the network events (mdns_netif.c)
@@ -91,6 +83,8 @@ bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry,
 
 /**
  * @brief Notify the affected browse about a PTR goodbye.
+ *
+ * Used for both TTL=0 goodbye and natural expiration.
  *
  * @note Must be called before the PTR service cache is removed to avoid UAF.
  */

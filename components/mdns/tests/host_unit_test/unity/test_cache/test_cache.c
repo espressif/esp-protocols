@@ -16,6 +16,7 @@
 #include "mdns_mem_caps.h"
 #include "mdns_mem_caps_test.h"
 #include "mdns_private.h"
+#include "mdns_test_clock.h"
 #include "mock_mdns_browser.h"
 #include "unity.h"
 #include "unity_internals.h"
@@ -342,6 +343,7 @@ static void assert_complete_result(const mdns_result_t *result)
 void mdns_test_set_up(void)
 {
     mdns_priv_cache_clear();
+    mdns_test_clock_reset();
     reset_observer();
 }
 
@@ -356,7 +358,6 @@ void setup_cmock(void)
     mdns_priv_browse_notify_ptr_goodbye_from_service_cache_Stub(browse_goodbye_callback);
 
     mdns_priv_browse_notify_from_service_cache_IgnoreAndReturn(true);
-    mdns_priv_browse_has_service_IgnoreAndReturn(false);
 }
 
 static void test_cache_ptr_add_repeat_update_remove(void)
@@ -389,8 +390,10 @@ static void test_cache_ptr_add_repeat_update_remove(void)
     TEST_ASSERT_EQUAL_UINT32(240, s_observer.ptr_ttl);
 
     // Scenario 4: Remove cache with PTR TTL=0
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_ptr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_ptr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
                                                                      INSTANCE, SERVICE, PROTO, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(1, s_observer.goodbye_calls);
     assert_memory(baseline);
 }
@@ -432,8 +435,10 @@ static void test_cache_srv_add_repeat_update_remove(void)
     TEST_ASSERT_EQUAL_UINT16(8081, s_observer.port);
 
     // Scenario 4: Remove cache with SRV TTL=0
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_srv(test_netif_a(), MDNS_IP_PROTOCOL_V4, HOSTNAME, INSTANCE,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_srv(test_netif_a(), MDNS_IP_PROTOCOL_V4, HOSTNAME, INSTANCE,
                                                                      SERVICE, PROTO, SRV_PRIORITY, SRV_WEIGHT, SRV_PORT, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
     assert_memory(baseline);
 }
 
@@ -508,8 +513,10 @@ static void test_cache_txt_add_repeat_update_remove(void)
     TEST_ASSERT_TRUE(find_txt_in_txt_list(s_observer.txt, &txt_3));
 
     // Scenario 5: Remove cache with TXT TTL=0
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_txt(test_netif_a(), MDNS_IP_PROTOCOL_V4, INSTANCE,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_txt(test_netif_a(), MDNS_IP_PROTOCOL_V4, INSTANCE,
                                                                      SERVICE, PROTO, NULL, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
     assert_memory(baseline);
 }
 
@@ -570,18 +577,21 @@ static void test_cache_addr_add_repeat_update_remove(void)
     TEST_ASSERT_EQUAL_size_t(3, s_observer.address_count);
 
     // Scenario 6: Remove all addresses with TTL=0
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
                                                                       &addr_1, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(5, s_observer.update_calls);
     TEST_ASSERT_EQUAL_size_t(2, s_observer.address_count);
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
                                                                       &addr_2, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(6, s_observer.update_calls);
     TEST_ASSERT_EQUAL_size_t(1, s_observer.address_count);
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V6, HOSTNAME,
                                                                       &addr_3, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(7, s_observer.update_calls);
     TEST_ASSERT_EQUAL_size_t(0, s_observer.address_count);
@@ -597,13 +607,22 @@ static void test_cache_addr_add_repeat_update_remove(void)
                                      SERVICE, PROTO, SRV_PRIORITY, SRV_WEIGHT, SRV_PORT, SRV_TTL);
     baseline_s7 = mdns_mem_get_allocation_counts();
 
+    // `mdns_priv_cache_update_existing_addr()` only updates if a consumer is subscribing to a service under the same entry
+    mdns_priv_browse_has_service_IgnoreAndReturn(true);
     TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_existing_addr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
                                                                                HOSTNAME, &addr_1, 240));
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(8, s_observer.update_calls);
+    mdns_priv_browse_has_service_IgnoreAndReturn(false);
+    TEST_ASSERT_EQUAL(MDNS_CACHE_NO_CHANGE, mdns_priv_cache_update_existing_addr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
+                                                                                 HOSTNAME, &addr_1, 300));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(8, s_observer.update_calls);
     TEST_ASSERT_EQUAL_UINT32(240, s_observer.addr->ttl);
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, mdns_priv_cache_update_existing_addr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
+    mdns_priv_browse_has_service_IgnoreAndReturn(true);
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_existing_addr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
                                                                                HOSTNAME, &addr_1, 0));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(9, s_observer.update_calls);
     TEST_ASSERT_EQUAL_size_t(0, s_observer.address_count);
@@ -646,6 +665,7 @@ static void test_cache_service_record_goodbyes(void)
 
     // Remove TXT while preserving SRV and addresses.
     TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, update_test_record(MDNS_CACHE_RECORD_TXT, true));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(1, s_observer.update_calls);
     TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_TXT, s_observer.records);
@@ -664,6 +684,7 @@ static void test_cache_service_record_goodbyes(void)
 
     // Remove SRV. Cached addresses remain but must not appear in the result.
     TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, update_test_record(MDNS_CACHE_RECORD_SRV, true));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(2, s_observer.update_calls);
     TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_SRV, s_observer.records);
@@ -678,7 +699,8 @@ static void test_cache_service_record_goodbyes(void)
     mdns_query_results_free(result);
 
     // Remove the remaining address without removing PTR.
-    TEST_ASSERT_EQUAL(MDNS_CACHE_REMOVED, update_test_record(MDNS_CACHE_RECORD_ADDR, true));
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, update_test_record(MDNS_CACHE_RECORD_ADDR, true));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(3, s_observer.update_calls);
     TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_ADDR, s_observer.records);
@@ -686,6 +708,131 @@ static void test_cache_service_record_goodbyes(void)
     TEST_ASSERT_TRUE(s_observer.ptr_present);
     TEST_ASSERT_EQUAL_UINT32(PTR_TTL, s_observer.ptr_ttl);
     TEST_ASSERT_EQUAL_size_t(0, s_observer.goodbye_calls);
+}
+
+static void test_cache_expiry_extend_and_notify(void)
+{
+    static const mdns_txt_linked_item_t txt = {
+        .key = "key",
+        .value = "value",
+        .value_len = 5,
+        .next = NULL,
+    };
+    const esp_ip_addr_t addr = make_ipv4(0x0101A8C0);
+    size_t baseline = mdns_mem_get_allocation_counts();
+
+    // Scenario 1: Extend PTR TTL and test records expire one by one.
+    // Initial state: t = 0s
+    insert_complete_service();
+    mdns_priv_cache_process_sync();
+    assert_observed_complete_service();
+    reset_observer();
+
+    // t = 60s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(60 * MDNS_US_PER_SEC));
+    TEST_ASSERT_EQUAL(MDNS_CACHE_NO_CHANGE, mdns_priv_cache_update_ptr(test_netif_a(), MDNS_IP_PROTOCOL_V4,
+                                                                       INSTANCE, SERVICE, PROTO, PTR_TTL));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.goodbye_calls);
+
+    // PTR, SRV, TXT, ADDR will be expired at t = 180s, 130s, 140s, 150s respectively.
+    // t = 129s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(69 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.update_calls);
+    // t = 130s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(1 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_SRV, s_observer.records);
+    TEST_ASSERT_TRUE(s_observer.ptr_present);
+    TEST_ASSERT_FALSE(s_observer.srv_present);
+    TEST_ASSERT_TRUE(s_observer.txt_present);
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.address_count);
+    // t = 139s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(9 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.update_calls);
+    // t = 140s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(1 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(2, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_TXT, s_observer.records);
+    TEST_ASSERT_TRUE(s_observer.ptr_present);
+    TEST_ASSERT_FALSE(s_observer.txt_present);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.txt_count);
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.address_count);
+    // t = 149s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(9 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(2, s_observer.update_calls);
+    // t = 150s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(1 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(3, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_ADDR, s_observer.records);
+    TEST_ASSERT_TRUE(s_observer.ptr_present);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.address_count);
+    // t = 179s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(29 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.goodbye_calls);
+    // t = 180s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(1 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.goodbye_calls);
+    TEST_ASSERT_EQUAL_size_t(3, s_observer.update_calls);
+    assert_memory(baseline);
+
+    // Scenario 2: Records expire at the same time.
+    // Initial state: t = 0s
+    mdns_priv_cache_clear();
+    mdns_test_clock_reset();
+    reset_observer();
+    baseline = mdns_mem_get_allocation_counts();
+
+    TEST_ASSERT_EQUAL(MDNS_CACHE_ADDED, update_test_record(MDNS_CACHE_RECORD_PTR, false));
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_srv(test_netif_a(), MDNS_IP_PROTOCOL_V4, HOSTNAME, INSTANCE,
+                                                                     SERVICE, PROTO, SRV_PRIORITY, SRV_WEIGHT, SRV_PORT, 60));
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_txt(test_netif_a(), MDNS_IP_PROTOCOL_V4, INSTANCE,
+                                                                     SERVICE, PROTO, clone_txt(&txt), 60));
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_addr(test_netif_a(), MDNS_IP_PROTOCOL_V4, HOSTNAME,
+                                                                      &addr, 60));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.update_calls);
+    // t = 59s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(59 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.update_calls);
+    // t = 60s, SRV, TXT, ADDR will be expired at the same time.
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(1 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(2, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.goodbye_calls);
+    TEST_ASSERT_EQUAL_UINT8(MDNS_CACHE_RECORD_SRV | MDNS_CACHE_RECORD_TXT | MDNS_CACHE_RECORD_ADDR, s_observer.records);
+    TEST_ASSERT_TRUE(s_observer.ptr_present);
+    TEST_ASSERT_FALSE(s_observer.srv_present);
+    TEST_ASSERT_FALSE(s_observer.txt_present);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.address_count);
+    TEST_ASSERT_EQUAL_size_t(0, s_observer.txt_count);
+    // t = 120s
+    TEST_ASSERT_TRUE(mdns_test_clock_advance_us(60 * MDNS_US_PER_SEC));
+    mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(2, s_observer.update_calls);
+    TEST_ASSERT_EQUAL_size_t(1, s_observer.goodbye_calls);
+    assert_memory(baseline);
 }
 
 void run_unity_tests(void)
@@ -697,5 +844,6 @@ void run_unity_tests(void)
     RUN_TEST(test_cache_addr_add_repeat_update_remove);
     RUN_TEST(test_cache_record_order_and_result_projection);
     RUN_TEST(test_cache_service_record_goodbyes);
+    RUN_TEST(test_cache_expiry_extend_and_notify);
     UNITY_END();
 }

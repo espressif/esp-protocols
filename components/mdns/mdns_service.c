@@ -43,6 +43,10 @@
 #define MDNS_TASK_USE_SIMPLE_CREATE 0
 #endif
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+#define MDNS_CACHE_SYNC_TIMEOUT_MS 1000
+#endif
+
 #define MDNS_SERVICE_LOCK()     xSemaphoreTake(s_service_semaphore, portMAX_DELAY)
 #define MDNS_SERVICE_UNLOCK()   xSemaphoreGive(s_service_semaphore)
 
@@ -221,17 +225,31 @@ static void execute_action(mdns_action_t *action)
 static void service_task(void *pvParameters)
 {
     mdns_action_t *a = NULL;
+    TickType_t wait_ticks = portMAX_DELAY;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    wait_ticks = pdMS_TO_TICKS(MDNS_CACHE_SYNC_TIMEOUT_MS);
+#endif
+
     for (;;) {
         if (mdns_priv_is_server_init() && s_action_queue) {
-            if (xQueueReceive(s_action_queue, &a, portMAX_DELAY) == pdTRUE) {
+            BaseType_t received = xQueueReceive(s_action_queue, &a, wait_ticks);
+            if (received == pdTRUE) {
                 assert(a);
                 if (a->type == ACTION_TASK_STOP) {
                     break;
                 }
-                MDNS_SERVICE_LOCK();
-                execute_action(a);
-                MDNS_SERVICE_UNLOCK();
             }
+
+            MDNS_SERVICE_LOCK();
+            if (received == pdTRUE) {
+                execute_action(a);
+            }
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+            // Clean up stale records, or process updates from rx events.
+            mdns_priv_cache_remove_expired_records(esp_timer_get_time());
+            mdns_priv_cache_process_sync();
+#endif /* CONFIG_MDNS_ENABLE_BROWSE */
+            MDNS_SERVICE_UNLOCK();
         } else {
             vTaskDelay(500 * portTICK_PERIOD_MS);
         }
