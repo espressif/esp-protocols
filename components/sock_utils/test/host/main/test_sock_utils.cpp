@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -81,12 +81,11 @@ static void test_getifaddr(int expected_nr_of_addrs)
                 printf("esp_getnameinfo() failed\n");
             } else {
                 printf("IPv4 address of interface \"%s\": %s\n", addr->ifa_name, buffer);
-                if (strcmp(addr->ifa_name, "st1") == 0) {
-                    CHECK(strcmp("1.2.3.1", buffer) == 0);
-                } else if (strcmp(addr->ifa_name, "st2") == 0) {
-                    CHECK(strcmp("1.2.3.2", buffer) == 0);
-                } else {
-                    FAIL("unexpected network interface");
+                // Match by IP only — do not assert lwIP names (stN). netif_num is
+                // monotonic and not reused after destroy, so names shift if another
+                // test (e.g. gethostname) created a netif earlier in this process.
+                if (strcmp(buffer, "1.2.3.1") != 0 && strcmp(buffer, "1.2.3.2") != 0) {
+                    FAIL("unexpected network interface address");
                 }
             }
         }
@@ -100,10 +99,10 @@ static void test_getifaddr(int expected_nr_of_addrs)
 TEST_CASE("esp_getifaddrs() with 0, 1, and 2 addresses", "[sock_utils]")
 {
     test_getifaddr(0);
-    esp_netif_t *esp_netif = create_test_netif("station", 1);   // st1
+    esp_netif_t *esp_netif = create_test_netif("station", 1);   // 1.2.3.1
     REQUIRE(esp_netif != NULL);
     test_getifaddr(1);
-    esp_netif_t *esp_netif2 = create_test_netif("station2", 2); // st2
+    esp_netif_t *esp_netif2 = create_test_netif("station2", 2); // 1.2.3.2
     REQUIRE(esp_netif2 != NULL);
     test_getifaddr(2);
     esp_netif_destroy(esp_netif);
