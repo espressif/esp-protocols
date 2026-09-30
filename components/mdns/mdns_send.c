@@ -1273,7 +1273,8 @@ static uint8_t append_answer(uint8_t *packet, uint16_t *index, mdns_out_answer_t
                                                                                                   MDNS_IP_PROTOCOL_V4)) {
                 return 0;
             }
-            if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(tcpip_if), &if_ip_info)) {
+            // No IPv4 address (e.g. IPv6-only netif with DHCP client stopped): don't advertise A 0.0.0.0
+            if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(tcpip_if), &if_ip_info) || if_ip_info.ip.addr == 0) {
                 return 0;
             }
             if (append_a_record(packet, index, mdns_priv_get_global_hostname(), if_ip_info.ip.addr, answer->flush, answer->bye) <= 0) {
@@ -1283,7 +1284,7 @@ static uint8_t append_answer(uint8_t *packet, uint16_t *index, mdns_out_answer_t
                 return 1;
             }
             mdns_if_t other_if = mdns_priv_netif_get_other_interface(tcpip_if);
-            if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(other_if), &if_ip_info)) {
+            if (esp_netif_get_ip_info(mdns_priv_get_esp_netif(other_if), &if_ip_info) || if_ip_info.ip.addr == 0) {
                 return 1;
             }
             if (append_a_record(packet, index, mdns_priv_get_global_hostname(), if_ip_info.ip.addr, answer->flush, answer->bye) > 0) {
