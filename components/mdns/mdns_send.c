@@ -341,21 +341,24 @@ static uint16_t append_nsec_record(uint8_t *packet, uint16_t *index, uint32_t se
     if (!part_length) {
         return 0;
     }
-    if (!mdns_utils_append_u8(packet, index, 0)) {
+    if (!mdns_utils_append_u8(packet, index, 0)) {      // window block 0
         return 0;
     }
-    uint8_t bitmap_size_location = *index;
-    *index += 1;
+    uint16_t bitmap_size_location = *index;
+    if (!mdns_utils_append_u8(packet, index, 0)) {      // length placeholder (bounds-checked)
+        return 0;
+    }
+    // length = index of last non-zero byte + 1 (trim trailing zeros only)
     uint8_t bitmap_size = 0;
-    for (int i = sizeof(self_host_queries_answered) - 1; i >= 0; --i) {
-        uint8_t bitmap = 0xFF & (self_host_queries_answered >> (i * 8));
-        if (bitmap == 0) {
-            break;
+    for (uint8_t b = 0; b < sizeof(self_host_queries_answered); ++b) {
+        if ((self_host_queries_answered >> ((3 - b) * 8)) & 0xFF) {
+            bitmap_size = b + 1;
         }
-        if (!mdns_utils_append_u8(packet, index, bitmap)) {
+    }
+    for (uint8_t b = 0; b < bitmap_size; ++b) {
+        if (!mdns_utils_append_u8(packet, index, (self_host_queries_answered >> ((3 - b) * 8)) & 0xFF)) {
             return 0;
         }
-        bitmap_size++;
     }
     packet[bitmap_size_location] = bitmap_size;
     part_length += 2 + bitmap_size;
