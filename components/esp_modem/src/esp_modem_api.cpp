@@ -26,6 +26,7 @@ static const char *TAG = "modem_api";
 std::shared_ptr<DTE> create_vfs_dte(const dte_config *config)
 {
     TRY_CATCH_RET_NULL(
+        ESP_MODEM_THROW_IF_FALSE(config != nullptr, "Invalid argument: dte config cannot be null");
         auto term = create_vfs_terminal(config);
         return std::make_shared<DTE>(config, std::move(term));
     )
@@ -37,6 +38,8 @@ create_modem_dce(dce_factory::ModemType m, const dce_config *config, std::shared
 {
     dce_factory::Factory f(m);
     TRY_CATCH_RET_NULL(
+        ESP_MODEM_THROW_IF_FALSE(config != nullptr, "Invalid argument: dce config cannot be null");
+        ESP_MODEM_THROW_IF_FALSE(dte != nullptr, "Invalid argument: dte cannot be null");
         return f.build_unique(config, std::move(dte), netif);
     )
 }
