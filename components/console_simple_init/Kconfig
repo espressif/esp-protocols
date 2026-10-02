@@ -1,0 +1,12 @@
+menu "Simple Console Initializer"
+
+    config CONSOLE_SIMPLE_INIT_ENABLE_STOP
+        bool "Enable console_cmd_stop()"
+        default n
+        help
+            Compile console_cmd_stop() so the REPL can be torn down at runtime.
+            Disabled by default because referencing esp_console_stop_repl()
+            pulls IDF's non-blocking linenoise / eventfd stop path into the
+            link and changes console read behavior.
+
+endmenu
