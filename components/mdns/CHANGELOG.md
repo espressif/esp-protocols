@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.14.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.0)
+
+### Features
+
+- mdns cache natrual TTL expiration ([be666607](https://github.com/espressif/esp-protocols/commit/be666607))
+- Add subtype-aware local service lookup APIs ([65a3a57b](https://github.com/espressif/esp-protocols/commit/65a3a57b))
+
+### Bug Fixes
+
+- Enable IPv6 on the right interface for GOT_IP6 ([eb5d2f36](https://github.com/espressif/esp-protocols/commit/eb5d2f36))
+- Don't advertise A record with 0.0.0.0 address ([76760948](https://github.com/espressif/esp-protocols/commit/76760948))
+- Distinguish TXT item with no value and empty value in responder ([47f8ab48](https://github.com/espressif/esp-protocols/commit/47f8ab48))
+- Distinguish TXT item with no value and empty value in cache ([95a1f604](https://github.com/espressif/esp-protocols/commit/95a1f604))
+
+### Updated
+
+- test(mdns): update host unit tests for cache expiry ([d9fb726f](https://github.com/espressif/esp-protocols/commit/d9fb726f))
+- test(mdns): Add host unit tests for mdns_browse ([ee59cf7b](https://github.com/espressif/esp-protocols/commit/ee59cf7b))
+- test(mdns): Added host unit tests for mdns_cache ([63be8715](https://github.com/espressif/esp-protocols/commit/63be8715))
+
 ## [1.13.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.13.1)
 
 ### Bug Fixes
