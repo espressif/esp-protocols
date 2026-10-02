@@ -301,8 +301,9 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
                     if (mdns_if >= MDNS_MAX_INTERFACES) {
                         return;
                     }
-                    post_enable_pcb(mdns_if, MDNS_IP_PROTOCOL_V6);
-                    post_announce_pcb(mdns_if, MDNS_IP_PROTOCOL_V4);
+                    // mdns_if is already an internal index, not a predefined interface
+                    post_custom_action(mdns_if, MDNS_EVENT_ENABLE_IP6);
+                    post_custom_action(mdns_if, MDNS_EVENT_ANNOUNCE_IP4);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                     post_browse_send_by_ip_protocol_action(mdns_if, MDNS_IP_PROTOCOL_V6);
 #endif
