@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
-/* ESP HTTP Client Example
+/* ESP WebSocket Client Example
 
    This example code is in the Public Domain (or CC0 licensed, at your option.)
 
