@@ -94,9 +94,27 @@ static void deinit_fuzz_context(void)
     mdns_priv_responder_free();
 }
 #else /* FUZZ_TARGET_RECEIVE */
-static void init_fuzz_context(void)
+/*
+ * One-shot searches finish (search_finish / detach) once max_results is hit.
+ * Recreate them between persistent-mode inputs so later packets still exercise
+ * answer matching — the path this target was split out to cover.
+ */
+static void free_receive_searches(void)
 {
-    init_common();
+    mdns_priv_search_once_free(s_a);
+    mdns_priv_search_once_free(s_aaaa);
+    mdns_priv_search_once_free(s_ptr);
+    mdns_priv_search_once_free(s_srv);
+    mdns_priv_search_once_free(s_txt);
+    s_a = NULL;
+    s_aaaa = NULL;
+    s_ptr = NULL;
+    s_srv = NULL;
+    s_txt = NULL;
+}
+
+static void create_receive_searches(void)
+{
     /* Receive/parse path: outstanding queries exercise answer matching without browse. */
     s_a = mdns_query_async_new("host_name", NULL, NULL, MDNS_TYPE_A, 1000, 1, NULL);
     s_aaaa = mdns_query_async_new("host_name2", NULL, NULL, MDNS_TYPE_AAAA, 1000, 1, NULL);
@@ -105,22 +123,19 @@ static void init_fuzz_context(void)
     s_txt = mdns_query_async_new("fritz", "_http", "_tcp", MDNS_TYPE_TXT, 1000, 1, NULL);
 }
 
+static void init_fuzz_context(void)
+{
+    init_common();
+    create_receive_searches();
+}
+
 static void deinit_fuzz_context(void)
 {
-    mdns_priv_search_once_free(s_a);
-    mdns_priv_search_once_free(s_aaaa);
-    mdns_priv_search_once_free(s_ptr);
-    mdns_priv_search_once_free(s_srv);
-    mdns_priv_search_once_free(s_txt);
+    free_receive_searches();
     mdns_priv_query_free();
     mdns_priv_cache_clear();
     mdns_service_remove_all();
     mdns_priv_responder_free();
-    s_a = NULL;
-    s_aaaa = NULL;
-    s_ptr = NULL;
-    s_srv = NULL;
-    s_txt = NULL;
 }
 #endif
 
@@ -148,11 +163,15 @@ static void send_packet(const uint8_t *data, size_t len)
 
 /*
  * Reset mutable global state between persistent-mode iterations so one input
- * cannot poison the next (cache entries from previous packets).
+ * cannot poison the next (cache entries / finished one-shot searches).
  */
 static void reset_between_inputs(void)
 {
     mdns_priv_cache_clear();
+#ifdef FUZZ_TARGET_RECEIVE
+    free_receive_searches();
+    create_receive_searches();
+#endif
 }
 
 /*
