@@ -22,10 +22,10 @@ endif()
 idf_build_get_property(target IDF_TARGET)
 if(${target} STREQUAL "linux")
     set(dependencies esp_netif_linux esp_event)
-    set(private_dependencies esp_timer console esp_system)
+    set(private_dependencies esp_timer esp_system)
     set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 else()
-    set(dependencies lwip console esp_netif)
+    set(dependencies lwip esp_netif)
     set(private_dependencies esp_timer)
     set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 endif()
@@ -56,6 +56,24 @@ if(NOT ${target} STREQUAL "linux")
     elseif(CONFIG_SOC_WIFI_SUPPORTED)
         # ESP_WIFI_ENABLED is not available on IDF <= 5.1
         idf_component_optional_requires(PRIVATE esp_wifi)
+    endif()
+endif()
+
+# console is only used by mdns_console.c; declare it conditionally so builds with
+# the CLI disabled do not pull console (and esp_gdbstub through it) into the build.
+# Requirements are collected before sdkconfig is loaded, so this cannot be a
+# conditional REQUIRES; when the CLI is enabled the project has to bring console in.
+if(CONFIG_MDNS_ENABLE_CONSOLE_CLI)
+    idf_build_get_property(build_components BUILD_COMPONENTS)
+    if(NOT console IN_LIST build_components)
+        message(FATAL_ERROR "CONFIG_MDNS_ENABLE_CONSOLE_CLI is enabled but the console component "
+                "is not in the build. Add console to the project's COMPONENTS or to a component's "
+                "REQUIRES, or disable CONFIG_MDNS_ENABLE_CONSOLE_CLI.")
+    endif()
+    if(${target} STREQUAL "linux")
+        idf_component_optional_requires(PRIVATE console)
+    else()
+        idf_component_optional_requires(PUBLIC console)
     endif()
 endif()
 
