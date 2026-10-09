@@ -146,6 +146,17 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
 void mdns_priv_cache_remove_expired_records(int64_t now_us);
 
 /**
+ * @brief Trim down the expiration time of unsubscribed records.
+ *
+ * @param now_us The current time in microseconds from esp_timer_get_time().
+ *
+ * @note This function scans through s_expiry and sets the expiration time of unsubscribed records to
+ *       `min(expires_at_us, now_us + MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC * MDNS_US_PER_SEC)`.
+ *       Finally cleaned up in service task by `mdns_priv_cache_remove_expired_records()`.
+ */
+void mdns_priv_cache_trim_unsubscribed_records(int64_t now_us);
+
+/**
  * @brief Clear all cache entries.
  */
 void mdns_priv_cache_clear(void);
