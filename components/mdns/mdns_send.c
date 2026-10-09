@@ -1438,6 +1438,10 @@ void mdns_priv_dispatch_tx_packet(mdns_tx_packet_t *p)
         }
         a = a->next;
     }
+    // RFC 6762 6.1: the queried rrtype does not exist, so put NSEC in Answer
+    if (self_host_queries_not_answered) {
+        count += append_nsec_record(packet, &index, self_host_queries_answered);
+    }
     set_u16(packet, MDNS_HEAD_ANSWERS_OFFSET, count);
 
     count = 0;
