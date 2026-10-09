@@ -1458,7 +1458,9 @@ void mdns_priv_dispatch_tx_packet(mdns_tx_packet_t *p)
         count += append_answer(packet, &index, a, p->tcpip_if);
         a = a->next;
     }
-    if (self_host_queries_not_answered) {
+    // RFC 6762 6.2: the queried rrtype is answered but the other address family is not
+    if (p->self_host_queries && !self_host_queries_not_answered &&
+            self_host_queries_answered != ((MDNS_NEGATIVE_ANSWER_BITMAP >> MDNS_TYPE_A) | (MDNS_NEGATIVE_ANSWER_BITMAP >> MDNS_TYPE_AAAA))) {
         count += append_nsec_record(packet, &index, self_host_queries_answered);
     }
     set_u16(packet, MDNS_HEAD_ADDITIONAL_OFFSET, count);
