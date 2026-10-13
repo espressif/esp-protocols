@@ -208,14 +208,15 @@ idf_build_get_property(_lws_build_comps BUILD_COMPONENTS)
 
 # lib/misc/romfs.c pulls esp_flash.h, whose IDF v6 include chain spans
 # components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
-# esp_blockdev) that aren't on lws's hardcoded include list. Add their include
+# esp_blockdev; on IDF v6.2 also esp_mspi, home of spi_flash_err.h) that aren't on
+# lws's hardcoded include list. Add their include
 # dirs (not link, which would re-inherit IDF's -Werror).
 # esp_security / esp_hal_security: the mbedTLS-4 PSA header chain (psa/crypto.h
 # -> driver-context composites) pulls the ESP HW-crypto driver context headers,
 # which include esp_ds.h / esp_key_mgr.h (esp_security); those in turn include
 # hal/key_mgr_types.h (esp_hal_security). mbedtls links these PRIVATE so they
 # aren't propagated to this add_subdirectory target — add both here.
-foreach(_lws_extra_comp esp_hal_mspi esp_blockdev esp_security esp_hal_security)
+foreach(_lws_extra_comp esp_hal_mspi esp_mspi esp_blockdev esp_security esp_hal_security)
     if(_lws_extra_comp IN_LIST _lws_build_comps)
         idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
         if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
