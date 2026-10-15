@@ -43,6 +43,16 @@ public:
         return last_command;
     }
 
+    const std::vector<uint8_t> &get_cmux_sabm_dlci() const
+    {
+        return cmux_sabm_dlci;
+    }
+
+    int get_last_cmux_payload_dlci() const
+    {
+        return last_cmux_payload_dlci;
+    }
+
 private:
     enum class status_t {
         STARTED,
@@ -70,5 +80,7 @@ private:
     std::vector<std::future<void>> async_results;
     std::atomic<bool> stopping;
     std::string last_command;
+    std::vector<uint8_t> cmux_sabm_dlci;
+    int last_cmux_payload_dlci{-1};
 
 };
