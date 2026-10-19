@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.1)
+
+### Bug Fixes
+
+- Avoid stack overflow in SRV and TXT collision checks by replacing stack VLAs with a fixed SRV buffer and a heap TXT buffer
+
 ## [1.14.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.0)
 
 ### Features
