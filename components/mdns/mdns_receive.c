@@ -510,8 +510,12 @@ static int check_txt_collision(mdns_service_t *service, const uint8_t *data, siz
         return -1;//we win
     }
 
-    uint8_t ours[len];
     uint16_t index = 0;
+    /* Packet-sized TXT must not be a VLA on the mDNS task stack. */
+    uint8_t *ours = mdns_mem_malloc(len);
+    if (!ours) {
+        return 0;
+    }
 
     txt = service->txt;
     while (txt) {
@@ -520,6 +524,7 @@ static int check_txt_collision(mdns_service_t *service, const uint8_t *data, siz
     }
 
     int ret = memcmp(ours, data, len);
+    mdns_mem_free(ours);
     if (ret > 0) {
         return -1;//we win
     } else if (ret < 0) {
@@ -550,8 +555,22 @@ static int check_srv_collision(mdns_service_t *service, uint16_t priority, uint1
         return -1;//we win
     }
 
+    /*
+     * Names are bounded by MDNS_NAME_MAX_LEN. Keep the compare buffers fixed so
+     * GCC does not allocate them with a runtime SP adjustment.
+     */
+    enum {
+        MDNS_SRV_OUR_DATA_MAX = 14 + MDNS_NAME_MAX_LEN,
+        MDNS_SRV_THEIR_DATA_MAX = 9 + (2 * MDNS_NAME_MAX_LEN),
+    };
+    if (our_host_len > MDNS_NAME_MAX_LEN || their_host_len > MDNS_NAME_MAX_LEN ||
+            their_domain_len > MDNS_NAME_MAX_LEN || our_len > MDNS_SRV_OUR_DATA_MAX ||
+            their_len > MDNS_SRV_THEIR_DATA_MAX) {
+        return 1;//they win
+    }
+
     uint16_t our_index = 0;
-    uint8_t our_data[our_len];
+    uint8_t our_data[MDNS_SRV_OUR_DATA_MAX];
     mdns_utils_append_u16(our_data, &our_index, service->priority);
     mdns_utils_append_u16(our_data, &our_index, service->weight);
     mdns_utils_append_u16(our_data, &our_index, service->port);
@@ -564,7 +583,7 @@ static int check_srv_collision(mdns_service_t *service, uint16_t priority, uint1
     our_data[our_index++] = 0;
 
     uint16_t their_index = 0;
-    uint8_t their_data[their_len];
+    uint8_t their_data[MDNS_SRV_THEIR_DATA_MAX];
     mdns_utils_append_u16(their_data, &their_index, priority);
     mdns_utils_append_u16(their_data, &their_index, weight);
     mdns_utils_append_u16(their_data, &their_index, port);
