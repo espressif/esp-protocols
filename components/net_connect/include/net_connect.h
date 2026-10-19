@@ -8,6 +8,7 @@
 
 #include "sdkconfig.h"
 #include "esp_err.h"
+#include "net_iface.h"
 #if !CONFIG_IDF_TARGET_LINUX
 #include "esp_netif.h"
 #endif // !CONFIG_IDF_TARGET_LINUX
