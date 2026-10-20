@@ -6,9 +6,13 @@
 
 #include <string.h>
 #include "net_connect.h"
+#include "net_iface_priv.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_netif_defaults.h"
+#include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "unity.h"
 #include "test_utils.h"
 #include "unity_fixture.h"
@@ -27,6 +31,69 @@ static esp_netif_t *test_netif_eth = NULL;
 static esp_netif_t *test_netif_thread = NULL;
 static esp_netif_t *test_netif_ppp = NULL;
 static esp_netif_t *test_netif_other = NULL;
+
+#define TEST_EVENT_LOG_LEN 8
+
+static net_iface_handle_t s_test_handle = NULL;
+static bool s_handler_registered = false;
+static volatile int s_event_count = 0;
+static net_iface_event_id_t s_event_ids[TEST_EVENT_LOG_LEN];
+static net_iface_handle_t s_event_ifaces[TEST_EVENT_LOG_LEN];
+
+static void test_on_iface_event(void *arg, esp_event_base_t event_base,
+                                int32_t event_id, void *event_data)
+{
+    (void)arg;
+    (void)event_base;
+    if (event_data == NULL) {
+        return;
+    }
+    int idx = s_event_count;
+    if (idx >= TEST_EVENT_LOG_LEN) {
+        return;
+    }
+    const net_iface_event_data_t *data = event_data;
+    s_event_ids[idx] = (net_iface_event_id_t)event_id;
+    s_event_ifaces[idx] = data->iface;
+    s_event_count = idx + 1;
+}
+
+static void test_reset_events(void)
+{
+    s_event_count = 0;
+}
+
+static void test_unregister_handler(void)
+{
+    if (!s_handler_registered) {
+        return;
+    }
+    net_iface_unregister_event_handler(test_on_iface_event);
+    s_handler_registered = false;
+}
+
+static esp_err_t test_register_handler(void)
+{
+    test_reset_events();
+    esp_err_t err = net_iface_register_event_handler(test_on_iface_event, NULL);
+    if (err == ESP_OK) {
+        s_handler_registered = true;
+    }
+    return err;
+}
+
+static void test_iface_cleanup(void)
+{
+    if (s_test_handle != NULL) {
+        net_iface_state_t state = net_iface_get_state(s_test_handle);
+        if (state != NET_IFACE_STATE_INIT && state != NET_IFACE_STATE_UNINIT) {
+            net_iface_stop(s_test_handle);
+        }
+        net_iface_deinit(s_test_handle);
+        s_test_handle = NULL;
+    }
+    test_unregister_handler();
+}
 
 TEST_SETUP(net_connect)
 {
@@ -98,6 +165,9 @@ TEST_SETUP(net_connect)
 
 TEST_TEAR_DOWN(net_connect)
 {
+    /* Drop iface handles before the default event loop so global IP handlers unregister. */
+    test_iface_cleanup();
+
     // Clean up test netifs
     if (test_netif_sta) {
         esp_netif_destroy(test_netif_sta);
@@ -289,6 +359,197 @@ TEST(net_connect, net_get_netif_from_desc_multiple_calls_same_result)
     TEST_ASSERT_EQUAL(test_netif_sta, found1);
 }
 
+static esp_err_t fake_start(net_iface_handle_t self)
+{
+    /* Use test_netif_sta created in TEST_SETUP as the fake netif */
+    net_iface_notify_started(self, test_netif_sta);
+    return ESP_OK;
+}
+
+static esp_err_t fake_stop(net_iface_handle_t self)
+{
+    (void)self;
+    return ESP_OK;
+}
+
+static esp_err_t fake_connect(net_iface_handle_t self)
+{
+    net_iface_notify_connected(self);
+    return ESP_OK;
+}
+
+static esp_err_t fake_disconnect(net_iface_handle_t self)
+{
+    (void)self;
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_fake_ops = {
+    .name = "fake_wifi",
+    .init = NULL,
+    .deinit = NULL,
+    .start = fake_start,
+    .stop = fake_stop,
+    .connect = fake_connect,
+    .disconnect = fake_disconnect,
+};
+
+static esp_err_t open_fake_iface(net_iface_handle_t *out, bool enable_ipv6)
+{
+    net_iface_config_t cfg = { 0 };
+    cfg.type = NET_IFACE_TYPE_WIFI_STA;
+    cfg.desc = TEST_NETIF_DESC_STA;
+    cfg.ip.use_dhcp = true;
+    cfg.ip.enable_ipv6 = enable_ipv6;
+    esp_err_t err = net_iface_init_with_ops(&cfg, &s_fake_ops, out);
+    if (err == ESP_OK) {
+        s_test_handle = *out;
+    }
+    return err;
+}
+
+static void expect_iface_events(net_iface_handle_t h, const net_iface_event_id_t *expected, int count)
+{
+    int seen = s_event_count;
+    TEST_ASSERT_EQUAL(count, seen);
+    for (int i = 0; i < count; i++) {
+        TEST_ASSERT_EQUAL(expected[i], s_event_ids[i]);
+        TEST_ASSERT_EQUAL(h, s_event_ifaces[i]);
+    }
+}
+
+/**
+ * @brief Walk INIT -> STARTED -> CONNECTED -> READY -> INIT using a fake driver.
+ */
+TEST(net_connect, net_iface_lifecycle_state_transitions)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_TYPE_WIFI_STA, net_iface_get_type(h));
+    TEST_ASSERT_EQUAL(h, net_iface_get_by_type(NET_IFACE_TYPE_WIFI_STA));
+    TEST_ASSERT_EQUAL(h, net_iface_get_by_desc(TEST_NETIF_DESC_STA));
+
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_connect(h));
+
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(test_netif_sta, net_iface_get_netif(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_deinit(h));
+
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    net_iface_notify_ready(h);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_NULL(net_iface_get_netif(h));
+
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief Callbacks observe STARTED, CONNECTED, READY, STOPPED in that order.
+ */
+TEST(net_connect, net_iface_event_callbacks_and_order)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_fake_iface(&h, false));
+
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ESP_OK(net_iface_connect(h));
+    net_iface_notify_ready(h);
+    TEST_ESP_OK(net_iface_stop(h));
+    vTaskDelay(pdMS_TO_TICKS(20));
+
+    const net_iface_event_id_t expected[] = {
+        NET_IFACE_EVENT_STARTED,
+        NET_IFACE_EVENT_CONNECTED,
+        NET_IFACE_EVENT_READY,
+        NET_IFACE_EVENT_STOPPED,
+    };
+    expect_iface_events(h, expected, 4);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief Failure is sticky for net_iface_wait() and is reported as last_err.
+ */
+TEST(net_connect, net_iface_failure_records_last_error)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ESP_OK(net_iface_start(h));
+
+    net_iface_notify_failed(h, ESP_ERR_WIFI_CONN);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_get_last_error(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_wait(h, 100));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief A handler registered after READY does not receive a replayed event.
+ */
+TEST(net_connect, net_iface_late_callback_discovers_state)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ESP_OK(net_iface_connect(h));
+    net_iface_notify_ready(h);
+    vTaskDelay(pdMS_TO_TICKS(20));
+
+    TEST_ESP_OK(test_register_handler());
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(0, s_event_count);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_wait(h, 0));
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief A simulated STA got-IP event marks the iface READY; lost-IP drops it.
+ */
+TEST(net_connect, net_iface_ip_event_drives_ready_and_lost_ip)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    ip_event_got_ip_t event = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_LOST_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 10));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
@@ -302,6 +563,11 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_case_sensitive);
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_partial_match_fails);
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_multiple_calls_same_result);
+    RUN_TEST_CASE(net_connect, net_iface_lifecycle_state_transitions);
+    RUN_TEST_CASE(net_connect, net_iface_event_callbacks_and_order);
+    RUN_TEST_CASE(net_connect, net_iface_failure_records_last_error);
+    RUN_TEST_CASE(net_connect, net_iface_late_callback_discovers_state);
+    RUN_TEST_CASE(net_connect, net_iface_ip_event_drives_ready_and_lost_ip);
 }
 
 void app_main(void)
