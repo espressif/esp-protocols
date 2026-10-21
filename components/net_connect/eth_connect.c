@@ -1,216 +1,213 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/*
+ * Ethernet driver.
+ *
+ * start() creates the netif and attaches the MAC. It does not start the PHY.
+ * connect() calls esp_eth_start() and returns. Link-up and link-down events
+ * are reported to net_iface.c. IP addresses are handled there as well.
+ */
+
 #include <string.h>
 #include "net_connect.h"
-#include "net_connect_private.h"
+#include "net_iface_priv.h"
 #include "esp_event.h"
 #include "esp_eth.h"
 #include "ethernet_init.h"
 #include "esp_log.h"
-#include "esp_mac.h"
-#include "driver/gpio.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-
+#include "esp_netif.h"
 
 static const char *TAG = "net_connect_ethernet";
-static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
-#if CONFIG_NET_CONNECT_IPV6
-static SemaphoreHandle_t s_semph_get_ip6_addrs = NULL;
-#endif
 
-static esp_netif_t *eth_start(void);
-static void eth_stop(void);
+/* Board init returns these. Only the first port is used. */
+static esp_eth_handle_t *s_eth_handles = NULL;
+static uint8_t s_eth_count = 0;
+static esp_eth_netif_glue_handle_t s_eth_glue = NULL;
+static esp_netif_t *s_eth_netif = NULL;
 
-
-/** Event handler for Ethernet events */
-
-static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
-{
-    ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-    if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_ETH, event->esp_netif)) {
-        return;
-    }
-    ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
-    if (s_semph_get_ip_addrs) {
-        xSemaphoreGive(s_semph_get_ip_addrs);
-    }
-}
-
-#if CONFIG_NET_CONNECT_IPV6
-
-static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
-                            int32_t event_id, void *event_data)
-{
-    ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
-    if (!net_connect_is_our_netif(NET_CONNECT_NETIF_DESC_ETH, event->esp_netif)) {
-        return;
-    }
-    esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
-    ESP_LOGI(TAG, "Got IPv6 event: Interface \"%s\" address: " IPV6STR ", type: %s", esp_netif_get_desc(event->esp_netif),
-             IPV62STR(event->ip6_info.ip), net_connect_ipv6_addr_types_to_str[ipv6_type]);
-    if (ipv6_type == NET_CONNECT_PREFERRED_IPV6_TYPE) {
-        if (s_semph_get_ip6_addrs) {
-            xSemaphoreGive(s_semph_get_ip6_addrs);
-        }
-    }
-}
-
-static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
+/* Link up means the cable is connected. Link down means the address is gone. */
+static void on_eth_event(void *arg, esp_event_base_t event_base,
                          int32_t event_id, void *event_data)
 {
+    (void)event_base;
+    (void)event_data;
+    net_iface_handle_t self = (net_iface_handle_t)arg;
     switch (event_id) {
     case ETHERNET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Ethernet Link Up");
-        ESP_ERROR_CHECK(esp_netif_create_ip6_linklocal(esp_netif));
+        net_iface_notify_connected(self);
+        break;
+    case ETHERNET_EVENT_DISCONNECTED:
+        ESP_LOGI(TAG, "Ethernet Link Down");
+        net_iface_notify_lost_ip(self);
         break;
     default:
         break;
     }
 }
 
-#endif // CONFIG_NET_CONNECT_IPV6
-
-static esp_eth_handle_t *s_eth_handles = NULL;
-static uint8_t s_eth_count = 0;
-static esp_eth_netif_glue_handle_t s_eth_glue = NULL;
-static esp_netif_t *s_eth_netif = NULL;
-
-static esp_netif_t *eth_start(void)
+/* Release every Ethernet object this driver created. Safe to call more than once. */
+static void eth_release_resources(void)
 {
-    ESP_ERROR_CHECK(ethernet_init_all(&s_eth_handles, &s_eth_count));
+    esp_event_handler_unregister(ETH_EVENT, ESP_EVENT_ANY_ID, on_eth_event);
 
-    esp_netif_inherent_config_t esp_netif_config = ESP_NETIF_INHERENT_DEFAULT_ETH();
-    // Warning: the interface desc is used in tests to capture actual connection details (IP, gw, mask)
-    esp_netif_config.if_desc = NET_CONNECT_NETIF_DESC_ETH;
-    esp_netif_config.route_prio = 64;
-    esp_netif_config_t netif_config = {
-        .base = &esp_netif_config,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_ETH
-    };
-    s_eth_netif = esp_netif_new(&netif_config);
-    if (s_eth_netif == NULL) {
-        ESP_LOGE(TAG, "Failed to create Ethernet netif");
+    if (s_eth_handles != NULL) {
+        esp_err_t err = esp_eth_stop(s_eth_handles[0]);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(TAG, "esp_eth_stop returned %s", esp_err_to_name(err));
+        }
+    }
+    if (s_eth_glue != NULL) {
+        (void)esp_eth_del_netif_glue(s_eth_glue);
+        s_eth_glue = NULL;
+    }
+    if (s_eth_netif != NULL) {
+        esp_netif_destroy(s_eth_netif);
+        s_eth_netif = NULL;
+    }
+    if (s_eth_handles != NULL) {
         ethernet_deinit_all(s_eth_handles);
         s_eth_handles = NULL;
         s_eth_count = 0;
-        return NULL;
+    }
+}
+
+/* Install the Ethernet driver and create the netif. The PHY is started later. */
+static esp_err_t eth_ops_start(net_iface_handle_t self)
+{
+    if (s_eth_netif != NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_err_t err = ethernet_init_all(&s_eth_handles, &s_eth_count);
+    if (err != ESP_OK) {
+        s_eth_handles = NULL;
+        s_eth_count = 0;
+        return err;
+    }
+    if (s_eth_handles == NULL || s_eth_count == 0) {
+        return ESP_FAIL;
+    }
+
+    esp_netif_inherent_config_t base = ESP_NETIF_INHERENT_DEFAULT_ETH();
+    base.if_desc = self->cfg.desc != NULL ? self->cfg.desc : NET_CONNECT_NETIF_DESC_ETH;
+    base.route_prio = self->cfg.route_prio > 0 ? self->cfg.route_prio : NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
+    esp_netif_config_t netif_config = {
+        .base = &base,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_ETH,
+    };
+
+    s_eth_netif = esp_netif_new(&netif_config);
+    if (s_eth_netif == NULL) {
+        ethernet_deinit_all(s_eth_handles);
+        s_eth_handles = NULL;
+        s_eth_count = 0;
+        return ESP_ERR_NO_MEM;
     }
 
     s_eth_glue = esp_eth_new_netif_glue(s_eth_handles[0]);
     if (s_eth_glue == NULL) {
-        ESP_LOGE(TAG, "Failed to create Ethernet netif glue");
-        esp_netif_destroy(s_eth_netif);
-        s_eth_netif = NULL;
-        ethernet_deinit_all(s_eth_handles);
-        s_eth_handles = NULL;
-        s_eth_count = 0;
-        return NULL;
-    }
-    esp_err_t ret = esp_netif_attach(s_eth_netif, s_eth_glue);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to attach Ethernet netif: %s", esp_err_to_name(ret));
-        esp_eth_del_netif_glue(s_eth_glue);
-        s_eth_glue = NULL;
-        esp_netif_destroy(s_eth_netif);
-        s_eth_netif = NULL;
-        ethernet_deinit_all(s_eth_handles);
-        s_eth_handles = NULL;
-        s_eth_count = 0;
-        return NULL;
-    }
-
-    // Register user defined event handlers
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, NULL));
-#ifdef CONFIG_NET_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, s_eth_netif));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
-#endif
-
-    ESP_ERROR_CHECK(esp_eth_start(s_eth_handles[0]));
-
-    return s_eth_netif;
-}
-
-static void eth_stop(void)
-{
-    ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip));
-#if CONFIG_NET_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6));
-    ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event));
-#endif
-    ESP_ERROR_CHECK(esp_eth_stop(s_eth_handles[0]));
-    ESP_ERROR_CHECK(esp_eth_del_netif_glue(s_eth_glue));
-    esp_netif_destroy(s_eth_netif);
-    ethernet_deinit_all(s_eth_handles);
-
-    s_eth_glue = NULL;
-    s_eth_netif = NULL;
-    s_eth_handles = NULL;
-    s_eth_count = 0;
-}
-
-/* tear down connection, release resources */
-void net_connect_ethernet_shutdown(void)
-{
-    if (s_eth_netif != NULL) {
-        eth_stop();
-    }
-#if CONFIG_NET_CONNECT_IPV4
-    if (s_semph_get_ip_addrs != NULL) {
-        vSemaphoreDelete(s_semph_get_ip_addrs);
-        s_semph_get_ip_addrs = NULL;
-    }
-#endif
-#if CONFIG_NET_CONNECT_IPV6
-    if (s_semph_get_ip6_addrs != NULL) {
-        vSemaphoreDelete(s_semph_get_ip6_addrs);
-        s_semph_get_ip6_addrs = NULL;
-    }
-#endif
-}
-
-esp_err_t net_connect_ethernet_connect(void)
-{
-#if CONFIG_NET_CONNECT_IPV4
-    s_semph_get_ip_addrs = xSemaphoreCreateBinary();
-    if (s_semph_get_ip_addrs == NULL) {
+        eth_release_resources();
         return ESP_ERR_NO_MEM;
     }
-#endif
-#if CONFIG_NET_CONNECT_IPV6
-    s_semph_get_ip6_addrs = xSemaphoreCreateBinary();
-    if (s_semph_get_ip6_addrs == NULL) {
-#if CONFIG_NET_CONNECT_IPV4
-        vSemaphoreDelete(s_semph_get_ip_addrs);
-        s_semph_get_ip_addrs = NULL;
-#endif
-        return ESP_ERR_NO_MEM;
+
+    err = esp_netif_attach(s_eth_netif, s_eth_glue);
+    if (err != ESP_OK) {
+        eth_release_resources();
+        return err;
     }
-#endif
-    if (eth_start() == NULL) {
-#if CONFIG_NET_CONNECT_IPV4
-        vSemaphoreDelete(s_semph_get_ip_addrs);
-        s_semph_get_ip_addrs = NULL;
-#endif
-#if CONFIG_NET_CONNECT_IPV6
-        vSemaphoreDelete(s_semph_get_ip6_addrs);
-        s_semph_get_ip6_addrs = NULL;
-#endif
-        return ESP_ERR_NO_MEM;
+
+    err = esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, on_eth_event, self);
+    if (err != ESP_OK) {
+        eth_release_resources();
+        return err;
     }
-    ESP_LOGI(TAG, "Waiting for IP(s).");
-#if CONFIG_NET_CONNECT_IPV4
-    xSemaphoreTake(s_semph_get_ip_addrs, portMAX_DELAY);
-#endif
-#if CONFIG_NET_CONNECT_IPV6
-    xSemaphoreTake(s_semph_get_ip6_addrs, portMAX_DELAY);
-#endif
+
+    net_iface_notify_started(self, s_eth_netif);
     return ESP_OK;
+}
+
+/* Start the PHY. The link-up event arrives later and is not waited for here. */
+static esp_err_t eth_ops_connect(net_iface_handle_t self)
+{
+    (void)self;
+    if (s_eth_handles == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return esp_eth_start(s_eth_handles[0]);
+}
+
+/* Stop the PHY. Already stopped is fine. */
+static esp_err_t eth_ops_disconnect(net_iface_handle_t self)
+{
+    (void)self;
+    if (s_eth_handles == NULL) {
+        return ESP_OK;
+    }
+    esp_err_t err = esp_eth_stop(s_eth_handles[0]);
+    if (err == ESP_ERR_INVALID_STATE) {
+        return ESP_OK;
+    }
+    return err;
+}
+
+/* Unregister events, stop the MAC, and free the netif. */
+static esp_err_t eth_ops_stop(net_iface_handle_t self)
+{
+    (void)self;
+    eth_release_resources();
+    return ESP_OK;
+}
+
+/* Driver callbacks used by net_iface_init() and net_eth_create(). */
+const net_iface_ops_t g_net_iface_eth_ops = {
+    .name = "eth",
+    .init = NULL,
+    .deinit = NULL,
+    .start = eth_ops_start,
+    .stop = eth_ops_stop,
+    .connect = eth_ops_connect,
+    .disconnect = eth_ops_disconnect,
+};
+
+esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out_handle)
+{
+    if (out_handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    *out_handle = NULL;
+
+    net_iface_config_t cfg = { 0 };
+    cfg.type = NET_IFACE_TYPE_ETH;
+    cfg.desc = NET_CONNECT_NETIF_DESC_ETH;
+    cfg.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
+#if CONFIG_NET_CONNECT_ETHERNET_REQUIRED
+    cfg.required = true;
+#else
+    cfg.required = false;
+#endif
+    cfg.auto_connect_on_start = true;
+    cfg.ip.use_dhcp = true;
+#if CONFIG_NET_CONNECT_IPV6
+    cfg.ip.enable_ipv6 = true;
+#else
+    cfg.ip.enable_ipv6 = false;
+#endif
+
+    if (params != NULL) {
+        if (params->route_prio >= 0) {
+            cfg.route_prio = params->route_prio;
+        }
+        cfg.required = params->required;
+        cfg.auto_connect_on_start = params->auto_connect_on_start;
+        if (params->ip != NULL) {
+            cfg.ip = *params->ip;
+        }
+    }
+
+    return net_iface_init_with_ops(&cfg, &g_net_iface_eth_ops, out_handle);
 }

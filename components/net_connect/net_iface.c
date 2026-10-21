@@ -159,21 +159,28 @@ static void unregister_global_handlers(void)
 
 /*
  * Install the shared handlers if they are not installed yet.
- * The caller holds the list lock on the way in and on the way out.
+ * Must be called without holding the list lock or any interface lock, because
+ * registering a handler takes the event system's lock while an event callback
+ * takes the list lock.
  * If the event loop does not exist yet, this does nothing and start() tries later.
  */
-static void try_register_global_handlers_locked(void)
+static void try_register_global_handlers(void)
 {
-    if (s_global_handlers_registered) {
+    if (s_registry_mutex == NULL) {
         return;
     }
-    /* Let the list lock go. Registering a handler can run other code that needs it. */
-    xSemaphoreGive(s_registry_mutex);
-    esp_err_t err = register_global_handlers();
     xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
-    /* Remember success only. A missing event loop leaves the flag clear for a later try. */
+    bool already = s_global_handlers_registered;
+    xSemaphoreGive(s_registry_mutex);
+    if (already) {
+        return;
+    }
+
+    esp_err_t err = register_global_handlers();
     if (err == ESP_OK) {
+        xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
         s_global_handlers_registered = true;
+        xSemaphoreGive(s_registry_mutex);
     }
 }
 
@@ -182,23 +189,32 @@ static void try_register_global_handlers_locked(void)
  * unit test deletes the event loop while a handler is still attached to it.
  * If another create added an interface while the lock was released, the
  * handlers are installed again for that interface.
- * The caller holds the list lock on the way in and on the way out.
+ * Must be called without holding the list lock or any interface lock.
  */
-static void maybe_unregister_global_handlers_locked(void)
+static void maybe_unregister_global_handlers(void)
 {
-    /* Keep the handlers while any interface still exists. */
-    if (s_iface_list != NULL || !s_global_handlers_registered) {
+    if (s_registry_mutex == NULL) {
         return;
     }
+    xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
+    bool should_unregister = (s_iface_list == NULL && s_global_handlers_registered);
     xSemaphoreGive(s_registry_mutex);
+    if (!should_unregister) {
+        return;
+    }
+
     unregister_global_handlers();
+
     xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
     s_global_handlers_registered = false;
     /* Forget the event-loop task. The next IP or Thread event records it again. */
     s_event_loop_task = NULL;
-    /* A create may have added an interface while the lock was released. Put the handlers back. */
-    if (s_iface_list != NULL) {
-        try_register_global_handlers_locked();
+    bool list_non_empty = (s_iface_list != NULL);
+    xSemaphoreGive(s_registry_mutex);
+
+    /* A create may have added an interface while the handlers were removed. Put them back. */
+    if (list_non_empty) {
+        try_register_global_handlers();
     }
 }
 
@@ -315,20 +331,24 @@ static net_iface_handle_t find_iface_by_netif(esp_netif_t *netif)
 }
 
 /*
- * If the address flags now say this interface is ready, mark it ready and
- * tell listeners. The check is done while holding the interface lock. The
- * notification is sent after the lock is released, so a listener can safely
- * ask for the state.
+ * Set an address or attach flag on the interface and, if all required flags
+ * are now present, mark it ready and tell listeners.
+ * The check is done while holding the interface lock. The notification is
+ * sent after the lock is released, so a listener can safely ask for the state.
  * An interface that is stopping, or that has not been started, is left alone.
  * A late IP event must not bring it back to life.
  */
-static void mark_ready_from_bits(net_iface_handle_t h)
+static void set_readiness_bit(net_iface_handle_t h, EventBits_t bit)
 {
+    if (h == NULL) {
+        return;
+    }
     bool became_ready = false;
     xSemaphoreTake(h->lock, portMAX_DELAY);
     /* Skip a handle that is shutting down or was never started. */
     if (h->state != NET_IFACE_STATE_STOPPING && h->state != NET_IFACE_STATE_INIT &&
             h->state != NET_IFACE_STATE_UNINIT) {
+        xEventGroupSetBits(h->state_events, bit);
         became_ready = is_ready_satisfied_locked(h);
     }
     xSemaphoreGive(h->lock);
@@ -478,10 +498,7 @@ void net_iface_notify_disconnected(net_iface_handle_t h)
     /* The driver is still running. Only the link and the address flags are gone. */
     h->state = NET_IFACE_STATE_STARTED;
     netif = h->netif;
-    xEventGroupClearBits(h->state_events,
-                         NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED |
-                         NET_IFACE_BIT_IPV4 | NET_IFACE_BIT_IPV6 |
-                         NET_IFACE_BIT_OT_ATTACHED);
+    xEventGroupClearBits(h->state_events, NET_IFACE_BITS_LIVENESS);
     xSemaphoreGive(h->lock);
 
     post_iface_event(h, NET_IFACE_EVENT_DISCONNECTED, netif, NET_IFACE_STATE_STARTED, ESP_OK);
@@ -565,43 +582,18 @@ static void on_global_ip_event(void *arg, esp_event_base_t event_base,
             event_id == IP_EVENT_ETH_GOT_IP ||
             event_id == IP_EVENT_PPP_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        net_iface_handle_t h = find_iface_by_netif(event->esp_netif);
-        /* An address for some other netif. Nothing of ours to update. */
-        if (h == NULL) {
-            return;
-        }
-        xSemaphoreTake(h->lock, portMAX_DELAY);
-        /* Do not set the flag on a handle that is stopping or was never started. */
-        if (h->state != NET_IFACE_STATE_STOPPING && h->state != NET_IFACE_STATE_INIT) {
-            xEventGroupSetBits(h->state_events, NET_IFACE_BIT_IPV4);
-        }
-        xSemaphoreGive(h->lock);
-        /* Become ready only if every required address flag is now set. */
-        mark_ready_from_bits(h);
+        set_readiness_bit(find_iface_by_netif(event->esp_netif), NET_IFACE_BIT_IPV4);
     } else if (event_id == IP_EVENT_STA_LOST_IP ||
                event_id == IP_EVENT_ETH_LOST_IP ||
                event_id == IP_EVENT_PPP_LOST_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        net_iface_handle_t h = find_iface_by_netif(event->esp_netif);
-        if (h != NULL) {
-            net_iface_notify_lost_ip(h);
-        }
+        net_iface_notify_lost_ip(find_iface_by_netif(event->esp_netif));
 #if CONFIG_NET_CONNECT_IPV6
     } else if (event_id == IP_EVENT_GOT_IP6) {
         ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
-        net_iface_handle_t h = find_iface_by_netif(event->esp_netif);
-        if (h == NULL) {
-            return;
-        }
-        esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&event->ip6_info.ip);
         /* Only the preferred kind of IPv6 address counts. Other addresses are ignored. */
-        if (ipv6_type == NET_CONNECT_PREFERRED_IPV6_TYPE) {
-            xSemaphoreTake(h->lock, portMAX_DELAY);
-            if (h->state != NET_IFACE_STATE_STOPPING && h->state != NET_IFACE_STATE_INIT) {
-                xEventGroupSetBits(h->state_events, NET_IFACE_BIT_IPV6);
-            }
-            xSemaphoreGive(h->lock);
-            mark_ready_from_bits(h);
+        if (esp_netif_ip6_get_addr_type(&event->ip6_info.ip) == NET_CONNECT_PREFERRED_IPV6_TYPE) {
+            set_readiness_bit(find_iface_by_netif(event->esp_netif), NET_IFACE_BIT_IPV6);
         }
 #endif
     }
@@ -621,17 +613,7 @@ static void on_global_ot_event(void *arg, esp_event_base_t event_base,
     (void)event_data;
     s_event_loop_task = xTaskGetCurrentTaskHandle();
     if (event_id == OPENTHREAD_EVENT_ATTACHED) {
-        net_iface_handle_t h = net_iface_get_by_type(NET_IFACE_TYPE_THREAD);
-        if (h != NULL) {
-            xSemaphoreTake(h->lock, portMAX_DELAY);
-            /* Same guard as the IP path: ignore attach events during stop or before start. */
-            if (h->state != NET_IFACE_STATE_STOPPING && h->state != NET_IFACE_STATE_INIT) {
-                xEventGroupSetBits(h->state_events, NET_IFACE_BIT_OT_ATTACHED);
-            }
-            xSemaphoreGive(h->lock);
-            /* Joined the network, so Thread is ready. No IP check is needed. */
-            net_iface_notify_ready(h);
-        }
+        set_readiness_bit(net_iface_get_by_type(NET_IFACE_TYPE_THREAD), NET_IFACE_BIT_OT_ATTACHED);
     }
 }
 #endif
@@ -685,30 +667,118 @@ esp_err_t net_iface_init_with_ops(const net_iface_config_t *cfg,
         }
     }
 
+    /* Put this handle at the front of the list, then install shared handlers if needed. */
     xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
-    /* First interface installs the shared IP (and Thread) handlers. */
-    try_register_global_handlers_locked();
-    /* Put this handle at the front of the list. */
     h->next = s_iface_list;
     s_iface_list = h;
     xSemaphoreGive(s_registry_mutex);
+
+    try_register_global_handlers();
 
     *out_handle = h;
     return ESP_OK;
 }
 
 /*
- * Public create function. It does not pick a driver yet. The Wi-Fi, Ethernet,
- * Thread, and PPP create helpers do that by calling net_iface_init_with_ops().
+ * Create a handle and attach the driver that matches cfg->type.
+ * The typed helpers (net_wifi_sta_create and the others) can also call
+ * net_iface_init_with_ops() directly when they build the config themselves.
  */
 esp_err_t net_iface_init(const net_iface_config_t *cfg, net_iface_handle_t *out_handle)
 {
     if (cfg == NULL || out_handle == NULL || cfg->type >= NET_IFACE_TYPE_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
-    /* Callers must use a typed helper (Wi-Fi, Ethernet, Thread, or PPP). */
+
+    const net_iface_ops_t *ops = NULL;
+    switch (cfg->type) {
+#if CONFIG_NET_CONNECT_WIFI
+    case NET_IFACE_TYPE_WIFI_STA:
+        ops = &g_net_iface_wifi_sta_ops;
+        break;
+#endif
+#if CONFIG_NET_CONNECT_ETHERNET
+    case NET_IFACE_TYPE_ETH:
+        ops = &g_net_iface_eth_ops;
+        break;
+#endif
+#if CONFIG_NET_CONNECT_THREAD
+    case NET_IFACE_TYPE_THREAD:
+        ops = &g_net_iface_thread_ops;
+        break;
+#endif
+#if CONFIG_NET_CONNECT_PPP
+    case NET_IFACE_TYPE_PPP:
+        ops = &g_net_iface_ppp_ops;
+        break;
+#endif
+    default:
+        break;
+    }
+    /* No driver is compiled in for this type. */
+    if (ops == NULL) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
+    return net_iface_init_with_ops(cfg, ops, out_handle);
+}
+
+/*
+ * The functions below exist so every function declared in net_iface.h can be
+ * linked even when that interface is turned off in Kconfig. They do not touch
+ * hardware. A real driver replaces them when the interface is enabled.
+ */
+#if !CONFIG_NET_CONNECT_WIFI || !CONFIG_NET_CONNECT_ETHERNET || \
+    !CONFIG_NET_CONNECT_THREAD || !CONFIG_NET_CONNECT_PPP
+static esp_err_t unsupported_create(net_iface_handle_t *out_handle)
+{
+    if (out_handle == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    *out_handle = NULL;
     return ESP_ERR_NOT_SUPPORTED;
 }
+#endif
+
+#if !CONFIG_NET_CONNECT_WIFI
+esp_err_t net_wifi_sta_create(const net_wifi_sta_params_t *params, net_iface_handle_t *out_handle)
+{
+    (void)params;
+    return unsupported_create(out_handle);
+}
+
+esp_err_t net_wifi_sta_set_credentials(net_iface_handle_t h, const char *ssid, const char *password)
+{
+    (void)password;
+    if (h == NULL || ssid == NULL || ssid[0] == '\0') {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return ESP_ERR_NOT_SUPPORTED;
+}
+#endif
+
+#if !CONFIG_NET_CONNECT_ETHERNET
+esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out_handle)
+{
+    (void)params;
+    return unsupported_create(out_handle);
+}
+#endif
+
+#if !CONFIG_NET_CONNECT_THREAD
+esp_err_t net_thread_create(const net_thread_params_t *params, net_iface_handle_t *out_handle)
+{
+    (void)params;
+    return unsupported_create(out_handle);
+}
+#endif
+
+#if !CONFIG_NET_CONNECT_PPP
+esp_err_t net_ppp_create(const net_ppp_params_t *params, net_iface_handle_t *out_handle)
+{
+    (void)params;
+    return unsupported_create(out_handle);
+}
+#endif
 
 /*
  * Free a handle that has been stopped. A running handle must be stopped first.
@@ -737,10 +807,11 @@ esp_err_t net_iface_deinit(net_iface_handle_t h)
     /* Take it off the list before anyone can look it up again. */
     registry_remove_locked(h);
     const net_iface_ops_t *ops = h->ops;
-    /* Release the interface lock before handler removal and driver cleanup. */
+    /* Release both locks before handler removal and driver cleanup. */
     xSemaphoreGive(h->lock);
-    maybe_unregister_global_handlers_locked();
     xSemaphoreGive(s_registry_mutex);
+
+    maybe_unregister_global_handlers();
 
     if (ops != NULL && ops->deinit != NULL) {
         ops->deinit(h);
@@ -752,15 +823,66 @@ esp_err_t net_iface_deinit(net_iface_handle_t h)
     return ESP_OK;
 }
 
+/* Default priority for background interface startup tasks. */
+#define NET_IFACE_STARTUP_TASK_PRIO 5
+
+/* How long stop() waits for a startup task that is still running. */
+#define NET_IFACE_STARTUP_STOP_WAIT_MS 10000
+
+/*
+ * Run one interface's driver start, and connect when the config asks for that.
+ * The work runs here so a slow driver cannot block the caller or the other
+ * interfaces. Ethernet with no cable can spend about 4 seconds in the PHY.
+ */
+static void iface_startup_task(void *arg)
+{
+    net_iface_handle_t h = (net_iface_handle_t)arg;
+
+    esp_err_t err = h->ops->start(h);
+    if (err != ESP_OK) {
+        net_iface_notify_failed(h, err);
+        goto done;
+    }
+
+    /* stop() may have arrived while the driver was starting. */
+    xSemaphoreTake(h->lock, portMAX_DELAY);
+    bool canceled = h->cancel_requested || (h->state == NET_IFACE_STATE_STOPPING);
+    bool auto_connect = h->cfg.auto_connect_on_start;
+    net_iface_state_t state = h->state;
+    xSemaphoreGive(h->lock);
+
+    if (!canceled && auto_connect && state == NET_IFACE_STATE_STARTED) {
+        /*
+         * connect() reports a real failure itself. An invalid-state result
+         * (Wi-Fi with no network name, or a connect that already started)
+         * leaves the interface started instead of failed.
+         */
+        (void)net_iface_connect(h);
+    }
+
+done:
+    ESP_LOGD(TAG, "Startup task for '%s' finished (stack high water mark: %u bytes)",
+             (h->ops && h->ops->name) ? h->ops->name : "iface",
+             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+
+    xSemaphoreTake(h->lock, portMAX_DELAY);
+    h->startup_task = NULL;
+    xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE);
+    xSemaphoreGive(h->lock);
+
+    vTaskDelete(NULL);
+}
+
 /*
  * Begin startup from the initial state, or after a failure.
+ * The driver start runs on a per-interface task. This returns as soon as that
+ * task has been created. The state stays "starting" until the task reports
+ * that the driver is up, or that startup failed.
  * Old ready, failed, and stopped flags are cleared first, so a wait cannot
  * return a result from the previous attempt.
- * The driver is started on this task for now. A later change runs that work
- * in the background. The states stay the same.
- * If the driver has already reached "started" and auto-connect is on, connect
- * is called next. If startup is only scheduled, the state stays "starting"
- * and this still returns success.
+ * The startup-done flag is cleared here and set again when that task exits.
+ * It is not part of the liveness flags, because a disconnect must not forget
+ * that the task is still running.
  */
 esp_err_t net_iface_start(net_iface_handle_t h)
 {
@@ -769,43 +891,56 @@ esp_err_t net_iface_start(net_iface_handle_t h)
     }
 
     /* Create may have run before the event loop existed. Try the handlers again. */
-    if (s_registry_mutex != NULL) {
-        xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
-        try_register_global_handlers_locked();
-        xSemaphoreGive(s_registry_mutex);
-    }
+    try_register_global_handlers();
 
     xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* Start is allowed only from idle or from a previous failure. */
-    if (h->state != NET_IFACE_STATE_INIT && h->state != NET_IFACE_STATE_FAILED) {
+    /* Start is allowed only from idle or from a previous failure, and when no task is still exiting. */
+    if ((h->state != NET_IFACE_STATE_INIT && h->state != NET_IFACE_STATE_FAILED) ||
+            h->startup_task != NULL) {
         xSemaphoreGive(h->lock);
         return ESP_ERR_INVALID_STATE;
     }
-    h->last_err = ESP_OK;
-    h->cancel_requested = false;
-    h->retry_num = 0;
-    /* Forget the last attempt so a waiter blocks for this one. */
-    xEventGroupClearBits(h->state_events, NET_IFACE_BITS_LIVENESS);
-    h->state = NET_IFACE_STATE_STARTING;
-    xSemaphoreGive(h->lock);
-
-    /* No start function means this driver cannot be brought up. */
     if (h->ops == NULL || h->ops->start == NULL) {
+        /* notify_failed() ignores an idle handle, so leave "starting" first. */
+        h->last_err = ESP_OK;
+        h->cancel_requested = false;
+        xEventGroupClearBits(h->state_events, NET_IFACE_BITS_LIVENESS | NET_IFACE_BIT_STARTUP_DONE);
+        h->state = NET_IFACE_STATE_STARTING;
+        xSemaphoreGive(h->lock);
         net_iface_notify_failed(h, ESP_ERR_INVALID_STATE);
         return ESP_ERR_INVALID_STATE;
     }
 
-    /* The driver runs without our locks. It reports progress with notify_*(). */
-    esp_err_t err = h->ops->start(h);
-    if (err != ESP_OK) {
-        net_iface_notify_failed(h, err);
-        return err;
-    }
+    h->last_err = ESP_OK;
+    h->cancel_requested = false;
+    h->retry_num = 0;
+    /* Forget the last attempt so a waiter blocks for this one. */
+    xEventGroupClearBits(h->state_events, NET_IFACE_BITS_LIVENESS | NET_IFACE_BIT_STARTUP_DONE);
+    h->state = NET_IFACE_STATE_STARTING;
 
-    /* Some drivers are already up. Connect now when the config asks for that. */
-    if (h->cfg.auto_connect_on_start && net_iface_get_state(h) == NET_IFACE_STATE_STARTED) {
-        return net_iface_connect(h);
+    uint32_t stack_size = CONFIG_NET_CONNECT_STARTUP_TASK_STACK_SIZE;
+    if (h->cfg.startup_task_stack_size > 0) {
+        stack_size = (uint32_t)h->cfg.startup_task_stack_size;
     }
+    const char *task_name = (h->ops->name != NULL) ? h->ops->name : "net_start";
+
+    /*
+     * Hold the lock across task creation. The new task is higher priority and
+     * can run before xTaskCreate() returns. It must not clear startup_task
+     * until that handle has been stored.
+     */
+    BaseType_t created = xTaskCreate(iface_startup_task, task_name, stack_size,
+                                     h, NET_IFACE_STARTUP_TASK_PRIO, &h->startup_task);
+    if (created != pdPASS) {
+        h->startup_task = NULL;
+        h->state = NET_IFACE_STATE_FAILED;
+        h->last_err = ESP_ERR_NO_MEM;
+        xEventGroupSetBits(h->state_events, NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STARTUP_DONE);
+        xSemaphoreGive(h->lock);
+        post_iface_event(h, NET_IFACE_EVENT_FAILED, NULL, NET_IFACE_STATE_FAILED, ESP_ERR_NO_MEM);
+        return ESP_ERR_NO_MEM;
+    }
+    xSemaphoreGive(h->lock);
     return ESP_OK;
 }
 
@@ -887,7 +1022,9 @@ esp_err_t net_iface_disconnect(net_iface_handle_t h)
  * function may need that task to finish an event, and calling it from the
  * task itself would wait forever.
  * If the interface is already stopped, this returns success.
- * A live link is disconnected before the driver is stopped.
+ * If a startup task is still running, this waits for it to finish first.
+ * The link is dropped before the driver is stopped, including when stop()
+ * arrives while startup is still in progress and the link comes up afterward.
  * Even if the driver's stop function fails, the handle is marked stopped,
  * so it does not get stuck in "stopping".
  */
@@ -902,31 +1039,37 @@ esp_err_t net_iface_stop(net_iface_handle_t h)
     }
 
     xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* Already idle. Nothing to shut down. */
-    if (h->state == NET_IFACE_STATE_INIT) {
+    /* Already idle or stopping. Nothing to shut down. */
+    if (h->state == NET_IFACE_STATE_INIT || h->state == NET_IFACE_STATE_STOPPING) {
         xSemaphoreGive(h->lock);
         return ESP_OK;
     }
-    net_iface_state_t state = h->state;
+    /*
+     * A startup task may still be inside the driver. Wait until it leaves
+     * before disconnect or stop, and before deinit() can free this handle.
+     */
+    bool wait_for_startup = (h->startup_task != NULL);
+    h->cancel_requested = true;
+    h->state = NET_IFACE_STATE_STOPPING;
     xSemaphoreGive(h->lock);
 
-    /* Drop a live link first, so the driver is not stopped while still connected. */
-    if (state == NET_IFACE_STATE_CONNECTING ||
-            state == NET_IFACE_STATE_CONNECTED ||
-            state == NET_IFACE_STATE_READY) {
-        if (h->ops != NULL && h->ops->disconnect != NULL) {
-            h->ops->disconnect(h);
+    if (wait_for_startup) {
+        EventBits_t bits = xEventGroupWaitBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE,
+                                                pdFALSE, pdFALSE,
+                                                pdMS_TO_TICKS(NET_IFACE_STARTUP_STOP_WAIT_MS));
+        if ((bits & NET_IFACE_BIT_STARTUP_DONE) == 0) {
+            ESP_LOGW(TAG, "Startup task did not finish within %d ms", NET_IFACE_STARTUP_STOP_WAIT_MS);
         }
     }
 
-    xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* Disconnect may have finished a stop that was already in progress. */
-    if (h->state == NET_IFACE_STATE_INIT) {
-        xSemaphoreGive(h->lock);
-        return ESP_OK;
+    /*
+     * Disconnect whenever the driver has a disconnect callback. stop() can
+     * arrive while the state is still "starting"; by the time the startup
+     * task finishes, the link may already be up.
+     */
+    if (h->ops != NULL && h->ops->disconnect != NULL) {
+        h->ops->disconnect(h);
     }
-    h->state = NET_IFACE_STATE_STOPPING;
-    xSemaphoreGive(h->lock);
 
     esp_err_t err = ESP_OK;
     if (h->ops != NULL && h->ops->stop != NULL) {
