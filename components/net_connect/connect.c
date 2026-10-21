@@ -1,31 +1,26 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <string.h>
+#include <stdint.h>
 #include "net_connect.h"
 #include "net_connect_private.h"
+#include "net_iface_priv.h"
 #include "sdkconfig.h"
-#if CONFIG_NET_CONNECT_WIFI
-#include "net_connect_wifi_config.h"
-#endif
-#include "esp_event.h"
-#include "esp_wifi.h"
-#include "esp_wifi_default.h"
 #include "esp_log.h"
 #include "esp_netif.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "lwip/err.h"
-#include "lwip/sys.h"
+#include "esp_system.h"
 
 static const char *TAG = "net_connect";
 
+/* Enough for Wi-Fi, Ethernet, Thread, and PPP, with a little spare. */
+#define NET_CONNECT_MAX_IFACES 8
+
 #if CONFIG_NET_CONNECT_IPV6
-/* types of ipv6 addresses to be displayed on ipv6 events */
+/* Names for the IPv6 address types, used when printing addresses. */
 const char *net_connect_ipv6_addr_types_to_str[6] = {
     "ESP_IP6_ADDR_IS_UNKNOWN",
     "ESP_IP6_ADDR_IS_GLOBAL",
@@ -37,9 +32,8 @@ const char *net_connect_ipv6_addr_types_to_str[6] = {
 #endif
 
 /**
- * @brief Checks the netif description if it contains specified prefix.
- * All netifs created within common connect component are prefixed with the module TAG,
- * so it returns true if the specified netif is owned by this module
+ * True when the netif description starts with prefix.
+ * Every netif created by this component uses a "net_connect_netif_..." description.
  */
 bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
 {
@@ -54,12 +48,8 @@ bool net_connect_is_our_netif(const char *prefix, esp_netif_t *netif)
 }
 
 /**
- * @brief Predicate function to match network interface by description string
- *
- * Note: The function signature must match esp_netif_find_predicate_t typedef
- * which requires 'void *ctx' as the second parameter, not 'char *ctx'.
- * This is because esp_netif_find_if() uses a generic callback interface that
- * accepts any context type as void*. We cast it to const char* internally.
+ * Match a netif whose description is exactly ctx.
+ * The second argument is void * because that is what esp_netif_find_if() passes.
  */
 static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 {
@@ -76,13 +66,13 @@ esp_netif_t *net_get_netif_from_desc(const char *desc)
     if (desc == NULL || *desc == '\0') {
         return NULL;
     }
-    return esp_netif_find_if(netif_desc_matches_with, (void*)desc);
+    return esp_netif_find_if(netif_desc_matches_with, (void *)desc);
 }
 
-static esp_err_t print_all_ips_tcpip(void* ctx)
+/* Print the addresses of one netif. Runs on the TCP/IP task. */
+static esp_err_t print_all_ips_tcpip(void *ctx)
 {
     const char *prefix = ctx;
-    // iterate over active interfaces, and print out IPs of "our" netifs
     esp_netif_t *netif = NULL;
     while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
         if (net_connect_is_our_netif(prefix, netif)) {
@@ -91,7 +81,6 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
 #if CONFIG_NET_CONNECT_IPV4
             esp_netif_ip_info_t ip;
             ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
-
             ESP_LOGI(TAG, "- IPv4 address: " IPSTR ",", IP2STR(&ip.ip));
 #endif
 #if CONFIG_NET_CONNECT_IPV6
@@ -109,163 +98,286 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
 
 void net_connect_print_all_netif_ips(const char *prefix)
 {
-    // Print all IPs in TCPIP context to avoid potential races of removing/adding netifs when iterating over the list
-    esp_netif_tcpip_exec(print_all_ips_tcpip, (void*) prefix);
+    /* Print from the TCP/IP task so the netif list cannot change under us. */
+    esp_netif_tcpip_exec(print_all_ips_tcpip, (void *)prefix);
 }
 
+/* A short list of interface handles, copied out of the registry before we change it. */
+typedef struct {
+    net_iface_handle_t items[NET_CONNECT_MAX_IFACES];
+    size_t count;
+} net_iface_list_t;
+
+/* Add one handle to the list. Returning true keeps the walk going. */
+static bool collect_iface(net_iface_handle_t h, void *ctx)
+{
+    net_iface_list_t *list = (net_iface_list_t *)ctx;
+    if (h != NULL && list->count < NET_CONNECT_MAX_IFACES) {
+        list->items[list->count++] = h;
+    }
+    return true;
+}
+
+/* Stop and free every interface. The list is copied first, because deinit changes it. */
+static void stop_every_iface(void)
+{
+    net_iface_list_t list = { 0 };
+    net_iface_for_each(collect_iface, &list);
+    for (size_t i = 0; i < list.count; i++) {
+        net_iface_stop(list.items[i]);
+        net_iface_deinit(list.items[i]);
+    }
+}
+
+/* True after the restart handler is registered. */
+static bool s_shutdown_registered = false;
+
+/* Called on restart. Stops every interface this component still owns. */
+static void net_disconnect_shutdown(void)
+{
+    s_shutdown_registered = false;
+    stop_every_iface();
+}
+
+/* Register the restart handler once. Already registered is success. */
+static esp_err_t register_shutdown_once(void)
+{
+    if (s_shutdown_registered) {
+        return ESP_OK;
+    }
+    esp_err_t err = esp_register_shutdown_handler(net_disconnect_shutdown);
+    if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
+        s_shutdown_registered = true;
+        return ESP_OK;
+    }
+    return err;
+}
+
+/* 0 in Kconfig means wait with no time limit. */
+static uint32_t connect_timeout_ms(void)
+{
+    return CONFIG_NET_CONNECT_TIMEOUT_MS == 0 ? UINT32_MAX : (uint32_t)CONFIG_NET_CONNECT_TIMEOUT_MS;
+}
+
+/*
+ * Start one interface, and connect it when the config says to.
+ * A required interface that stays idle or fails makes net_connect() fail.
+ * An optional one is logged and left as it is.
+ */
+static esp_err_t start_iface(net_iface_handle_t h, const char *name)
+{
+    net_iface_state_t state = net_iface_get_state(h);
+    if (state == NET_IFACE_STATE_INIT || state == NET_IFACE_STATE_FAILED) {
+        esp_err_t err = net_iface_start(h);
+        state = net_iface_get_state(h);
+        if (err != ESP_OK &&
+                state != NET_IFACE_STATE_STARTED &&
+                state != NET_IFACE_STATE_STARTING &&
+                state != NET_IFACE_STATE_CONNECTING &&
+                state != NET_IFACE_STATE_CONNECTED &&
+                state != NET_IFACE_STATE_READY) {
+            if (h->cfg.required) {
+                ESP_LOGE(TAG, "%s failed to start: %s", name, esp_err_to_name(err));
+                return ESP_FAIL;
+            }
+            ESP_LOGW(TAG, "%s did not start (%s). It is optional, so other interfaces stay up.",
+                     name, esp_err_to_name(err));
+            return ESP_OK;
+        }
+    }
+
+    state = net_iface_get_state(h);
+    /* start() already connects when auto-connect is on and the driver is up. */
+    if (state == NET_IFACE_STATE_STARTED && h->cfg.auto_connect_on_start) {
+        esp_err_t err = net_iface_connect(h);
+        state = net_iface_get_state(h);
+        if (err != ESP_OK && state != NET_IFACE_STATE_STARTED) {
+            if (h->cfg.required) {
+                ESP_LOGE(TAG, "%s failed to connect: %s", name, esp_err_to_name(err));
+                return ESP_FAIL;
+            }
+            ESP_LOGW(TAG, "%s did not connect (%s). It is optional, so other interfaces stay up.",
+                     name, esp_err_to_name(err));
+            return ESP_OK;
+        }
+    }
+
+    state = net_iface_get_state(h);
+    /*
+     * start() returns while the driver is still coming up. An interface that
+     * was configured not to connect (for example Wi-Fi with no network name)
+     * will sit in "starting" and then "started". Fail or skip it now, so a
+     * later wait does not block for the full timeout.
+     */
+    if (!h->cfg.auto_connect_on_start &&
+            (state == NET_IFACE_STATE_STARTING || state == NET_IFACE_STATE_STARTED)) {
+        if (h->cfg.required) {
+            ESP_LOGE(TAG, "%s is required, but it is not configured to connect", name);
+            return ESP_FAIL;
+        }
+        ESP_LOGW(TAG, "%s is not connecting. It is optional, so other interfaces stay up.", name);
+        return ESP_OK;
+    }
+
+    if (state == NET_IFACE_STATE_STARTED || state == NET_IFACE_STATE_FAILED ||
+            state == NET_IFACE_STATE_INIT) {
+        if (h->cfg.required) {
+            ESP_LOGE(TAG, "%s is required, but it is not connecting", name);
+            return ESP_FAIL;
+        }
+        ESP_LOGW(TAG, "%s is not connecting. It is optional, so other interfaces stay up.", name);
+        return ESP_OK;
+    }
+
+    ESP_LOGI(TAG, "%s started", name);
+    return ESP_OK;
+}
+
+/*
+ * Wait for every required interface.
+ * The list is newest-first, so walk it backwards and wait in start order.
+ * Each required interface gets the full timeout. Optional failures are logged.
+ */
+static esp_err_t wait_for_required(void)
+{
+    net_iface_list_t list = { 0 };
+    net_iface_for_each(collect_iface, &list);
+    uint32_t timeout_ms = connect_timeout_ms();
+
+    for (size_t n = list.count; n > 0; n--) {
+        net_iface_handle_t h = list.items[n - 1];
+        const char *name = (h->cfg.desc != NULL) ? h->cfg.desc : "interface";
+        if (!h->cfg.required) {
+            if (net_iface_get_state(h) == NET_IFACE_STATE_FAILED) {
+                ESP_LOGW(TAG, "%s failed. It is optional, so other interfaces stay up.", name);
+            }
+            continue;
+        }
+
+        esp_err_t err = net_iface_wait(h, timeout_ms);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "%s did not become ready: %s", name, esp_err_to_name(err));
+            return ESP_FAIL;
+        }
+    }
+    return ESP_OK;
+}
+
+/* Drop the restart handler, then stop every interface. */
+static void cleanup_all(void)
+{
+    if (s_shutdown_registered) {
+        esp_err_t err = esp_unregister_shutdown_handler(net_disconnect_shutdown);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(TAG, "Failed to unregister shutdown handler: %s", esp_err_to_name(err));
+        }
+        s_shutdown_registered = false;
+    }
+    stop_every_iface();
+}
 
 esp_err_t net_connect(void)
 {
 #if CONFIG_NET_CONNECT_ETHERNET
-    bool eth_initialized = false;
-#endif
-#if CONFIG_NET_CONNECT_WIFI
-    bool wifi_initialized = false;
-#endif
-#if CONFIG_NET_CONNECT_THREAD
-    bool thread_initialized = false;
-#endif
-#if CONFIG_NET_CONNECT_PPP
-    bool ppp_initialized = false;
-#endif
-
-#if CONFIG_NET_CONNECT_ETHERNET
-    ESP_LOGI(TAG, "Initializing Ethernet interface...");
-    if (net_connect_ethernet_connect() != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize Ethernet interface");
-        goto cleanup;
-    }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ethernet_shutdown));
-    eth_initialized = true;
-    ESP_LOGI(TAG, "Ethernet interface initialized successfully");
-#endif
-#if CONFIG_NET_CONNECT_WIFI
-    ESP_LOGI(TAG, "Initializing WiFi interface...");
-    if (!net_connect_wifi_is_configured()) {
-        /* Configure WiFi with Kconfig defaults */
-        if (net_configure_wifi_sta(NULL) == NULL) {
-            ESP_LOGE(TAG, "Failed to configure WiFi interface");
-            goto cleanup;
+    net_iface_handle_t eth = net_iface_get_by_type(NET_IFACE_TYPE_ETH);
+    if (eth == NULL) {
+        esp_err_t err = net_eth_create(NULL, &eth);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create Ethernet interface: %s", esp_err_to_name(err));
+            goto fail;
         }
     }
-    /* Use new API for WiFi connection */
-    if (net_connect_wifi() != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize WiFi interface");
-        goto cleanup;
+    if (start_iface(eth, "Ethernet") != ESP_OK) {
+        goto fail;
     }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_wifi_shutdown));
-    wifi_initialized = true;
-    ESP_LOGI(TAG, "WiFi interface initialized successfully");
 #endif
+
+#if CONFIG_NET_CONNECT_WIFI
+    /* Reuse a handle from net_configure_wifi_sta() when the caller made one. */
+    net_iface_handle_t wifi = net_iface_get_by_type(NET_IFACE_TYPE_WIFI_STA);
+    if (wifi == NULL) {
+        esp_err_t err = net_wifi_sta_create(NULL, &wifi);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create Wi-Fi interface: %s", esp_err_to_name(err));
+            goto fail;
+        }
+    }
+#if CONFIG_NET_CONNECT_WIFI_SSID_PWD_FROM_STDIN
+    {
+        esp_err_t err = net_connect_wifi_apply_stdin(wifi);
+        if (err != ESP_OK) {
+            if (wifi->cfg.required) {
+                ESP_LOGE(TAG, "Failed to read Wi-Fi credentials: %s", esp_err_to_name(err));
+                goto fail;
+            }
+            ESP_LOGW(TAG, "Wi-Fi credentials were not read. Wi-Fi is optional, so other interfaces stay up.");
+        }
+    }
+#endif
+    if (start_iface(wifi, "Wi-Fi") != ESP_OK) {
+        goto fail;
+    }
+#endif
+
 #if CONFIG_NET_CONNECT_THREAD
-    ESP_LOGI(TAG, "Initializing Thread interface...");
-    if (net_connect_thread_connect() != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize Thread interface");
-        goto cleanup;
+    net_iface_handle_t thread = net_iface_get_by_type(NET_IFACE_TYPE_THREAD);
+    if (thread == NULL) {
+        esp_err_t err = net_thread_create(NULL, &thread);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create Thread interface: %s", esp_err_to_name(err));
+            goto fail;
+        }
     }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_thread_shutdown));
-    thread_initialized = true;
-    ESP_LOGI(TAG, "Thread interface initialized successfully");
+    if (start_iface(thread, "Thread") != ESP_OK) {
+        goto fail;
+    }
 #endif
+
 #if CONFIG_NET_CONNECT_PPP
-    ESP_LOGI(TAG, "Initializing PPP interface...");
-    if (net_connect_ppp_connect() != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize PPP interface");
-        goto cleanup;
+    net_iface_handle_t ppp = net_iface_get_by_type(NET_IFACE_TYPE_PPP);
+    if (ppp == NULL) {
+        esp_err_t err = net_ppp_create(NULL, &ppp);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create PPP interface: %s", esp_err_to_name(err));
+            goto fail;
+        }
     }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&net_connect_ppp_shutdown));
-    ppp_initialized = true;
-    ESP_LOGI(TAG, "PPP interface initialized successfully");
+    if (start_iface(ppp, "PPP") != ESP_OK) {
+        goto fail;
+    }
 #endif
+
+    if (register_shutdown_once() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register shutdown handler");
+        goto fail;
+    }
+    if (wait_for_required() != ESP_OK) {
+        goto fail;
+    }
 
 #if CONFIG_NET_CONNECT_ETHERNET
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_ETH);
 #endif
-
 #if CONFIG_NET_CONNECT_WIFI
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_STA);
 #endif
-
 #if CONFIG_NET_CONNECT_THREAD
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_THREAD);
 #endif
-
 #if CONFIG_NET_CONNECT_PPP
     net_connect_print_all_netif_ips(NET_CONNECT_NETIF_DESC_PPP);
 #endif
-
     return ESP_OK;
 
-cleanup:
-    /* Clean up previously initialized interfaces in reverse order */
-#if CONFIG_NET_CONNECT_PPP
-    if (ppp_initialized) {
-        net_connect_ppp_shutdown();
-        esp_unregister_shutdown_handler(&net_connect_ppp_shutdown);
-    }
-#endif
-#if CONFIG_NET_CONNECT_THREAD
-    if (thread_initialized) {
-        net_connect_thread_shutdown();
-        esp_unregister_shutdown_handler(&net_connect_thread_shutdown);
-    }
-#endif
-#if CONFIG_NET_CONNECT_WIFI
-    if (wifi_initialized) {
-        net_connect_wifi_shutdown();
-        esp_unregister_shutdown_handler(&net_connect_wifi_shutdown);
-    }
-#endif
-#if CONFIG_NET_CONNECT_ETHERNET
-    if (eth_initialized) {
-        net_connect_ethernet_shutdown();
-        esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown);
-    }
-#endif
+fail:
+    cleanup_all();
     return ESP_FAIL;
 }
 
-
 esp_err_t net_disconnect(void)
 {
-    esp_err_t ret;
     ESP_LOGI(TAG, "Disconnecting network interfaces...");
-#if CONFIG_NET_CONNECT_ETHERNET
-    ESP_LOGI(TAG, "Deinitializing Ethernet interface...");
-    net_connect_ethernet_shutdown();
-    ret = esp_unregister_shutdown_handler(&net_connect_ethernet_shutdown);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_ERROR_CHECK(ret);
-    }
-    ESP_LOGI(TAG, "Ethernet interface deinitialized");
-#endif
-#if CONFIG_NET_CONNECT_WIFI
-    ESP_LOGI(TAG, "Deinitializing WiFi interface...");
-    net_connect_wifi_shutdown();
-    ret = esp_unregister_shutdown_handler(&net_connect_wifi_shutdown);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_ERROR_CHECK(ret);
-    }
-    ESP_LOGI(TAG, "WiFi interface deinitialized");
-#endif
-#if CONFIG_NET_CONNECT_THREAD
-    ESP_LOGI(TAG, "Deinitializing Thread interface...");
-    net_connect_thread_shutdown();
-    ret = esp_unregister_shutdown_handler(&net_connect_thread_shutdown);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_ERROR_CHECK(ret);
-    }
-    ESP_LOGI(TAG, "Thread interface deinitialized");
-#endif
-#if CONFIG_NET_CONNECT_PPP
-    ESP_LOGI(TAG, "Deinitializing PPP interface...");
-    net_connect_ppp_shutdown();
-    ret = esp_unregister_shutdown_handler(&net_connect_ppp_shutdown);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_ERROR_CHECK(ret);
-    }
-    ESP_LOGI(TAG, "PPP interface deinitialized");
-#endif
+    cleanup_all();
     ESP_LOGI(TAG, "All network interfaces disconnected");
     return ESP_OK;
 }

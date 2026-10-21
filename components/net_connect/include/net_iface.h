@@ -354,9 +354,56 @@ esp_err_t net_iface_wait_any(const net_iface_handle_t *handles, size_t count,
  *                   Typed Creation Wrappers
  * ============================================================ */
 
+/**
+ * @brief Create a Wi-Fi station handle.
+ *
+ * Pass NULL for @p params to use the Kconfig defaults.
+ * The radio is not started. Call net_iface_start() next.
+ * When the interface is turned off in Kconfig, this returns ESP_ERR_NOT_SUPPORTED.
+ *
+ * @param[in]  params     Optional settings. NULL uses Kconfig defaults.
+ * @param[out] out_handle New handle, or NULL on failure.
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, ESP_ERR_NO_MEM, or ESP_ERR_NOT_SUPPORTED.
+ */
 esp_err_t net_wifi_sta_create(const net_wifi_sta_params_t *params, net_iface_handle_t *out_handle);
+
+/**
+ * @brief Create an Ethernet handle.
+ *
+ * Pass NULL for @p params to use the Kconfig defaults.
+ * The PHY is not started. Call net_iface_start() next.
+ * When Ethernet is turned off in Kconfig, this returns ESP_ERR_NOT_SUPPORTED.
+ *
+ * @param[in]  params     Optional settings. NULL uses Kconfig defaults.
+ * @param[out] out_handle New handle, or NULL on failure.
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, ESP_ERR_NO_MEM, or ESP_ERR_NOT_SUPPORTED.
+ */
 esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out_handle);
+
+/**
+ * @brief Create an OpenThread handle.
+ *
+ * Pass NULL for @p params to use the Kconfig defaults.
+ * The OpenThread task is not started. Call net_iface_start() next.
+ * When Thread is turned off in Kconfig, this returns ESP_ERR_NOT_SUPPORTED.
+ *
+ * @param[in]  params     Optional settings. NULL uses Kconfig defaults.
+ * @param[out] out_handle New handle, or NULL on failure.
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, ESP_ERR_NO_MEM, or ESP_ERR_NOT_SUPPORTED.
+ */
 esp_err_t net_thread_create(const net_thread_params_t *params, net_iface_handle_t *out_handle);
+
+/**
+ * @brief Create a PPP handle.
+ *
+ * Pass NULL for @p params to use the Kconfig defaults.
+ * USB or UART is not started. Call net_iface_start() next.
+ * When PPP is turned off in Kconfig, this returns ESP_ERR_NOT_SUPPORTED.
+ *
+ * @param[in]  params     Optional settings. NULL uses Kconfig defaults.
+ * @param[out] out_handle New handle, or NULL on failure.
+ * @return ESP_OK, ESP_ERR_INVALID_ARG, ESP_ERR_NO_MEM, or ESP_ERR_NOT_SUPPORTED.
+ */
 esp_err_t net_ppp_create(const net_ppp_params_t *params, net_iface_handle_t *out_handle);
 
 /**
@@ -379,14 +426,38 @@ esp_err_t net_wifi_sta_set_credentials(net_iface_handle_t h, const char *ssid, c
  *                    Getters and Iteration
  * ============================================================ */
 
+/**
+ * @brief Function called once for each interface by net_iface_for_each().
+ *
+ * Return true to keep walking. Return false to stop early.
+ * Do not free an interface from this callback.
+ */
 typedef bool (*net_iface_cb_t)(net_iface_handle_t h, void *ctx);
 
+/** Return the esp_netif for this handle, or NULL if it is not started. */
 esp_netif_t       *net_iface_get_netif(net_iface_handle_t h);
+
+/** Return the current state. A NULL handle reads as UNINIT. */
 net_iface_state_t  net_iface_get_state(net_iface_handle_t h);
+
+/** Return the interface type chosen at create time. */
 net_iface_type_t   net_iface_get_type(net_iface_handle_t h);
+
+/** Return the error saved when the interface last failed. */
 esp_err_t          net_iface_get_last_error(net_iface_handle_t h);
+
+/** Return the first interface of this type, or NULL if there is none. */
 net_iface_handle_t net_iface_get_by_type(net_iface_type_t type);
+
+/** Return the interface whose description matches, or NULL. */
 net_iface_handle_t net_iface_get_by_desc(const char *desc);
+
+/**
+ * @brief Call cb once for each interface.
+ *
+ * The list lock is not held during the callback, so the callback may look up
+ * other interfaces. It must not free an interface that is still in the list.
+ */
 esp_err_t          net_iface_for_each(net_iface_cb_t cb, void *ctx);
 
 /* ============================================================
@@ -424,7 +495,10 @@ typedef struct {
     esp_err_t          err;       /*!< Error code for NET_IFACE_EVENT_FAILED, otherwise ESP_OK */
 } net_iface_event_data_t;
 
+/** Listen for every NET_IFACE_EVENT. Events that already happened are not repeated. */
 esp_err_t net_iface_register_event_handler(esp_event_handler_t handler, void *arg);
+
+/** Stop listening for NET_IFACE_EVENT. */
 esp_err_t net_iface_unregister_event_handler(esp_event_handler_t handler);
 
 #endif /* !CONFIG_IDF_TARGET_LINUX */

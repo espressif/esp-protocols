@@ -35,6 +35,7 @@ static esp_netif_t *test_netif_other = NULL;
 #define TEST_EVENT_LOG_LEN 8
 
 static net_iface_handle_t s_test_handle = NULL;
+static net_iface_handle_t s_test_handle2 = NULL;
 static bool s_handler_registered = false;
 static volatile int s_event_count = 0;
 static net_iface_event_id_t s_event_ids[TEST_EVENT_LOG_LEN];
@@ -84,13 +85,19 @@ static esp_err_t test_register_handler(void)
 
 static void test_iface_cleanup(void)
 {
-    if (s_test_handle != NULL) {
-        net_iface_state_t state = net_iface_get_state(s_test_handle);
-        if (state != NET_IFACE_STATE_INIT && state != NET_IFACE_STATE_UNINIT) {
-            net_iface_stop(s_test_handle);
+    net_iface_handle_t handles[2] = { s_test_handle, s_test_handle2 };
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+    for (int i = 0; i < 2; i++) {
+        net_iface_handle_t h = handles[i];
+        if (h == NULL) {
+            continue;
         }
-        net_iface_deinit(s_test_handle);
-        s_test_handle = NULL;
+        net_iface_state_t state = net_iface_get_state(h);
+        if (state != NET_IFACE_STATE_INIT && state != NET_IFACE_STATE_UNINIT) {
+            net_iface_stop(h);
+        }
+        net_iface_deinit(h);
     }
     test_unregister_handler();
 }
@@ -191,6 +198,11 @@ TEST_TEAR_DOWN(net_connect)
     }
 
     esp_event_loop_delete_default();
+    /*
+     * A startup task deletes itself. The idle task frees its stack. Yield so
+     * that happens before the leak check.
+     */
+    vTaskDelay(pdMS_TO_TICKS(20));
     test_utils_finish_and_evaluate_leaks(0, 0);
 }
 
@@ -408,6 +420,13 @@ static esp_err_t open_fake_iface(net_iface_handle_t *out, bool enable_ipv6)
     return err;
 }
 
+/* Wait until the background startup task has finished ops->start(). */
+static void wait_for_startup_done(net_iface_handle_t h)
+{
+    xEventGroupWaitBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE,
+                        pdFALSE, pdFALSE, pdMS_TO_TICKS(100));
+}
+
 static void expect_iface_events(net_iface_handle_t h, const net_iface_event_id_t *expected, int count)
 {
     int seen = s_event_count;
@@ -433,6 +452,7 @@ TEST(net_connect, net_iface_lifecycle_state_transitions)
     TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_connect(h));
 
     TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
     TEST_ASSERT_EQUAL(test_netif_sta, net_iface_get_netif(h));
     TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_deinit(h));
@@ -461,6 +481,7 @@ TEST(net_connect, net_iface_event_callbacks_and_order)
     TEST_ESP_OK(open_fake_iface(&h, false));
 
     TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
     TEST_ESP_OK(net_iface_connect(h));
     net_iface_notify_ready(h);
     TEST_ESP_OK(net_iface_stop(h));
@@ -487,6 +508,7 @@ TEST(net_connect, net_iface_failure_records_last_error)
     net_iface_handle_t h = NULL;
     TEST_ESP_OK(open_fake_iface(&h, false));
     TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
 
     net_iface_notify_failed(h, ESP_ERR_WIFI_CONN);
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
@@ -506,6 +528,7 @@ TEST(net_connect, net_iface_late_callback_discovers_state)
     net_iface_handle_t h = NULL;
     TEST_ESP_OK(open_fake_iface(&h, false));
     TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
     TEST_ESP_OK(net_iface_connect(h));
     net_iface_notify_ready(h);
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -530,6 +553,7 @@ TEST(net_connect, net_iface_ip_event_drives_ready_and_lost_ip)
     net_iface_handle_t h = NULL;
     TEST_ESP_OK(open_fake_iface(&h, false));
     TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
     TEST_ESP_OK(net_iface_connect(h));
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
 
@@ -550,6 +574,312 @@ TEST(net_connect, net_iface_ip_event_drives_ready_and_lost_ip)
     s_test_handle = NULL;
 }
 
+static esp_err_t slow_eth_start(net_iface_handle_t self)
+{
+    vTaskDelay(pdMS_TO_TICKS(500));
+    net_iface_notify_started(self, test_netif_eth);
+    net_iface_notify_connected(self);
+    net_iface_notify_ready(self);
+    return ESP_OK;
+}
+
+static esp_err_t slow_eth_parallel_start(net_iface_handle_t self)
+{
+    vTaskDelay(pdMS_TO_TICKS(600));
+    net_iface_notify_started(self, test_netif_eth);
+    net_iface_notify_connected(self);
+    net_iface_notify_ready(self);
+    return ESP_OK;
+}
+
+static esp_err_t fast_wifi_start(net_iface_handle_t self)
+{
+    vTaskDelay(pdMS_TO_TICKS(20));
+    net_iface_notify_started(self, test_netif_sta);
+    net_iface_notify_connected(self);
+    net_iface_notify_ready(self);
+    return ESP_OK;
+}
+
+static esp_err_t failing_start(net_iface_handle_t self)
+{
+    (void)self;
+    vTaskDelay(pdMS_TO_TICKS(50));
+    return ESP_ERR_NOT_FOUND;
+}
+
+static const net_iface_ops_t s_slow_eth_ops = {
+    .name = "slow_eth",
+    .start = slow_eth_start,
+    .stop = fake_stop,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_slow_eth_parallel_ops = {
+    .name = "slow_eth",
+    .start = slow_eth_parallel_start,
+    .stop = fake_stop,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_fast_wifi_ops = {
+    .name = "fast_wifi",
+    .start = fast_wifi_start,
+    .stop = fake_stop,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_failing_start_ops = {
+    .name = "fail_start",
+    .start = failing_start,
+    .stop = fake_stop,
+    .disconnect = fake_disconnect,
+};
+
+static esp_err_t open_ops_iface(net_iface_handle_t *out, net_iface_type_t type,
+                                const char *desc, const net_iface_ops_t *ops,
+                                int stack_size)
+{
+    net_iface_config_t cfg = { 0 };
+    cfg.type = type;
+    cfg.desc = desc;
+    cfg.ip.use_dhcp = true;
+    cfg.startup_task_stack_size = stack_size;
+    return net_iface_init_with_ops(&cfg, ops, out);
+}
+
+/**
+ * @brief net_iface_start() returns while a slow driver is still running.
+ */
+TEST(net_connect, net_iface_start_returns_promptly_while_driver_blocks)
+{
+    net_iface_handle_t eth = NULL;
+    TEST_ESP_OK(open_ops_iface(&eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH, &s_slow_eth_ops, 0));
+    s_test_handle = eth;
+
+    TickType_t t0 = xTaskGetTickCount();
+    TEST_ESP_OK(net_iface_start(eth));
+    uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+    TEST_ASSERT_LESS_THAN_UINT32(50, elapsed_ms);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTING, net_iface_get_state(eth));
+
+    TEST_ESP_OK(net_iface_wait(eth, 1000));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(eth));
+
+    TEST_ESP_OK(net_iface_stop(eth));
+    TEST_ESP_OK(net_iface_deinit(eth));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief A fast interface reaches READY while a slow one started first is still STARTING.
+ */
+TEST(net_connect, net_iface_parallel_startup_no_head_of_line_blocking)
+{
+    net_iface_handle_t eth = NULL;
+    net_iface_handle_t wifi = NULL;
+    TEST_ESP_OK(open_ops_iface(&eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH,
+                               &s_slow_eth_parallel_ops, 0));
+    s_test_handle = eth;
+    TEST_ESP_OK(open_ops_iface(&wifi, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_fast_wifi_ops, 0));
+    s_test_handle2 = wifi;
+
+    TEST_ESP_OK(net_iface_start(eth));
+    TEST_ESP_OK(net_iface_start(wifi));
+
+    TEST_ESP_OK(net_iface_wait(wifi, 200));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(wifi));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTING, net_iface_get_state(eth));
+
+    TEST_ESP_OK(net_iface_wait(eth, 1000));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(eth));
+
+    TEST_ESP_OK(net_iface_stop(wifi));
+    TEST_ESP_OK(net_iface_stop(eth));
+    TEST_ESP_OK(net_iface_deinit(wifi));
+    TEST_ESP_OK(net_iface_deinit(eth));
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+}
+
+/**
+ * @brief A driver failure inside the startup task wakes wait() and posts FAILED.
+ */
+TEST(net_connect, net_iface_async_startup_failure_notifies_waiter_and_event)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_failing_start_ops, 0));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    esp_err_t wait_err = net_iface_wait(h, 500);
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_FOUND, wait_err);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_FOUND, net_iface_get_last_error(h));
+
+    vTaskDelay(pdMS_TO_TICKS(20));
+    bool saw_failed = false;
+    for (int i = 0; i < s_event_count; i++) {
+        if (s_event_ids[i] == NET_IFACE_EVENT_FAILED && s_event_ifaces[i] == h) {
+            saw_failed = true;
+        }
+    }
+    TEST_ASSERT_TRUE(saw_failed);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief A startup task that cannot be created fails start() with ESP_ERR_NO_MEM.
+ */
+TEST(net_connect, net_iface_start_task_alloc_failure_returns_no_mem)
+{
+    net_iface_handle_t h = NULL;
+    /* Larger than any ESP32 heap, so xTaskCreate() fails before the task runs. */
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_fake_ops, 16 * 1024 * 1024));
+    s_test_handle = h;
+
+    TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, net_iface_start(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_NO_MEM, net_iface_get_last_error(h));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief net_wifi_sta_create(NULL) stores the Kconfig defaults and stays idle.
+ *
+ * A custom parameter struct overrides the name, retry count, and route priority.
+ * Creating a handle does not start the radio.
+ */
+TEST(net_connect, net_wifi_sta_create_defaults_and_custom_params)
+{
+    net_iface_handle_t h = NULL;
+
+#if CONFIG_NET_CONNECT_WIFI
+    TEST_ESP_OK(net_wifi_sta_create(NULL, &h));
+    s_test_handle = h;
+    TEST_ASSERT_NOT_NULL(h);
+    TEST_ASSERT_EQUAL(NET_IFACE_TYPE_WIFI_STA, net_iface_get_type(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(h, net_iface_get_by_desc(NET_CONNECT_NETIF_DESC_STA));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+
+    net_wifi_sta_params_t params = {
+        .ssid = "CustomAP",
+        .password = "custom-pass",
+        .max_retry = 3,
+        .route_prio = 10,
+        .required = false,
+        .auto_connect_on_start = false,
+    };
+    TEST_ESP_OK(net_wifi_sta_create(&params, &h));
+    s_test_handle = h;
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL_STRING("CustomAP", h->cfg.wifi_sta.ssid);
+    TEST_ASSERT_EQUAL_STRING("custom-pass", h->cfg.wifi_sta.password);
+    TEST_ASSERT_EQUAL(3, h->cfg.wifi_sta.max_retry);
+    TEST_ASSERT_EQUAL(10, h->cfg.route_prio);
+    TEST_ASSERT_FALSE(h->cfg.auto_connect_on_start);
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+#else
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_SUPPORTED, net_wifi_sta_create(NULL, &h));
+    TEST_ASSERT_NULL(h);
+#endif
+}
+
+/**
+ * @brief An empty Wi-Fi name is rejected. A real name is stored.
+ *
+ * The handle is created with no name, which is the "not configured yet" case.
+ */
+TEST(net_connect, net_wifi_sta_set_credentials_validation)
+{
+    net_iface_handle_t h = NULL;
+
+#if CONFIG_NET_CONNECT_WIFI
+    net_wifi_sta_params_t params = {
+        .ssid = "",
+        .password = NULL,
+        .max_retry = -1,
+        .route_prio = -1,
+        .required = false,
+        .auto_connect_on_start = false,
+    };
+    TEST_ESP_OK(net_wifi_sta_create(&params, &h));
+    s_test_handle = h;
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, net_wifi_sta_set_credentials(h, "", "pass"));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, net_wifi_sta_set_credentials(h, NULL, "pass"));
+    TEST_ESP_OK(net_wifi_sta_set_credentials(h, "HomeHubAP", "secret123"));
+    TEST_ASSERT_EQUAL_STRING("HomeHubAP", h->cfg.wifi_sta.ssid);
+    TEST_ASSERT_EQUAL_STRING("secret123", h->cfg.wifi_sta.password);
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+#else
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_ARG, net_wifi_sta_set_credentials(NULL, "HomeHubAP", "secret123"));
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_SUPPORTED, net_wifi_sta_create(NULL, &h));
+#endif
+}
+
+/**
+ * @brief Create and free Ethernet, Thread, and PPP handles without hardware.
+ *
+ * An interface that is turned off in Kconfig returns ESP_ERR_NOT_SUPPORTED.
+ */
+TEST(net_connect, net_eth_thread_ppp_create_and_deinit)
+{
+    net_iface_handle_t h = NULL;
+
+#if CONFIG_NET_CONNECT_ETHERNET
+    TEST_ESP_OK(net_eth_create(NULL, &h));
+    s_test_handle = h;
+    TEST_ASSERT_EQUAL(NET_IFACE_TYPE_ETH, net_iface_get_type(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+#else
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_SUPPORTED, net_eth_create(NULL, &h));
+    TEST_ASSERT_NULL(h);
+#endif
+
+#if CONFIG_NET_CONNECT_THREAD
+    TEST_ESP_OK(net_thread_create(NULL, &h));
+    s_test_handle = h;
+    TEST_ASSERT_EQUAL(NET_IFACE_TYPE_THREAD, net_iface_get_type(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+#else
+    h = NULL;
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_SUPPORTED, net_thread_create(NULL, &h));
+    TEST_ASSERT_NULL(h);
+#endif
+
+#if CONFIG_NET_CONNECT_PPP
+    TEST_ESP_OK(net_ppp_create(NULL, &h));
+    s_test_handle = h;
+    TEST_ASSERT_EQUAL(NET_IFACE_TYPE_PPP, net_iface_get_type(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+#else
+    h = NULL;
+    TEST_ASSERT_EQUAL(ESP_ERR_NOT_SUPPORTED, net_ppp_create(NULL, &h));
+    TEST_ASSERT_NULL(h);
+#endif
+}
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
@@ -568,6 +898,13 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_iface_failure_records_last_error);
     RUN_TEST_CASE(net_connect, net_iface_late_callback_discovers_state);
     RUN_TEST_CASE(net_connect, net_iface_ip_event_drives_ready_and_lost_ip);
+    RUN_TEST_CASE(net_connect, net_iface_start_returns_promptly_while_driver_blocks);
+    RUN_TEST_CASE(net_connect, net_iface_parallel_startup_no_head_of_line_blocking);
+    RUN_TEST_CASE(net_connect, net_iface_async_startup_failure_notifies_waiter_and_event);
+    RUN_TEST_CASE(net_connect, net_iface_start_task_alloc_failure_returns_no_mem);
+    RUN_TEST_CASE(net_connect, net_wifi_sta_create_defaults_and_custom_params);
+    RUN_TEST_CASE(net_connect, net_wifi_sta_set_credentials_validation);
+    RUN_TEST_CASE(net_connect, net_eth_thread_ppp_create_and_deinit);
 }
 
 void app_main(void)
