@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -8,6 +8,7 @@
 #include "net_connect.h"
 #include "net_iface_priv.h"
 #include "esp_event.h"
+#include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_netif_defaults.h"
 #include "esp_wifi.h"
@@ -31,11 +32,16 @@ static esp_netif_t *test_netif_eth = NULL;
 static esp_netif_t *test_netif_thread = NULL;
 static esp_netif_t *test_netif_ppp = NULL;
 static esp_netif_t *test_netif_other = NULL;
+/* Route-priority test netifs. Destroyed by that test, or by tear-down if it fails. */
+static esp_netif_t *s_prio_eth_netif = NULL;
+static esp_netif_t *s_prio_wifi_netif = NULL;
 
-#define TEST_EVENT_LOG_LEN 8
+#define TEST_EVENT_LOG_LEN 32
 
 static net_iface_handle_t s_test_handle = NULL;
 static net_iface_handle_t s_test_handle2 = NULL;
+static net_iface_handle_t s_test_handle3 = NULL;
+static net_iface_handle_t s_test_handle4 = NULL;
 static bool s_handler_registered = false;
 static volatile int s_event_count = 0;
 static net_iface_event_id_t s_event_ids[TEST_EVENT_LOG_LEN];
@@ -84,14 +90,20 @@ static esp_err_t test_register_handler(void)
 }
 
 static void test_clear_deadlock_handler(void);
+static void test_clear_prio_handler(void);
 
 static void test_iface_cleanup(void)
 {
     test_clear_deadlock_handler();
-    net_iface_handle_t handles[2] = { s_test_handle, s_test_handle2 };
+    test_clear_prio_handler();
+    net_iface_handle_t handles[4] = {
+        s_test_handle, s_test_handle2, s_test_handle3, s_test_handle4
+    };
     s_test_handle = NULL;
     s_test_handle2 = NULL;
-    for (int i = 0; i < 2; i++) {
+    s_test_handle3 = NULL;
+    s_test_handle4 = NULL;
+    for (int i = 0; i < 4; i++) {
         net_iface_handle_t h = handles[i];
         if (h == NULL) {
             continue;
@@ -198,6 +210,14 @@ TEST_TEAR_DOWN(net_connect)
     if (test_netif_other) {
         esp_netif_destroy(test_netif_other);
         test_netif_other = NULL;
+    }
+    if (s_prio_wifi_netif != NULL) {
+        esp_netif_destroy(s_prio_wifi_netif);
+        s_prio_wifi_netif = NULL;
+    }
+    if (s_prio_eth_netif != NULL) {
+        esp_netif_destroy(s_prio_eth_netif);
+        s_prio_eth_netif = NULL;
     }
 
     esp_event_loop_delete_default();
@@ -1413,6 +1433,558 @@ TEST(net_connect, net_iface_restart_after_failed_start_succeeds)
     s_test_handle = NULL;
 }
 
+/* ============================================================
+ *       Stage 7: regression and integration tests
+ * ============================================================ */
+
+static esp_err_t fake_eth_start(net_iface_handle_t self)
+{
+    net_iface_notify_started(self, test_netif_eth);
+    return ESP_OK;
+}
+
+static esp_err_t fake_thread_start(net_iface_handle_t self)
+{
+    net_iface_notify_started(self, test_netif_thread);
+    return ESP_OK;
+}
+
+static esp_err_t fake_ppp_start(net_iface_handle_t self)
+{
+    net_iface_notify_started(self, test_netif_ppp);
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_fake_eth_ops = {
+    .name = "fake_eth",
+    .start = fake_eth_start,
+    .stop = fake_stop,
+    .connect = stay_connecting_connect,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_fake_thread_ops = {
+    .name = "fake_thread",
+    .start = fake_thread_start,
+    .stop = fake_stop,
+    .connect = stay_connecting_connect,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_fake_ppp_ops = {
+    .name = "fake_ppp",
+    .start = fake_ppp_start,
+    .stop = fake_stop,
+    .connect = stay_connecting_connect,
+    .disconnect = fake_disconnect,
+};
+
+typedef struct {
+    net_iface_handle_t iface;
+    uint32_t delay_ms;
+    SemaphoreHandle_t done_sem;
+} drive_iface_arg_t;
+
+static void drive_iface_to_ready_task(void *arg)
+{
+    drive_iface_arg_t *ctx = (drive_iface_arg_t *)arg;
+    vTaskDelay(pdMS_TO_TICKS(ctx->delay_ms));
+    net_iface_notify_connected(ctx->iface);
+    vTaskDelay(pdMS_TO_TICKS(5));
+    net_iface_notify_ready(ctx->iface);
+    xSemaphoreGive(ctx->done_sem);
+    vTaskDelete(NULL);
+}
+
+typedef struct {
+    const net_iface_handle_t *handles;
+    size_t count;
+    bool wait_all;
+    esp_err_t result;
+    net_iface_handle_t ready_out;
+    SemaphoreHandle_t done_sem;
+} multi_waiter_arg_t;
+
+static void multi_waiter_task(void *arg)
+{
+    multi_waiter_arg_t *ctx = (multi_waiter_arg_t *)arg;
+    if (ctx->wait_all) {
+        ctx->result = net_iface_wait_all(ctx->handles, ctx->count, 1000);
+    } else {
+        ctx->result = net_iface_wait_any(ctx->handles, ctx->count, 1000, &ctx->ready_out);
+    }
+    xSemaphoreGive(ctx->done_sem);
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief Four interfaces reach READY together while wait_all() and wait_any() are waiting.
+ */
+TEST(net_connect, net_iface_four_interfaces_concurrent_events_and_waiters)
+{
+    net_iface_handle_t h_eth = NULL;
+    net_iface_handle_t h_wifi = NULL;
+    net_iface_handle_t h_thread = NULL;
+    net_iface_handle_t h_ppp = NULL;
+
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_ops_iface(&h_eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH, &s_fake_eth_ops, 0));
+    s_test_handle = h_eth;
+    TEST_ESP_OK(open_ops_iface(&h_wifi, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA, &s_stay_connecting_ops, 0));
+    s_test_handle2 = h_wifi;
+    TEST_ESP_OK(open_ops_iface(&h_thread, NET_IFACE_TYPE_THREAD, TEST_NETIF_DESC_THREAD, &s_fake_thread_ops, 0));
+    s_test_handle3 = h_thread;
+    TEST_ESP_OK(open_ops_iface(&h_ppp, NET_IFACE_TYPE_PPP, TEST_NETIF_DESC_PPP, &s_fake_ppp_ops, 0));
+    s_test_handle4 = h_ppp;
+
+    net_iface_handle_t all[4] = { h_eth, h_wifi, h_thread, h_ppp };
+    for (int i = 0; i < 4; i++) {
+        TEST_ESP_OK(net_iface_start(all[i]));
+    }
+    for (int i = 0; i < 4; i++) {
+        wait_for_startup_done(all[i]);
+        TEST_ESP_OK(net_iface_connect(all[i]));
+    }
+    /* Let STARTED land in the event log before the driver tasks post CONNECTED. */
+    vTaskDelay(pdMS_TO_TICKS(20));
+
+    SemaphoreHandle_t waiter_all_sem = xSemaphoreCreateBinary();
+    SemaphoreHandle_t waiter_any_sem = xSemaphoreCreateBinary();
+    SemaphoreHandle_t drv_sems[4] = { NULL, NULL, NULL, NULL };
+    TEST_ASSERT_NOT_NULL(waiter_all_sem);
+    TEST_ASSERT_NOT_NULL(waiter_any_sem);
+
+    multi_waiter_arg_t wait_all_arg = {
+        .handles = all,
+        .count = 4,
+        .wait_all = true,
+        .result = ESP_FAIL,
+        .ready_out = NULL,
+        .done_sem = waiter_all_sem,
+    };
+    multi_waiter_arg_t wait_any_arg = {
+        .handles = all,
+        .count = 4,
+        .wait_all = false,
+        .result = ESP_FAIL,
+        .ready_out = NULL,
+        .done_sem = waiter_any_sem,
+    };
+
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(multi_waiter_task, "w_all", 3072, &wait_all_arg, 5, NULL));
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(multi_waiter_task, "w_any", 3072, &wait_any_arg, 5, NULL));
+
+    drive_iface_arg_t drv_args[4];
+    for (int i = 0; i < 4; i++) {
+        drv_sems[i] = xSemaphoreCreateBinary();
+        TEST_ASSERT_NOT_NULL(drv_sems[i]);
+        drv_args[i].iface = all[i];
+        drv_args[i].delay_ms = (uint32_t)(i + 1) * 10;
+        drv_args[i].done_sem = drv_sems[i];
+        TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(drive_iface_to_ready_task, "drv_rdy", 3072, &drv_args[i], 5, NULL));
+    }
+
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(waiter_any_sem, pdMS_TO_TICKS(1000)));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(waiter_all_sem, pdMS_TO_TICKS(1000)));
+    for (int i = 0; i < 4; i++) {
+        TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(drv_sems[i], pdMS_TO_TICKS(1000)));
+        vSemaphoreDelete(drv_sems[i]);
+    }
+    vSemaphoreDelete(waiter_any_sem);
+    vSemaphoreDelete(waiter_all_sem);
+
+    TEST_ESP_OK(wait_any_arg.result);
+    TEST_ASSERT_NOT_NULL(wait_any_arg.ready_out);
+    TEST_ESP_OK(wait_all_arg.result);
+
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    /* Each interface emits STARTED, then CONNECTED, then READY. */
+    for (int i = 0; i < 4; i++) {
+        TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(all[i]));
+        net_iface_event_id_t seen_for_iface[8];
+        int seen_count = 0;
+        for (int e = 0; e < s_event_count; e++) {
+            if (s_event_ifaces[e] == all[i] && seen_count < 8) {
+                seen_for_iface[seen_count++] = s_event_ids[e];
+            }
+        }
+        TEST_ASSERT_EQUAL(3, seen_count);
+        TEST_ASSERT_EQUAL(NET_IFACE_EVENT_STARTED, seen_for_iface[0]);
+        TEST_ASSERT_EQUAL(NET_IFACE_EVENT_CONNECTED, seen_for_iface[1]);
+        TEST_ASSERT_EQUAL(NET_IFACE_EVENT_READY, seen_for_iface[2]);
+    }
+
+    test_unregister_handler();
+    for (int i = 3; i >= 0; i--) {
+        TEST_ESP_OK(net_iface_stop(all[i]));
+        TEST_ESP_OK(net_iface_deinit(all[i]));
+    }
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+    s_test_handle3 = NULL;
+    s_test_handle4 = NULL;
+    /* Let the idle task free the helper-task stacks before the leak check. */
+    vTaskDelay(pdMS_TO_TICKS(20));
+}
+
+static esp_err_t dummy_netif_transmit(void *h, void *buffer, size_t len)
+{
+    (void)h;
+    (void)buffer;
+    (void)len;
+    return ESP_OK;
+}
+
+static bool s_boost_eth_prio_on_ready = false;
+static bool s_prio_handler_registered = false;
+
+static void on_ready_boost_eth_prio(void *arg, esp_event_base_t event_base,
+                                    int32_t event_id, void *event_data)
+{
+    (void)arg;
+    (void)event_base;
+    if (!s_boost_eth_prio_on_ready || event_id != NET_IFACE_EVENT_READY || event_data == NULL) {
+        return;
+    }
+    const net_iface_event_data_t *data = (const net_iface_event_data_t *)event_data;
+    if (data->type == NET_IFACE_TYPE_ETH && data->netif != NULL) {
+        esp_netif_set_route_prio(data->netif, 200);
+        esp_netif_set_default_netif(NULL);
+    }
+}
+
+static void test_clear_prio_handler(void)
+{
+    s_boost_eth_prio_on_ready = false;
+    if (!s_prio_handler_registered) {
+        return;
+    }
+    net_iface_unregister_event_handler(on_ready_boost_eth_prio);
+    s_prio_handler_registered = false;
+}
+
+static esp_err_t prio_eth_start(net_iface_handle_t self)
+{
+    esp_netif_action_start(s_prio_eth_netif, 0, 0, NULL);
+    net_iface_notify_started(self, s_prio_eth_netif);
+    return ESP_OK;
+}
+
+static esp_err_t prio_eth_connect(net_iface_handle_t self)
+{
+    esp_netif_action_connected(s_prio_eth_netif, 0, 0, NULL);
+    net_iface_notify_connected(self);
+    net_iface_notify_ready(self);
+    return ESP_OK;
+}
+
+static esp_err_t prio_eth_stop(net_iface_handle_t self)
+{
+    (void)self;
+    if (s_prio_eth_netif != NULL) {
+        esp_netif_action_disconnected(s_prio_eth_netif, 0, 0, NULL);
+        esp_netif_action_stop(s_prio_eth_netif, 0, 0, NULL);
+    }
+    return ESP_OK;
+}
+
+static esp_err_t prio_wifi_start(net_iface_handle_t self)
+{
+    esp_netif_action_start(s_prio_wifi_netif, 0, 0, NULL);
+    net_iface_notify_started(self, s_prio_wifi_netif);
+    return ESP_OK;
+}
+
+static esp_err_t prio_wifi_connect(net_iface_handle_t self)
+{
+    esp_netif_action_connected(s_prio_wifi_netif, 0, 0, NULL);
+    net_iface_notify_connected(self);
+    net_iface_notify_ready(self);
+    return ESP_OK;
+}
+
+static esp_err_t prio_wifi_stop(net_iface_handle_t self)
+{
+    (void)self;
+    if (s_prio_wifi_netif != NULL) {
+        esp_netif_action_disconnected(s_prio_wifi_netif, 0, 0, NULL);
+        esp_netif_action_stop(s_prio_wifi_netif, 0, 0, NULL);
+    }
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_prio_eth_ops = {
+    .name = "prio_eth",
+    .start = prio_eth_start,
+    .stop = prio_eth_stop,
+    .connect = prio_eth_connect,
+    .disconnect = fake_disconnect,
+};
+
+static const net_iface_ops_t s_prio_wifi_ops = {
+    .name = "prio_wifi",
+    .start = prio_wifi_start,
+    .stop = prio_wifi_stop,
+    .connect = prio_wifi_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief The higher route priority wins in either startup order, and a READY callback can switch it.
+ *
+ * These netifs do not run a DHCP client. With DHCP, esp_netif waits for a real
+ * address before it will select the default route, and this test never gets one.
+ * Bringing the interface up is enough for the higher route_prio to win.
+ */
+TEST(net_connect, net_iface_route_priority_and_dynamic_default_switch)
+{
+    test_case_uses_tcpip();
+
+    esp_netif_driver_ifconfig_t drv_cfg = { 0 };
+    drv_cfg.handle = (void *)1;
+    drv_cfg.transmit = dummy_netif_transmit;
+
+    esp_netif_inherent_config_t base_eth = { 0 };
+    base_eth.if_key = "PRIO_TEST_ETH";
+    base_eth.if_desc = "prio_test_eth";
+    base_eth.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
+    esp_netif_config_t cfg_eth = {
+        .base = &base_eth,
+        .driver = &drv_cfg,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
+    };
+    s_prio_eth_netif = esp_netif_new(&cfg_eth);
+    TEST_ASSERT_NOT_NULL(s_prio_eth_netif);
+
+    esp_netif_inherent_config_t base_wifi = { 0 };
+    base_wifi.if_key = "PRIO_TEST_WIFI";
+    base_wifi.if_desc = "prio_test_wifi";
+    base_wifi.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
+    esp_netif_config_t cfg_wifi = {
+        .base = &base_wifi,
+        .driver = &drv_cfg,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
+    };
+    s_prio_wifi_netif = esp_netif_new(&cfg_wifi);
+    TEST_ASSERT_NOT_NULL(s_prio_wifi_netif);
+
+    net_iface_config_t eth_icfg = { 0 };
+    eth_icfg.type = NET_IFACE_TYPE_ETH;
+    eth_icfg.desc = "prio_test_eth";
+    eth_icfg.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
+    eth_icfg.auto_connect_on_start = true;
+    eth_icfg.ip.use_dhcp = true;
+
+    net_iface_config_t wifi_icfg = { 0 };
+    wifi_icfg.type = NET_IFACE_TYPE_WIFI_STA;
+    wifi_icfg.desc = "prio_test_wifi";
+    wifi_icfg.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
+    wifi_icfg.auto_connect_on_start = true;
+    wifi_icfg.ip.use_dhcp = true;
+
+    net_iface_handle_t h_eth = NULL;
+    net_iface_handle_t h_wifi = NULL;
+    TEST_ESP_OK(net_iface_init_with_ops(&eth_icfg, &s_prio_eth_ops, &h_eth));
+    s_test_handle = h_eth;
+    TEST_ESP_OK(net_iface_init_with_ops(&wifi_icfg, &s_prio_wifi_ops, &h_wifi));
+    s_test_handle2 = h_wifi;
+
+    /* Ethernet (priority 64) comes up first, then Wi-Fi (priority 128). */
+    TEST_ESP_OK(net_iface_start(h_eth));
+    TEST_ESP_OK(net_iface_wait(h_eth, 500));
+    TEST_ASSERT_EQUAL_PTR(s_prio_eth_netif, esp_netif_get_default_netif());
+
+    TEST_ESP_OK(net_iface_start(h_wifi));
+    TEST_ESP_OK(net_iface_wait(h_wifi, 500));
+    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
+
+    TEST_ESP_OK(net_iface_stop(h_wifi));
+    TEST_ESP_OK(net_iface_stop(h_eth));
+
+    /* Wi-Fi comes up first. It still wins after Ethernet follows. */
+    TEST_ESP_OK(net_iface_start(h_wifi));
+    TEST_ESP_OK(net_iface_wait(h_wifi, 500));
+    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
+
+    TEST_ESP_OK(net_iface_start(h_eth));
+    TEST_ESP_OK(net_iface_wait(h_eth, 500));
+    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
+
+    /* A READY callback raises Ethernet above Wi-Fi and asks esp_netif to pick again. */
+    s_boost_eth_prio_on_ready = true;
+    TEST_ESP_OK(net_iface_register_event_handler(on_ready_boost_eth_prio, NULL));
+    s_prio_handler_registered = true;
+
+    TEST_ESP_OK(net_iface_stop(h_eth));
+    TEST_ESP_OK(net_iface_start(h_eth));
+    TEST_ESP_OK(net_iface_wait(h_eth, 500));
+    vTaskDelay(pdMS_TO_TICKS(30));
+    TEST_ASSERT_EQUAL_PTR(s_prio_eth_netif, esp_netif_get_default_netif());
+
+    test_clear_prio_handler();
+
+    TEST_ESP_OK(net_iface_stop(h_wifi));
+    TEST_ESP_OK(net_iface_stop(h_eth));
+    TEST_ESP_OK(net_iface_deinit(h_wifi));
+    TEST_ESP_OK(net_iface_deinit(h_eth));
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+
+    esp_netif_destroy(s_prio_wifi_netif);
+    s_prio_wifi_netif = NULL;
+    esp_netif_destroy(s_prio_eth_netif);
+    s_prio_eth_netif = NULL;
+
+    /*
+     * test_case_uses_tcpip() moved the leak baseline to after LwIP startup,
+     * while the fixture netifs from TEST_SETUP are still allocated. Check now.
+     * Tear-down frees those fixture netifs, so its own check sees free memory go up.
+     */
+    vTaskDelay(pdMS_TO_TICKS(20));
+    test_utils_finish_and_evaluate_leaks(0, 0);
+}
+
+#if CONFIG_NET_CONNECT_WIFI
+static esp_err_t homehub_wifi_connect(net_iface_handle_t self)
+{
+    /* An empty name is not a failure. The interface stays started. */
+    if (self->cfg.wifi_sta.ssid[0] == '\0') {
+        return ESP_ERR_INVALID_STATE;
+    }
+    net_iface_notify_connected(self);
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_homehub_wifi_ops = {
+    .name = "hub_wifi",
+    .start = fake_start,
+    .stop = fake_stop,
+    .connect = homehub_wifi_connect,
+    .disconnect = fake_disconnect,
+};
+#endif
+
+/**
+ * @brief Required Ethernet becomes ready while unprovisioned Wi-Fi stays started.
+ *
+ * Credentials stored later bring Wi-Fi to ready as well.
+ */
+TEST(net_connect, net_iface_home_hub_required_eth_and_unprovisioned_wifi)
+{
+#if CONFIG_NET_CONNECT_WIFI
+    net_iface_config_t eth_cfg = { 0 };
+    eth_cfg.type = NET_IFACE_TYPE_ETH;
+    eth_cfg.desc = TEST_NETIF_DESC_ETH;
+    eth_cfg.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
+    eth_cfg.required = true;
+    eth_cfg.auto_connect_on_start = true;
+    eth_cfg.ip.use_dhcp = true;
+
+    net_iface_config_t wifi_cfg = { 0 };
+    wifi_cfg.type = NET_IFACE_TYPE_WIFI_STA;
+    wifi_cfg.desc = TEST_NETIF_DESC_STA;
+    wifi_cfg.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
+    wifi_cfg.required = false;
+    /* Auto-connect is on, but the empty name keeps Wi-Fi in STARTED. */
+    wifi_cfg.auto_connect_on_start = true;
+    wifi_cfg.ip.use_dhcp = true;
+    wifi_cfg.wifi_sta.ssid[0] = '\0';
+
+    net_iface_handle_t h_eth = NULL;
+    net_iface_handle_t h_wifi = NULL;
+    TEST_ESP_OK(net_iface_init_with_ops(&eth_cfg, &s_slow_eth_ops, &h_eth));
+    s_test_handle = h_eth;
+    TEST_ESP_OK(net_iface_init_with_ops(&wifi_cfg, &s_homehub_wifi_ops, &h_wifi));
+    s_test_handle2 = h_wifi;
+
+    TEST_ESP_OK(net_iface_start(h_eth));
+    TEST_ESP_OK(net_iface_start(h_wifi));
+
+    TEST_ESP_OK(net_iface_wait_all(&h_eth, 1, 1000));
+    wait_for_startup_done(h_wifi);
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_eth));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h_wifi));
+
+    TEST_ESP_OK(net_wifi_sta_set_credentials(h_wifi, "HomeHubWiFi", "SecretPass123"));
+    TEST_ESP_OK(net_iface_connect(h_wifi));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h_wifi));
+
+    ip_event_got_ip_t got_ip = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h_wifi, 500));
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_wifi));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_eth));
+
+    TEST_ESP_OK(net_iface_stop(h_wifi));
+    TEST_ESP_OK(net_iface_stop(h_eth));
+    TEST_ESP_OK(net_iface_deinit(h_wifi));
+    TEST_ESP_OK(net_iface_deinit(h_eth));
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+#else
+    TEST_IGNORE_MESSAGE("Wi-Fi is turned off in this build");
+#endif
+}
+
+/**
+ * @brief An address event that arrives after stop() does not mark the interface ready.
+ */
+TEST(net_connect, net_iface_stale_ip_event_after_stop_is_ignored)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_fake_iface(&h, false));
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    test_reset_events();
+
+    ip_event_got_ip_t stale_ip = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &stale_ip, sizeof(stale_ip), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_wait(h, 20));
+    TEST_ASSERT_EQUAL(0, s_event_count);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief The startup task keeps at least 512 bytes of stack free.
+ */
+TEST(net_connect, net_iface_startup_task_stack_high_water_mark)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+
+    ESP_LOGI("net_connect_test", "iface_startup_task stack high-water mark: %u free bytes (of %d configured)",
+             (unsigned)h->startup_stack_hwm, CONFIG_NET_CONNECT_STARTUP_TASK_STACK_SIZE);
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT32(512, h->startup_stack_hwm);
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
@@ -1447,6 +2019,12 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_iface_stop_during_starting_cancels_cleanly);
     RUN_TEST_CASE(net_connect, net_iface_repeated_start_stop_deinit_cycles);
     RUN_TEST_CASE(net_connect, net_iface_restart_after_failed_start_succeeds);
+    RUN_TEST_CASE(net_connect, net_iface_four_interfaces_concurrent_events_and_waiters);
+    RUN_TEST_CASE(net_connect, net_iface_home_hub_required_eth_and_unprovisioned_wifi);
+    RUN_TEST_CASE(net_connect, net_iface_stale_ip_event_after_stop_is_ignored);
+    RUN_TEST_CASE(net_connect, net_iface_startup_task_stack_high_water_mark);
+    /* Last: this test starts LwIP, which stays running until reset. */
+    RUN_TEST_CASE(net_connect, net_iface_route_priority_and_dynamic_default_switch);
 }
 
 void app_main(void)

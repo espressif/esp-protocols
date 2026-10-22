@@ -941,15 +941,19 @@ static void iface_startup_task(void *arg)
         (void)net_iface_connect(h);
     }
 
-done:
-    ESP_LOGD(TAG, "Startup task for '%s' finished (stack high water mark: %u bytes)",
-             (h->ops && h->ops->name) ? h->ops->name : "iface",
-             (unsigned)uxTaskGetStackHighWaterMark(NULL));
+done: {
+        /* ESP-IDF reports this mark in bytes. StackType_t is one byte here. */
+        uint32_t hwm_bytes = (uint32_t)uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t);
+        ESP_LOGD(TAG, "Startup task for '%s' finished (stack high water mark: %u bytes)",
+                 (h->ops && h->ops->name) ? h->ops->name : "iface",
+                 (unsigned)hwm_bytes);
 
-    xSemaphoreTake(h->lock, portMAX_DELAY);
-    h->startup_task = NULL;
-    xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE);
-    xSemaphoreGive(h->lock);
+        xSemaphoreTake(h->lock, portMAX_DELAY);
+        h->startup_stack_hwm = hwm_bytes;
+        h->startup_task = NULL;
+        xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE);
+        xSemaphoreGive(h->lock);
+    }
 
     vTaskDelete(NULL);
 }
@@ -1137,8 +1141,8 @@ esp_err_t net_iface_stop(net_iface_handle_t h)
 
     if (wait_for_startup) {
         EventBits_t bits = xEventGroupWaitBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE,
-                                                pdFALSE, pdFALSE,
-                                                pdMS_TO_TICKS(NET_IFACE_STARTUP_STOP_WAIT_MS));
+                                               pdFALSE, pdFALSE,
+                                               pdMS_TO_TICKS(NET_IFACE_STARTUP_STOP_WAIT_MS));
         if ((bits & NET_IFACE_BIT_STARTUP_DONE) == 0) {
             ESP_LOGW(TAG, "Startup task did not finish within %d ms", NET_IFACE_STARTUP_STOP_WAIT_MS);
         }
@@ -1193,8 +1197,8 @@ esp_err_t net_iface_wait(net_iface_handle_t h, uint32_t timeout_ms)
     TickType_t ticks = (timeout_ms == UINT32_MAX) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
     /* pdFALSE, pdFALSE: do not clear the flags, and wake on any one of them. */
     EventBits_t bits = xEventGroupWaitBits(h->state_events,
-                                            NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STOPPED,
-                                            pdFALSE, pdFALSE, ticks);
+                                           NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STOPPED,
+                                           pdFALSE, pdFALSE, ticks);
     if ((bits & NET_IFACE_BIT_READY) != 0) {
         return ESP_OK;
     }
