@@ -234,9 +234,10 @@ static esp_err_t start_iface(net_iface_handle_t h, const char *name)
 }
 
 /*
- * Wait for every required interface.
- * The list is newest-first, so walk it backwards and wait in start order.
- * Each required interface gets the full timeout. Optional failures are logged.
+ * Wait for the interfaces started by net_connect().
+ * Required interfaces share one timeout and all have to become ready.
+ * When none are required, wait until one optional interface that is actually
+ * connecting becomes ready. An optional failure does not stop the others.
  */
 static esp_err_t wait_for_required(void)
 {
@@ -244,19 +245,52 @@ static esp_err_t wait_for_required(void)
     net_iface_for_each(collect_iface, &list);
     uint32_t timeout_ms = connect_timeout_ms();
 
+    net_iface_handle_t req_handles[NET_CONNECT_MAX_IFACES];
+    size_t req_count = 0;
+    net_iface_handle_t opt_handles[NET_CONNECT_MAX_IFACES];
+    size_t opt_count = 0;
+
+    /* The registry list is newest-first. Walk backwards to keep start order. */
     for (size_t n = list.count; n > 0; n--) {
         net_iface_handle_t h = list.items[n - 1];
-        const char *name = (h->cfg.desc != NULL) ? h->cfg.desc : "interface";
-        if (!h->cfg.required) {
-            if (net_iface_get_state(h) == NET_IFACE_STATE_FAILED) {
+        if (h->cfg.required) {
+            req_handles[req_count++] = h;
+        } else if (h->cfg.auto_connect_on_start) {
+            net_iface_state_t st = net_iface_get_state(h);
+            if (st != NET_IFACE_STATE_INIT && st != NET_IFACE_STATE_UNINIT &&
+                    st != NET_IFACE_STATE_STARTED) {
+                opt_handles[opt_count++] = h;
+            }
+        }
+    }
+
+    if (req_count > 0) {
+        esp_err_t err = net_iface_wait_all(req_handles, req_count, timeout_ms);
+        if (err != ESP_OK) {
+            for (size_t i = 0; i < req_count; i++) {
+                net_iface_handle_t h = req_handles[i];
+                if (net_iface_get_state(h) != NET_IFACE_STATE_READY) {
+                    const char *name = (h->cfg.desc != NULL) ? h->cfg.desc : "interface";
+                    ESP_LOGE(TAG, "%s did not become ready: %s", name, esp_err_to_name(err));
+                }
+            }
+            return ESP_FAIL;
+        }
+        /* An optional interface may already have failed. Leave the working ones up. */
+        for (size_t n = list.count; n > 0; n--) {
+            net_iface_handle_t h = list.items[n - 1];
+            if (!h->cfg.required && net_iface_get_state(h) == NET_IFACE_STATE_FAILED) {
+                const char *name = (h->cfg.desc != NULL) ? h->cfg.desc : "interface";
                 ESP_LOGW(TAG, "%s failed. It is optional, so other interfaces stay up.", name);
             }
-            continue;
         }
+        return ESP_OK;
+    }
 
-        esp_err_t err = net_iface_wait(h, timeout_ms);
+    if (opt_count > 0) {
+        esp_err_t err = net_iface_wait_any(opt_handles, opt_count, timeout_ms, NULL);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "%s did not become ready: %s", name, esp_err_to_name(err));
+            ESP_LOGE(TAG, "No optional interface became ready: %s", esp_err_to_name(err));
             return ESP_FAIL;
         }
     }
