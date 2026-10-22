@@ -26,15 +26,25 @@
 #include <esp_openthread_types.h>
 #include <esp_openthread.h>
 #include <openthread/dataset.h>
+#include <openthread/ip6.h>
 #include <openthread/logging.h>
 #include <openthread/thread.h>
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 static const char *TAG = "net_connect_thread";
 
 static TaskHandle_t s_ot_task_handle = NULL;
+static SemaphoreHandle_t s_ot_stop_sem = NULL;
+/* Set by stop() so the worker skips the main loop if it has not entered yet. */
+static volatile bool s_ot_stop_requested = false;
+/*
+ * xTaskCreate() can run the new task before it stores the handle.
+ * The worker waits for this before it clears that handle.
+ */
+static volatile bool s_ot_task_published = false;
 static esp_netif_t *s_openthread_netif = NULL;
 static bool s_eventfd_owned = false;
 static bool s_glue_attached = false;
@@ -99,10 +109,23 @@ static esp_err_t thread_auto_start_locked(void)
     return esp_openthread_auto_start(&dataset);
 }
 
+/* Tell stop() that this task has finished cleaning up and is about to exit. */
+static void ot_signal_task_exited(void)
+{
+    while (!s_ot_task_published) {
+        taskYIELD();
+    }
+    s_ot_task_handle = NULL;
+    if (s_ot_stop_sem != NULL) {
+        xSemaphoreGive(s_ot_stop_sem);
+    }
+}
+
 /*
  * OpenThread worker.
  * Creates the netif, starts the stack, reports "started", and optionally joins
- * the network. Then it stays in the OpenThread main loop.
+ * the network. Then it stays in the OpenThread main loop until stop() asks it
+ * to leave. This task shuts OpenThread down itself. stop() must not delete it.
  */
 static void ot_task_worker(void *arg)
 {
@@ -130,7 +153,7 @@ static void ot_task_worker(void *arg)
     if (s_openthread_netif == NULL) {
         ESP_LOGE(TAG, "Failed to create Thread netif");
         net_iface_notify_failed(self, ESP_ERR_NO_MEM);
-        s_ot_task_handle = NULL;
+        ot_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -140,7 +163,7 @@ static void ot_task_worker(void *arg)
         ESP_LOGE(TAG, "esp_openthread_init failed: %s", esp_err_to_name(err));
         thread_release_resources();
         net_iface_notify_failed(self, err);
-        s_ot_task_handle = NULL;
+        ot_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -156,7 +179,7 @@ static void ot_task_worker(void *arg)
         esp_openthread_deinit();
         thread_release_eventfd();
         net_iface_notify_failed(self, ESP_FAIL);
-        s_ot_task_handle = NULL;
+        ot_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -179,11 +202,22 @@ static void ot_task_worker(void *arg)
         net_iface_connect(self);
     }
 
-    esp_openthread_launch_mainloop();
+    /*
+     * stop() may have arrived before the main loop started. Skipping the loop
+     * still runs the cleanup below, so the stack is not left allocated.
+     */
+    if (!s_ot_stop_requested) {
+        esp_openthread_launch_mainloop();
+    }
 
-    /* Main loop returned. Drop the task handle before freeing, so stop() does not free twice. */
-    s_ot_task_handle = NULL;
-    thread_release_resources();
+    /*
+     * Clean up on this task, in the reverse order of initialization.
+     * Glue and the netif go first, then the OpenThread stack, then eventfd.
+     */
+    thread_release_netif();
+    (void)esp_openthread_deinit();
+    thread_release_eventfd();
+    ot_signal_task_exited();
     vTaskDelete(NULL);
 }
 
@@ -194,6 +228,18 @@ static esp_err_t thread_ops_start(net_iface_handle_t self)
         return ESP_ERR_INVALID_STATE;
     }
 
+    if (s_ot_stop_sem == NULL) {
+        s_ot_stop_sem = xSemaphoreCreateBinary();
+        if (s_ot_stop_sem == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
+    } else {
+        /* Drop a signal left by a task that already exited. */
+        (void)xSemaphoreTake(s_ot_stop_sem, 0);
+    }
+    s_ot_stop_requested = false;
+    s_ot_task_published = false;
+
     /* netif, ot task queue, radio driver, and border router can each use one fd. */
     esp_vfs_eventfd_config_t eventfd_config = {
         .max_fds = 4,
@@ -202,6 +248,8 @@ static esp_err_t thread_ops_start(net_iface_handle_t self)
     if (ret == ESP_OK) {
         s_eventfd_owned = true;
     } else if (ret != ESP_ERR_INVALID_STATE) {
+        vSemaphoreDelete(s_ot_stop_sem);
+        s_ot_stop_sem = NULL;
         ESP_LOGE(TAG, "Failed to register eventfd: %s", esp_err_to_name(ret));
         return ret;
     }
@@ -218,10 +266,13 @@ static esp_err_t thread_ops_start(net_iface_handle_t self)
         esp_event_handler_unregister(OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER,
                                      on_thread_dns_server);
         thread_release_resources();
+        vSemaphoreDelete(s_ot_stop_sem);
+        s_ot_stop_sem = NULL;
         s_ot_task_handle = NULL;
         ESP_LOGE(TAG, "Failed to create OpenThread task");
         return ESP_FAIL;
     }
+    s_ot_task_published = true;
     return ESP_OK;
 }
 
@@ -258,20 +309,38 @@ static esp_err_t thread_ops_disconnect(net_iface_handle_t self)
 }
 
 /*
- * Stop the OpenThread task and free its netif.
- * The task is still deleted with vTaskDelete(). A later change will shut it
- * down without deleting it from outside.
+ * Ask the OpenThread main loop to exit, then wait until ot_task_worker has
+ * deinitialized the stack and deleted itself.
  */
 static esp_err_t thread_ops_stop(net_iface_handle_t self)
 {
     (void)self;
     esp_event_handler_unregister(OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER,
                                  on_thread_dns_server);
-    if (s_ot_task_handle != NULL) {
-        vTaskDelete(s_ot_task_handle);
-        s_ot_task_handle = NULL;
+    bool task_exited = true;
+    if (s_ot_stop_sem != NULL) {
+        s_ot_stop_requested = true;
+        otInstance *instance = esp_openthread_get_instance();
+        if (instance != NULL) {
+            esp_openthread_lock_acquire(portMAX_DELAY);
+            (void)otThreadSetEnabled(instance, false);
+            (void)otIp6SetEnabled(instance, false);
+            esp_openthread_lock_release();
+            (void)esp_openthread_mainloop_exit();
+        }
+        if (xSemaphoreTake(s_ot_stop_sem, pdMS_TO_TICKS(5000)) == pdTRUE) {
+            vSemaphoreDelete(s_ot_stop_sem);
+            s_ot_stop_sem = NULL;
+        } else {
+            /* The worker is still using the netif. Do not free it from here. */
+            task_exited = false;
+            ESP_LOGW(TAG, "Timed out waiting for OpenThread task to exit");
+        }
     }
-    thread_release_resources();
+    /* The worker frees its own objects before signaling. This covers a start that never created the task. */
+    if (task_exited) {
+        thread_release_resources();
+    }
     return ESP_OK;
 }
 

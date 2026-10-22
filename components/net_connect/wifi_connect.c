@@ -47,6 +47,9 @@ static net_iface_handle_t s_wifi_sta_handle = NULL;
  */
 static bool s_wifi_ignore_disconnect = false;
 
+/* True when this driver called esp_wifi_init() and must call esp_wifi_deinit(). */
+static bool s_wifi_we_inited = false;
+
 /* Copy src into dst. The result is always terminated. NULL src becomes an empty string. */
 static void copy_text(char *dst, size_t dst_size, const char *src)
 {
@@ -237,6 +240,7 @@ static esp_err_t wifi_ops_start(net_iface_handle_t self)
 
     s_wifi_ignore_disconnect = false;
     s_wifi_netif = netif;
+    s_wifi_we_inited = we_inited;
     net_iface_notify_started(self, netif);
     return ESP_OK;
 
@@ -304,9 +308,13 @@ static esp_err_t wifi_ops_stop(net_iface_handle_t self)
     if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT && err != ESP_ERR_WIFI_NOT_STARTED) {
         ESP_LOGW(TAG, "esp_wifi_stop returned %s", esp_err_to_name(err));
     }
-    err = esp_wifi_deinit();
-    if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
-        ESP_LOGW(TAG, "esp_wifi_deinit returned %s", esp_err_to_name(err));
+    /* Leave a radio that the application initialized before this driver. */
+    if (s_wifi_we_inited) {
+        err = esp_wifi_deinit();
+        if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_INIT) {
+            ESP_LOGW(TAG, "esp_wifi_deinit returned %s", esp_err_to_name(err));
+        }
+        s_wifi_we_inited = false;
     }
 
     if (s_wifi_netif != NULL) {
@@ -418,7 +426,11 @@ esp_err_t net_connect_wifi_apply_stdin(net_iface_handle_t h)
     }
 
     /* Blocking console read stays here, never inside wifi_ops_connect(). */
-    net_configure_stdin_stdout();
+    esp_err_t stdin_err = net_configure_stdin_stdout();
+    if (stdin_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure stdin/stdout: %s", esp_err_to_name(stdin_err));
+        return stdin_err;
+    }
     /* Room for an SSID, a space, a password, and the newline. */
     char buf[32 + 64 + 2] = { 0 };
     ESP_LOGI(TAG, "Please input ssid password:");

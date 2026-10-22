@@ -27,6 +27,7 @@
 #include "esp_netif_ppp.h"
 #include "esp_event.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 #if CONFIG_NET_CONNECT_PPP_DEVICE_USB
@@ -42,8 +43,11 @@ static bool s_usb_installed = false;
 #include "driver/uart.h"
 #define PPP_UART_BUF_SIZE (1024)
 /* Set to ask the UART task to leave its loop. */
-static bool s_stop_task = false;
+static volatile bool s_stop_task = false;
 static TaskHandle_t s_ppp_task = NULL;
+static SemaphoreHandle_t s_ppp_exit_sem = NULL;
+/* xTaskCreate() can run the new task before it stores the handle. */
+static volatile bool s_ppp_task_published = false;
 #endif
 
 static const char *TAG = "net_connect_ppp";
@@ -148,9 +152,22 @@ static void ppp_usb_uninstall(void)
     s_usb_installed = false;
 }
 #else
+/* Tell ppp_stop_uart_task() that the UART driver and buffer are already freed. */
+static void ppp_signal_task_exited(void)
+{
+    while (!s_ppp_task_published) {
+        taskYIELD();
+    }
+    s_ppp_task = NULL;
+    if (s_ppp_exit_sem != NULL) {
+        xSemaphoreGive(s_ppp_exit_sem);
+    }
+}
+
 /*
  * UART PPP worker.
  * Starts the netif, then copies UART bytes into it until stop is requested.
+ * This task deletes itself. disconnect() and stop() only wait for that.
  */
 static void ppp_task(void *arg)
 {
@@ -170,7 +187,7 @@ static void ppp_task(void *arg)
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "uart_driver_install failed: %s", esp_err_to_name(err));
         net_iface_notify_failed(self, err);
-        s_ppp_task = NULL;
+        ppp_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -188,7 +205,7 @@ static void ppp_task(void *arg)
         ESP_LOGE(TAG, "UART setup failed: %s", esp_err_to_name(err));
         uart_driver_delete(UART_NUM_1);
         net_iface_notify_failed(self, err);
-        s_ppp_task = NULL;
+        ppp_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -198,7 +215,7 @@ static void ppp_task(void *arg)
         ESP_LOGE(TAG, "Failed to allocate memory for UART buffer");
         uart_driver_delete(UART_NUM_1);
         net_iface_notify_failed(self, ESP_ERR_NO_MEM);
-        s_ppp_task = NULL;
+        ppp_signal_task_exited();
         vTaskDelete(NULL);
         return;
     }
@@ -209,7 +226,7 @@ static void ppp_task(void *arg)
 
     uart_event_t event;
     while (!s_stop_task) {
-        if (xQueueReceive(event_queue, &event, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        if (xQueueReceive(event_queue, &event, pdMS_TO_TICKS(100)) == pdTRUE) {
             if (event.type == UART_DATA) {
                 /* A timeout means the PPP frame is complete. Read the whole buffer then. */
                 if (event.timeout_flag) {
@@ -230,19 +247,29 @@ static void ppp_task(void *arg)
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
     uart_driver_delete(UART_NUM_1);
     free(buffer);
-    s_ppp_task = NULL;
+    ppp_signal_task_exited();
     vTaskDelete(NULL);
 }
 
-/* Ask the UART task to exit, then wait until it has left. */
+/*
+ * Ask the UART task to exit, then wait until it has freed the driver and the
+ * buffer. The semaphore is the signal, not a fixed sleep: the task may already
+ * have exited by the time this runs.
+ */
 static void ppp_stop_uart_task(void)
 {
-    if (s_ppp_task == NULL) {
+    if (s_ppp_exit_sem == NULL) {
+        s_ppp_task = NULL;
         return;
     }
     s_stop_task = true;
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    s_ppp_task = NULL;
+    if (xSemaphoreTake(s_ppp_exit_sem, pdMS_TO_TICKS(1000)) == pdTRUE) {
+        vSemaphoreDelete(s_ppp_exit_sem);
+        s_ppp_exit_sem = NULL;
+        s_ppp_task = NULL;
+    } else {
+        ESP_LOGW(TAG, "Timed out waiting for PPP UART task to exit");
+    }
 }
 #endif /* CONFIG_NET_CONNECT_PPP_DEVICE_USB */
 
@@ -356,17 +383,30 @@ static esp_err_t ppp_ops_connect(net_iface_handle_t self)
     if (s_ppp_task != NULL) {
         return ESP_ERR_INVALID_STATE;
     }
+    if (s_ppp_exit_sem == NULL) {
+        s_ppp_exit_sem = xSemaphoreCreateBinary();
+        if (s_ppp_exit_sem == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
+    } else {
+        /* Drop a signal left by a task that already exited. */
+        (void)xSemaphoreTake(s_ppp_exit_sem, 0);
+    }
     s_stop_task = false;
+    s_ppp_task_published = false;
 
     uint32_t stack_size = CONFIG_NET_CONNECT_PPP_TASK_STACK_SIZE;
     if (self->cfg.ppp.task_stack_size > 0) {
         stack_size = (uint32_t)self->cfg.ppp.task_stack_size;
     }
     if (xTaskCreate(ppp_task, "ppp connect", stack_size, self, 5, &s_ppp_task) != pdPASS) {
+        vSemaphoreDelete(s_ppp_exit_sem);
+        s_ppp_exit_sem = NULL;
         s_ppp_task = NULL;
         ESP_LOGE(TAG, "Failed to create a PPP connection task");
         return ESP_FAIL;
     }
+    s_ppp_task_published = true;
     net_iface_notify_connected(self);
     return ESP_OK;
 #endif

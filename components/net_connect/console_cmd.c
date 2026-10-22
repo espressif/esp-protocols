@@ -191,7 +191,11 @@ void net_register_wifi_connect_commands(void)
         .func = &cmd_do_wifi_connect,
         .argtable = &connect_args
     };
-    ESP_ERROR_CHECK(esp_console_cmd_register(&wifi_connect_cmd));
+    ret = esp_console_cmd_register(&wifi_connect_cmd);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register wifi_connect command: %s", esp_err_to_name(ret));
+        return;
+    }
 
     const esp_console_cmd_t wifi_disconnect_cmd = {
         .command = "wifi_disconnect",
@@ -199,5 +203,8 @@ void net_register_wifi_connect_commands(void)
         .hint = NULL,
         .func = &cmd_do_wifi_disconnect,
     };
-    ESP_ERROR_CHECK(esp_console_cmd_register(&wifi_disconnect_cmd));
+    ret = esp_console_cmd_register(&wifi_disconnect_cmd);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to register wifi_disconnect command: %s", esp_err_to_name(ret));
+    }
 }
