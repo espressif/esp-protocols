@@ -80,8 +80,9 @@ static esp_err_t print_all_ips_tcpip(void *ctx)
             ESP_LOGI(TAG, "Connected to %s", netif_desc != NULL ? netif_desc : "(null)");
 #if CONFIG_NET_CONNECT_IPV4
             esp_netif_ip_info_t ip;
-            ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
-            ESP_LOGI(TAG, "- IPv4 address: " IPSTR ",", IP2STR(&ip.ip));
+            if (esp_netif_get_ip_info(netif, &ip) == ESP_OK) {
+                ESP_LOGI(TAG, "- IPv4 address: " IPSTR ",", IP2STR(&ip.ip));
+            }
 #endif
 #if CONFIG_NET_CONNECT_IPV6
             esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];

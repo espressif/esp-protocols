@@ -433,8 +433,15 @@ void net_iface_notify_started(net_iface_handle_t h, esp_netif_t *netif)
         return;
     }
     xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* A stop in progress, or a handle that is still idle, must not move to started. */
+    /*
+     * A stop in progress must not look started, and an idle handle was never
+     * started. Still remember the netif during stop, so the driver's stop
+     * callback can free what start just created.
+     */
     if (h->state == NET_IFACE_STATE_STOPPING || h->state == NET_IFACE_STATE_INIT) {
+        if (h->state == NET_IFACE_STATE_STOPPING) {
+            h->netif = netif;
+        }
         xSemaphoreGive(h->lock);
         return;
     }

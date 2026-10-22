@@ -1243,6 +1243,176 @@ TEST(net_connect, net_iface_wait_from_event_loop_returns_invalid_state)
     s_test_handle = NULL;
 }
 
+static int s_cancel_start_calls = 0;
+static int s_cancel_connect_calls = 0;
+static int s_cancel_stop_calls = 0;
+
+static esp_err_t slow_cancelable_start(net_iface_handle_t self)
+{
+    s_cancel_start_calls++;
+    vTaskDelay(pdMS_TO_TICKS(250));
+    net_iface_notify_started(self, test_netif_eth);
+    return ESP_OK;
+}
+
+static esp_err_t slow_cancelable_connect(net_iface_handle_t self)
+{
+    s_cancel_connect_calls++;
+    net_iface_notify_connected(self);
+    return ESP_OK;
+}
+
+static esp_err_t slow_cancelable_stop(net_iface_handle_t self)
+{
+    (void)self;
+    s_cancel_stop_calls++;
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_slow_cancelable_ops = {
+    .name = "slow_cancel",
+    .start = slow_cancelable_start,
+    .stop = slow_cancelable_stop,
+    .connect = slow_cancelable_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief stop() during STARTING waits for start(), skips connect(), and runs stop().
+ */
+TEST(net_connect, net_iface_stop_during_starting_cancels_cleanly)
+{
+    s_cancel_start_calls = 0;
+    s_cancel_connect_calls = 0;
+    s_cancel_stop_calls = 0;
+
+    net_iface_config_t cfg = { 0 };
+    cfg.type = NET_IFACE_TYPE_ETH;
+    cfg.desc = TEST_NETIF_DESC_ETH;
+    cfg.auto_connect_on_start = true;
+    cfg.ip.use_dhcp = true;
+
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(net_iface_init_with_ops(&cfg, &s_slow_cancelable_ops, &h));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTING, net_iface_get_state(h));
+
+    /* A second start while the first is still running is rejected. */
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, net_iface_start(h));
+
+    /* Let the startup task enter the slow start, then stop it. */
+    vTaskDelay(pdMS_TO_TICKS(50));
+    TEST_ESP_OK(net_iface_stop(h));
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(1, s_cancel_start_calls);
+    TEST_ASSERT_EQUAL(0, s_cancel_connect_calls);
+    TEST_ASSERT_EQUAL(1, s_cancel_stop_calls);
+
+    vTaskDelay(pdMS_TO_TICKS(20));
+    /* STARTED and CONNECTED stay suppressed. Only STOPPED is posted. */
+    const net_iface_event_id_t expected[] = {
+        NET_IFACE_EVENT_STOPPED,
+    };
+    expect_iface_events(h, expected, 1);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief Ten init, start, wait, stop, and deinit cycles on two interfaces leak nothing.
+ */
+TEST(net_connect, net_iface_repeated_start_stop_deinit_cycles)
+{
+    for (int i = 0; i < 10; i++) {
+        net_iface_handle_t h1 = NULL;
+        net_iface_handle_t h2 = NULL;
+        TEST_ESP_OK(open_ops_iface(&h1, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH, &s_fake_ops, 0));
+        s_test_handle = h1;
+        TEST_ESP_OK(open_ops_iface(&h2, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA, &s_fake_ops, 0));
+        s_test_handle2 = h2;
+
+        TEST_ESP_OK(net_iface_start(h1));
+        TEST_ESP_OK(net_iface_start(h2));
+        wait_for_startup_done(h1);
+        wait_for_startup_done(h2);
+
+        TEST_ESP_OK(net_iface_connect(h1));
+        TEST_ESP_OK(net_iface_connect(h2));
+        net_iface_notify_ready(h1);
+        net_iface_notify_ready(h2);
+
+        net_iface_handle_t both[2] = { h1, h2 };
+        TEST_ESP_OK(net_iface_wait_all(both, 2, 200));
+
+        TEST_ESP_OK(net_iface_stop(h2));
+        TEST_ESP_OK(net_iface_stop(h1));
+        TEST_ESP_OK(net_iface_deinit(h2));
+        TEST_ESP_OK(net_iface_deinit(h1));
+        s_test_handle = NULL;
+        s_test_handle2 = NULL;
+        /* Let the idle task free the two startup-task stacks before the next pass. */
+        vTaskDelay(1);
+    }
+}
+
+static bool s_flaky_should_fail = true;
+
+static esp_err_t flaky_start(net_iface_handle_t self)
+{
+    if (s_flaky_should_fail) {
+        return ESP_ERR_INVALID_RESPONSE;
+    }
+    net_iface_notify_started(self, test_netif_sta);
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_flaky_ops = {
+    .name = "flaky_wifi",
+    .start = flaky_start,
+    .stop = fake_stop,
+    .connect = fake_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief A handle whose start() failed can be started again from FAILED and reach READY.
+ */
+TEST(net_connect, net_iface_restart_after_failed_start_succeeds)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA, &s_flaky_ops, 0));
+    s_test_handle = h;
+
+    /* First attempt fails inside ops->start. */
+    s_flaky_should_fail = true;
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_RESPONSE, net_iface_wait(h, 500));
+    /* The startup task clears its handle after reporting the failure. */
+    wait_for_startup_done(h);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+
+    /* A later start from FAILED does not need stop() first. */
+    s_flaky_should_fail = false;
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_connect(h));
+    net_iface_notify_ready(h);
+    TEST_ESP_OK(net_iface_wait(h, 200));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(ESP_OK, net_iface_get_last_error(h));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
@@ -1274,6 +1444,9 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_iface_wait_all_shared_budget_and_fail_fast);
     RUN_TEST_CASE(net_connect, net_iface_wait_any_first_ready_and_all_failed);
     RUN_TEST_CASE(net_connect, net_iface_wait_from_event_loop_returns_invalid_state);
+    RUN_TEST_CASE(net_connect, net_iface_stop_during_starting_cancels_cleanly);
+    RUN_TEST_CASE(net_connect, net_iface_repeated_start_stop_deinit_cycles);
+    RUN_TEST_CASE(net_connect, net_iface_restart_after_failed_start_succeeds);
 }
 
 void app_main(void)
