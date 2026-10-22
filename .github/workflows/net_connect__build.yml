@@ -15,7 +15,10 @@ jobs:
       matrix:
         idf_ver: ["latest", "release-v5.4", "release-v6.0"]
         idf_target: ["esp32"]
-        test: [ { app: net_connect_example, path: "components/net_connect/examples/net_connect_example"}, { app: ppp_connect_example, path: "components/net_connect/examples/ppp_connect_example"}]
+        test:
+          - { app: net_connect_example, path: "components/net_connect/examples/net_connect_example" }
+          - { app: ppp_connect_example, path: "components/net_connect/examples/ppp_connect_example" }
+          - { app: unit_test, path: "components/net_connect/tests/unit_test" }
         include:
           - idf_ver: "latest"
             warning: "the choice symbol ETHERNET_PHY_LAN867X\nis deprecated: Please use smi_gpio instead"

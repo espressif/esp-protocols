@@ -79,6 +79,7 @@ struct net_iface {
     SemaphoreHandle_t      lock;             /*!< Per-interface mutex (acquired after registry mutex) */
     EventGroupHandle_t     state_events;     /*!< Sticky readiness/failure bits for wait APIs */
     TaskHandle_t           startup_task;     /*!< Handle of running startup/worker task, or NULL */
+    uint32_t               startup_stack_hwm;/*!< Minimum free stack bytes left in the startup task */
     bool                   cancel_requested; /*!< Set by net_iface_stop() to abort in-flight startup */
     int                    retry_num;        /*!< Connection retry counter */
     void                  *drv;              /*!< Driver-private state pointer */
