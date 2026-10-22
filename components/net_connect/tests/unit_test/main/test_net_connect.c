@@ -83,8 +83,11 @@ static esp_err_t test_register_handler(void)
     return err;
 }
 
+static void test_clear_deadlock_handler(void);
+
 static void test_iface_cleanup(void)
 {
+    test_clear_deadlock_handler();
     net_iface_handle_t handles[2] = { s_test_handle, s_test_handle2 };
     s_test_handle = NULL;
     s_test_handle2 = NULL;
@@ -880,6 +883,366 @@ TEST(net_connect, net_eth_thread_ppp_create_and_deinit)
 #endif
 }
 
+/**
+ * @brief net_iface_wait*() returns immediately when an interface is already READY or FAILED.
+ *
+ * The limit is 50 ms, not the 5000 ms timeout. A 10 ms tick can cross one
+ * boundary during three immediate calls, so 20 ms is too tight.
+ */
+TEST(net_connect, net_iface_wait_immediate_on_ready_and_failed)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    net_iface_notify_ready(h);
+
+    TickType_t t0 = xTaskGetTickCount();
+    TEST_ESP_OK(net_iface_wait(h, 5000));
+    TEST_ESP_OK(net_iface_wait_all(&h, 1, 5000));
+    net_iface_handle_t ready = NULL;
+    TEST_ESP_OK(net_iface_wait_any(&h, 1, 5000, &ready));
+    uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+    TEST_ASSERT_LESS_THAN_UINT32(50, elapsed_ms);
+    TEST_ASSERT_EQUAL(h, ready);
+
+    net_iface_notify_failed(h, ESP_ERR_WIFI_CONN);
+    t0 = xTaskGetTickCount();
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_wait(h, 5000));
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_wait_all(&h, 1, 5000));
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_wait_any(&h, 1, 5000, &ready));
+    elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+    TEST_ASSERT_LESS_THAN_UINT32(50, elapsed_ms);
+    TEST_ASSERT_NULL(ready);
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+typedef struct {
+    net_iface_handle_t iface;
+    uint32_t delay_ms;
+    esp_err_t err_to_report; /* ESP_OK means notify_ready, otherwise notify_failed */
+    SemaphoreHandle_t done_sem;
+} async_notify_arg_t;
+
+static void async_notify_task(void *arg)
+{
+    async_notify_arg_t *ctx = (async_notify_arg_t *)arg;
+    if (ctx->delay_ms > 0) {
+        vTaskDelay(pdMS_TO_TICKS(ctx->delay_ms));
+    } else {
+        taskYIELD();
+    }
+    if (ctx->err_to_report == ESP_OK) {
+        net_iface_notify_ready(ctx->iface);
+    } else {
+        net_iface_notify_failed(ctx->iface, ctx->err_to_report);
+    }
+    if (ctx->done_sem != NULL) {
+        xSemaphoreGive(ctx->done_sem);
+    }
+    vTaskDelete(NULL);
+}
+
+/**
+ * @brief notify_ready() just before or during wait() is never missed.
+ *
+ * Delays are 0, 10, and 20 ms so a 10 ms tick still overlaps the wait.
+ */
+TEST(net_connect, net_iface_wait_boundary_race_no_lost_wakeup)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+
+    SemaphoreHandle_t done_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(done_sem);
+
+    for (int iter = 0; iter < 25; iter++) {
+        /* Drop the previous result, then start a new connection. */
+        net_iface_notify_disconnected(h);
+        TEST_ESP_OK(net_iface_connect(h));
+
+        async_notify_arg_t arg = {
+            .iface = h,
+            .delay_ms = (uint32_t)(iter % 3) * 10,
+            .err_to_report = ESP_OK,
+            .done_sem = done_sem,
+        };
+        TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "race_prod", 3072,
+                                              &arg, 5, NULL));
+        TEST_ESP_OK(net_iface_wait(h, 200));
+        TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+        /* Let the idle task free the helper task stack before the next create. */
+        vTaskDelay(1);
+    }
+
+    vSemaphoreDelete(done_sem);
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+static esp_err_t stay_connecting_connect(net_iface_handle_t self)
+{
+    (void)self;
+    /* Leave the interface in CONNECTING. The test decides when it finishes. */
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_stay_connecting_ops = {
+    .name = "stay_conn",
+    .start = fake_start,
+    .stop = fake_stop,
+    .connect = stay_connecting_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief A timeout does not cancel a connection that is still in progress.
+ */
+TEST(net_connect, net_iface_wait_timeout_leaves_connection_running)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_stay_connecting_ops, 0));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 50));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+
+    SemaphoreHandle_t done_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(done_sem);
+    async_notify_arg_t arg = {
+        .iface = h,
+        .delay_ms = 30,
+        .err_to_report = ESP_OK,
+        .done_sem = done_sem,
+    };
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "late_rdy", 3072, &arg, 5, NULL));
+
+    TEST_ESP_OK(net_iface_wait(h, 200));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+    vSemaphoreDelete(done_sem);
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief wait_all() returns the first failure quickly, then succeeds once every interface is ready.
+ */
+TEST(net_connect, net_iface_wait_all_shared_budget_and_fail_fast)
+{
+    net_iface_handle_t h1 = NULL;
+    net_iface_handle_t h2 = NULL;
+    TEST_ESP_OK(open_ops_iface(&h1, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH,
+                               &s_stay_connecting_ops, 0));
+    s_test_handle = h1;
+    TEST_ESP_OK(open_ops_iface(&h2, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_stay_connecting_ops, 0));
+    s_test_handle2 = h2;
+
+    TEST_ESP_OK(net_iface_start(h1));
+    TEST_ESP_OK(net_iface_start(h2));
+    wait_for_startup_done(h1);
+    wait_for_startup_done(h2);
+    TEST_ESP_OK(net_iface_connect(h1));
+    TEST_ESP_OK(net_iface_connect(h2));
+
+    SemaphoreHandle_t done_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(done_sem);
+    async_notify_arg_t fail_arg = {
+        .iface = h2,
+        .delay_ms = 50,
+        .err_to_report = ESP_ERR_WIFI_CONN,
+        .done_sem = done_sem,
+    };
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "fail_h2", 3072, &fail_arg, 5, NULL));
+
+    net_iface_handle_t both[2] = { h1, h2 };
+    TickType_t t0 = xTaskGetTickCount();
+    esp_err_t err = net_iface_wait_all(both, 2, 1000);
+    uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, err);
+    TEST_ASSERT_LESS_THAN_UINT32(250, elapsed_ms);
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+
+    /* Reconnect the failed interface and let both become ready. */
+    TEST_ESP_OK(net_iface_connect(h2));
+    net_iface_notify_ready(h1);
+    async_notify_arg_t ready_arg = {
+        .iface = h2,
+        .delay_ms = 40,
+        .err_to_report = ESP_OK,
+        .done_sem = done_sem,
+    };
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "rdy_h2", 3072, &ready_arg, 5, NULL));
+    TEST_ESP_OK(net_iface_wait_all(both, 2, 500));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+    vSemaphoreDelete(done_sem);
+
+    TEST_ESP_OK(net_iface_stop(h2));
+    TEST_ESP_OK(net_iface_stop(h1));
+    TEST_ESP_OK(net_iface_deinit(h2));
+    TEST_ESP_OK(net_iface_deinit(h1));
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+}
+
+/**
+ * @brief wait_any() returns the first ready interface, and fails once every interface has failed.
+ */
+TEST(net_connect, net_iface_wait_any_first_ready_and_all_failed)
+{
+    net_iface_handle_t h1 = NULL;
+    net_iface_handle_t h2 = NULL;
+    TEST_ESP_OK(open_ops_iface(&h1, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH,
+                               &s_stay_connecting_ops, 0));
+    s_test_handle = h1;
+    TEST_ESP_OK(open_ops_iface(&h2, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_stay_connecting_ops, 0));
+    s_test_handle2 = h2;
+
+    TEST_ESP_OK(net_iface_start(h1));
+    TEST_ESP_OK(net_iface_start(h2));
+    wait_for_startup_done(h1);
+    wait_for_startup_done(h2);
+    TEST_ESP_OK(net_iface_connect(h1));
+    TEST_ESP_OK(net_iface_connect(h2));
+
+    /* h1 fails now. h2 becomes ready 40 ms later. wait_any should return h2. */
+    net_iface_notify_failed(h1, ESP_ERR_WIFI_CONN);
+    SemaphoreHandle_t done_sem = xSemaphoreCreateBinary();
+    TEST_ASSERT_NOT_NULL(done_sem);
+    async_notify_arg_t ready_arg = {
+        .iface = h2,
+        .delay_ms = 40,
+        .err_to_report = ESP_OK,
+        .done_sem = done_sem,
+    };
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "rdy_h2", 3072, &ready_arg, 5, NULL));
+
+    net_iface_handle_t both[2] = { h1, h2 };
+    net_iface_handle_t winner = NULL;
+    TEST_ESP_OK(net_iface_wait_any(both, 2, 500, &winner));
+    TEST_ASSERT_EQUAL(h2, winner);
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+
+    /* h1 stays failed. h2 fails too. The first failure is returned at once. */
+    net_iface_notify_disconnected(h2);
+    TEST_ESP_OK(net_iface_connect(h2));
+    async_notify_arg_t fail_arg = {
+        .iface = h2,
+        .delay_ms = 40,
+        .err_to_report = ESP_FAIL,
+        .done_sem = done_sem,
+    };
+    TEST_ASSERT_EQUAL(pdPASS, xTaskCreate(async_notify_task, "fail_h2", 3072, &fail_arg, 5, NULL));
+
+    TickType_t t0 = xTaskGetTickCount();
+    esp_err_t err = net_iface_wait_any(both, 2, 1000, &winner);
+    uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+
+    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, err);
+    TEST_ASSERT_NULL(winner);
+    TEST_ASSERT_LESS_THAN_UINT32(250, elapsed_ms);
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(done_sem, pdMS_TO_TICKS(200)));
+    vSemaphoreDelete(done_sem);
+
+    TEST_ESP_OK(net_iface_stop(h2));
+    TEST_ESP_OK(net_iface_stop(h1));
+    TEST_ESP_OK(net_iface_deinit(h2));
+    TEST_ESP_OK(net_iface_deinit(h1));
+    s_test_handle = NULL;
+    s_test_handle2 = NULL;
+}
+
+typedef struct {
+    esp_err_t wait_ret;
+    esp_err_t wait_all_ret;
+    esp_err_t wait_any_ret;
+    SemaphoreHandle_t done_sem;
+} deadlock_guard_ctx_t;
+
+static deadlock_guard_ctx_t *s_deadlock_ctx = NULL;
+static bool s_deadlock_handler_registered = false;
+
+static void on_event_call_wait(void *arg, esp_event_base_t event_base,
+                               int32_t event_id, void *event_data)
+{
+    (void)arg;
+    (void)event_base;
+    deadlock_guard_ctx_t *ctx = s_deadlock_ctx;
+    if (ctx == NULL || event_id != NET_IFACE_EVENT_CONNECTED || event_data == NULL) {
+        return;
+    }
+    const net_iface_event_data_t *data = (const net_iface_event_data_t *)event_data;
+    net_iface_handle_t h = data->iface;
+
+    ctx->wait_ret = net_iface_wait(h, 100);
+    ctx->wait_all_ret = net_iface_wait_all(&h, 1, 100);
+    ctx->wait_any_ret = net_iface_wait_any(&h, 1, 100, NULL);
+    xSemaphoreGive(ctx->done_sem);
+}
+
+static void test_clear_deadlock_handler(void)
+{
+    s_deadlock_ctx = NULL;
+    if (!s_deadlock_handler_registered) {
+        return;
+    }
+    net_iface_unregister_event_handler(on_event_call_wait);
+    s_deadlock_handler_registered = false;
+}
+
+/**
+ * @brief A wait from inside a NET_IFACE_EVENT handler returns ESP_ERR_INVALID_STATE.
+ */
+TEST(net_connect, net_iface_wait_from_event_loop_returns_invalid_state)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(open_fake_iface(&h, false));
+
+    deadlock_guard_ctx_t ctx = {
+        .wait_ret = ESP_OK,
+        .wait_all_ret = ESP_OK,
+        .wait_any_ret = ESP_OK,
+        .done_sem = xSemaphoreCreateBinary(),
+    };
+    TEST_ASSERT_NOT_NULL(ctx.done_sem);
+    s_deadlock_ctx = &ctx;
+    TEST_ESP_OK(net_iface_register_event_handler(on_event_call_wait, NULL));
+    s_deadlock_handler_registered = true;
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(ctx.done_sem, pdMS_TO_TICKS(500)));
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, ctx.wait_ret);
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, ctx.wait_all_ret);
+    TEST_ASSERT_EQUAL(ESP_ERR_INVALID_STATE, ctx.wait_any_ret);
+
+    test_clear_deadlock_handler();
+    vSemaphoreDelete(ctx.done_sem);
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
@@ -905,6 +1268,12 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_wifi_sta_create_defaults_and_custom_params);
     RUN_TEST_CASE(net_connect, net_wifi_sta_set_credentials_validation);
     RUN_TEST_CASE(net_connect, net_eth_thread_ppp_create_and_deinit);
+    RUN_TEST_CASE(net_connect, net_iface_wait_immediate_on_ready_and_failed);
+    RUN_TEST_CASE(net_connect, net_iface_wait_boundary_race_no_lost_wakeup);
+    RUN_TEST_CASE(net_connect, net_iface_wait_timeout_leaves_connection_running);
+    RUN_TEST_CASE(net_connect, net_iface_wait_all_shared_budget_and_fail_fast);
+    RUN_TEST_CASE(net_connect, net_iface_wait_any_first_ready_and_all_failed);
+    RUN_TEST_CASE(net_connect, net_iface_wait_from_event_loop_returns_invalid_state);
 }
 
 void app_main(void)

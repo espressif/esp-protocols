@@ -60,12 +60,25 @@ static net_iface_handle_t s_iface_list = NULL;
 /* True after the shared IP handler (and the Thread handler, if built) is installed. */
 static bool s_global_handlers_registered = false;
 /*
- * The task that last handled an IP or Thread event. That task is the default
- * event loop. net_iface_wait() and net_iface_stop() refuse to run on it.
- * If they blocked there, the event that should wake them could never arrive.
+ * The task that last handled a NET_IFACE, IP, or Thread event. That task is
+ * the default event loop. net_iface_wait() and net_iface_stop() refuse to run
+ * on it. If they blocked there, the event that should wake them could never arrive.
  */
 static TaskHandle_t s_event_loop_task = NULL;
 
+/* Bit pulsed whenever any interface becomes ready, failed, or stopped. */
+#define NET_IFACE_GLOBAL_WAKE_BIT BIT0
+
+/*
+ * Shared wake-up for net_iface_wait_all() and net_iface_wait_any().
+ * Each interface still keeps its own sticky flags. This group only says
+ * "look again". Created with the list lock and freed when the last
+ * interface is destroyed.
+ */
+static EventGroupHandle_t s_global_wait_events = NULL;
+
+static void on_global_iface_event(void *arg, esp_event_base_t event_base,
+                                  int32_t event_id, void *event_data);
 static void on_global_ip_event(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data);
 #if CONFIG_NET_CONNECT_THREAD
@@ -80,12 +93,47 @@ static bool called_from_event_loop(void)
     return s_event_loop_task != NULL && xTaskGetCurrentTaskHandle() == s_event_loop_task;
 }
 
+/* Wake any task sleeping in net_iface_wait_all() or net_iface_wait_any(). */
+static void pulse_global_wait_events(void)
+{
+    if (s_global_wait_events != NULL) {
+        xEventGroupSetBits(s_global_wait_events, NET_IFACE_GLOBAL_WAKE_BIT);
+    }
+}
+
+/*
+ * Remember the event-loop task before any application NET_IFACE_EVENT
+ * callback runs. Registered when the first interface is created, which is
+ * before an application handler, so this runs first.
+ */
+static void on_global_iface_event(void *arg, esp_event_base_t event_base,
+                                  int32_t event_id, void *event_data)
+{
+    (void)arg;
+    (void)event_base;
+    (void)event_id;
+    (void)event_data;
+    s_event_loop_task = xTaskGetCurrentTaskHandle();
+}
+
 /* Create the list lock the first time an interface is created. Later calls reuse it. */
 static esp_err_t ensure_registry_mutex(void)
 {
+    bool created_mutex = false;
     if (s_registry_mutex == NULL) {
         s_registry_mutex = xSemaphoreCreateMutex();
         if (s_registry_mutex == NULL) {
+            return ESP_ERR_NO_MEM;
+        }
+        created_mutex = true;
+    }
+    if (s_global_wait_events == NULL) {
+        s_global_wait_events = xEventGroupCreate();
+        if (s_global_wait_events == NULL) {
+            if (created_mutex) {
+                vSemaphoreDelete(s_registry_mutex);
+                s_registry_mutex = NULL;
+            }
             return ESP_ERR_NO_MEM;
         }
     }
@@ -108,6 +156,10 @@ static void destroy_registry_mutex_if_idle(void)
     xSemaphoreGive(s_registry_mutex);
     /* Delete only after the lock is released. Deleting a held lock is not allowed. */
     if (idle) {
+        if (s_global_wait_events != NULL) {
+            vEventGroupDelete(s_global_wait_events);
+            s_global_wait_events = NULL;
+        }
         vSemaphoreDelete(s_registry_mutex);
         s_registry_mutex = NULL;
     }
@@ -124,23 +176,38 @@ static void destroy_registry_mutex_if_idle(void)
  *
  * "Already registered" is fine, because two creates can overlap. "No event
  * loop yet" is also fine: the flag stays clear and start() tries again later.
- * If the Thread handler cannot be installed, the IP handler is removed too.
+ * If a later handler cannot be installed, the handlers this call added are removed.
  */
 static esp_err_t register_global_handlers(void)
 {
+    /*
+     * Listen for our own events first, so the event-loop task is recorded
+     * before an application callback runs. INVALID_ARG means this handler
+     * is already installed. That is not a failure.
+     */
+    esp_err_t iface_err = esp_event_handler_register(NET_IFACE_EVENT, ESP_EVENT_ANY_ID,
+                                                     &on_global_iface_event, NULL);
+    if (iface_err != ESP_OK && iface_err != ESP_ERR_INVALID_ARG) {
+        return iface_err;
+    }
     /* Listen for every IP event: address gained and address lost. */
     esp_err_t err = esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &on_global_ip_event, NULL);
-    /* INVALID_ARG means this handler is already installed. That is not a failure. */
     if (err != ESP_OK && err != ESP_ERR_INVALID_ARG) {
+        if (iface_err == ESP_OK) {
+            esp_event_handler_unregister(NET_IFACE_EVENT, ESP_EVENT_ANY_ID, &on_global_iface_event);
+        }
         return err;
     }
 #if CONFIG_NET_CONNECT_THREAD
     esp_err_t ot_err = esp_event_handler_register(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID,
                                                   &on_global_ot_event, NULL);
     if (ot_err != ESP_OK && ot_err != ESP_ERR_INVALID_ARG) {
-        /* Do not leave only the IP handler installed. Remove it and report the Thread error. */
+        /* Do not leave a partial set of handlers installed. */
         if (err == ESP_OK) {
             esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &on_global_ip_event);
+        }
+        if (iface_err == ESP_OK) {
+            esp_event_handler_unregister(NET_IFACE_EVENT, ESP_EVENT_ANY_ID, &on_global_iface_event);
         }
         return ot_err;
     }
@@ -151,6 +218,7 @@ static esp_err_t register_global_handlers(void)
 static void unregister_global_handlers(void)
 {
     /* Drop the shared listeners. Missing handlers are ignored by the event system. */
+    esp_event_handler_unregister(NET_IFACE_EVENT, ESP_EVENT_ANY_ID, &on_global_iface_event);
     esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &on_global_ip_event);
 #if CONFIG_NET_CONNECT_THREAD
     esp_event_handler_unregister(OPENTHREAD_EVENT, ESP_EVENT_ANY_ID, &on_global_ot_event);
@@ -207,7 +275,7 @@ static void maybe_unregister_global_handlers(void)
 
     xSemaphoreTake(s_registry_mutex, portMAX_DELAY);
     s_global_handlers_registered = false;
-    /* Forget the event-loop task. The next IP or Thread event records it again. */
+    /* Forget the event-loop task. The next interface, IP, or Thread event records it again. */
     s_event_loop_task = NULL;
     bool list_non_empty = (s_iface_list != NULL);
     xSemaphoreGive(s_registry_mutex);
@@ -456,6 +524,8 @@ void net_iface_notify_ready(net_iface_handle_t h)
     xEventGroupSetBits(h->state_events, NET_IFACE_BIT_READY);
     xSemaphoreGive(h->lock);
 
+    /* Wake group waits after the lock is released, so a higher-priority waiter can read the result. */
+    pulse_global_wait_events();
     post_iface_event(h, NET_IFACE_EVENT_READY, netif, NET_IFACE_STATE_READY, ESP_OK);
 }
 
@@ -535,6 +605,8 @@ void net_iface_notify_failed(net_iface_handle_t h, esp_err_t err)
     xEventGroupSetBits(h->state_events, NET_IFACE_BIT_FAILED);
     xSemaphoreGive(h->lock);
 
+    /* Wake group waits after the lock is released, so a higher-priority waiter can read the error. */
+    pulse_global_wait_events();
     post_iface_event(h, NET_IFACE_EVENT_FAILED, netif, NET_IFACE_STATE_FAILED, err);
 }
 
@@ -557,6 +629,8 @@ void net_iface_notify_stopped(net_iface_handle_t h)
     xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STOPPED);
     xSemaphoreGive(h->lock);
 
+    /* Wake group waits after the lock is released. */
+    pulse_global_wait_events();
     post_iface_event(h, NET_IFACE_EVENT_STOPPED, NULL, NET_IFACE_STATE_INIT, ESP_OK);
 }
 
@@ -937,6 +1011,7 @@ esp_err_t net_iface_start(net_iface_handle_t h)
         h->last_err = ESP_ERR_NO_MEM;
         xEventGroupSetBits(h->state_events, NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STARTUP_DONE);
         xSemaphoreGive(h->lock);
+        pulse_global_wait_events();
         post_iface_event(h, NET_IFACE_EVENT_FAILED, NULL, NET_IFACE_STATE_FAILED, ESP_ERR_NO_MEM);
         return ESP_ERR_NO_MEM;
     }
@@ -1126,27 +1201,174 @@ esp_err_t net_iface_wait(net_iface_handle_t h, uint32_t timeout_ms)
     return ESP_ERR_TIMEOUT;
 }
 
-/* Wait for every interface in the list. Not implemented yet. */
-esp_err_t net_iface_wait_all(const net_iface_handle_t *handles, size_t count, uint32_t timeout_ms)
+/*
+ * Check that the handle list is valid and that every interface has been
+ * started. Used at the start of net_iface_wait_all() and net_iface_wait_any().
+ * A stopped interface is allowed through: the scan below reports it.
+ */
+static esp_err_t validate_wait_handles(const net_iface_handle_t *handles, size_t count)
 {
-    (void)handles;
-    (void)count;
-    (void)timeout_ms;
-    return ESP_ERR_NOT_SUPPORTED;
+    if (handles == NULL || count == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    for (size_t i = 0; i < count; i++) {
+        if (handles[i] == NULL) {
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
+    if (called_from_event_loop()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    for (size_t i = 0; i < count; i++) {
+        net_iface_handle_t h = handles[i];
+        xSemaphoreTake(h->lock, portMAX_DELAY);
+        net_iface_state_t state = h->state;
+        EventBits_t bits = xEventGroupGetBits(h->state_events);
+        xSemaphoreGive(h->lock);
+        if (state == NET_IFACE_STATE_UNINIT ||
+                (state == NET_IFACE_STATE_INIT && (bits & NET_IFACE_BIT_STOPPED) == 0)) {
+            return ESP_ERR_INVALID_STATE;
+        }
+    }
+    return ESP_OK;
 }
 
-/* Wait until any interface in the list is ready. Not implemented yet. */
+/* How long this shared wait may still sleep. portMAX_DELAY means no limit. */
+static TickType_t wait_ticks_left(uint32_t timeout_ms, TickType_t start_ticks, TickType_t total_ticks)
+{
+    if (timeout_ms == UINT32_MAX) {
+        return portMAX_DELAY;
+    }
+    TickType_t elapsed = xTaskGetTickCount() - start_ticks;
+    if (elapsed >= total_ticks) {
+        return 0;
+    }
+    return total_ticks - elapsed;
+}
+
+/*
+ * Wait until every interface in the list is ready, within one shared timeout.
+ * If any interface fails or stops, return that error right away.
+ * The wake flag is cleared before each scan. A change that arrives during the
+ * scan sets the flag again, so the sleep below returns immediately.
+ */
+esp_err_t net_iface_wait_all(const net_iface_handle_t *handles, size_t count, uint32_t timeout_ms)
+{
+    esp_err_t err = validate_wait_handles(handles, count);
+    if (err != ESP_OK) {
+        return err;
+    }
+    if (s_global_wait_events == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    TickType_t start_ticks = xTaskGetTickCount();
+    TickType_t total_ticks = (timeout_ms == UINT32_MAX) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
+
+    while (true) {
+        xEventGroupClearBits(s_global_wait_events, NET_IFACE_GLOBAL_WAKE_BIT);
+
+        bool all_ready = true;
+        for (size_t i = 0; i < count; i++) {
+            net_iface_handle_t h = handles[i];
+            EventBits_t bits = xEventGroupGetBits(h->state_events);
+
+            if ((bits & NET_IFACE_BIT_FAILED) != 0) {
+                esp_err_t last_err = net_iface_get_last_error(h);
+                return (last_err != ESP_OK) ? last_err : ESP_FAIL;
+            }
+            if ((bits & NET_IFACE_BIT_STOPPED) != 0) {
+                return ESP_ERR_INVALID_STATE;
+            }
+            if ((bits & NET_IFACE_BIT_READY) == 0) {
+                net_iface_state_t state = net_iface_get_state(h);
+                if (state == NET_IFACE_STATE_UNINIT || state == NET_IFACE_STATE_INIT) {
+                    return ESP_ERR_INVALID_STATE;
+                }
+                all_ready = false;
+            }
+        }
+
+        if (all_ready) {
+            return ESP_OK;
+        }
+
+        TickType_t wait_ticks = wait_ticks_left(timeout_ms, start_ticks, total_ticks);
+        if (wait_ticks == 0) {
+            return ESP_ERR_TIMEOUT;
+        }
+        /* Do not clear the flag here. The next loop clears it before it scans. */
+        (void)xEventGroupWaitBits(s_global_wait_events, NET_IFACE_GLOBAL_WAKE_BIT,
+                                  pdFALSE, pdFALSE, wait_ticks);
+    }
+}
+
+/*
+ * Wait until at least one interface in the list is ready, within one shared
+ * timeout. One failure does not end the wait while another interface is still
+ * trying. When every interface has failed or stopped, return the first error.
+ */
 esp_err_t net_iface_wait_any(const net_iface_handle_t *handles, size_t count,
                              uint32_t timeout_ms, net_iface_handle_t *out_ready)
 {
-    (void)handles;
-    (void)count;
-    (void)timeout_ms;
-    /* Clear the output so the caller does not keep a stale handle. */
     if (out_ready != NULL) {
         *out_ready = NULL;
     }
-    return ESP_ERR_NOT_SUPPORTED;
+
+    esp_err_t err = validate_wait_handles(handles, count);
+    if (err != ESP_OK) {
+        return err;
+    }
+    if (s_global_wait_events == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    TickType_t start_ticks = xTaskGetTickCount();
+    TickType_t total_ticks = (timeout_ms == UINT32_MAX) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
+
+    while (true) {
+        xEventGroupClearBits(s_global_wait_events, NET_IFACE_GLOBAL_WAKE_BIT);
+
+        size_t ended_count = 0;
+        esp_err_t first_err = ESP_OK;
+
+        for (size_t i = 0; i < count; i++) {
+            net_iface_handle_t h = handles[i];
+            EventBits_t bits = xEventGroupGetBits(h->state_events);
+
+            if ((bits & NET_IFACE_BIT_READY) != 0) {
+                if (out_ready != NULL) {
+                    *out_ready = h;
+                }
+                return ESP_OK;
+            }
+            if ((bits & NET_IFACE_BIT_FAILED) != 0) {
+                ended_count++;
+                if (first_err == ESP_OK) {
+                    esp_err_t last_err = net_iface_get_last_error(h);
+                    first_err = (last_err != ESP_OK) ? last_err : ESP_FAIL;
+                }
+            } else if ((bits & NET_IFACE_BIT_STOPPED) != 0) {
+                ended_count++;
+            } else {
+                net_iface_state_t state = net_iface_get_state(h);
+                if (state == NET_IFACE_STATE_UNINIT || state == NET_IFACE_STATE_INIT) {
+                    return ESP_ERR_INVALID_STATE;
+                }
+            }
+        }
+
+        if (ended_count == count) {
+            return (first_err != ESP_OK) ? first_err : ESP_ERR_INVALID_STATE;
+        }
+
+        TickType_t wait_ticks = wait_ticks_left(timeout_ms, start_ticks, total_ticks);
+        if (wait_ticks == 0) {
+            return ESP_ERR_TIMEOUT;
+        }
+        (void)xEventGroupWaitBits(s_global_wait_events, NET_IFACE_GLOBAL_WAKE_BIT,
+                                  pdFALSE, pdFALSE, wait_ticks);
+    }
 }
 
 /* Return the network interface pointer. stop() may clear it, so it is copied while the lock is held. */
