@@ -1133,6 +1133,13 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         }
         esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_DATA, client->rx_buffer, rlen);
 
+        // A DATA handler may have aborted the connection (e.g. on a failed send), closing the transport
+        // mid-frame; reading the rest of the frame would then spin on zero-length reads.
+        if (client->state == WEBSOCKET_STATE_UNKNOW || client->state == WEBSOCKET_STATE_WAIT_TIMEOUT) {
+            esp_websocket_free_buf(client, false);
+            return ESP_OK;
+        }
+
         client->payload_offset += rlen;
     } while (client->payload_offset < client->payload_len);
 
