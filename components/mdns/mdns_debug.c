@@ -263,6 +263,11 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 }
                 dbg_printf("%s.%s.%s.%s.\n", name->host, name->service, name->proto, name->domain);
             } else if (type == MDNS_TYPE_SRV) {
+                // SRV fixed fields are priority/weight/port (6 bytes) before the target FQDN
+                if (data_len < MDNS_SRV_FQDN_OFFSET) {
+                    dbg_printf("ERROR: truncated SRV\n");
+                    continue;
+                }
                 size_t rdata_bound = (size_t)(data_ptr + data_len - data);
                 if (!mdns_utils_parse_fqdn(data, data_ptr + MDNS_SRV_FQDN_OFFSET, name, rdata_bound)) {
                     dbg_printf("ERROR: parse SRV\n");
@@ -328,6 +333,11 @@ void static dbg_packet(const uint8_t *data, size_t len)
                 }
                 dbg_printf("\n");
             } else if (type == MDNS_TYPE_OPT) {
+                // OPT option header is code + length (4 bytes) before option data
+                if (data_len < 4) {
+                    dbg_printf("ERROR: truncated OPT\n");
+                    continue;
+                }
                 uint16_t opCode = mdns_utils_read_u16(data_ptr, 0);
                 uint16_t opLen = mdns_utils_read_u16(data_ptr, 2);
                 dbg_printf(" Code: %04x Data[%u]:", opCode, opLen);
