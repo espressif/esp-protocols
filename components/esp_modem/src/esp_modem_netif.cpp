@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,12 +16,49 @@
 
 namespace esp_modem {
 
+void Netif::netif_down(esp_netif_t *netif)
+{
+    esp_netif_action_disconnected(netif, nullptr, 0, nullptr);
+#if CONFIG_LWIP_IPV4
+    // PPP netifs keep the last IPv4 in ip_info, which esp_netif_up() would re-apply
+    // (with a stale IP_EVENT_PPP_GOT_IP) if IPv6CP comes up before IPCP
+    esp_netif_ip_info_t no_ip = {};
+    esp_netif_set_ip_info(netif, &no_ip);
+#endif
+}
+
+void Netif::on_ppp_lost_ip(void *arg, esp_event_base_t event_base,
+                           int32_t event_id, void *event_data)
+{
+    auto *netif = static_cast<esp_netif_t *>(arg);
+    auto *event = static_cast<ip_event_got_ip_t *>(event_data);
+    // The IP-lost timer only checks IPv4, so ignore it while the link is up (e.g. IPv6-only session)
+    if (event != nullptr && event->esp_netif == netif && !esp_netif_is_netif_up(netif)) {
+        netif_down(netif);
+    }
+}
+
 void Netif::on_ppp_changed(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
     auto *ppp = static_cast<Netif *>(arg);
-    if (event_id > NETIF_PPP_ERRORNONE && event_id < NETIF_PP_PHASE_OFFSET) {
+    esp_netif_t *netif = ppp->driver.base.netif;
+    // NETIF_PPP_STATUS is shared by all PPP netifs, so act on the netif only for our own events
+    bool own_event = event_data != nullptr && *static_cast<esp_netif_t **>(event_data) == netif;
+    if (event_id == NETIF_PPP_ERRORNONE) {
+        // Posted from sifup()/sif6up(), so also covers IPv6-only links, where IP_EVENT_PPP_GOT_IP never comes
+        if (own_event) {
+            esp_netif_action_connected(netif, event_base, event_id, event_data);
+        }
+    } else if (event_id > NETIF_PPP_ERRORNONE && event_id < NETIF_PP_PHASE_OFFSET) {
         ESP_LOGI("esp_modem_netif", "PPP state changed event %" PRId32, event_id);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+        // lwIP clears only the IPv6 link-local on PPP down; clear all IPv6 (SLAAC) slots before PPP restarts.
+        // Older IDFs don't post NETIF_PPP_ERRORNONE, so the netif would never be brought up again.
+        if (own_event) {
+            netif_down(netif);
+        }
+#endif
         // only notify the modem on state/error events, ignoring phase transitions
         ppp->signal.set(PPP_EXIT);
     }
@@ -80,7 +117,7 @@ Netif::Netif(std::shared_ptr<DTE> e, esp_netif_t *ppp_netif) :
 #endif
     ESP_MODEM_THROW_IF_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected, ppp_netif));
     ESP_MODEM_THROW_IF_ERROR(
-        esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected, ppp_netif));
+        esp_event_handler_register(IP_EVENT, IP_EVENT_PPP_LOST_IP, &on_ppp_lost_ip, ppp_netif));
 #ifdef CONFIG_ESP_MODEM_USE_PPP_MODE
     ESP_MODEM_THROW_IF_ERROR(esp_netif_attach(ppp_netif, &driver));
 #endif
@@ -130,7 +167,7 @@ Netif::~Netif()
     esp_event_handler_unregister(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed);
 #endif
     esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_GOT_IP, esp_netif_action_connected);
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_LOST_IP, esp_netif_action_disconnected);
+    esp_event_handler_unregister(IP_EVENT, IP_EVENT_PPP_LOST_IP, &on_ppp_lost_ip);
 }
 
 void Netif::wait_until_ppp_exits()
