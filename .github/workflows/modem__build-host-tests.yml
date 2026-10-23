@@ -96,7 +96,7 @@ jobs:
   esp_modem_generated_commands:
     if: contains(github.event.pull_request.labels.*.name, 'modem') || github.event_name == 'push'
     name: Generated commands compatibility
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout esp-protocols
         uses: actions/checkout@v4
