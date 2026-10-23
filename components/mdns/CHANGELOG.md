@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.1)
+
+### Bug Fixes
+
+- Fix OOB access in mdns debug logs ([397820ad](https://github.com/espressif/esp-protocols/commit/397820ad))
+
 ## [1.14.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.0)
 
 ### Features
