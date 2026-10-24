@@ -1,0 +1,11 @@
+menu "Example Configuration"
+
+    config EXAMPLE_DNS_ADDRINFO_TASK_STACK
+        int "getaddrinfo worker task stack size (bytes)"
+        range 4096 32768
+        default 8192
+        help
+            Stack size for the FreeRTOS task that runs getaddrinfo() in this example.
+            DoT/DoH resolution pulls in mbedTLS; 4 KiB is too small on typical builds.
+
+endmenu

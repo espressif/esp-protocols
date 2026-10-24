@@ -63,22 +63,19 @@ typedef struct {
 /** Maximum TTL value for DNS resource records (one week) */
 #define DNS_MAX_TTL 604800
 
-#ifndef CONFIG_LWIP_DNS_MAX_HOST_IP
-#define CONFIG_LWIP_DNS_MAX_HOST_IP 1
-#endif
-
-/** Maximum number of answers that can be stored */
-#define MAX_ANSWERS (CONFIG_LWIP_DNS_MAX_HOST_IP)
-
-#define ESP_DNS_BUFFER_SIZE 512
-
 /**
- * @brief Structure to store a single DNS answer
+ * Maximum IP addresses stored and returned per lookup.
+ *
+ * Fixed at 1 because LWIP_HOOK_NETCONN_EXTERNAL_RESOLVE passes ip_addr_t *addr
+ * without addr_cnt; callers may only provide a single-element buffer.
  */
-typedef struct {
-    err_t status;      /* Status of the answer */
-    ip_addr_t ip;      /* IP address from the answer */
-} dns_answer_storage_t;
+#define MAX_ANSWERS 1
+
+/** Maximum number of resource records to scan in a response (CONFIG_ESP_DNS_MAX_ANSWER_SCAN) */
+#define ESP_DNS_MAX_ANSWER_SCAN CONFIG_ESP_DNS_MAX_ANSWER_SCAN
+
+/** DNS response/query buffer size in bytes (CONFIG_ESP_DNS_BUFFER_SIZE) */
+#define ESP_DNS_BUFFER_SIZE CONFIG_ESP_DNS_BUFFER_SIZE
 
 /**
  * @brief Structure to store a complete DNS response
@@ -87,7 +84,7 @@ typedef struct {
     err_t status_code;           /* Overall status of the DNS response */
     uint16_t id;                 /* Transaction ID */
     int num_answers;             /* Number of valid answers */
-    dns_answer_storage_t answers[MAX_ANSWERS];  /* Array of answers */
+    ip_addr_t answers[MAX_ANSWERS];  /* Array of IP addresses */
 } dns_response_t;
 
 /**
@@ -96,6 +93,7 @@ typedef struct {
 typedef struct {
     char *buffer;                /* Pointer to response data buffer */
     int length;                  /* Current length of data in buffer */
+    u8_t max_ips;                /* Max addresses to collect/return for this lookup */
     dns_response_t dns_response; /* Parsed DNS response information */
 } response_buffer_t;
 
@@ -118,21 +116,33 @@ size_t esp_dns_create_query(uint8_t *buffer, size_t buffer_size, const char *hos
  * @param buffer Buffer containing the DNS response
  * @param response_size Size of the response
  * @param dns_response Structure to store parsed response
+ * @param max_ips Maximum number of IP addresses to collect (must be > 0)
  */
-void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_t *dns_response);
+void esp_dns_parse_response(uint8_t *buffer, size_t response_size, dns_response_t *dns_response, u8_t max_ips);
 
 /**
- * @brief Converts a dns_response_t to an array of IP addresses.
+ * @brief Clamps addr_cnt to a valid value for esp_dns resolution
  *
- * This function iterates over the DNS response and extracts valid
- * IPv4 and IPv6 addresses, storing them in the provided array.
- *
- * @param response The DNS response to process.
- * @param ipaddr An array to store the extracted IP addresses.
- *
- * @return err Status of dns response parsing
+ * @param addr_cnt Number of address slots requested by the caller
+ * @return Clamped count in range 1..MAX_ANSWERS, or 0 if addr_cnt is 0
  */
-err_t esp_dns_extract_ip_addresses_from_response(const dns_response_t *response, ip_addr_t ipaddr[]);
+u8_t esp_dns_clamp_addr_cnt(u8_t addr_cnt);
+
+/**
+ * @brief Copies parsed IP addresses from a DNS response to an array.
+ *
+ * This function retrieves the valid IPv4 and IPv6 addresses that were
+ * previously parsed and stored in the DNS response structure, copying
+ * them into the provided array.
+ *
+ * @param response The parsed DNS response
+ * @param ipaddr Array to store the copied IP addresses
+ * @param max_entries Number of slots available in ipaddr (must be > 0)
+ *
+ * @return err_t ERR_OK on success, ERR_ARG if ipaddr is NULL or max_entries is 0,
+ *         or an error code from the response
+ */
+err_t esp_dns_get_ips_from_response(const dns_response_t *response, ip_addr_t ipaddr[], u8_t max_entries);
 
 #ifdef __cplusplus
 }
