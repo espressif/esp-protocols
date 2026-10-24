@@ -135,6 +135,7 @@ static void browse_finish(mdns_browse_t *browse)
         if (it == browse) {
             queueDetach(mdns_browse_t, s_browse, it);
             browse_item_free(it);
+            mdns_priv_cache_trim_unsubscribed_records(esp_timer_get_time());
             return;
         }
     }
