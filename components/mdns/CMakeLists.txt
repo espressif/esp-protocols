@@ -30,6 +30,19 @@ else()
     set(srcs ${MDNS_CORE} ${MDNS_MEMORY} ${MDNS_NETWORKING} ${MDNS_CONSOLE})
 endif()
 
+# console is only used by mdns_console.c; declare it only when the CLI is enabled so
+# builds without it do not pull console (and esp_gdbstub through it) into the build.
+# Build system v2 evaluates components with sdkconfig loaded, so the requirement can
+# be declared here; v1 collects requirements before sdkconfig exists, so there the
+# dependency is linked after registration (see below).
+if(IDF_BUILD_V2 AND CONFIG_MDNS_ENABLE_CONSOLE_CLI)
+    if(${target} STREQUAL "linux")
+        list(APPEND private_dependencies console)
+    else()
+        list(APPEND dependencies console)
+    endif()
+endif()
+
 idf_component_register(
         SRCS ${srcs}
         INCLUDE_DIRS "include"
@@ -59,11 +72,9 @@ if(NOT ${target} STREQUAL "linux")
     endif()
 endif()
 
-# console is only used by mdns_console.c; declare it conditionally so builds with
-# the CLI disabled do not pull console (and esp_gdbstub through it) into the build.
-# Requirements are collected before sdkconfig is loaded, so this cannot be a
-# conditional REQUIRES; when the CLI is enabled the project has to bring console in.
-if(CONFIG_MDNS_ENABLE_CONSOLE_CLI)
+# Build system v1: requirements cannot depend on sdkconfig, so when the CLI is
+# enabled the project has to bring console into the build and mdns links it here.
+if(CONFIG_MDNS_ENABLE_CONSOLE_CLI AND NOT IDF_BUILD_V2)
     idf_build_get_property(build_components BUILD_COMPONENTS)
     if(NOT console IN_LIST build_components)
         message(FATAL_ERROR "CONFIG_MDNS_ENABLE_CONSOLE_CLI is enabled but the console component "
