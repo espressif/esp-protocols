@@ -161,6 +161,12 @@ menu "mDNS"
         default y
         help
             Enable for the console cli to be available on the device.
+            When disabled, mdns does not depend on the console component at all.
+            With the IDF build system v1 the console component has to be part
+            of the build when this is enabled; projects that trim the component
+            list (COMPONENTS, EXCLUDE_COMPONENTS or MINIMAL_BUILD) need to
+            include it or disable this option. With build system v2 mdns
+            requires console itself when this is enabled.
 
     config MDNS_ENABLE_BROWSE
         bool "Enable mDNS browse (daemon service discovery)"
