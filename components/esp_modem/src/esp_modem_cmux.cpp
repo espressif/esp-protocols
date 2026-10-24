@@ -79,6 +79,26 @@ uint8_t CMux::fcs_crc(const uint8_t frame[6])
     return crc;
 }
 
+bool CMux::is_config_valid(const CMuxConfig &config)
+{
+    const auto first = config.virtual_terminal_dlci[0];
+    const auto second = config.virtual_terminal_dlci[1];
+    return first > 0 && second > 0 && first != second &&
+           first <= config.max_open_dlci && second <= config.max_open_dlci &&
+           config.max_open_dlci <= 63;
+}
+
+static int terminal_for_dlci(const CMuxConfig &config, uint8_t dlci)
+{
+    for (size_t terminal = 0; terminal < MAX_TERMINALS_NUM; ++terminal) {
+        if (config.virtual_terminal_dlci[terminal] == dlci) {
+            return static_cast<int>(terminal);
+        }
+    }
+    // Opened but unmapped DLCIs are accepted without delivering their data.
+    return -1;
+}
+
 void CMux::send_disconnect(size_t i)
 {
     if (i == 0) {   // control terminal
@@ -122,8 +142,8 @@ struct CMux::CMuxFrame {
 bool CMux::data_available(uint8_t *data, size_t len)
 {
     if (data && (type & FT_UIH) == FT_UIH && len > 0 && dlci > 0) { // valid payload on a virtual term
-        int virtual_term = dlci - 1;
-        if (virtual_term < MAX_TERMINALS_NUM) {
+        int virtual_term = terminal_for_dlci(config, dlci);
+        if (virtual_term >= 0) {
             // Hold cb_lock (not the state lock) across the read_cb check and invocation, so the
             // callback cannot be reassigned/cleared (set_read_cb()/teardown) while we're using it,
             // without blocking write() during the (potentially long) upcall.
@@ -143,15 +163,13 @@ bool CMux::data_available(uint8_t *data, size_t len)
 #else
             read_cb[virtual_term](data, len);
 #endif
-        } else {
-            return false;
         }
     } else if (data == nullptr && type == (FT_UA | PF) && len == 0) { // notify the initial SABM command
         Scoped<Lock> l(lock);
         sabm_ack = dlci;
     } else if (data == nullptr && dlci > 0) {
-        int virtual_term = dlci - 1;
-        if (virtual_term < MAX_TERMINALS_NUM) {
+        int virtual_term = terminal_for_dlci(config, dlci);
+        if (virtual_term >= 0) {
             Scoped<Lock> l(cb_lock);
             if (read_cb[virtual_term] == nullptr) {
                 // silently ignore this CMUX frame (not finished entering CMUX, yet)
@@ -160,8 +178,6 @@ bool CMux::data_available(uint8_t *data, size_t len)
 #ifdef DEFRAGMENT_CMUX_PAYLOAD
             read_cb[virtual_term](payload_start, total_payload_size);
 #endif
-        } else {
-            return false;
         }
     } else if ((type & FT_UIH) == FT_UIH && dlci == 0) { // notify the internal DISC command
         if ((data == nullptr) || (len > 0 && (data[0] & 0xE1) == 0xE1)) {
@@ -252,7 +268,7 @@ bool CMux::on_header(CMuxFrame &frame)
     type = frame_header[2];
     // Sanity check for expected values of DLCI and type,
     // since CRC could be evaluated after the frame payload gets received
-    if (dlci > MAX_TERMINALS_NUM || (frame_header[1] & 0x01) == 0 ||
+    if (dlci > config.max_open_dlci || (frame_header[1] & 0x01) == 0 ||
             (((type & FT_UIH) != FT_UIH) &&  type != (FT_UA | PF))) {
         recover_protocol(protocol_mismatch_reason::UNEXPECTED_HEADER);
         return true;
@@ -401,8 +417,8 @@ bool CMux::deinit()
 {
     int timeout;
     sabm_ack = -1;
-    // First disconnect all (2) virtual terminals
-    for (size_t i = 1; i < 3; i++) {
+    // First disconnect all opened virtual terminals
+    for (size_t i = 1; i <= config.max_open_dlci; i++) {
         send_disconnect(i);
         timeout = 0;
         while (true) {
@@ -449,6 +465,10 @@ CMux::~CMux()
 
 bool CMux::init()
 {
+    if (!is_config_valid(config)) {
+        ESP_LOGE("CMUX", "Invalid CMUX DLCI configuration");
+        return false;
+    }
     frame_header_offset = 0;
     state = cmux_state::INIT;
     term->set_read_cb([this](uint8_t *data, size_t len) {
@@ -457,7 +477,7 @@ bool CMux::init()
     });
 
     sabm_ack = -1;
-    for (size_t i = 0; i < 3; i++) {
+    for (size_t i = 0; i <= config.max_open_dlci; i++) {
         int timeout = 0;
         send_sabm(i);
         while (true) {
@@ -480,9 +500,12 @@ bool CMux::init()
 
 int CMux::write(int virtual_term, uint8_t *data, size_t len)
 {
+    if (virtual_term < 0 || virtual_term >= static_cast<int>(MAX_TERMINALS_NUM)) {
+        return -1;
+    }
     const size_t cmux_max_len = 127;
     Scoped<Lock> l(lock);
-    int i = virtual_term + 1;
+    int i = config.virtual_terminal_dlci[virtual_term];
     size_t need_write = len;
     while (need_write > 0) {
         size_t batch_len = need_write;

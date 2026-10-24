@@ -233,7 +233,7 @@ bool DTE::setup_cmux()
         ESP_LOGE("esp_modem_dte", "Cannot setup_cmux(), cmux_term already exists");
         return false;
     }
-    cmux_term = std::make_shared<CMux>(primary_term, std::move(buffer));
+    cmux_term = std::make_shared<CMux>(primary_term, std::move(buffer), cmux_config);
     if (cmux_term == nullptr) {
         return false;
     }
@@ -252,6 +252,15 @@ bool DTE::setup_cmux()
         return false;
     }
     set_command_callbacks();
+    return true;
+}
+
+bool DTE::set_cmux_config(const CMuxConfig &config)
+{
+    if (cmux_term || !CMux::is_config_valid(config)) {
+        return false;
+    }
+    cmux_config = config;
     return true;
 }
 

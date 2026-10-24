@@ -99,8 +99,12 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
         // It means that all responses (that we test) must be shorter or equal to the requests
         // For example ATD (dial command): sizeof("ATD*99#") >= sizeof("CONNECT");
         if (data[2] == 0x3f || data[2] == 0x53) {  // SABM command
+            cmux_sabm_dlci.push_back(data[1] >> 2);
             data[2] = 0x73;
         } else if (data[2] == 0xef) { // Generic request
+            if (len == 4) {
+                last_cmux_payload_dlci = data[1] >> 2;
+            }
             data[2] = 0xff;         // generic reply
         }
     }
