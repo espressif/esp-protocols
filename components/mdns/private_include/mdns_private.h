@@ -82,6 +82,7 @@
 #define MDNS_ANSWER_NSEC            0x20
 #define MDNS_ANSWER_SDPTR           0x80
 #define MDNS_ANSWER_AAAA_SIZE       16
+#define MDNS_NEGATIVE_ANSWER_BITMAP 0x80000000
 
 #define MDNS_SERVICE_PORT           5353                    // UDP port that the server runs on
 #define MDNS_SERVICE_ADD_TIMEOUT_MS CONFIG_MDNS_SERVICE_ADD_TIMEOUT_MS
@@ -318,6 +319,7 @@ typedef struct mdns_tx_packet_s {
     mdns_out_answer_t *additional;
     bool queued;
     uint16_t id;
+    uint32_t self_host_queries;
 } mdns_tx_packet_t;
 
 typedef enum {
