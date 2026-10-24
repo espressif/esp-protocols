@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -79,6 +79,9 @@ private:
     void notify_read()
     {
         Scoped<Lock> l(cb_lock);
+        if (on_rx_activity_) {
+            on_rx_activity_();
+        }
         if (on_read) {
             on_read(nullptr, 0);
         }

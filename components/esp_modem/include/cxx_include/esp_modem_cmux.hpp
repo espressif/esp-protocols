@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -76,6 +76,11 @@ public:
      * @param f function pointer
      */
     void set_read_cb(int inst, std::function<bool(uint8_t *data, size_t len)> f);
+
+    /**
+     * @brief Install RX hooks on the physical (muxed) terminal, not on virtual DLCIs.
+     */
+    void set_receive_hooks(Terminal::receive_hook_t on_uart_wakeup, Terminal::receive_hook_t on_rx_activity);
 
     /**
      * @brief Writes to the appropriate terminal

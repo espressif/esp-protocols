@@ -75,11 +75,16 @@ DTE::~DTE()
         primary_term->stop();
         primary_term->set_read_cb(nullptr);
         primary_term->set_error_cb(nullptr);
+        primary_term->set_receive_hooks(nullptr, nullptr);
     }
     if (secondary_term && secondary_term != primary_term) {
         secondary_term->stop();
         secondary_term->set_read_cb(nullptr);
         secondary_term->set_error_cb(nullptr);
+        secondary_term->set_receive_hooks(nullptr, nullptr);
+    }
+    if (cmux_term) {
+        cmux_term->set_receive_hooks(nullptr, nullptr);
     }
 }
 
@@ -182,7 +187,14 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     buffer_state.command_start_offset = buffer_state.total_processed;
 #endif
     command_cb.set(got_line, separator);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
     primary_term->write((uint8_t *)command.c_str(), command.length());
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
     command_cb.wait_for_line(time_ms);
     command_cb.set(nullptr);
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
@@ -225,6 +237,7 @@ void DTE::exit_cmux_internal()
     buffer = std::move(ejected.second);
     secondary_term = primary_term;
     set_command_callbacks();
+    apply_receive_hooks();
 }
 
 bool DTE::setup_cmux()
@@ -252,6 +265,7 @@ bool DTE::setup_cmux()
         return false;
     }
     set_command_callbacks();
+    apply_receive_hooks();
     return true;
 }
 
@@ -362,20 +376,110 @@ int DTE::read(uint8_t **d, size_t len)
     return actual_len;
 }
 
+std::shared_ptr<const DTE::TransmitHooks> DTE::load_transmit_hooks()
+{
+#if defined(__cpp_lib_atomic_shared_ptr)
+    return transmit_hooks_.load(std::memory_order_acquire);
+#else
+    return std::atomic_load_explicit(&transmit_hooks_, std::memory_order_acquire);
+#endif
+}
+
+void DTE::set_transmit_hooks(transmit_hook_t before_tx, transmit_hook_t after_tx)
+{
+    std::shared_ptr<const TransmitHooks> p;
+    if (before_tx || after_tx) {
+        p = std::make_shared<TransmitHooks>(std::move(before_tx), std::move(after_tx));
+    }
+#if defined(__cpp_lib_atomic_shared_ptr)
+    transmit_hooks_.store(std::move(p), std::memory_order_release);
+#else
+    std::atomic_store_explicit(&transmit_hooks_, std::move(p), std::memory_order_release);
+#endif
+}
+
+std::shared_ptr<const DTE::ReceiveHooks> DTE::load_receive_hooks()
+{
+#if defined(__cpp_lib_atomic_shared_ptr)
+    return receive_hooks_.load(std::memory_order_acquire);
+#else
+    return std::atomic_load_explicit(&receive_hooks_, std::memory_order_acquire);
+#endif
+}
+
+void DTE::apply_receive_hooks()
+{
+    receive_hook_t wakeup;
+    receive_hook_t activity;
+    auto hooks = load_receive_hooks();
+    if (hooks) {
+        wakeup = hooks->wakeup;
+        activity = hooks->activity;
+    }
+    if (cmux_term) {
+        cmux_term->set_receive_hooks(std::move(wakeup), std::move(activity));
+        return;
+    }
+    if (primary_term) {
+        primary_term->set_receive_hooks(wakeup, activity);
+    }
+    if (secondary_term && secondary_term != primary_term) {
+        secondary_term->set_receive_hooks(std::move(wakeup), std::move(activity));
+    }
+}
+
+void DTE::set_receive_hooks(receive_hook_t on_uart_wakeup, receive_hook_t on_rx_activity)
+{
+    std::shared_ptr<const ReceiveHooks> p;
+    if (on_uart_wakeup || on_rx_activity) {
+        p = std::make_shared<ReceiveHooks>(std::move(on_uart_wakeup), std::move(on_rx_activity));
+    }
+#if defined(__cpp_lib_atomic_shared_ptr)
+    receive_hooks_.store(std::move(p), std::memory_order_release);
+#else
+    std::atomic_store_explicit(&receive_hooks_, std::move(p), std::memory_order_release);
+#endif
+    apply_receive_hooks();
+}
+
 int DTE::write(uint8_t *data, size_t len)
 {
-    return secondary_term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = secondary_term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::send(uint8_t *data, size_t len, int term_id)
 {
     Terminal *term = term_id == 0 ? primary_term.get() : secondary_term.get();
-    return term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::write(DTE_Command command)
 {
-    return primary_term->write(command.data, command.len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = primary_term->write(command.data, command.len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 void DTE::on_read(got_line_cb on_read_cb)

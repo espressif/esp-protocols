@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -444,6 +444,7 @@ CMux::~CMux()
     if (term) {
         term->set_read_cb(nullptr);
         term->set_error_cb(nullptr);
+        term->set_receive_hooks(nullptr, nullptr);
     }
 }
 
@@ -514,6 +515,13 @@ void CMux::set_read_cb(int inst, std::function<bool(uint8_t *, size_t)> f)
     Scoped<Lock> l(cb_lock);
     if (inst < MAX_TERMINALS_NUM) {
         read_cb[inst] = std::move(f);
+    }
+}
+
+void CMux::set_receive_hooks(Terminal::receive_hook_t on_uart_wakeup, Terminal::receive_hook_t on_rx_activity)
+{
+    if (term) {
+        term->set_receive_hooks(std::move(on_uart_wakeup), std::move(on_rx_activity));
     }
 }
 

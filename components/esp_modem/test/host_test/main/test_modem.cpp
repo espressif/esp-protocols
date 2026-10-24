@@ -6,6 +6,7 @@
 #define CATCH_CONFIG_MAIN // This tells the catch header to generate a main
 #include <memory>
 #include <future>
+#include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_session.hpp>
 #include "cxx_include/esp_modem_api.hpp"
@@ -409,6 +410,70 @@ TEST_CASE("CMUX manual mode transitions", "[esp_modem][transitions]")
     CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MANUAL_EXIT) == true);  // Exit CMUX
     CHECK(dce->set_mode(esp_modem::modem_mode::UNDEF) == true);             // Succeeds from any state
 
+}
+
+TEST_CASE("Receive hooks", "[esp_modem][hooks]")
+{
+    auto term = std::make_unique<LoopbackTerm>();
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+
+    std::atomic<int> wakeup_count{0};
+    std::atomic<int> activity_count{0};
+
+    dte->set_receive_hooks(
+    [&wakeup_count]() {
+        wakeup_count++;
+    },
+    [&activity_count]() {
+        activity_count++;
+    }
+    );
+
+    SECTION("wakeup fires independently of RX data") {
+        loopback->inject_wakeup();
+        CHECK(wakeup_count == 1);
+        CHECK(activity_count == 0);
+    }
+
+    SECTION("activity fires on command reply") {
+        esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+        esp_netif_t netif{};
+        auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+        REQUIRE(dce != nullptr);
+        int rssi, ber;
+        CHECK(dce->get_signal_quality(rssi, ber) == command_result::OK);
+        CHECK(activity_count.load() >= 1);
+        CHECK(wakeup_count == 0);
+    }
+
+    SECTION("hooks survive CMUX wrap of the physical terminal") {
+        esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+        esp_netif_t netif{};
+        auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+        REQUIRE(dce != nullptr);
+        CHECK(dce->set_mode(esp_modem::modem_mode::CMUX_MODE) == true);
+
+        loopback->inject_wakeup();
+        CHECK(wakeup_count == 1);
+
+        uint8_t test_payload[] = {0xf9, 0x09, 0xff, 0x0b, 0x54, 0x65, 0x73, 0x74, 0x0a, 0xbb, 0xf9 };
+        loopback->inject(&test_payload[0], sizeof(test_payload), sizeof(test_payload), 0, 0);
+        const auto test_command = "Test\n";
+        auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
+            return command_result::OK;
+        }, 1000);
+        CHECK(ret == command_result::OK);
+        CHECK(activity_count.load() >= 1);
+    }
+
+    SECTION("hooks can be cleared") {
+        loopback->inject_wakeup();
+        CHECK(wakeup_count == 1);
+        dte->set_receive_hooks(nullptr, nullptr);
+        loopback->inject_wakeup();
+        CHECK(wakeup_count == 1);
+    }
 }
 
 #define CATCH_CONFIG_RUNNER

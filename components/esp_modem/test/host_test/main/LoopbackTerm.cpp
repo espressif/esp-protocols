@@ -89,7 +89,16 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
             data_len = response.length();
             loopback_data.resize(data_len);
             memcpy(&loopback_data[0], &response[0], data_len);
-            auto ret = std::async(on_read, nullptr, data_len);
+            const size_t posted_len = data_len;
+            auto ret = std::async([this, posted_len]() {
+                Scoped<Lock> lock(cb_lock);
+                if (on_rx_activity_) {
+                    on_rx_activity_();
+                }
+                if (on_read) {
+                    on_read(nullptr, posted_len);
+                }
+            });
             return len;
         }
     }
@@ -107,7 +116,16 @@ int LoopbackTerm::write(uint8_t *data, size_t len)
     loopback_data.resize(data_len + len);
     memcpy(&loopback_data[data_len], data, len);
     data_len += len;
-    auto ret = std::async(on_read, nullptr, data_len);
+    const size_t posted_len = data_len;
+    auto ret = std::async([this, posted_len]() {
+        Scoped<Lock> lock(cb_lock);
+        if (on_rx_activity_) {
+            on_rx_activity_();
+        }
+        if (on_read) {
+            on_read(nullptr, posted_len);
+        }
+    });
     return len;
 }
 
@@ -152,6 +170,11 @@ int LoopbackTerm::inject(uint8_t *data, size_t len, size_t injected_by, size_t d
     return len;
 }
 
+void LoopbackTerm::inject_wakeup()
+{
+    invoke_uart_wakeup();
+}
+
 void LoopbackTerm::batch_read()
 {
     while (!stopping && data_len > 0) {
@@ -162,6 +185,9 @@ void LoopbackTerm::batch_read()
             Scoped<Lock> lock(cb_lock);
             if (!on_read) {
                 break;      // callback cleared, nobody would consume the data anymore
+            }
+            if (on_rx_activity_) {
+                on_rx_activity_();
             }
             on_read(nullptr, std::min(inject_by, data_len));
         }

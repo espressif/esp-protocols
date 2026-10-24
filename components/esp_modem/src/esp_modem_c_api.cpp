@@ -678,3 +678,51 @@ extern "C" esp_err_t esp_modem_hang_up(esp_modem_dce_t *dce_wrap)
     }
     return command_response_to_esp_err(dce_wrap->dce->hang_up());
 }
+
+extern "C" esp_err_t esp_modem_set_transmit_hooks(esp_modem_dce_t *dce_wrap,
+                                                  esp_modem_transmit_hook_t before_tx,
+                                                  esp_modem_transmit_hook_t after_tx,
+                                                  void *user_ctx)
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    DTE::transmit_hook_t before_fn = nullptr;
+    DTE::transmit_hook_t after_fn = nullptr;
+    if (before_tx) {
+        before_fn = [before_tx, user_ctx]() {
+            before_tx(user_ctx);
+        };
+    }
+    if (after_tx) {
+        after_fn = [after_tx, user_ctx]() {
+            after_tx(user_ctx);
+        };
+    }
+    dce_wrap->dte->set_transmit_hooks(std::move(before_fn), std::move(after_fn));
+    return ESP_OK;
+}
+
+extern "C" esp_err_t esp_modem_set_receive_hooks(esp_modem_dce_t *dce_wrap,
+                                                 esp_modem_receive_hook_t on_uart_wakeup,
+                                                 esp_modem_receive_hook_t on_rx_activity,
+                                                 void *user_ctx)
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    DTE::receive_hook_t wakeup_fn = nullptr;
+    DTE::receive_hook_t activity_fn = nullptr;
+    if (on_uart_wakeup) {
+        wakeup_fn = [on_uart_wakeup, user_ctx]() {
+            on_uart_wakeup(user_ctx);
+        };
+    }
+    if (on_rx_activity) {
+        activity_fn = [on_rx_activity, user_ctx]() {
+            on_rx_activity(user_ctx);
+        };
+    }
+    dce_wrap->dte->set_receive_hooks(std::move(wakeup_fn), std::move(activity_fn));
+    return ESP_OK;
+}
