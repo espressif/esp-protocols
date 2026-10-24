@@ -1,6 +1,20 @@
 version: 1.1.0
 description: The component provides helper functions for easy initialization and start of esp console.
 url: https://github.com/espressif/esp-protocols/tree/master/components/console_simple_init
+issues: https://github.com/espressif/esp-protocols/issues
+documentation: https://github.com/espressif/esp-protocols/blob/master/components/console_simple_init/README.md
+repository: https://github.com/espressif/esp-protocols.git
+license: Apache-2.0
+tags:
+  - console
+  - cli
+  - repl
 dependencies:
   idf:
     version: '>=5.0'
+files:
+  exclude:
+    - "examples/**/build/**"
+    - "examples/**/sdkconfig*"
+    - "**/__pycache__/**"
+    - "**/dependencies.lock"
