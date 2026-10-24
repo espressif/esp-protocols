@@ -1038,7 +1038,7 @@ static mdns_result_t *lookup_service(const char *instance, const char *service, 
         if ((selfhost && is_service_selfhosted) || (!selfhost && is_service_delegated)) {
             if (!strcasecmp(srv->service, service) && !strcasecmp(srv->proto, proto) && service_has_subtype(srv, subtype) &&
                     (mdns_utils_str_null_or_empty(instance) || mdns_utils_instance_name_match(srv->instance, instance))) {
-                mdns_result_t *item = (mdns_result_t *)mdns_mem_malloc(sizeof(mdns_result_t));
+                mdns_result_t *item = (mdns_result_t *)mdns_mem_calloc(1, sizeof(mdns_result_t));
                 if (!item) {
                     HOOK_MALLOC_FAILED;
                     goto handle_error;

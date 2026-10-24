@@ -996,6 +996,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
             if (type == MDNS_TYPE_PTR) {
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 mdns_browse_t *browse_for_ptr = mdns_priv_browse_find_ptr(name);
+                const char *browse_subtype = name->sub && browse_for_ptr ? browse_for_ptr->subtype : NULL;
 #endif
                 size_t rdata_bound = (size_t)(data_ptr + data_len - data);
                 if (!mdns_utils_parse_fqdn(data, data_ptr, name, rdata_bound)) {
@@ -1006,7 +1007,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                     packet_browse = browse_for_ptr;
                     (void)mdns_priv_cache_update_ptr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
                                                      name->host, browse_for_ptr->service, browse_for_ptr->proto,
-                                                     ttl);
+                                                     browse_subtype, ttl);
                 } else if (search_result) {
 #else
                 if (search_result) {

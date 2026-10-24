@@ -27,26 +27,39 @@ bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *e
                                       const char *service, const char *proto);
 
 /**
- * @brief Update a PTR record for service cache `_service._proto`.
+ * @brief Find the subtype node in a service cache by subtype name.
+ *
+ * @param service Pointer to the service cache.
+ * @param subtype The subtype name to find.
+ *
+ * @return Pointer to the subtype node if found, NULL otherwise.
+ */
+const mdns_cache_subtype_t *mdns_priv_cache_service_find_subtype(const mdns_service_cache_t *service, const char *subtype);
+
+/**
+ * @brief Update a PTR record for service cache `_service._proto` with possible subtype.
  *
  * @param esp_netif     Pointer to the esp_netif.
  * @param ip_protocol   IP protocol.
  * @param instance      The instance name.
  * @param service       The service name.
  * @param proto         The protocol.
+ * @param subtype       The subtype.
  * @param ttl           The PTR TTL.
  *
  * @return The result of the update, see @ref mdns_cache_update_result_t.
  *
  * @note The PTR record will be marked to-sync when:
  *      - A new service is added to the cache.
+ *      - A new subtype is appended to the service cache.
  *      - The PTR TTL is updated.
  *
- * @note A TTL=0 goodbye will notify all subscribing browsers and remove the PTR record.
+ * @note A TTL=0 goodbye notifies only the matching base/subtype browsers and
+ *       removes only that PTR record. Other cached records are preserved.
  */
 mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                       const char *instance, const char *service, const char *proto,
-                                                      uint32_t ttl);
+                                                      const char *subtype, uint32_t ttl);
 
 /**
  * @brief Update a SRV record for service cache `instance._service._proto`.
@@ -144,6 +157,17 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
  *       PTR expiration notifies browses immediately, other records are marked to-sync for browses.
  */
 void mdns_priv_cache_remove_expired_records(int64_t now_us);
+
+/**
+ * @brief Trim down the expiration time of unsubscribed records.
+ *
+ * @param now_us The current time in microseconds from esp_timer_get_time().
+ *
+ * @note This function scans through s_expiry and sets the expiration time of unsubscribed records to
+ *       `min(expires_at_us, now_us + MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC * MDNS_US_PER_SEC)`.
+ *       Finally cleaned up in service task by `mdns_priv_cache_remove_expired_records()`.
+ */
+void mdns_priv_cache_trim_unsubscribed_records(int64_t now_us);
 
 /**
  * @brief Clear all cache entries.
