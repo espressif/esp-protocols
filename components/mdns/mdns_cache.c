@@ -14,6 +14,8 @@
 #include "mdns_querier.h"
 #include "mdns_utils.h"
 
+#define MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC 300 // Maximum lifetime of cache records without consumers
+
 static const char *TAG = "mdns_cache";
 
 static mdns_cache_entry_t *s_cache;
@@ -473,6 +475,24 @@ static void cache_remove_service_if_empty(mdns_cache_entry_t *entry, mdns_servic
         }
         service_entry_ptr = &(*service_entry_ptr)->next;
     }
+}
+
+static bool cache_service_has_consumer(const mdns_service_cache_t *service)
+{
+    return service && mdns_priv_browse_has_service(service->service, service->proto);
+}
+
+static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
+{
+    if (node->record_mask == MDNS_CACHE_RECORD_ADDR) {
+        for (const mdns_service_cache_t *it = node->entry->service_cache_list; it; it = it->next) {
+            if (cache_service_has_consumer(it)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    return cache_service_has_consumer(node->service);
 }
 
 mdns_cache_update_result_t mdns_priv_cache_update_ptr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
@@ -937,6 +957,36 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
             service_cache_mark_sync_out(service, MDNS_CACHE_UPDATED, record, MDNS_CACHE_CONSUMER_BROWSE);
         }
         mdns_mem_free(node);
+    }
+}
+
+void mdns_priv_cache_trim_unsubscribed_records(int64_t now_us)
+{
+    const int64_t deadline = now_us + (int64_t)MDNS_CACHE_UNSUBSCRIBED_GRACE_SEC * MDNS_US_PER_SEC;
+    mdns_cache_expiry_t **link = &s_expiry;
+
+    while (*link && (*link)->expires_at_us <= deadline) {
+        link = &(*link)->next;
+    }
+    mdns_cache_expiry_t **insert_link = link;
+
+    // Only scans through nodes with expiry time > deadline
+    // If record has no consumers, move expiry node to insert_link
+    while (*link) {
+        mdns_cache_expiry_t *node = *link;
+        if (cache_record_has_consumer(node)) {
+            link = &node->next;
+            continue;
+        }
+
+        *link = node->next;
+        node->expires_at_us = deadline;
+        node->next = *insert_link;
+        *insert_link = node;
+        if (link == insert_link) {
+            // In case first *link has no consumers, causing link never moves and infinite loop
+            link = &node->next;
+        }
     }
 }
 
