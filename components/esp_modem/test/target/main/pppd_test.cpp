@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -111,16 +111,13 @@ extern "C" void app_main(void)
 
 }
 
-TEST_CASE("Connect test", "[esp_modem]")
+TEST_CASE("Connect and disconnect test", "[esp_modem]")
 {
     EventBits_t b = xEventGroupWaitBits(event_group, 1, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
     CHECK(b == 1);
-}
 
-TEST_CASE("Disconnection test", "[esp_modem]")
-{
     modem_stop_network();
-    EventBits_t b = xEventGroupWaitBits(event_group, 2, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
+    b = xEventGroupWaitBits(event_group, 2, pdTRUE, pdFALSE, pdMS_TO_TICKS(15000));
     CHECK(b == 2);
 }
 

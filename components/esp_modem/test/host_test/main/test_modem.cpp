@@ -284,8 +284,14 @@ TEST_CASE("DCE CMUX test", "[esp_modem]")
     CHECK(loopback->get_cmux_sabm_dlci() == std::vector<uint8_t> {0, 1, 2});
     CHECK(loopback->get_last_cmux_payload_dlci() == 2);
 
+    std::string received_data;
+    dte->set_read_cb([&](uint8_t *data, size_t len) {
+        received_data.append(reinterpret_cast<char *>(data), len);
+        return true;
+    });
     uint8_t data[] = "Data";
     CHECK(dte->write(data, sizeof(data)) == sizeof(data));
+    CHECK(received_data == std::string(reinterpret_cast<char *>(data), sizeof(data)));
     CHECK(loopback->get_last_cmux_payload_dlci() == 1);
 }
 
@@ -325,8 +331,14 @@ TEST_CASE("DCE CMUX custom DLCI mapping", "[esp_modem]")
     CHECK(ret == command_result::OK);
     CHECK(loopback->get_last_cmux_payload_dlci() == 2);
 
+    std::string received_data;
+    dte->set_read_cb([&](uint8_t *data, size_t len) {
+        received_data.append(reinterpret_cast<char *>(data), len);
+        return true;
+    });
     uint8_t data[] = "Data";
     CHECK(dte->write(data, sizeof(data)) == sizeof(data));
+    CHECK(received_data == std::string(reinterpret_cast<char *>(data), sizeof(data)));
     CHECK(loopback->get_last_cmux_payload_dlci() == 3);
 }
 
