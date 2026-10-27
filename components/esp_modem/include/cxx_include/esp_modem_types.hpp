@@ -7,6 +7,7 @@
 #pragma once
 
 #include <functional>
+#include <array>
 #include <string>
 #include <cstddef>
 #include <cstdint>
@@ -84,6 +85,19 @@ struct PdpContext {
     size_t context_id = 1;
     std::string protocol_type = "IP";
     std::string apn;
+};
+
+/**
+ * @brief Physical DLCI mapping used by the two logical CMUX terminals
+ *
+ * The default mapping preserves the standard esp-modem setup: logical
+ * terminal 0 uses DLCI 1 and logical terminal 1 uses DLCI 2. Some modems
+ * require opening intermediate DLCIs before the mapped channels, hence the
+ * separate maximum DLCI value.
+ */
+struct CMuxConfig {
+    std::array<uint8_t, 2> virtual_terminal_dlci{{1, 2}};
+    uint8_t max_open_dlci = 2;
 };
 
 /**

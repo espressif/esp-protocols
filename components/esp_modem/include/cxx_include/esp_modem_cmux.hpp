@@ -8,6 +8,7 @@
 
 #include "esp_modem_terminal.hpp"
 #include "cxx_include/esp_modem_buffer.hpp"
+#include "cxx_include/esp_modem_types.hpp"
 
 namespace esp_modem {
 
@@ -48,8 +49,17 @@ class CMuxInstance;
 class CMux {
 public:
     explicit CMux(std::shared_ptr<Terminal> t, unique_buffer &&b):
-        term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer(std::move(b))  {}
+        CMux(std::move(t), std::move(b), CMuxConfig{}) {}
+    explicit CMux(std::shared_ptr<Terminal> t, unique_buffer &&b, const CMuxConfig &config):
+        term(std::move(t)), payload_start(nullptr), total_payload_size(0), buffer(std::move(b)), config(config) {}
     ~CMux();
+
+    /**
+     * @brief Validate a CMUX DLCI mapping
+     * @param config Mapping to validate
+     * @return true when both virtual terminals map to distinct, valid DLCIs
+     */
+    static bool is_config_valid(const CMuxConfig &config);
 
     /**
      * @brief Initializes CMux protocol
@@ -156,6 +166,7 @@ private:
      * Processing unique buffer (reused and transferred from it's parent DTE)
      */
     unique_buffer buffer;
+    CMuxConfig config;
 
     Lock lock;
     /**

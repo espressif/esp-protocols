@@ -161,6 +161,17 @@ public:
     [[nodiscard]] bool set_mode(modem_mode m);
 
     /**
+     * @brief Configure the physical DLCIs used by CMUX virtual terminals
+     *
+     * This must be called before entering CMUX mode. The default configuration
+     * maps the two logical terminals to DLCI 1 and DLCI 2.
+     *
+     * @param config CMUX DLCI mapping and highest DLCI to establish
+     * @return true if the configuration is valid and was accepted
+     */
+    [[nodiscard]] bool set_cmux_config(const CMuxConfig &config);
+
+    /**
      * @brief Sends command and provides callback with responding line
      * @param command String parameter representing command
      * @param got_line Function to be called after line available as a response
@@ -237,6 +248,7 @@ private:
     Lock internal_lock{};                                   /*!< Locks DTE operations */
     unique_buffer buffer;                                   /*!< DTE buffer */
     std::shared_ptr<CMux> cmux_term;                        /*!< Primary terminal for this DTE */
+    CMuxConfig cmux_config;                                 /*!< Physical DLCI mapping for CMUX terminals */
     std::shared_ptr<Terminal> primary_term;                 /*!< Reference to the primary terminal (mostly for sending commands) */
     std::shared_ptr<Terminal> secondary_term;               /*!< Secondary terminal for this DTE */
     modem_mode mode;                                        /*!< DTE operation mode */

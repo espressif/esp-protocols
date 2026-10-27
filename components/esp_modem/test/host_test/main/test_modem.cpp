@@ -263,6 +263,7 @@ TEST_CASE("DCE modes", "[esp_modem]")
 TEST_CASE("DCE CMUX test", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>();
+    auto loopback = term.get();
     auto dte = std::make_shared<DTE>(std::move(term));
     CHECK(term == nullptr);
 
@@ -280,6 +281,65 @@ TEST_CASE("DCE CMUX test", "[esp_modem]")
         return command_result::OK;
     }, 1000);
     CHECK(ret == command_result::OK);
+    CHECK(loopback->get_cmux_sabm_dlci() == std::vector<uint8_t> {0, 1, 2});
+    CHECK(loopback->get_last_cmux_payload_dlci() == 2);
+
+    std::string received_data;
+    dte->set_read_cb([&](uint8_t *data, size_t len) {
+        received_data.append(reinterpret_cast<char *>(data), len);
+        return true;
+    });
+    uint8_t data[] = "Data";
+    CHECK(dte->write(data, sizeof(data)) == sizeof(data));
+    CHECK(received_data == std::string(reinterpret_cast<char *>(data), sizeof(data)));
+    CHECK(loopback->get_last_cmux_payload_dlci() == 1);
+}
+
+TEST_CASE("DCE CMUX custom DLCI mapping", "[esp_modem]")
+{
+    auto term = std::make_unique<LoopbackTerm>();
+    auto loopback = term.get();
+    auto dte = std::make_shared<DTE>(std::move(term));
+    CHECK(term == nullptr);
+
+    CMuxConfig invalid_config{{{0, 2}}, 2};
+    CHECK_FALSE(dte->set_cmux_config(invalid_config));
+    invalid_config = {{{2, 2}}, 2};
+    CHECK_FALSE(dte->set_cmux_config(invalid_config));
+    invalid_config = {{{3, 2}}, 2};
+    CHECK_FALSE(dte->set_cmux_config(invalid_config));
+    invalid_config = {{{1, 2}}, 64};
+    CHECK_FALSE(dte->set_cmux_config(invalid_config));
+
+    CMuxConfig config{{{3, 2}}, 3};
+    REQUIRE(dte->set_cmux_config(config));
+
+    esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG("APN");
+    esp_netif_t netif{};
+    auto dce = create_SIM7600_dce(&dce_config, dte, &netif);
+    REQUIRE(dce != nullptr);
+
+    REQUIRE(dce->set_mode(esp_modem::modem_mode::CMUX_MODE));
+    CHECK(loopback->get_cmux_sabm_dlci() == std::vector<uint8_t> {0, 1, 2, 3});
+    CHECK_FALSE(dte->set_cmux_config(CMuxConfig{}));
+
+    const auto test_command = "Test\n";
+    auto ret = dce->command(test_command, [&](uint8_t *data, size_t len) {
+        CHECK(std::string((char *)data, len) == test_command);
+        return command_result::OK;
+    }, 1000);
+    CHECK(ret == command_result::OK);
+    CHECK(loopback->get_last_cmux_payload_dlci() == 2);
+
+    std::string received_data;
+    dte->set_read_cb([&](uint8_t *data, size_t len) {
+        received_data.append(reinterpret_cast<char *>(data), len);
+        return true;
+    });
+    uint8_t data[] = "Data";
+    CHECK(dte->write(data, sizeof(data)) == sizeof(data));
+    CHECK(received_data == std::string(reinterpret_cast<char *>(data), sizeof(data)));
+    CHECK(loopback->get_last_cmux_payload_dlci() == 3);
 }
 
 TEST_CASE("Test CMUX protocol by injecting payloads", "[esp_modem]")
