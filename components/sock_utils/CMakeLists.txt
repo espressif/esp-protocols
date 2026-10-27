@@ -22,3 +22,8 @@ idf_component_get_property(lwip lwip COMPONENT_LIB)
 target_compile_definitions(${lwip} PUBLIC LWIP_SOCKET_HAS_SOCKETPAIR=1)
 target_compile_definitions(${lwip} PUBLIC LWIP_NETDB_HAS_GAI_STRERROR=1)
 target_link_libraries(${lwip} PUBLIC ${COMPONENT_LIB})
+
+if(${idf_target} STREQUAL "linux")
+    # Avoid SIOCATMARK redefinition between <sys/ioctl.h> and lwip/sockets.h
+    target_compile_definitions(${lwip} PUBLIC SIOCSHIWAT)
+endif()
