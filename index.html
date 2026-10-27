@@ -196,15 +196,21 @@ a.nav:hover {
 }
 
 a.nav.prev::after {
-  content: "« prev";
+  content: "prev «";
 }
 
 a.nav.index::after {
-  content: "^ index";
+  content: "parent";
 }
 
 a.nav.next::after {
   content: "» next";
+}
+
+a.nav.disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
 }
 
 span.diff {
@@ -646,7 +652,10 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="Layout-main">
       <div class="Layout-main-centered-lg" style="max-width: 1280px;">
         <div class="d-flex flex-justify-center">
-          <h1>GCC Code Coverage Report</h1>
+          <h1>
+            <a href="index.html" style="cursor: default; text-decoration: none">
+              GCC Code Coverage Report</a>
+          </h1>
         </div>
         <hr class="block-separator"/>
         <header>
@@ -1139,8 +1148,8 @@ document.addEventListener("DOMContentLoaded", () => {
         </main>
         <hr class="block-separator"/>
         <footer class="text-center">
-          Created using <a href="http://gcovr.com/en/8.7">GCOVR (Version 8.7)</a>
-          at 2026-10-27 07:05:22+00:00
+          Created using <a href="http://gcovr.com/en/8.8">GCOVR (Version 8.8)</a>
+          at 2026-10-27 15:17:17+00:00
         </footer>
       </div>
     </div>
