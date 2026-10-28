@@ -25,6 +25,9 @@ public:
      */
     int inject(uint8_t *data, size_t len, size_t inject_by, size_t delay_before = 0, size_t delay_after = 1);
 
+    /** Simulate UART_WAKEUP on the physical terminal (host tests). */
+    void inject_wakeup();
+
     void start() override;
     void stop() override;
 
