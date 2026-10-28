@@ -1,7 +1,13 @@
 # esp_driver_gpio is a PUBLIC requirement: the public header lws-freertos.h
 # includes <driver/gpio.h>, so every consumer of libwebsockets.h needs it on
 # its include path. Declaring it here propagates to all consumers.
-idf_component_register(REQUIRES mbedtls esp_driver_gpio)
+# The IDF linux target builds lws for the host (plat/unix, no FreeRTOS), where
+# there is no driver component and lws-freertos.h is not used.
+if(IDF_TARGET STREQUAL "linux")
+    idf_component_register(REQUIRES mbedtls)
+else()
+    idf_component_register(REQUIRES mbedtls esp_driver_gpio)
+endif()
 
 set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE BOOL "Export libwebsockets CMake targets.  Disable if they conflict with an outer cmake project.")
 set(LWS_WITH_MBEDTLS ON CACHE BOOL "Use mbedTLS (>=2.0) replacement for OpenSSL.")
@@ -41,19 +47,54 @@ endif()
 # supply a UTC timegm() via the port (prototype shim force-included into lws).
 set(LWS_HAVE_TIMEGM 1 CACHE INTERNAL "ESP port provides UTC timegm()" FORCE)
 
+idf_component_get_property(mbedtls_dir mbedtls COMPONENT_DIR)
 
-set(WRAP_FUNCTIONS mbedtls_ssl_handshake_step
-                   lws_adopt_descriptor_vhost)
+# IDF linux target: a host build. lws uses plat/unix instead of plat/freertos
+# (whose IDF portmacro/pthread headers don't build for the host) and links IDF's
+# own mbedtls rather than whatever find_library() turns up on the host. Roles
+# and extras that don't build against IDF's static archives are turned off;
+# QUIC/HTTP3 needs a QUIC-patched mbedtls.
+if(IDF_TARGET STREQUAL "linux")
+    set(LWS_WITH_ESP32 OFF CACHE BOOL "" FORCE)
+    set(LWS_PLAT_FREERTOS OFF CACHE BOOL "" FORCE)
+    set(LWS_MBEDTLS_INCLUDE_DIRS
+        "${mbedtls_dir}/mbedtls/include"
+        "${mbedtls_dir}/port/include"
+        "${mbedtls_dir}/port/psa_driver/include")
+    if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
+        # mbedtls 4 (IDF v6): PSA crypto moved to tf-psa-crypto, and mbedcrypto
+        # is gone. TFPSACRYPTO_LIBRARY names IDF's target so lws doesn't try to
+        # find_library() an archive that only exists in the build tree.
+        list(APPEND LWS_MBEDTLS_INCLUDE_DIRS
+            "${mbedtls_dir}/mbedtls/tf-psa-crypto/include"
+            "${mbedtls_dir}/mbedtls/tf-psa-crypto/drivers/builtin/include")
+        set(LWS_MBEDTLS_LIBRARIES mbedtls mbedx509 tfpsacrypto CACHE STRING "" FORCE)
+        set(TFPSACRYPTO_LIBRARY tfpsacrypto CACHE FILEPATH "" FORCE)
+    else()
+        set(LWS_MBEDTLS_LIBRARIES mbedtls mbedx509 mbedcrypto CACHE STRING "" FORCE)
+    endif()
+    set(LWS_MBEDTLS_INCLUDE_DIRS "${LWS_MBEDTLS_INCLUDE_DIRS}" CACHE STRING "" FORCE)
+    set(LWS_WITHOUT_TESTAPPS ON CACHE BOOL "" FORCE)
+    set(LWS_WITH_MINIMAL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(LWS_WITH_SHARED OFF CACHE BOOL "" FORCE)
+    set(LWS_WITH_STATIC ON CACHE BOOL "" FORCE)
+    set(LWS_WITH_ZIP_FOPS OFF CACHE BOOL "" FORCE)
+    set(LWS_WITH_HTTP_STREAM_COMPRESSION OFF CACHE BOOL "" FORCE)
+    set(LWS_WITH_ZLIB OFF CACHE BOOL "" FORCE)
+    set(LWS_WITH_HTTP3 OFF CACHE BOOL "" FORCE)
+    set(LWS_ROLE_QUIC OFF CACHE BOOL "" FORCE)
+else()
+    set(WRAP_FUNCTIONS mbedtls_ssl_handshake_step
+                       lws_adopt_descriptor_vhost)
 
-foreach(wrap ${WRAP_FUNCTIONS})
-    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=${wrap}")
-endforeach()
+    foreach(wrap ${WRAP_FUNCTIONS})
+        target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=${wrap}")
+    endforeach()
+
+    target_sources(${COMPONENT_LIB} INTERFACE "port/lws_port.c")
+endif()
 
 target_link_libraries(${COMPONENT_LIB} INTERFACE websockets)
-
-target_sources(${COMPONENT_LIB} INTERFACE "port/lws_port.c")
-
-idf_component_get_property(mbedtls_dir mbedtls COMPONENT_DIR)
 
 # lws's mbedtls 4 detection probe is gated by `if (LWS_MBEDTLS_INCLUDE_DIRS)`
 # in lib/tls/mbedtls/CMakeLists.txt:120, which on FreeRTOS is empty (the
@@ -92,7 +133,9 @@ target_compile_options(websockets PRIVATE -Wno-unused-variable -Wno-error)
 # shadowed and pulls picolibc's TLS errno + E* macros via esp_libc's #include_next.
 # Otherwise lws objects fail with "errno undeclared" (compile) or "TLS definition
 # ... mismatches non-TLS reference" (link).
-target_compile_definitions(websockets PRIVATE "LWIP_ERRNO_INCLUDE=<sys/errno.h>")
+if(NOT IDF_TARGET STREQUAL "linux")
+    target_compile_definitions(websockets PRIVATE "LWIP_ERRNO_INCLUDE=<sys/errno.h>")
+endif()
 
 # Supply a UTC timegm() for lws (LWS_HAVE_TIMEGM set above). lws_http_date_parse_unix()
 # calls timegm(); the port source defines it and the shim force-includes a prototype
@@ -102,8 +145,10 @@ target_compile_options(websockets PRIVATE "-include${CMAKE_CURRENT_SOURCE_DIR}/p
 
 # Enable custom HTTP header read APIs (lws_hdr_custom_*). PUBLIC so both lws's own
 # sources and consumers (e.g. KVS WebRTC signaling) see the macro. Reliable where
-# the lws CMake option is dropped on the FreeRTOS/minimal profile.
-if(CONFIG_LWS_WITH_CUSTOM_HEADERS)
+# the lws CMake option is dropped on the FreeRTOS/minimal profile. On the linux
+# target lws keeps the option and lws_config.h defines it already; a second
+# definition would be a redefinition warning in every consumer.
+if(CONFIG_LWS_WITH_CUSTOM_HEADERS AND NOT IDF_TARGET STREQUAL "linux")
     target_compile_definitions(websockets PUBLIC LWS_WITH_CUSTOM_HEADERS=1 LWS_WITH_CUSTOM_HTTP_HEADERS=1)
 endif()
 
@@ -121,6 +166,40 @@ if(EXISTS "${mbedtls_dir}/mbedtls/tf-psa-crypto/include")
         "${mbedtls_dir}/port/psa_driver/include")
 endif()
 
+if(IDF_TARGET STREQUAL "linux")
+    # lws only reaches IDF's mbedtls through LWS_MBEDTLS_INCLUDE_DIRS for its
+    # probes; its sources need the same dirs.
+    target_include_directories(websockets PRIVATE ${LWS_MBEDTLS_INCLUDE_DIRS})
+    # On mbedtls 4, tfpsacrypto calls IDF's allocator hooks
+    # (esp_mbedtls_mem_calloc/free) in the mbedtls component library, but that
+    # library is only ever linked before tfpsacrypto: it depends on tfpsacrypto,
+    # not the other way round. Name its archive file after lws's own mbedtls
+    # libraries so the hooks resolve in a consumer that doesn't happen to link
+    # the component again later. A file, not the target: CMake would move the
+    # target ahead of its dependencies. Plain signature, as lws uses on this
+    # target (CMake rejects mixing it with the keyword form).
+    idf_component_get_property(_lws_mbedtls_lib mbedtls COMPONENT_LIB)
+    target_link_libraries(websockets "$<TARGET_FILE:${_lws_mbedtls_lib}>")
+    add_dependencies(websockets ${_lws_mbedtls_lib})
+    # The lwip component is registered on the linux target but provides no
+    # headers; its propagated port/include shadows the host's <netinet/in.h>
+    # with a wrapper forwarding to lwip/inet.h. Drop lwip dirs from the target
+    # so the host headers resolve.
+    get_target_property(_lws_inc websockets INCLUDE_DIRECTORIES)
+    if(_lws_inc)
+        list(FILTER _lws_inc EXCLUDE REGEX "components/lwip/")
+        set_target_properties(websockets PROPERTIES INCLUDE_DIRECTORIES "${_lws_inc}")
+    endif()
+    # lws writes lws_config.h into two dirs on the consumer include path, both
+    # defining LWS_WITH_CUSTOM_HEADERS unguarded. Clang (macOS host) flags the
+    # redefinition; GCC rejects the option name, so gate it to Clang.
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        target_compile_options(websockets PRIVATE -Wno-error=macro-redefined)
+        target_compile_options(${COMPONENT_LIB} INTERFACE -Wno-error=macro-redefined)
+    endif()
+    return()
+endif()
+
 # The include workarounds below reach into components that only exist on
 # IDF v6 (esp_hal_mspi, esp_blockdev, esp_libc). idf_component_get_property
 # hard-errors if the component isn't in the build, so gate every lookup on
@@ -129,14 +208,15 @@ idf_build_get_property(_lws_build_comps BUILD_COMPONENTS)
 
 # lib/misc/romfs.c pulls esp_flash.h, whose IDF v6 include chain spans
 # components split out in v6 (esp_hal_mspi for hal/spi_flash_types.h,
-# esp_blockdev) that aren't on lws's hardcoded include list. Add their include
+# esp_blockdev; on IDF v6.2 also esp_mspi, home of spi_flash_err.h) that aren't on
+# lws's hardcoded include list. Add their include
 # dirs (not link, which would re-inherit IDF's -Werror).
 # esp_security / esp_hal_security: the mbedTLS-4 PSA header chain (psa/crypto.h
 # -> driver-context composites) pulls the ESP HW-crypto driver context headers,
 # which include esp_ds.h / esp_key_mgr.h (esp_security); those in turn include
 # hal/key_mgr_types.h (esp_hal_security). mbedtls links these PRIVATE so they
 # aren't propagated to this add_subdirectory target — add both here.
-foreach(_lws_extra_comp esp_hal_mspi esp_blockdev esp_security esp_hal_security)
+foreach(_lws_extra_comp esp_hal_mspi esp_mspi esp_blockdev esp_security esp_hal_security)
     if(_lws_extra_comp IN_LIST _lws_build_comps)
         idf_component_get_property(_lws_cdir ${_lws_extra_comp} COMPONENT_DIR)
         if(_lws_cdir AND EXISTS "${_lws_cdir}/include")
