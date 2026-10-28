@@ -1,6 +1,9 @@
 # This file was generated using idf.py save-defconfig. It can be edited manually.
 # Espressif IoT Development Framework (ESP-IDF) Project Minimal Configuration
 #
+# Larger factory partition (WiFi+ETH+NAPT exceeds default 1MB on some targets)
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+#
 # WiFi AP Configuration
 CONFIG_EXAMPLE_WIFI_AP_SSID="myssid-ext"
 CONFIG_EXAMPLE_WIFI_AP_PASS="mypassword"
