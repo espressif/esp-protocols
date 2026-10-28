@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,6 +25,19 @@ static mdns_tx_packet_t *s_tx_queue_head;
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+#endif
+
+#if CONFIG_MDNS_TX_QUEUE_MAX > 0
+static bool tx_queue_is_full(void)
+{
+    size_t n = 0;
+    for (mdns_tx_packet_t *q = s_tx_queue_head;
+            q != NULL && n < CONFIG_MDNS_TX_QUEUE_MAX;
+            q = q->next) {
+        n++;
+    }
+    return n >= CONFIG_MDNS_TX_QUEUE_MAX;
+}
 #endif
 
 /**
@@ -662,6 +675,12 @@ void mdns_priv_create_answer_from_parsed_packet(mdns_parsed_packet_t *parsed_pac
 
     static uint8_t share_step = 0;
     if (shared) {
+#if CONFIG_MDNS_TX_QUEUE_MAX > 0
+        if (tx_queue_is_full()) {
+            mdns_priv_free_tx_packet(packet);
+            return;
+        }
+#endif
         mdns_priv_send_after(packet, 25 + (share_step * 25));
         share_step = (share_step + 1) & 0x03;
     } else {
@@ -1741,6 +1760,7 @@ void mdns_priv_send_packets(void)
             if (!mdns_priv_queue_action(action)) {
                 mdns_mem_free(action);
                 p->queued = false;
+                break;
             }
         } else {
             HOOK_MALLOC_FAILED;
