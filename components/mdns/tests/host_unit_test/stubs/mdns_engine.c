@@ -40,6 +40,10 @@ static void execute_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
         break;
+    case ACTION_BROWSE_RECORD_START:
+    case ACTION_BROWSE_RECORD_END:
+        mdns_priv_browse_record_action(action, ACTION_RUN);
+        break;
     default:
         break;
     }

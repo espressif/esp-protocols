@@ -168,6 +168,12 @@ static void free_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_ADD:
         mdns_priv_responder_action(action, ACTION_CLEANUP);
         break;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    case ACTION_BROWSE_RECORD_START:
+    case ACTION_BROWSE_RECORD_END:
+        mdns_priv_browse_record_action(action, ACTION_CLEANUP);
+        break;
+#endif
     default:
         break;
     }
@@ -212,6 +218,10 @@ static void execute_action(mdns_action_t *action)
     case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
         mdns_priv_browse_send_by_ip_protocol(action->data.browse_send.interface, action->data.browse_send.ip_protocol);
         break;
+    case ACTION_BROWSE_RECORD_START:
+    case ACTION_BROWSE_RECORD_END:
+        mdns_priv_browse_record_action(action, ACTION_RUN);
+        break;
 #endif
     default:
         break;
@@ -245,10 +255,9 @@ static void service_task(void *pvParameters)
                 execute_action(a);
             }
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
-            // Clean up stale records, or process updates from rx events.
             mdns_priv_cache_remove_expired_records(esp_timer_get_time());
             mdns_priv_cache_process_sync();
-#endif /* CONFIG_MDNS_ENABLE_BROWSE */
+#endif // CONFIG_MDNS_ENABLE_BROWSE
             MDNS_SERVICE_UNLOCK();
         } else {
             vTaskDelay(500 * portTICK_PERIOD_MS);
@@ -462,6 +471,7 @@ void mdns_free(void)
     mdns_priv_query_free();
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
     mdns_priv_browse_free();
+    mdns_priv_browse_record_free();
     mdns_priv_cache_clear();
 #endif
     mdns_priv_responder_free();
