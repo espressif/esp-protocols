@@ -1890,7 +1890,7 @@ void mdns_priv_send_action(mdns_action_t *action, mdns_action_subtype_t type)
     }
     if (type == ACTION_RUN) {
         send_packet(action->data.tx_handle.packet);
-    } else if (type == ACTION_CLEANUP) {
-        mdns_priv_free_tx_packet(action->data.tx_handle.packet);
     }
+    // ACTION_CLEANUP: do not free the packet. Until send_packet() unlinks it, the packet is still
+    // in the TX queue, which owns it and frees it (e.g. in mdns_priv_clear_tx_queue())
 }
