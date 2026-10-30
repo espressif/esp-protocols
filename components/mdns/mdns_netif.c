@@ -179,8 +179,9 @@ static esp_err_t post_custom_action(mdns_if_t mdns_if, mdns_event_actions_t even
     return ESP_OK;
 }
 
-#if defined(CONFIG_MDNS_ENABLE_BROWSE) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH)
-static esp_err_t post_browse_send_by_ip_protocol_action(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+#if (defined(CONFIG_MDNS_ENABLE_BROWSE) || defined(CONFIG_MDNS_ENABLE_RESOLVER)) \
+        && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH)
+static esp_err_t post_send_by_ip_protocol_action(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol, mdns_action_type_t type)
 {
     if (!mdns_priv_is_server_init() || mdns_if >= MDNS_MAX_INTERFACES) {
         return ESP_ERR_INVALID_STATE;
@@ -191,14 +192,41 @@ static esp_err_t post_browse_send_by_ip_protocol_action(mdns_if_t mdns_if, mdns_
         HOOK_MALLOC_FAILED;
         return ESP_ERR_NO_MEM;
     }
-    action->type = ACTION_BROWSE_SEND_BY_IP_PROTOCOL;
-    action->data.browse_send.interface = mdns_if;
-    action->data.browse_send.ip_protocol = ip_protocol;
+    action->type = type;
+
+    switch (type) {
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    case ACTION_BROWSE_SEND_BY_IP_PROTOCOL:
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+    case ACTION_RESOLVER_SEND_BY_IP_PROTOCOL:
+        action->data.send_by_ip_protocol.interface = mdns_if;
+        action->data.send_by_ip_protocol.ip_protocol = ip_protocol;
+        break;
+#endif
+    default:
+        mdns_mem_free(action);
+        return ESP_ERR_INVALID_ARG;
+    }
 
     if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
     }
     return ESP_OK;
+}
+#endif
+
+#if defined(CONFIG_MDNS_ENABLE_BROWSE) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH)
+static esp_err_t post_browse_send_by_ip_protocol_action(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+{
+    return post_send_by_ip_protocol_action(mdns_if, ip_protocol, ACTION_BROWSE_SEND_BY_IP_PROTOCOL);
+}
+#endif
+
+#if defined(CONFIG_MDNS_ENABLE_RESOLVER) && (CONFIG_MDNS_PREDEF_NETIF_STA || CONFIG_MDNS_PREDEF_NETIF_AP || CONFIG_MDNS_PREDEF_NETIF_ETH)
+static esp_err_t post_resolver_send_by_ip_protocol_action(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+{
+    return post_send_by_ip_protocol_action(mdns_if, ip_protocol, ACTION_RESOLVER_SEND_BY_IP_PROTOCOL);
 }
 #endif
 
@@ -286,12 +314,18 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                     post_browse_send_by_ip_protocol_action(mdns_if_from_preset(MDNS_IF_STA), MDNS_IP_PROTOCOL_V4);
 #endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                    post_resolver_send_by_ip_protocol_action(mdns_if_from_preset(MDNS_IF_STA), MDNS_IP_PROTOCOL_V4);
+#endif
                     break;
 #if CONFIG_ETH_ENABLED && CONFIG_MDNS_PREDEF_NETIF_ETH
                 case IP_EVENT_ETH_GOT_IP:
                     post_enable_pcb(MDNS_IF_ETH, MDNS_IP_PROTOCOL_V4);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                     post_browse_send_by_ip_protocol_action(mdns_if_from_preset(MDNS_IF_ETH), MDNS_IP_PROTOCOL_V4);
+#endif
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                    post_resolver_send_by_ip_protocol_action(mdns_if_from_preset(MDNS_IF_ETH), MDNS_IP_PROTOCOL_V4);
 #endif
                     break;
 #endif
@@ -307,7 +341,9 @@ static void handle_system_event_for_preset(void *arg, esp_event_base_t event_bas
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                     post_browse_send_by_ip_protocol_action(mdns_if, MDNS_IP_PROTOCOL_V6);
 #endif
-
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+                    post_resolver_send_by_ip_protocol_action(mdns_if, MDNS_IP_PROTOCOL_V6);
+#endif
                 }
                 break;
                 default:
