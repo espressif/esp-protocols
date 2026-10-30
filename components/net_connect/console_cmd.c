@@ -63,7 +63,7 @@ static esp_err_t console_wait_until_started(net_iface_handle_t h)
         return ESP_OK;
     }
     EventBits_t bits = xEventGroupWaitBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE,
-                                            pdFALSE, pdFALSE, pdMS_TO_TICKS(10000));
+                                           pdFALSE, pdFALSE, pdMS_TO_TICKS(10000));
     if ((bits & NET_IFACE_BIT_STARTUP_DONE) == 0) {
         return ESP_ERR_TIMEOUT;
     }
