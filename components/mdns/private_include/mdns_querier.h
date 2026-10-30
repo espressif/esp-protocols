@@ -30,12 +30,6 @@ void mdns_priv_query_free(void);
 void mdns_priv_search_once_free(mdns_search_once_t *search);
 
 /**
- * @brief Free search results
- * @note Called from multiple modules (browser, querier, core)
- */
-void mdns_priv_query_results_free(mdns_result_t *results);
-
-/**
  * @brief Complete the query if max results reached
  * @note Called from the packet parser
  */
