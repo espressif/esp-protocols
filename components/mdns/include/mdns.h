@@ -118,7 +118,7 @@ typedef struct mdns_result_s {
     struct mdns_result_s *next;             /*!< next result, or NULL for the last result in the list */
 
     esp_netif_t *esp_netif;                 /*!< ptr to corresponding esp-netif */
-    uint32_t ttl;                           /*!< time to live */
+    uint32_t ttl;                           /*!< time to live of PTR record */
 
     mdns_ip_protocol_t ip_protocol;         /*!< ip_protocol type of the interface (v4/v6) */
     // PTR
@@ -134,6 +134,13 @@ typedef struct mdns_result_s {
     size_t txt_count;                       /*!< number of txt items */
     // A and AAAA
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
+    // PTR extra
+    char *subtype;                          /*!< consumer subtype, or NULL for normal PTR */
+    // SRV extra
+    uint16_t priority;                      /*!< priority */
+    uint16_t weight;                        /*!< weight */
+    // Specific TTLs
+    uint32_t srv_ttl;                       /*!< time to live of SRV record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -150,7 +157,7 @@ typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
  * @warning @p result->next is always NULL. Other instances cannot be obtained from @p result.
  *
  * @warning If handling is deferred outside this callback, applications must make a deep copy
- *          of @p result with all components, including strings, TXT entries, and address list.
+ *          of @p result with all components, including strings, TXT entries, address list, and subtype.
  *
  * @warning This callback runs in the mDNS service task and holds the mDNS service lock.
  *          Users must not call APIs that acquire mDNS service lock in this callback.
@@ -159,6 +166,37 @@ typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
  * @param result  Temporary result of the browse that changed.
  */
 typedef void (*mdns_browse_notify_t)(mdns_result_t *result);
+
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+/**
+ * @brief Continuous record resolver handle
+ */
+typedef struct mdns_resolver_s mdns_resolver_t;
+
+/**
+ * @brief PTR resolver result change notifier
+ *
+ * @note Ownership of @p result is transferred to the caller when the callback is invoked.
+ *       Users must free the result with `mdns_results_free()` after handling it.
+ *
+ * @warning This callback is called in the mDNS service task.
+ *          Users must not call APIs that acquire mDNS service lock from this callback.
+ *          For example, resolvers new/delete APIs.
+ */
+typedef void (*mdns_ptr_resolver_notify_t)(mdns_result_t *result);
+
+/**
+ * @brief SRV resolver result change notifier
+ *
+ * @note Ownership of @p result is transferred to the caller when the callback is invoked.
+ *       Users must free the result with `mdns_results_free()` after handling it.
+ *
+ * @warning This callback is called in the mDNS service task.
+ *          Users must not call APIs that acquire mDNS service lock from this callback.
+ *          For example, resolvers new/delete APIs.
+ */
+typedef void (*mdns_srv_resolver_notify_t)(mdns_result_t *result);
+#endif // CONFIG_MDNS_ENABLE_RESOLVER
 
 /**
  * @brief Hostname change notifier
@@ -1133,6 +1171,30 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
 
 /**
+ * @brief   Browse mDNS for a service subtype `_subtype._sub._service._proto`
+ *          (Selective Instance Enumeration per RFC 6763 Section 7.1).
+ *
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param subtype  Pointer to the `_subtype` to restrict browsing to. Can be NULL for standard browse.
+ * @param notifier The callback which will be called when the browsing service changed.
+ * @return mdns_browse_t pointer to new browse object if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note If matching services already present in the internal mDNS cache,
+ *       the notifier will be called once for each cached service after this browse
+ *       is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_new_with_subtype(const char *service, const char *proto, const char *subtype, mdns_browse_notify_t notifier);
+
+/**
  * @brief   Stop the `_service._proto` browse.
  * @param service  Pointer to the `_service` which will be browsed.
  * @param proto    Pointer to the `_proto` which will be browsed.
@@ -1146,7 +1208,78 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 esp_err_t mdns_browse_delete(const char *service, const char *proto);
+
+/**
+ * @brief   Stop the `_subtype._sub._service._proto` browse.
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param subtype  Pointer to the `_subtype`. Can be NULL to match a browse without subtype.
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_FAIL           mDNS is not running or the browsing was never started.
+ *     - ESP_ERR_NO_MEM         memory error.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto, const char *subtype);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
+
+#ifdef CONFIG_MDNS_ENABLE_RESOLVER
+/**
+ * @brief Start a continuous PTR resolver for a service `_service._proto` with possible subtype.
+ *
+ * @param service           Service type, e.g. `_http`, `_ftp` etc.
+ * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
+ * @param subtype           Subtype, e.g. `_printer` etc. Can be NULL for base-service PTR.
+ * @param notifier          Callback invoked on PTR updates and goodbye messages.
+ *                          See @ref mdns_ptr_resolver_notify_t for callback semantics and limitations.
+ * @return Pointer to the new PTR resolver if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+mdns_resolver_t *mdns_ptr_resolver_new(const char *service, const char *proto, const char *subtype,
+                                       mdns_ptr_resolver_notify_t notifier);
+
+/**
+ * @brief Start a continuous SRV resolver for a service `_instance._service._proto`.
+ * @param instance          Service instance name
+ * @param service           Service type, e.g. `_http`, `_ftp` etc.
+ * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
+ * @param notifier          Callback invoked on SRV updates and goodbye messages.
+ *                          See @ref mdns_srv_resolver_notify_t for callback semantics and limitations.
+ * @return Pointer to the new SRV resolver if initiated successfully.
+ *         NULL otherwise.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+mdns_resolver_t *mdns_srv_resolver_new(const char *instance, const char *service, const char *proto,
+                                       mdns_srv_resolver_notify_t notifier);
+
+/**
+ * @brief Stop the continuous resolver.
+ *
+ * @param resolver Pointer to the resolver to stop.
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    the resolver is NULL.
+ *     - ESP_ERR_NOT_FOUND      the resolver was never started.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         no memory for allocation.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_RESOLVER is enabled (default); can be disabled to reduce binary size.
+ */
+esp_err_t mdns_resolver_delete(mdns_resolver_t *resolver);
+#endif // CONFIG_MDNS_ENABLE_RESOLVER
+
+/**
+ * @brief Free the `mdns_result_t` linked list.
+ *
+ * @param results Pointer to an `mdns_result_t` linked list.
+ */
+void mdns_results_free(mdns_result_t *results);
 
 #ifdef __cplusplus
 }

@@ -22,7 +22,7 @@ static mdns_search_once_t *s_search_once;
 static esp_err_t send_search_action(mdns_action_type_t type, mdns_search_once_t *search);
 static void search_free(mdns_search_once_t *search);
 
-void mdns_priv_query_results_free(mdns_result_t *results)
+void mdns_results_free(mdns_result_t *results)
 {
     mdns_result_t *r;
     mdns_ip_addr_t *a;
@@ -34,6 +34,7 @@ void mdns_priv_query_results_free(mdns_result_t *results)
         mdns_mem_free((char *)(r->instance_name));
         mdns_mem_free((char *)(r->service_type));
         mdns_mem_free((char *)(r->proto));
+        mdns_mem_free((char *)(r->subtype));
 
         for (size_t i = 0; i < r->txt_count; i++) {
             mdns_mem_free((char *)(r->txt[i].key));
@@ -203,7 +204,7 @@ void mdns_priv_search_once_free(mdns_search_once_t *search)
     mdns_mem_free(search->proto);
     vSemaphoreDelete(search->done_semaphore);
     if (search->result) {
-        mdns_priv_query_results_free(search->result);
+        mdns_results_free(search->result);
     }
     mdns_mem_free(search);
 }
@@ -218,7 +219,7 @@ void mdns_priv_query_free(void)
         mdns_mem_free(h->proto);
         vSemaphoreDelete(h->done_semaphore);
         if (h->result) {
-            mdns_priv_query_results_free(h->result);
+            mdns_results_free(h->result);
         }
         mdns_mem_free(h);
     }
@@ -346,6 +347,7 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     q->service = search->service;
     q->proto = search->proto;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
+    q->subtype = search->subtype;
     q->own_dynamic_memory = false;
 
     // Multi-label service names (e.g. "_services._dns-sd") need splitting into
@@ -779,7 +781,7 @@ mdns_ip_addr_t *mdns_priv_result_addr_create_ip(esp_ip_addr_t *ip)
 void mdns_query_results_free(mdns_result_t *results)
 {
     mdns_priv_service_lock();
-    mdns_priv_query_results_free(results);
+    mdns_results_free(results);
     mdns_priv_service_unlock();
 }
 

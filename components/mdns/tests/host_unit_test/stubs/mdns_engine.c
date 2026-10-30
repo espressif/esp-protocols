@@ -11,6 +11,7 @@
 #include "mdns_responder.h"
 #include "mdns_receive.h"
 #include "mdns_mem_caps.h"
+#include "mdns_resolver.h"
 
 static void execute_action(mdns_action_t *action)
 {
@@ -39,6 +40,10 @@ static void execute_action(mdns_action_t *action)
     case ACTION_DELEGATE_HOSTNAME_SET_ADDR:
     case ACTION_DELEGATE_HOSTNAME_REMOVE:
         mdns_priv_responder_action(action, ACTION_RUN);
+        break;
+    case ACTION_RESOLVER_START:
+    case ACTION_RESOLVER_END:
+        mdns_priv_resolver_action(action, ACTION_RUN);
         break;
     default:
         break;

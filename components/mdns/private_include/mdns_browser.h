@@ -29,6 +29,16 @@ void mdns_priv_browse_free(void);
 bool mdns_priv_browse_has_service(const char *service, const char *proto);
 
 /**
+ * @brief Check if a running browse `_service._proto` with the given subtype exists.
+ *
+ * @param service Service name.
+ * @param proto Protocol name.
+ * @param subtype Subtype name, or NULL to match browses without subtype.
+ * @return true if a running browse with identical service, proto and subtype exists, false otherwise.
+ */
+bool mdns_priv_browse_has_subtype(const char *service, const char *proto, const char *subtype);
+
+/**
  *  @brief Looks for the name/type in active browse items
  *
  *  @note Called from the packet parser (mdns_receive.c)
@@ -38,7 +48,10 @@ bool mdns_priv_browse_has_service(const char *service, const char *proto);
 mdns_browse_t *mdns_priv_browse_find(mdns_name_t *name, uint16_t type, mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol);
 
 /**
- * @brief Looks for an active browse matching a PTR owner name (service._proto.local)
+ * @brief Looks for an active browse matching a PTR owner name (service._proto.local, or with subtype _subtype._sub.service._proto.local)
+ *
+ * @param name PTR owner name.
+ * @return matching browse item, or NULL if not found
  *
  * @note Called from the packet parser (mdns_receive.c)
  */
@@ -82,14 +95,17 @@ bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry,
                                                 mdns_browse_t *browse);
 
 /**
- * @brief Notify the affected browse about a PTR goodbye.
+ * @brief Notify the affected normal/subtype browse about a PTR goodbye.
  *
- * Used for both TTL=0 goodbye and natural expiration.
+ * @param subtype The PTR subtype, or NULL for the base PTR.
  *
- * @note Must be called before the PTR service cache is removed to avoid UAF.
+ * @note Used for both goodbye and natural expiration.
+ *
+ * @note Must be called before the PTR/subtype is removed from the cache to avoid UAF.
  */
 bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
-                                                            const mdns_service_cache_t *service);
+                                                            const mdns_service_cache_t *service,
+                                                            const char *subtype);
 #ifdef __cplusplus
 }
 #endif
