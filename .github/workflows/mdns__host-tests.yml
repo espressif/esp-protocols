@@ -40,6 +40,36 @@ jobs:
           # Next we run the pytest (using the console app)
           pytest
 
+  # Regression for CONFIG_MDNS_ENABLE_CONSOLE_CLI under IDF build system v2:
+  # v2 has no BUILD_COMPONENTS (reading it is an error), so mdns must take the
+  # IDF_BUILD_V2 REQUIRES path instead of the v1 optional_requires check.
+  host_test_mdns_build_v2:
+    if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
+    name: Host test build (build system v2)
+    strategy:
+      matrix:
+        idf_ver: ["latest"]
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          path: protocols
+
+      - name: Build host test with IDF_BUILD_V2
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          test -f "${IDF_PATH}/tools/cmakev2/idf.cmake"
+          python -m pip install idf-build-apps==2.10.0
+          cd $GITHUB_WORKSPACE/protocols
+          export IDF_BUILD_V2=y
+          # esp32 only
+          python ./ci/build_apps.py components/mdns/tests/host_test/ \
+            -t esp32 -r 'sdkconfig.ci.target='
+
   host_compat_checks:
     if: contains(github.event.pull_request.labels.*.name, 'mdns') || github.event_name == 'push'
     name: Set of compatibility checks

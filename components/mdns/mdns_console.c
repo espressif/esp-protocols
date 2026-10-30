@@ -732,7 +732,7 @@ static mdns_txt_item_t *_convert_items(const char **values, int count)
 
     for (i = 0; i < count; i++) {
         value = values[i];
-        char *esign = strchr(value, '=');
+        const char *esign = strchr(value, '=');
         if (!esign) {
             printf("ERROR: Equal sign not found in '%s'!\n", value);
             goto fail;
