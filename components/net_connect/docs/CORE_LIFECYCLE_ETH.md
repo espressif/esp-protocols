@@ -27,55 +27,59 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Task as Startup Task
     participant IDF as ESP-IDF esp_eth / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Create handle (UNINIT -> INIT)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Create handle (UNINIT -> INIT)
     App->>Eth: net_eth_create()
     Eth->>Eth: Fill defaults (route_prio = 64, auto_connect_on_start = true), apply params
     Eth->>Core: net_iface_init_with_ops(g_net_iface_eth_ops)
     Core->>Core: Allocate handle, state = INIT (ops->init is NULL)
     opt Event loop exists and global handlers not registered yet
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core-->>Eth: Return handle
     Eth-->>App: Return handle (ESP_OK)
     end
 
-    rect 2. Start interface (INIT -> STARTING)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Start interface (INIT -> STARTING)
     App->>Core: net_iface_start()
     opt Global handlers not registered in step 1 (event loop created after handle)
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core->>Core: Clear liveness and STARTUP_DONE bits, state = STARTING
     Core->>Task: xTaskCreate(iface_startup_task)
     Core-->>App: Return ESP_OK immediately
     end
 
-    rect 3. Driver start (STARTING -> STARTED)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Driver start (STARTING -> STARTED)
     Task->>Eth: ops->start() (eth_ops_start)
     Eth->>IDF: ethernet_init_all(&s_eth_handles, &s_eth_count)
     IDF-->>Eth: Return MAC/PHY handles
     Eth->>IDF: esp_netif_new(), esp_eth_new_netif_glue(s_eth_handles[0]), esp_netif_attach()
-    IDF->>Loop: Glue registers default ETH netif handlers (ETH_EVENT START/STOP/CONNECTED/DISCONNECTED, IP_EVENT_ETH_GOT_IP)
-    Loop-->>IDF: Return ESP_OK
+    IDF->>EventLoop: Glue registers default ETH netif handlers (ETH_EVENT START/STOP/CONNECTED/DISCONNECTED, IP_EVENT_ETH_GOT_IP)
+    EventLoop-->>IDF: Return ESP_OK
     IDF-->>Eth: Return ESP_OK
-    Eth->>Loop: Register (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
-    Loop-->>Eth: Return ESP_OK
+    Eth->>EventLoop: Register (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
+    EventLoop-->>Eth: Return ESP_OK
     Eth->>Core: net_iface_notify_started(s_eth_netif)
     Core->>Core: Save netif, state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_STARTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STARTED
+    EventLoop-->>Core: Queued
     Core-->>Eth: Return from net_iface_notify_started()
     Eth-->>Task: Return ESP_OK from eth_ops_start()
     end
 
-    rect 4. Auto-connect (STARTED -> CONNECTING)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: 4. Auto-connect (STARTED -> CONNECTING)
     Note over Task,Core: auto_connect_on_start is true and stop was not requested
     Task->>Core: net_iface_connect()
     Core->>Core: Clear READY/FAILED bits, state = CONNECTING
@@ -89,34 +93,37 @@ sequenceDiagram
     Task->>Task: vTaskDelete(NULL)
     end
 
-    rect 5. Cable link up (CONNECTING -> CONNECTED)
-    IDF->>Loop: Post ETHERNET_EVENT_CONNECTED
-    Loop->>IDF: Default ETH glue handler starts DHCP client on netif
-    IDF-->>Loop: Return
-    Loop->>Eth: on_eth_event(ETHERNET_EVENT_CONNECTED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 5. Cable link up (CONNECTING -> CONNECTED)
+    IDF->>EventLoop: Post ETHERNET_EVENT_CONNECTED
+    EventLoop->>IDF: Default ETH glue handler starts DHCP client on netif
+    IDF-->>EventLoop: Return
+    EventLoop->>Eth: on_eth_event(ETHERNET_EVENT_CONNECTED)
     Eth->>Core: net_iface_notify_connected()
     Core->>Core: state = CONNECTED, retry_num = 0
     opt IPv6 enabled
         Core->>IDF: esp_netif_create_ip6_linklocal()
         IDF-->>Core: Return
     end
-    Core->>Loop: Post NET_IFACE_EVENT_CONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_CONNECTED
+    EventLoop-->>Core: Queued
     Core-->>Eth: Return from net_iface_notify_connected()
-    Eth-->>Loop: Return from on_eth_event()
+    Eth-->>EventLoop: Return from on_eth_event()
     end
 
-    rect 6. Address acquired (CONNECTED -> READY)
-    IDF->>Loop: Post IP_EVENT_ETH_GOT_IP (and IP_EVENT_GOT_IP6 if required)
-    Loop->>Core: on_global_ip_event()
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 6. Address acquired (CONNECTED -> READY)
+    IDF->>EventLoop: Post IP_EVENT_ETH_GOT_IP (and IP_EVENT_GOT_IP6 if required)
+    EventLoop->>Core: on_global_ip_event()
     Core->>Core: Set IPV4 / IPV6 bit, check is_ready_satisfied_locked()
     Core->>Core: net_iface_notify_ready() -> state = READY, set READY bit, pulse global wait
-    Core->>Loop: Post NET_IFACE_EVENT_READY
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_READY
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
     end
 
-    rect 7. Wait for readiness (READY)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 7. Wait for readiness (READY)
     App->>Core: net_iface_wait(timeout)
     Core-->>App: READY bit is set -> return ESP_OK
     end
@@ -132,21 +139,23 @@ sequenceDiagram
     participant Eth as Ethernet (eth_connect.c)
     participant Core as net_iface Core
     participant IDF as ESP-IDF esp_eth / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Disconnect (READY/CONNECTED -> STARTED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Disconnect (READY/CONNECTED -> STARTED)
     App->>Core: net_iface_disconnect()
     Core->>Eth: ops->disconnect() (eth_ops_disconnect)
     Eth->>IDF: esp_eth_stop(s_eth_handles[0])
     IDF-->>Eth: Return ESP_OK
     Eth-->>Core: Return ESP_OK from eth_ops_disconnect()
     Core->>Core: net_iface_notify_disconnected() -> state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_DISCONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_DISCONNECTED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK (netif, glue, and MAC stay allocated)
     end
 
-    rect 2. Stop driver (STARTED -> STOPPING -> INIT)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Stop driver (STARTED -> STOPPING -> INIT)
     App->>Core: net_iface_stop()
     Core->>Core: state = STOPPING (wait for STARTUP_DONE if task is running)
     Core->>Eth: ops->disconnect() (eth_ops_disconnect)
@@ -154,31 +163,32 @@ sequenceDiagram
     IDF-->>Eth: Return ESP_OK (or ESP_ERR_INVALID_STATE -> ESP_OK)
     Eth-->>Core: Return ESP_OK from eth_ops_disconnect()
     Core->>Eth: ops->stop() (eth_ops_stop -> eth_release_resources)
-    Eth->>Loop: Unregister (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
-    Loop-->>Eth: Return ESP_OK
+    Eth->>EventLoop: Unregister (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
+    EventLoop-->>Eth: Return ESP_OK
     Eth->>IDF: esp_eth_stop(s_eth_handles[0])
     IDF-->>Eth: Return
     Eth->>IDF: esp_eth_del_netif_glue(s_eth_glue)
-    IDF->>Loop: Unregister default ETH glue handlers
-    Loop-->>IDF: Return ESP_OK
+    IDF->>EventLoop: Unregister default ETH glue handlers
+    EventLoop-->>IDF: Return ESP_OK
     IDF-->>Eth: Return ESP_OK
     Eth->>IDF: esp_netif_destroy(s_eth_netif) and ethernet_deinit_all(s_eth_handles)
     IDF-->>Eth: Return
     Eth-->>Core: Return ESP_OK from eth_ops_stop()
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK
     end
 
-    rect 3. Destroy handle (INIT -> UNINIT)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Destroy handle (INIT -> UNINIT)
     App->>Core: net_iface_deinit()
     Core->>Core: Verify state == INIT, unlink from registry
     opt Last interface removed from registry
-        Core->>Loop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return
-        Core->>Loop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return
+        Core->>EventLoop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return
+        Core->>EventLoop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return
     end
     Note over Core,Eth: ops->deinit is NULL for Ethernet
     Core->>Core: Free event group, mutex, and handle (state = UNINIT)
@@ -197,9 +207,10 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Task as Startup Task
     participant IDF as ESP-IDF esp_eth / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect Flow 5 - Start without auto-connect, connect later (INIT -> STARTED -> CONNECTING)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: Flow 5 - Start without auto-connect, connect later (INIT -> STARTED -> CONNECTING)
     App->>Eth: 1. net_eth_create() with auto_connect_on_start = false
     Eth->>Core: net_iface_init_with_ops(g_net_iface_eth_ops)
     Core-->>Eth: Return handle
@@ -223,27 +234,30 @@ sequenceDiagram
     Core-->>App: Return ESP_OK from net_iface_connect()
     end
 
-    rect Flow 6a - Cable unplugged (READY/CONNECTED -> CONNECTING)
-    IDF->>Loop: 4. Post ETHERNET_EVENT_DISCONNECTED
-    Loop->>Eth: on_eth_event(ETHERNET_EVENT_DISCONNECTED)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: Flow 6a - Cable unplugged (READY/CONNECTED -> CONNECTING)
+    IDF->>EventLoop: 4. Post ETHERNET_EVENT_DISCONNECTED
+    EventLoop->>Eth: on_eth_event(ETHERNET_EVENT_DISCONNECTED)
     Eth->>Core: net_iface_notify_lost_ip()
     Core->>Core: Clear READY and IPV4 bits, state = CONNECTING
-    Core->>Loop: Post NET_IFACE_EVENT_LOST_IP
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
+    EventLoop-->>Core: Queued
     Core-->>Eth: Return from net_iface_notify_lost_ip()
-    Eth-->>Loop: Return from on_eth_event()
+    Eth-->>EventLoop: Return from on_eth_event()
     end
 
-    rect Flow 6b - DHCP lease lost (READY -> CONNECTING)
-    IDF->>Loop: 5. Post IP_EVENT_ETH_LOST_IP
-    Loop->>Core: on_global_ip_event()
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: Flow 6b - DHCP lease lost (READY -> CONNECTING)
+    IDF->>EventLoop: 5. Post IP_EVENT_ETH_LOST_IP
+    EventLoop->>Core: on_global_ip_event()
     Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
-    Core->>Loop: Post NET_IFACE_EVENT_LOST_IP
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
     end
 
-    rect Flow 7 - Stop during startup (STARTING -> STOPPING -> INIT)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: Flow 7 - Stop during startup (STARTING -> STOPPING -> INIT)
     Note over App,Task: 6a. App calls stop() while Startup Task is still inside eth_ops_start()
     Task->>Eth: ops->start() (eth_ops_start) running
     App->>Core: net_iface_stop()
@@ -259,20 +273,20 @@ sequenceDiagram
     Task->>Core: Set STARTUP_DONE bit (wakes App task in net_iface_stop)
     Task->>Task: vTaskDelete(NULL)
 
-    Note over App,Loop: 6c. App task wakes up inside net_iface_stop() and tears down the driver
+    Note over App,EventLoop: 6c. App task wakes up inside net_iface_stop() and tears down the driver
     Core->>Eth: ops->disconnect() (eth_ops_disconnect)
     Eth->>IDF: esp_eth_stop(s_eth_handles[0])
     IDF-->>Eth: Return ESP_OK
     Eth-->>Core: Return ESP_OK
     Core->>Eth: ops->stop() (eth_ops_stop -> eth_release_resources)
-    Eth->>Loop: Unregister (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
-    Loop-->>Eth: Return ESP_OK
+    Eth->>EventLoop: Unregister (ETH_EVENT, ESP_EVENT_ANY_ID) -> on_eth_event
+    EventLoop-->>Eth: Return ESP_OK
     Eth->>IDF: esp_eth_del_netif_glue(), esp_netif_destroy(), ethernet_deinit_all()
     IDF-->>Eth: Return ESP_OK
     Eth-->>Core: Return ESP_OK
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK from net_iface_stop()
     end
 ```
