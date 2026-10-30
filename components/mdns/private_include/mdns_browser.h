@@ -106,6 +106,22 @@ bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry,
 bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
                                                             const mdns_service_cache_t *service,
                                                             const char *subtype);
+
+/**
+ * @brief Free all record browses.
+ */
+void mdns_priv_browse_record_free(void);
+
+/**
+ * @brief Perform action from mdns service queue
+ *
+ * @note Called by `free_action()` and `execute_action()` in mdns_service.c
+ *
+ * @param action Pointer to the action to perform.
+ * @param type Type of the action.
+ */
+void mdns_priv_browse_record_action(mdns_action_t *action, mdns_action_subtype_t type);
+
 #ifdef __cplusplus
 }
 #endif

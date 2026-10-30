@@ -22,6 +22,7 @@
 static const char *TAG = "mdns_browser";
 
 static mdns_browse_t *s_browse;
+static mdns_browse_record_t *s_browse_record;
 
 /**
  * @brief  Browse action
@@ -476,6 +477,194 @@ bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_ent
 }
 
 
+static bool browse_records_match(const mdns_browse_record_t *a, const mdns_browse_record_t *b)
+{
+    if (!a || !b || a->type != b->type) {
+        return false;
+    }
+
+    switch (a->type) {
+    case MDNS_BROWSE_RECORD_TYPE_PTR:
+        return mdns_utils_str_case_equal(a->service, b->service)
+               && mdns_utils_str_case_equal(a->proto, b->proto)
+               && mdns_utils_str_case_equal_nullable(a->subtype, b->subtype);
+    default:
+        return false;
+    }
+}
+
+static void browse_record_item_free(mdns_browse_record_t *browse_record)
+{
+    if (!browse_record) {
+        return;
+    }
+
+    mdns_mem_free(browse_record->service);
+    mdns_mem_free(browse_record->proto);
+    mdns_mem_free(browse_record->subtype);
+    mdns_mem_free(browse_record);
+}
+
+void mdns_priv_browse_record_free(void)
+{
+    while (s_browse_record) {
+        mdns_browse_record_t *browse_record = s_browse_record;
+        s_browse_record = browse_record->next;
+        browse_record_item_free(browse_record);
+    }
+    s_browse_record = NULL;
+}
+
+static void browse_record_send(mdns_browse_record_t *browse_record, mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol)
+{
+    if (!browse_record || browse_record->state != BROWSE_RUNNING) {
+        return;
+    }
+
+    uint16_t record_type = 0;
+    switch (browse_record->type) {
+    case MDNS_BROWSE_RECORD_TYPE_PTR:
+        record_type = MDNS_TYPE_PTR;
+        break;
+    default:
+        ESP_LOGE(TAG, "Invalid record browse type: %d", browse_record->type);
+        return;
+    }
+
+    mdns_search_once_t search = {
+        .type = record_type,
+        .unicast = record_type != MDNS_TYPE_PTR,
+        .service = browse_record->service,
+        .proto = browse_record->proto,
+        .subtype = browse_record->subtype,
+    };
+    mdns_priv_query_send(&search, mdns_if, ip_protocol);
+}
+
+static mdns_browse_record_t *browse_record_init(const char *service, const char *proto, const char *subtype,
+                                                mdns_browse_record_type_t type)
+{
+    mdns_browse_record_t *browse_record = (mdns_browse_record_t *)mdns_mem_calloc(1, sizeof(mdns_browse_record_t));
+    if (!browse_record) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+
+    browse_record->type = type;
+    browse_record->state = BROWSE_INIT;
+
+    if (!mdns_utils_str_null_or_empty(service)) {
+        browse_record->service = mdns_mem_strndup(service, MDNS_NAME_MAX_LEN);
+        if (!browse_record->service) {
+            HOOK_MALLOC_FAILED;
+            browse_record_item_free(browse_record);
+            return NULL;
+        }
+    }
+
+    if (!mdns_utils_str_null_or_empty(proto)) {
+        browse_record->proto = mdns_mem_strndup(proto, MDNS_NAME_MAX_LEN);
+        if (!browse_record->proto) {
+            HOOK_MALLOC_FAILED;
+            browse_record_item_free(browse_record);
+            return NULL;
+        }
+    }
+
+    if (!mdns_utils_str_null_or_empty(subtype)) {
+        browse_record->subtype = mdns_mem_strndup(subtype, MDNS_NAME_MAX_LEN);
+        if (!browse_record->subtype) {
+            HOOK_MALLOC_FAILED;
+            browse_record_item_free(browse_record);
+            return NULL;
+        }
+    }
+
+    return browse_record;
+}
+
+static void browse_record_start(mdns_browse_record_t *browse_record)
+{
+    if (!browse_record || browse_record->state != BROWSE_INIT) {
+        return;
+    }
+    browse_record->state = BROWSE_RUNNING;
+    for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
+        for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
+            browse_record_send(browse_record, (mdns_if_t) interface_idx, (mdns_ip_protocol_t) protocol_idx);
+        }
+    }
+}
+
+static void browse_record_finish(mdns_browse_record_t *browse_record)
+{
+    if (!browse_record) {
+        return;
+    }
+
+    mdns_browse_record_t **link = &s_browse_record;
+    bool found = false;
+    while (*link) {
+        mdns_browse_record_t *it = *link;
+        if (it == browse_record) {
+            browse_record->state = BROWSE_OFF;
+            *link = it->next;
+            found = true;
+            break;
+        }
+        link = &it->next;
+    }
+
+    if (found) {
+        browse_record_item_free(browse_record);
+    }
+}
+
+static esp_err_t send_browse_record_action(mdns_action_type_t type, mdns_browse_record_t *browse_record)
+{
+    mdns_action_t *action = (mdns_action_t *)mdns_mem_malloc(sizeof(mdns_action_t));
+    if (!action) {
+        HOOK_MALLOC_FAILED;
+        return ESP_ERR_NO_MEM;
+    }
+
+    action->type = type;
+    action->data.browse_record_add_end.browse_record = browse_record;
+
+    if (!mdns_priv_queue_action(action)) {
+        mdns_mem_free(action);
+        return ESP_ERR_NO_MEM;
+    }
+    return ESP_OK;
+}
+
+void mdns_priv_browse_record_action(mdns_action_t *action, mdns_action_subtype_t type)
+{
+    if (type == ACTION_RUN) {
+        switch (action->type) {
+        case ACTION_BROWSE_RECORD_START:
+            browse_record_start(action->data.browse_record_add_end.browse_record);
+            break;
+        case ACTION_BROWSE_RECORD_END:
+            browse_record_finish(action->data.browse_record_add_end.browse_record);
+            break;
+        default:
+            abort();
+        }
+    } else if (type == ACTION_CLEANUP) {
+        switch (action->type) {
+        case ACTION_BROWSE_RECORD_START:
+        case ACTION_BROWSE_RECORD_END:
+            // Record browse actions do not own the record browse. If a queued action is
+            // discarded during shutdown, the linked record browse is released by
+            // mdns_priv_browse_record_free().
+            break;
+        default:
+            abort();
+        }
+    }
+}
+
 /**
  * @defgroup MDNS_PUBCLIC_API
  */
@@ -565,4 +754,91 @@ esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto
 
     mdns_priv_service_unlock();
     return ESP_OK;
+}
+
+mdns_browse_record_t *mdns_browse_record_ptr_new(const char *service, const char *proto, const char *subtype,
+                                                 mdns_browse_record_notify_t notifier)
+{
+    mdns_browse_record_t *browse_record = NULL;
+
+    if (!mdns_priv_is_server_init() || !notifier || mdns_utils_str_null_or_empty(service)
+            || mdns_utils_str_null_or_empty(proto)) {
+        return NULL;
+    }
+
+    // Subtype identifier length limit defined in RFC 6763 Section 7.2
+    if (subtype && strlen(subtype) > 63) {
+        ESP_LOGE(TAG, "Subtype string length must not exceed 63 bytes");
+        return NULL;
+    }
+
+    browse_record = browse_record_init(service, proto, subtype, MDNS_BROWSE_RECORD_TYPE_PTR);
+    if (!browse_record) {
+        return NULL;
+    }
+
+    browse_record->notifier = notifier;
+
+    mdns_priv_service_lock();
+
+    for (mdns_browse_record_t *it = s_browse_record; it; it = it->next) {
+        if (it->state != BROWSE_OFF && browse_records_match(it, browse_record)) {
+            ESP_LOGW(TAG, "Record browse already exists: %s.%s %s", browse_record->service, browse_record->proto,
+                     browse_record->subtype ? browse_record->subtype : "");
+            goto error;
+        }
+    }
+
+    if (send_browse_record_action(ACTION_BROWSE_RECORD_START, browse_record) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send record browse start action");
+        goto error;
+    }
+
+    browse_record->next = s_browse_record;
+    s_browse_record = browse_record;
+
+    mdns_priv_service_unlock();
+    return browse_record;
+
+error:
+    mdns_priv_service_unlock();
+    browse_record_item_free(browse_record);
+    return NULL;
+}
+
+esp_err_t mdns_browse_record_delete(mdns_browse_record_t *browse_record)
+{
+    bool found = false;
+    esp_err_t err = ESP_OK;
+
+    if (!browse_record) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (!mdns_priv_is_server_init()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    mdns_priv_service_lock();
+    mdns_browse_state_t prev_state = BROWSE_OFF;
+    for (mdns_browse_record_t *it = s_browse_record; it; it = it->next) {
+        if (it->state != BROWSE_OFF && it == browse_record) {
+            prev_state = it->state;
+            browse_record->state = BROWSE_OFF;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        mdns_priv_service_unlock();
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    err = send_browse_record_action(ACTION_BROWSE_RECORD_END, browse_record);
+    if (err != ESP_OK) {
+        browse_record->state = prev_state;
+    }
+
+    mdns_priv_service_unlock();
+    return err;
 }

@@ -167,6 +167,8 @@ typedef enum {
     ACTION_DELEGATE_HOSTNAME_REMOVE,
     ACTION_DELEGATE_HOSTNAME_SET_ADDR,
     ACTION_BROWSE_SEND_BY_IP_PROTOCOL,
+    ACTION_BROWSE_RECORD_START,
+    ACTION_BROWSE_RECORD_END,
     ACTION_MAX
 } mdns_action_type_t;
 
@@ -366,6 +368,31 @@ typedef struct mdns_browse_s {
     char *subtype;
 } mdns_browse_t;
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+/**
+ * @brief Continuous record browse types
+ */
+typedef enum {
+    MDNS_BROWSE_RECORD_TYPE_PTR,
+} mdns_browse_record_type_t;
+
+/**
+ * @brief Continuous record browse handle object.
+ */
+typedef struct mdns_browse_record_s {
+    mdns_browse_record_type_t type;         /*!< Record type to browse */
+    mdns_browse_state_t state;              /*!< Browse lifecycle state */
+
+    char *service;                          /*!< Service name */
+    char *proto;                            /*!< Protocol name */
+    char *subtype;                          /*!< Subtype */
+
+    mdns_browse_record_notify_t notifier;  /*!< Record result notifier */
+
+    struct mdns_browse_record_s *next;      /*!< Next record browse in the linked list */
+} mdns_browse_record_t;
+#endif // CONFIG_MDNS_ENABLE_BROWSE
+
 typedef struct {
     mdns_action_type_t type;
     union {
@@ -397,6 +424,11 @@ typedef struct {
             mdns_if_t interface;
             mdns_ip_protocol_t ip_protocol;
         } browse_send;
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+        struct {
+            mdns_browse_record_t *browse_record;
+        } browse_record_add_end;
+#endif
     } data;
 } mdns_action_t;
 
