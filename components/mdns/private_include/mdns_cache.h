@@ -143,7 +143,7 @@ mdns_cache_update_result_t mdns_priv_cache_update_addr(const esp_netif_t *esp_ne
  * @note When an A/AAAA record is updated (added, removed, or updated),
  *       all services under this cache entry will be marked to-sync for browses.
  *
- * @note Used by browses in case ADDR records come before SRV record.
+ * @note Used by browses and PTR record browses in case ADDR records come before SRV record.
  */
 mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                                 const char *hostname, const esp_ip_addr_t *addr, uint32_t ttl);
@@ -154,7 +154,8 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
  * @param now_us The current time in microseconds from esp_timer_get_time().
  *
  * @note This function is called in mDNS service task while holding service lock.
- *       PTR expiration notifies browses immediately, other records are marked to-sync for browses.
+ *       PTR expiration notifies matching browses and record browses immediately,
+ *       other records are marked to-sync for browses.
  */
 void mdns_priv_cache_remove_expired_records(int64_t now_us);
 
@@ -193,12 +194,24 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
  */
 void mdns_priv_cache_process_sync(void);
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 /**
  * @brief Replay all currently visible cache services to a newly registered browse.
  *
  * @return true if successfully notified, false otherwise
  */
 bool mdns_priv_cache_notify_browse(mdns_browse_t *browse);
+#endif
+
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+/**
+ * @brief Replay all currently visible cache services to a newly registered record browse.
+ *
+ * @param browse_record Pointer to the record browse to notify.
+ * @return true if successfully notified, false otherwise.
+ */
+bool mdns_priv_cache_notify_browse_record(mdns_browse_record_t *browse_record);
+#endif
 #ifdef __cplusplus
 }
 #endif

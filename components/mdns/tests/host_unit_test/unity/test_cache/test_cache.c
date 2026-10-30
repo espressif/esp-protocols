@@ -393,6 +393,12 @@ void setup_cmock(void)
     mdns_priv_browse_notify_ptr_goodbye_from_service_cache_Stub(browse_goodbye_callback);
 
     mdns_priv_browse_notify_from_service_cache_IgnoreAndReturn(true);
+
+    // No record browses are registered in these cache-isolation tests.
+    mdns_priv_browse_record_has_service_IgnoreAndReturn(false);
+    mdns_priv_browse_record_find_IgnoreAndReturn(NULL);
+    mdns_priv_browse_record_update_from_service_cache_IgnoreAndReturn(MDNS_CACHE_RECORD_PTR | MDNS_CACHE_RECORD_SUBTYPE);
+    mdns_priv_browse_record_notify_goodbye_from_service_cache_IgnoreAndReturn(true);
 }
 
 static void test_cache_ptr_add_repeat_update_remove(void)

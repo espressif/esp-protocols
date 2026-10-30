@@ -14,6 +14,7 @@
 #include "mdns_netif.h"
 #include "mdns_service.h"
 #include "esp_log.h"
+#include "esp_check.h"
 #include "mdns_cache.h"
 
 #define MDNS_CACHE_RECORD_BROWSE_SHARED (mdns_cache_record_mask_t) \
@@ -23,6 +24,8 @@ static const char *TAG = "mdns_browser";
 
 static mdns_browse_t *s_browse;
 static mdns_browse_record_t *s_browse_record;
+
+static void browse_record_send(mdns_browse_record_t *browse_record, mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
 
 /**
  * @brief  Browse action
@@ -87,6 +90,9 @@ void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t 
         if (browse->state == BROWSE_RUNNING) {
             browse_send(browse, mdns_if, ip_protocol);
         }
+    }
+    for (mdns_browse_record_t *browse_record = s_browse_record; browse_record; browse_record = browse_record->next) {
+        browse_record_send(browse_record, mdns_if, ip_protocol);
     }
 }
 
@@ -477,6 +483,20 @@ bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_ent
 }
 
 
+static mdns_cache_record_type_t browse_record_type_to_record_type(mdns_browse_record_t *browse_record)
+{
+    if (!browse_record) {
+        return MDNS_CACHE_RECORD_INVALID;
+    }
+
+    switch (browse_record->type) {
+    case MDNS_BROWSE_RECORD_TYPE_PTR:
+        return mdns_utils_str_null_or_empty(browse_record->subtype) ? MDNS_CACHE_RECORD_PTR : MDNS_CACHE_RECORD_SUBTYPE;
+    default:
+        return MDNS_CACHE_RECORD_INVALID;
+    }
+}
+
 static bool browse_records_match(const mdns_browse_record_t *a, const mdns_browse_record_t *b)
 {
     if (!a || !b || a->type != b->type) {
@@ -489,6 +509,26 @@ static bool browse_records_match(const mdns_browse_record_t *a, const mdns_brows
                && mdns_utils_str_case_equal(a->proto, b->proto)
                && mdns_utils_str_case_equal_nullable(a->subtype, b->subtype);
     default:
+        return false;
+    }
+}
+
+static bool browse_record_matches_service_cache(const mdns_browse_record_t *browse_record, const mdns_cache_entry_t *entry,
+                                                const mdns_service_cache_t *service, bool goodbye)
+{
+    if (!browse_record || !entry || !service || browse_record->state != BROWSE_RUNNING) {
+        return false;
+    }
+
+    switch (browse_record->type) {
+    case MDNS_BROWSE_RECORD_TYPE_PTR:
+        return browse_record->notifier
+               && mdns_utils_str_case_equal(browse_record->service, service->service)
+               && mdns_utils_str_case_equal(browse_record->proto, service->proto)
+               && (goodbye || (mdns_utils_str_null_or_empty(browse_record->subtype) ? service->ptr_present
+                               : mdns_priv_cache_service_find_subtype(service, browse_record->subtype) != NULL));
+    default:
+        ESP_LOGE(TAG, "Invalid record browse type: %d", browse_record->type);
         return false;
     }
 }
@@ -589,6 +629,7 @@ static void browse_record_start(mdns_browse_record_t *browse_record)
         return;
     }
     browse_record->state = BROWSE_RUNNING;
+    (void)mdns_priv_cache_notify_browse_record(browse_record);
     for (uint8_t interface_idx = 0; interface_idx < MDNS_MAX_INTERFACES; interface_idx++) {
         for (uint8_t protocol_idx = 0; protocol_idx < MDNS_IP_PROTOCOL_MAX; protocol_idx++) {
             browse_record_send(browse_record, (mdns_if_t) interface_idx, (mdns_ip_protocol_t) protocol_idx);
@@ -617,6 +658,7 @@ static void browse_record_finish(mdns_browse_record_t *browse_record)
 
     if (found) {
         browse_record_item_free(browse_record);
+        mdns_priv_cache_trim_unsubscribed_records(esp_timer_get_time());
     }
 }
 
@@ -636,6 +678,79 @@ static esp_err_t send_browse_record_action(mdns_action_type_t type, mdns_browse_
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;
+}
+
+static mdns_result_t *browse_record_build_ptr_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                     const char *subtype, bool goodbye)
+{
+    esp_err_t ret __attribute__((unused)) = ESP_OK;
+    if (!entry || !service) {
+        return NULL;
+    }
+    const bool has_subtype = !mdns_utils_str_null_or_empty(subtype);
+    const mdns_cache_subtype_t *subtype_cache = has_subtype ? mdns_priv_cache_service_find_subtype(service, subtype) : NULL;
+    if (!goodbye && (has_subtype ? subtype_cache == NULL : !service->ptr_present)) {
+        return NULL;
+    }
+
+    mdns_result_t *result = (mdns_result_t *)mdns_mem_calloc(1, sizeof(mdns_result_t));
+    if (!result) {
+        HOOK_MALLOC_FAILED;
+        return NULL;
+    }
+
+    result->esp_netif = entry->esp_netif;
+    result->ip_protocol = entry->ip_protocol;
+
+    result->instance_name = mdns_mem_strdup(service->instance_name);
+    ESP_GOTO_ON_FALSE(result->instance_name, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate instance name");
+
+    result->service_type = mdns_mem_strdup(service->service);
+    ESP_GOTO_ON_FALSE(result->service_type, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate service type");
+
+    result->proto = mdns_mem_strdup(service->proto);
+    ESP_GOTO_ON_FALSE(result->proto, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate protocol");
+
+    if (has_subtype) {
+        result->subtype = mdns_mem_strdup(subtype);
+        ESP_GOTO_ON_FALSE(result->subtype, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate subtype");
+    }
+
+    result->ttl = goodbye ? 0 : (has_subtype ? subtype_cache->ttl : service->ptr_ttl);
+    return result;
+
+error:
+    HOOK_MALLOC_FAILED;
+    mdns_priv_query_results_free(result);
+    return NULL;
+}
+
+static bool browse_record_notify(mdns_browse_record_t *browse_record, const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                 bool goodbye)
+{
+    if (!browse_record || !entry || !service) {
+        return false;
+    }
+
+    mdns_result_t *result = NULL;
+    switch (browse_record->type) {
+    case MDNS_BROWSE_RECORD_TYPE_PTR:
+        if (!browse_record->notifier) {
+            return false;
+        }
+
+        result = browse_record_build_ptr_result(entry, service, browse_record->subtype, goodbye);
+        if (!result) {
+            return false;
+        }
+
+        browse_record->notifier(result);
+        mdns_priv_query_results_free(result);
+        return true;
+    default:
+        ESP_LOGE(TAG, "Invalid record browse type: %d", browse_record->type);
+        return false;
+    }
 }
 
 void mdns_priv_browse_record_action(mdns_action_t *action, mdns_action_subtype_t type)
@@ -663,6 +778,148 @@ void mdns_priv_browse_record_action(mdns_action_t *action, mdns_action_subtype_t
             abort();
         }
     }
+}
+
+mdns_browse_record_t *mdns_priv_browse_record_find(const char *service, const char *proto, const char *subtype,
+                                                   mdns_browse_record_type_t type)
+{
+    for (mdns_browse_record_t *it = s_browse_record; it; it = it->next) {
+        if (it->type != type || it->state != BROWSE_RUNNING) {
+            continue;
+        }
+
+        switch (type) {
+        case MDNS_BROWSE_RECORD_TYPE_PTR:
+            if (mdns_utils_str_case_equal(it->service, service) && mdns_utils_str_case_equal(it->proto, proto)
+                    && mdns_utils_str_case_equal_nullable(it->subtype, subtype)) {
+                return it;
+            }
+            break;
+        default:
+            ESP_LOGE(TAG, "Invalid record browse type: %d", it->type);
+            break;
+        }
+    }
+    return NULL;
+}
+
+bool mdns_priv_browse_record_has_service(const char *service, const char *proto)
+{
+    for (const mdns_browse_record_t *it = s_browse_record; it; it = it->next) {
+        if (it->state == BROWSE_RUNNING && mdns_utils_str_case_equal(it->service, service) && mdns_utils_str_case_equal(it->proto, proto)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+mdns_browse_record_t *mdns_priv_browse_record_find_ptr_cache_consumer(mdns_name_t *name, uint16_t type,
+                                                                      mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    if (!name || (type != MDNS_TYPE_SRV && type != MDNS_TYPE_TXT && type != MDNS_TYPE_A && type != MDNS_TYPE_AAAA)) {
+        return NULL;
+    }
+
+    for (mdns_browse_record_t *it = s_browse_record; it; it = it->next) {
+        if (it->state != BROWSE_RUNNING || it->type != MDNS_BROWSE_RECORD_TYPE_PTR) {
+            continue;
+        }
+
+        switch (type) {
+        case MDNS_TYPE_SRV:
+        case MDNS_TYPE_TXT:
+            if (mdns_utils_str_case_equal(it->service, name->service) && mdns_utils_str_case_equal(it->proto, name->proto)) {
+                return it;
+            }
+            break;
+        case MDNS_TYPE_A:
+        case MDNS_TYPE_AAAA:
+            if (mdns_priv_cache_host_has_service(name->host, mdns_priv_get_esp_netif(tcpip_if),
+                                                 ip_protocol, it->service, it->proto)) {
+                return it;
+            }
+            break;
+        }
+    }
+    return NULL;
+}
+
+mdns_cache_record_mask_t mdns_priv_browse_record_update_from_service_cache(const mdns_cache_entry_t *entry,
+                                                                           const mdns_service_cache_t *service,
+                                                                           mdns_cache_record_mask_t record_mask)
+{
+    mdns_cache_record_mask_t completed_records = record_mask;
+
+    if (!entry || !service) {
+        return 0;
+    }
+
+    for (mdns_browse_record_t *browse_record = s_browse_record; browse_record; browse_record = browse_record->next) {
+        // Notify only changes to the subscribed record type.
+        mdns_cache_record_type_t record_type = browse_record_type_to_record_type(browse_record);
+        if (!(record_mask & (mdns_cache_record_mask_t)record_type)) {
+            continue;
+        }
+        // Check the subscription identity before notifying.
+        if (!browse_record_matches_service_cache(browse_record, entry, service, false)) {
+            continue;
+        }
+        if (browse_record->type == MDNS_BROWSE_RECORD_TYPE_PTR && !mdns_utils_str_null_or_empty(browse_record->subtype)) {
+            const mdns_cache_subtype_t *subtype_entry = mdns_priv_cache_service_find_subtype(service, browse_record->subtype);
+            if (!subtype_entry || !subtype_entry->pending_sync) {
+                continue;
+            }
+        }
+
+        if (!browse_record_notify(browse_record, entry, service, false)) {
+            completed_records &= ~(mdns_cache_record_mask_t)record_type;
+        }
+    }
+
+    return completed_records;
+}
+
+bool mdns_priv_browse_record_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                       mdns_browse_record_t *browse_record)
+{
+    if (!entry || !service || !browse_record || browse_record->state != BROWSE_RUNNING) {
+        return false;
+    }
+
+    if (!browse_record_matches_service_cache(browse_record, entry, service, false)) {
+        return true;
+    }
+
+    return browse_record_notify(browse_record, entry, service, false);
+}
+
+bool mdns_priv_browse_record_notify_goodbye_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                               mdns_cache_record_mask_t record_mask, const char *subtype)
+{
+    bool notified = true;
+
+    if (!entry || !service) {
+        return false;
+    }
+
+    for (mdns_browse_record_t *browse_record = s_browse_record; browse_record; browse_record = browse_record->next) {
+        // Notify only changes to the subscribed record type.
+        mdns_cache_record_type_t record_type = browse_record_type_to_record_type(browse_record);
+        if (!(record_mask & (mdns_cache_record_mask_t)record_type)) {
+            continue;
+        }
+        // Expired base PTRs are already absent. Match identity, not record presence.
+        if (!browse_record_matches_service_cache(browse_record, entry, service, true)) {
+            continue;
+        }
+        if (browse_record->type == MDNS_BROWSE_RECORD_TYPE_PTR && !mdns_utils_str_case_equal_nullable(browse_record->subtype, subtype)) {
+            continue;
+        }
+
+        notified &= browse_record_notify(browse_record, entry, service, true);
+    }
+
+    return notified;
 }
 
 /**

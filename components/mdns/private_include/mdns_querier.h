@@ -25,15 +25,14 @@ void mdns_priv_query_start_stop(void);
 void mdns_priv_query_free(void);
 
 /**
+ * @brief Free a result linked list without acquiring the mDNS service lock.
+ */
+void mdns_priv_query_results_free(mdns_result_t *results);
+
+/**
  * @brief Free one search object (detached or still on the active list)
  */
 void mdns_priv_search_once_free(mdns_search_once_t *search);
-
-/**
- * @brief Free search results
- * @note Called from multiple modules (browser, querier, core)
- */
-void mdns_priv_query_results_free(mdns_result_t *results);
 
 /**
  * @brief Complete the query if max results reached

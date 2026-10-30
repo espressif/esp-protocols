@@ -432,17 +432,20 @@ typedef struct {
     } data;
 } mdns_action_t;
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
 typedef enum {
-    MDNS_CACHE_CONSUMER_BROWSE     = (1U << 0),
+    MDNS_CACHE_CONSUMER_BROWSE          = (1U << 0),
+    MDNS_CACHE_CONSUMER_BROWSE_RECORD   = (1U << 1),
 } mdns_cache_consumer_type_t;
 
 typedef uint8_t mdns_cache_consumer_mask_t;
 
 typedef enum {
-    // Browse update flags
+    MDNS_CACHE_RECORD_INVALID       = 0,
+    // PTR update flags
     MDNS_CACHE_RECORD_PTR           = (1U << 0), /*!< Normal PTR record updated, only notify no-subtype browses. */
     MDNS_CACHE_RECORD_SUBTYPE       = (1U << 1), /*!< PTR record with subtype updated, only notify browse with identical subtype. */
-    // Resolver update flags
+    // Other record update flags
     MDNS_CACHE_RECORD_SRV           = (1U << 2),
     MDNS_CACHE_RECORD_TXT           = (1U << 3),
     MDNS_CACHE_RECORD_ADDR          = (1U << 4),
@@ -535,3 +538,4 @@ typedef enum {
     MDNS_CACHE_REMOVED,     /*!< existing service cache entry removed */
     MDNS_CACHE_ERROR,       /*!< error occurred while updating the cache */
 } mdns_cache_update_result_t;
+#endif // CONFIG_MDNS_ENABLE_BROWSE
