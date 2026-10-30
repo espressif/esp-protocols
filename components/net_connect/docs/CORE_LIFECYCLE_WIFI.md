@@ -27,59 +27,63 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Task as Startup Task
     participant IDF as ESP-IDF Wi-Fi / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Create handle (UNINIT -> INIT)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Create handle (UNINIT -> INIT)
     App->>WiFi: net_wifi_sta_create()
     WiFi->>WiFi: Read Kconfig defaults, apply params
     WiFi->>Core: net_iface_init_with_ops(wifi_sta_ops)
     Core->>Core: Allocate handle, state = INIT (ops->init is NULL)
     opt Event loop exists and global handlers not registered yet
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core-->>WiFi: Return handle
     WiFi-->>App: Return handle (ESP_OK)
     end
 
-    rect 2. Start interface (INIT -> STARTING)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Start interface (INIT -> STARTING)
     App->>Core: net_iface_start()
     opt Global handlers not registered in step 1 (event loop created after handle)
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core->>Core: Clear liveness and STARTUP_DONE bits, state = STARTING
     Core->>Task: xTaskCreate(iface_startup_task)
     Core-->>App: Return ESP_OK immediately
     end
 
-    rect 3. Driver start (STARTING -> STARTED)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Driver start (STARTING -> STARTED)
     Task->>WiFi: ops->start() (wifi_ops_start)
     WiFi->>IDF: esp_wifi_init() and esp_netif_create_wifi(STA)
     IDF-->>WiFi: Return netif
     WiFi->>IDF: esp_wifi_set_default_wifi_sta_handlers()
-    IDF->>Loop: Register default STA netif handlers (WIFI_EVENT STA_START/STOP/CONNECTED/DISCONNECTED, IP_EVENT_STA_GOT_IP)
-    Loop-->>IDF: Return ESP_OK
+    IDF->>EventLoop: Register default STA netif handlers (WIFI_EVENT STA_START/STOP/CONNECTED/DISCONNECTED, IP_EVENT_STA_GOT_IP)
+    EventLoop-->>IDF: Return ESP_OK
     IDF-->>WiFi: Return ESP_OK
     WiFi->>IDF: RAM storage, STA mode, esp_wifi_start()
     IDF-->>WiFi: Return ESP_OK
-    WiFi->>Loop: Register (WIFI_EVENT, WIFI_EVENT_STA_CONNECTED) -> on_wifi_sta_connected
-    Loop-->>WiFi: Return ESP_OK
-    WiFi->>Loop: Register (WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED) -> on_wifi_sta_disconnected
-    Loop-->>WiFi: Return ESP_OK
+    WiFi->>EventLoop: Register (WIFI_EVENT, WIFI_EVENT_STA_CONNECTED) -> on_wifi_sta_connected
+    EventLoop-->>WiFi: Return ESP_OK
+    WiFi->>EventLoop: Register (WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED) -> on_wifi_sta_disconnected
+    EventLoop-->>WiFi: Return ESP_OK
     WiFi->>Core: net_iface_notify_started(netif)
     Core->>Core: Save netif, state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_STARTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STARTED
+    EventLoop-->>Core: Queued
     Core-->>WiFi: Return from net_iface_notify_started()
     WiFi-->>Task: Return ESP_OK from wifi_ops_start()
     end
 
-    rect 4. Auto-connect (STARTED -> CONNECTING)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: 4. Auto-connect (STARTED -> CONNECTING)
     Note over Task,Core: auto_connect_on_start is true and stop was not requested
     Task->>Core: net_iface_connect()
     Core->>Core: Clear READY/FAILED bits, state = CONNECTING
@@ -93,34 +97,37 @@ sequenceDiagram
     Task->>Task: vTaskDelete(NULL)
     end
 
-    rect 5. AP associated (CONNECTING -> CONNECTED)
-    IDF->>Loop: Post WIFI_EVENT_STA_CONNECTED
-    Loop->>IDF: Default STA handler starts DHCP client on netif
-    IDF-->>Loop: Return
-    Loop->>WiFi: on_wifi_sta_connected()
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 5. AP associated (CONNECTING -> CONNECTED)
+    IDF->>EventLoop: Post WIFI_EVENT_STA_CONNECTED
+    EventLoop->>IDF: Default STA handler starts DHCP client on netif
+    IDF-->>EventLoop: Return
+    EventLoop->>WiFi: on_wifi_sta_connected()
     WiFi->>Core: net_iface_notify_connected()
     Core->>Core: state = CONNECTED, retry_num = 0
     opt IPv6 enabled
         Core->>IDF: esp_netif_create_ip6_linklocal()
         IDF-->>Core: Return
     end
-    Core->>Loop: Post NET_IFACE_EVENT_CONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_CONNECTED
+    EventLoop-->>Core: Queued
     Core-->>WiFi: Return from net_iface_notify_connected()
-    WiFi-->>Loop: Return from on_wifi_sta_connected()
+    WiFi-->>EventLoop: Return from on_wifi_sta_connected()
     end
 
-    rect 6. Address acquired (CONNECTED -> READY)
-    IDF->>Loop: Post IP_EVENT_STA_GOT_IP (and IP_EVENT_GOT_IP6 if required)
-    Loop->>Core: on_global_ip_event()
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 6. Address acquired (CONNECTED -> READY)
+    IDF->>EventLoop: Post IP_EVENT_STA_GOT_IP (and IP_EVENT_GOT_IP6 if required)
+    EventLoop->>Core: on_global_ip_event()
     Core->>Core: Set IPV4 / IPV6 bit, check is_ready_satisfied_locked()
     Core->>Core: net_iface_notify_ready() -> state = READY, set READY bit, pulse global wait
-    Core->>Loop: Post NET_IFACE_EVENT_READY
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_READY
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
     end
 
-    rect 7. Wait for readiness (READY)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 7. Wait for readiness (READY)
     App->>Core: net_iface_wait(timeout)
     Core-->>App: READY bit is set -> return ESP_OK
     end
@@ -136,9 +143,10 @@ sequenceDiagram
     participant WiFi as Wi-Fi (wifi_connect.c)
     participant Core as net_iface Core
     participant IDF as ESP-IDF Wi-Fi / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Disconnect (READY/CONNECTED -> STARTED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Disconnect (READY/CONNECTED -> STARTED)
     App->>Core: net_iface_disconnect()
     Core->>WiFi: ops->disconnect() (wifi_ops_disconnect)
     WiFi->>WiFi: s_wifi_ignore_disconnect = true
@@ -146,12 +154,13 @@ sequenceDiagram
     IDF-->>WiFi: Return ESP_OK
     WiFi-->>Core: Return ESP_OK from wifi_ops_disconnect()
     Core->>Core: net_iface_notify_disconnected() -> state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_DISCONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_DISCONNECTED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK (radio and netif stay up)
     end
 
-    rect 2. Stop driver (STARTED -> STOPPING -> INIT)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Stop driver (STARTED -> STOPPING -> INIT)
     App->>Core: net_iface_stop()
     Core->>Core: state = STOPPING (wait for STARTUP_DONE if task is running)
     Core->>WiFi: ops->disconnect() (wifi_ops_disconnect)
@@ -159,31 +168,32 @@ sequenceDiagram
     IDF-->>WiFi: Return ESP_OK
     WiFi-->>Core: Return ESP_OK from wifi_ops_disconnect()
     Core->>WiFi: ops->stop() (wifi_ops_stop)
-    WiFi->>Loop: Unregister (WIFI_EVENT, WIFI_EVENT_STA_CONNECTED) -> on_wifi_sta_connected
-    Loop-->>WiFi: Return ESP_OK
-    WiFi->>Loop: Unregister (WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED) -> on_wifi_sta_disconnected
-    Loop-->>WiFi: Return ESP_OK
+    WiFi->>EventLoop: Unregister (WIFI_EVENT, WIFI_EVENT_STA_CONNECTED) -> on_wifi_sta_connected
+    EventLoop-->>WiFi: Return ESP_OK
+    WiFi->>EventLoop: Unregister (WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED) -> on_wifi_sta_disconnected
+    EventLoop-->>WiFi: Return ESP_OK
     WiFi->>IDF: esp_wifi_stop(), esp_wifi_deinit() if we inited
     IDF-->>WiFi: Return ESP_OK
     WiFi->>IDF: esp_wifi_clear_default_wifi_driver_and_handlers(), esp_netif_destroy()
-    IDF->>Loop: Unregister default STA netif handlers
-    Loop-->>IDF: Return ESP_OK
+    IDF->>EventLoop: Unregister default STA netif handlers
+    EventLoop-->>IDF: Return ESP_OK
     IDF-->>WiFi: Return
     WiFi-->>Core: Return ESP_OK from wifi_ops_stop()
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK
     end
 
-    rect 3. Destroy handle (INIT -> UNINIT)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Destroy handle (INIT -> UNINIT)
     App->>Core: net_iface_deinit()
     Core->>Core: Verify state == INIT, unlink from registry
     opt Last interface removed from registry
-        Core->>Loop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return
-        Core->>Loop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return
+        Core->>EventLoop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return
+        Core->>EventLoop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return
     end
     Core->>WiFi: ops->deinit() (wifi_ops_deinit)
     WiFi-->>Core: Return ESP_OK from wifi_ops_deinit()
@@ -203,9 +213,10 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Task as Startup Task
     participant IDF as ESP-IDF Wi-Fi / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect Flow 5 - Late credentials (INIT -> STARTED -> CONNECTING)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: Flow 5 - Late credentials (INIT -> STARTED -> CONNECTING)
     App->>WiFi: 1. net_wifi_sta_create() with empty SSID
     WiFi->>Core: net_iface_init_with_ops() (auto_connect_on_start = false)
     Core-->>WiFi: Return handle
@@ -232,33 +243,36 @@ sequenceDiagram
     Core-->>App: Return ESP_OK from net_iface_connect()
     end
 
-    rect Flow 6a - Address lost (READY -> CONNECTING)
-    IDF->>Loop: 5. Post IP_EVENT_STA_LOST_IP
-    Loop->>Core: on_global_ip_event()
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: Flow 6a - Address lost (READY -> CONNECTING)
+    IDF->>EventLoop: 5. Post IP_EVENT_STA_LOST_IP
+    EventLoop->>Core: on_global_ip_event()
     Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
-    Core->>Loop: Post NET_IFACE_EVENT_LOST_IP
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
     end
 
-    rect Flow 6b - AP dropped (CONNECTING/READY -> FAILED)
-    IDF->>Loop: 6. Post WIFI_EVENT_STA_DISCONNECTED
-    Loop->>WiFi: on_wifi_sta_disconnected()
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: Flow 6b - AP dropped (CONNECTING/READY -> FAILED)
+    IDF->>EventLoop: 6. Post WIFI_EVENT_STA_DISCONNECTED
+    EventLoop->>WiFi: on_wifi_sta_disconnected()
     alt retry_num <= max_retry
         WiFi->>IDF: esp_wifi_connect()
         IDF-->>WiFi: Return ESP_OK
-        WiFi-->>Loop: Return from on_wifi_sta_disconnected()
+        WiFi-->>EventLoop: Return from on_wifi_sta_disconnected()
     else retry_num > max_retry
         WiFi->>Core: net_iface_notify_failed(ESP_FAIL)
         Core->>Core: state = FAILED, set FAILED bit, wake waiters
-        Core->>Loop: Post NET_IFACE_EVENT_FAILED
-        Loop-->>Core: Queued
+        Core->>EventLoop: Post NET_IFACE_EVENT_FAILED
+        EventLoop-->>Core: Queued
         Core-->>WiFi: Return from net_iface_notify_failed()
-        WiFi-->>Loop: Return from on_wifi_sta_disconnected()
+        WiFi-->>EventLoop: Return from on_wifi_sta_disconnected()
     end
     end
 
-    rect Flow 7 - Stop during startup (STARTING -> STOPPING -> INIT)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: Flow 7 - Stop during startup (STARTING -> STOPPING -> INIT)
     Note over App,Task: 7a. App calls stop() while Startup Task is still inside wifi_ops_start()
     Task->>WiFi: ops->start() (wifi_ops_start) running
     App->>Core: net_iface_stop()
@@ -274,20 +288,20 @@ sequenceDiagram
     Task->>Core: Set STARTUP_DONE bit (wakes App task in net_iface_stop)
     Task->>Task: vTaskDelete(NULL)
 
-    Note over App,Loop: 7c. App task wakes up inside net_iface_stop() and tears down the driver
+    Note over App,EventLoop: 7c. App task wakes up inside net_iface_stop() and tears down the driver
     Core->>WiFi: ops->disconnect() (wifi_ops_disconnect)
     WiFi->>IDF: esp_wifi_disconnect()
     IDF-->>WiFi: Return ESP_OK
     WiFi-->>Core: Return ESP_OK
     Core->>WiFi: ops->stop() (wifi_ops_stop)
-    WiFi->>Loop: Unregister STA_CONNECTED and STA_DISCONNECTED
-    Loop-->>WiFi: Return ESP_OK
+    WiFi->>EventLoop: Unregister STA_CONNECTED and STA_DISCONNECTED
+    EventLoop-->>WiFi: Return ESP_OK
     WiFi->>IDF: esp_wifi_stop(), esp_wifi_deinit(), destroy h->netif
     IDF-->>WiFi: Return ESP_OK
     WiFi-->>Core: Return ESP_OK
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK from net_iface_stop()
     end
 ```

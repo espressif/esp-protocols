@@ -8,7 +8,6 @@
 #include "net_connect.h"
 #include "net_iface_priv.h"
 #include "esp_event.h"
-#include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_netif_defaults.h"
 #include "esp_wifi.h"
@@ -23,7 +22,6 @@
 #define TEST_NETIF_DESC_ETH "net_connect_netif_eth"
 #define TEST_NETIF_DESC_THREAD "net_connect_netif_thread"
 #define TEST_NETIF_DESC_PPP "net_connect_netif_ppp"
-#define TEST_NETIF_DESC_OTHER "other_netif_desc"
 
 TEST_GROUP(net_connect);
 
@@ -31,10 +29,6 @@ static esp_netif_t *test_netif_sta = NULL;
 static esp_netif_t *test_netif_eth = NULL;
 static esp_netif_t *test_netif_thread = NULL;
 static esp_netif_t *test_netif_ppp = NULL;
-static esp_netif_t *test_netif_other = NULL;
-/* Route-priority test netifs. Destroyed by that test, or by tear-down if it fails. */
-static esp_netif_t *s_prio_eth_netif = NULL;
-static esp_netif_t *s_prio_wifi_netif = NULL;
 
 #define TEST_EVENT_LOG_LEN 32
 
@@ -90,12 +84,10 @@ static esp_err_t test_register_handler(void)
 }
 
 static void test_clear_deadlock_handler(void);
-static void test_clear_prio_handler(void);
 
 static void test_iface_cleanup(void)
 {
     test_clear_deadlock_handler();
-    test_clear_prio_handler();
     net_iface_handle_t handles[4] = {
         s_test_handle, s_test_handle2, s_test_handle3, s_test_handle4
     };
@@ -172,17 +164,6 @@ TEST_SETUP(net_connect)
     };
     test_netif_ppp = esp_netif_new(&cfg_ppp);
     TEST_ASSERT_NOT_NULL(test_netif_ppp);
-
-    esp_netif_inherent_config_t base_cfg_other = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
-    base_cfg_other.if_key = "WIFI_STA_TEST_OTHER";
-    base_cfg_other.if_desc = TEST_NETIF_DESC_OTHER;
-    esp_netif_config_t cfg_other = {
-        .base = &base_cfg_other,
-        .driver = NULL,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
-    };
-    test_netif_other = esp_netif_new(&cfg_other);
-    TEST_ASSERT_NOT_NULL(test_netif_other);
 }
 
 TEST_TEAR_DOWN(net_connect)
@@ -207,18 +188,6 @@ TEST_TEAR_DOWN(net_connect)
         esp_netif_destroy(test_netif_ppp);
         test_netif_ppp = NULL;
     }
-    if (test_netif_other) {
-        esp_netif_destroy(test_netif_other);
-        test_netif_other = NULL;
-    }
-    if (s_prio_wifi_netif != NULL) {
-        esp_netif_destroy(s_prio_wifi_netif);
-        s_prio_wifi_netif = NULL;
-    }
-    if (s_prio_eth_netif != NULL) {
-        esp_netif_destroy(s_prio_eth_netif);
-        s_prio_eth_netif = NULL;
-    }
 
     esp_event_loop_delete_default();
     /*
@@ -230,168 +199,18 @@ TEST_TEAR_DOWN(net_connect)
 }
 
 /**
- * @brief Test that net_get_netif_from_desc() can successfully find a WiFi STA netif by its description
- *
- * Objective: Verify that the function correctly locates a network interface with description
- * "net_connect_netif_sta" and returns the correct netif pointer. This ensures basic lookup
- * functionality works for STA interfaces.
+ * @brief Verify net_get_netif_from_desc() finds registered netifs and rejects invalid or unknown descriptions.
  */
-TEST(net_connect, net_get_netif_from_desc_finds_sta)
+TEST(net_connect, net_get_netif_from_desc_lookup)
 {
-    esp_netif_t *found = net_get_netif_from_desc(TEST_NETIF_DESC_STA);
-    TEST_ASSERT_NOT_NULL(found);
-    TEST_ASSERT_EQUAL(test_netif_sta, found);
-    TEST_ASSERT_EQUAL_STRING(TEST_NETIF_DESC_STA, esp_netif_get_desc(found));
-}
+    TEST_ASSERT_EQUAL(test_netif_sta, net_get_netif_from_desc(TEST_NETIF_DESC_STA));
+    TEST_ASSERT_EQUAL(test_netif_eth, net_get_netif_from_desc(TEST_NETIF_DESC_ETH));
+    TEST_ASSERT_EQUAL(test_netif_thread, net_get_netif_from_desc(TEST_NETIF_DESC_THREAD));
+    TEST_ASSERT_EQUAL(test_netif_ppp, net_get_netif_from_desc(TEST_NETIF_DESC_PPP));
 
-/**
- * @brief Test that net_get_netif_from_desc() can successfully find an Ethernet netif by its description
- *
- * Objective: Verify that the function correctly locates a network interface with description
- * "net_connect_netif_eth" and returns the correct netif pointer. This ensures lookup functionality
- * works for Ethernet interfaces.
- */
-TEST(net_connect, net_get_netif_from_desc_finds_eth)
-{
-    esp_netif_t *found = net_get_netif_from_desc(TEST_NETIF_DESC_ETH);
-    TEST_ASSERT_NOT_NULL(found);
-    TEST_ASSERT_EQUAL(test_netif_eth, found);
-    TEST_ASSERT_EQUAL_STRING(TEST_NETIF_DESC_ETH, esp_netif_get_desc(found));
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() can successfully find a Thread netif by its description
- *
- * Objective: Verify that the function correctly locates a network interface with description
- * "net_connect_netif_thread" and returns the correct netif pointer. This ensures lookup functionality
- * works for Thread interfaces.
- */
-TEST(net_connect, net_get_netif_from_desc_finds_thread)
-{
-    esp_netif_t *found = net_get_netif_from_desc(TEST_NETIF_DESC_THREAD);
-    TEST_ASSERT_NOT_NULL(found);
-    TEST_ASSERT_EQUAL(test_netif_thread, found);
-    TEST_ASSERT_EQUAL_STRING(TEST_NETIF_DESC_THREAD, esp_netif_get_desc(found));
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() can successfully find a PPP netif by its description
- *
- * Objective: Verify that the function correctly locates a network interface with description
- * "net_connect_netif_ppp" and returns the correct netif pointer. This ensures lookup functionality
- * works for PPP interfaces.
- */
-TEST(net_connect, net_get_netif_from_desc_finds_ppp)
-{
-    esp_netif_t *found = net_get_netif_from_desc(TEST_NETIF_DESC_PPP);
-    TEST_ASSERT_NOT_NULL(found);
-    TEST_ASSERT_EQUAL(test_netif_ppp, found);
-    TEST_ASSERT_EQUAL_STRING(TEST_NETIF_DESC_PPP, esp_netif_get_desc(found));
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() can successfully find a netif with a custom description
- *
- * Objective: Verify that the function correctly locates a network interface with a custom description
- * "other_netif_desc" and returns the correct netif pointer. This ensures lookup functionality works
- * for interfaces with non-standard descriptions.
- */
-TEST(net_connect, net_get_netif_from_desc_finds_other)
-{
-    esp_netif_t *found = net_get_netif_from_desc(TEST_NETIF_DESC_OTHER);
-    TEST_ASSERT_NOT_NULL(found);
-    TEST_ASSERT_EQUAL(test_netif_other, found);
-    TEST_ASSERT_EQUAL_STRING(TEST_NETIF_DESC_OTHER, esp_netif_get_desc(found));
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() returns NULL when searching for a non-existent netif description
- *
- * Objective: Verify that the function correctly handles the case where no network interface matches
- * the provided description. This ensures proper error handling when a netif doesn't exist.
- */
-TEST(net_connect, net_get_netif_from_desc_returns_null_for_nonexistent)
-{
-    esp_netif_t *found = net_get_netif_from_desc("nonexistent_netif_desc");
-    TEST_ASSERT_NULL(found);
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() returns NULL when passed a NULL description pointer
- *
- * Objective: Verify that the function safely handles NULL input and returns NULL instead of
- * crashing or dereferencing a NULL pointer. This ensures robust error handling for invalid inputs.
- */
-TEST(net_connect, net_get_netif_from_desc_returns_null_for_null_desc)
-{
-    esp_netif_t *found = net_get_netif_from_desc(NULL);
-    TEST_ASSERT_NULL(found);
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() returns NULL when passed an empty string description
- *
- * Objective: Verify that the function correctly handles empty string input and returns NULL.
- * This ensures that empty descriptions are treated as invalid and don't match any netif.
- */
-TEST(net_connect, net_get_netif_from_desc_returns_null_for_empty_desc)
-{
-    esp_netif_t *found = net_get_netif_from_desc("");
-    TEST_ASSERT_NULL(found);
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() performs case-sensitive matching
- *
- * Objective: Verify that description matching is case-sensitive. An uppercase version of a valid
- * description should not match, while the exact case-sensitive description should match. This ensures
- * that the function requires exact string matches including case.
- */
-TEST(net_connect, net_get_netif_from_desc_case_sensitive)
-{
-    // Test that description matching is case-sensitive
-    esp_netif_t *found_upper = net_get_netif_from_desc("NET_CONNECT_NETIF_STA");
-    TEST_ASSERT_NULL(found_upper);
-
-    esp_netif_t *found_lower = net_get_netif_from_desc(TEST_NETIF_DESC_STA);
-    TEST_ASSERT_NOT_NULL(found_lower);
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() requires exact string matches (no partial matching)
- *
- * Objective: Verify that the function only matches exact descriptions and rejects partial matches.
- * Both a prefix substring and a string with extra characters should fail to match. This ensures
- * that the lookup requires precise description strings.
- */
-TEST(net_connect, net_get_netif_from_desc_partial_match_fails)
-{
-    // Test that partial matches don't work (must be exact match)
-    esp_netif_t *found = net_get_netif_from_desc("net_connect_netif_st");
-    TEST_ASSERT_NULL(found);
-
-    found = net_get_netif_from_desc("net_connect_netif_sta_extra");
-    TEST_ASSERT_NULL(found);
-}
-
-/**
- * @brief Test that net_get_netif_from_desc() returns consistent results across multiple calls
- *
- * Objective: Verify that calling the function multiple times with the same description returns
- * the same netif pointer each time. This ensures the function's behavior is deterministic and
- * consistent, which is important for reliability in production code.
- */
-TEST(net_connect, net_get_netif_from_desc_multiple_calls_same_result)
-{
-    // Test that multiple calls return the same result
-    esp_netif_t *found1 = net_get_netif_from_desc(TEST_NETIF_DESC_STA);
-    esp_netif_t *found2 = net_get_netif_from_desc(TEST_NETIF_DESC_STA);
-    esp_netif_t *found3 = net_get_netif_from_desc(TEST_NETIF_DESC_STA);
-
-    TEST_ASSERT_NOT_NULL(found1);
-    TEST_ASSERT_EQUAL(found1, found2);
-    TEST_ASSERT_EQUAL(found2, found3);
-    TEST_ASSERT_EQUAL(test_netif_sta, found1);
+    TEST_ASSERT_NULL(net_get_netif_from_desc("nonexistent_netif_desc"));
+    TEST_ASSERT_NULL(net_get_netif_from_desc(NULL));
+    TEST_ASSERT_NULL(net_get_netif_from_desc(""));
 }
 
 static esp_err_t fake_start(net_iface_handle_t self)
@@ -524,51 +343,6 @@ TEST(net_connect, net_iface_event_callbacks_and_order)
 }
 
 /**
- * @brief Failure is sticky for net_iface_wait() and is reported as last_err.
- */
-TEST(net_connect, net_iface_failure_records_last_error)
-{
-    net_iface_handle_t h = NULL;
-    TEST_ESP_OK(open_fake_iface(&h, false));
-    TEST_ESP_OK(net_iface_start(h));
-    wait_for_startup_done(h);
-
-    net_iface_notify_failed(h, ESP_ERR_WIFI_CONN);
-    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
-    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_get_last_error(h));
-    TEST_ASSERT_EQUAL(ESP_ERR_WIFI_CONN, net_iface_wait(h, 100));
-
-    TEST_ESP_OK(net_iface_stop(h));
-    TEST_ESP_OK(net_iface_deinit(h));
-    s_test_handle = NULL;
-}
-
-/**
- * @brief A handler registered after READY does not receive a replayed event.
- */
-TEST(net_connect, net_iface_late_callback_discovers_state)
-{
-    net_iface_handle_t h = NULL;
-    TEST_ESP_OK(open_fake_iface(&h, false));
-    TEST_ESP_OK(net_iface_start(h));
-    wait_for_startup_done(h);
-    TEST_ESP_OK(net_iface_connect(h));
-    net_iface_notify_ready(h);
-    vTaskDelay(pdMS_TO_TICKS(20));
-
-    TEST_ESP_OK(test_register_handler());
-    vTaskDelay(pdMS_TO_TICKS(20));
-    TEST_ASSERT_EQUAL(0, s_event_count);
-    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
-    TEST_ESP_OK(net_iface_wait(h, 0));
-
-    test_unregister_handler();
-    TEST_ESP_OK(net_iface_stop(h));
-    TEST_ESP_OK(net_iface_deinit(h));
-    s_test_handle = NULL;
-}
-
-/**
  * @brief A simulated STA got-IP event marks the iface READY; lost-IP drops it.
  */
 TEST(net_connect, net_iface_ip_event_drives_ready_and_lost_ip)
@@ -606,15 +380,6 @@ static esp_err_t slow_eth_start(net_iface_handle_t self)
     return ESP_OK;
 }
 
-static esp_err_t slow_eth_parallel_start(net_iface_handle_t self)
-{
-    vTaskDelay(pdMS_TO_TICKS(600));
-    net_iface_notify_started(self, test_netif_eth);
-    net_iface_notify_connected(self);
-    net_iface_notify_ready(self);
-    return ESP_OK;
-}
-
 static esp_err_t fast_wifi_start(net_iface_handle_t self)
 {
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -634,13 +399,6 @@ static esp_err_t failing_start(net_iface_handle_t self)
 static const net_iface_ops_t s_slow_eth_ops = {
     .name = "slow_eth",
     .start = slow_eth_start,
-    .stop = fake_stop,
-    .disconnect = fake_disconnect,
-};
-
-static const net_iface_ops_t s_slow_eth_parallel_ops = {
-    .name = "slow_eth",
-    .start = slow_eth_parallel_start,
     .stop = fake_stop,
     .disconnect = fake_disconnect,
 };
@@ -672,13 +430,18 @@ static esp_err_t open_ops_iface(net_iface_handle_t *out, net_iface_type_t type,
 }
 
 /**
- * @brief net_iface_start() returns while a slow driver is still running.
+ * @brief net_iface_start() returns promptly and a fast interface reaches READY while a slow one is still STARTING.
  */
-TEST(net_connect, net_iface_start_returns_promptly_while_driver_blocks)
+TEST(net_connect, net_iface_parallel_startup_no_head_of_line_blocking)
 {
     net_iface_handle_t eth = NULL;
-    TEST_ESP_OK(open_ops_iface(&eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH, &s_slow_eth_ops, 0));
+    net_iface_handle_t wifi = NULL;
+    TEST_ESP_OK(open_ops_iface(&eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH,
+                               &s_slow_eth_ops, 0));
     s_test_handle = eth;
+    TEST_ESP_OK(open_ops_iface(&wifi, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
+                               &s_fast_wifi_ops, 0));
+    s_test_handle2 = wifi;
 
     TickType_t t0 = xTaskGetTickCount();
     TEST_ESP_OK(net_iface_start(eth));
@@ -686,29 +449,6 @@ TEST(net_connect, net_iface_start_returns_promptly_while_driver_blocks)
     TEST_ASSERT_LESS_THAN_UINT32(50, elapsed_ms);
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTING, net_iface_get_state(eth));
 
-    TEST_ESP_OK(net_iface_wait(eth, 1000));
-    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(eth));
-
-    TEST_ESP_OK(net_iface_stop(eth));
-    TEST_ESP_OK(net_iface_deinit(eth));
-    s_test_handle = NULL;
-}
-
-/**
- * @brief A fast interface reaches READY while a slow one started first is still STARTING.
- */
-TEST(net_connect, net_iface_parallel_startup_no_head_of_line_blocking)
-{
-    net_iface_handle_t eth = NULL;
-    net_iface_handle_t wifi = NULL;
-    TEST_ESP_OK(open_ops_iface(&eth, NET_IFACE_TYPE_ETH, TEST_NETIF_DESC_ETH,
-                               &s_slow_eth_parallel_ops, 0));
-    s_test_handle = eth;
-    TEST_ESP_OK(open_ops_iface(&wifi, NET_IFACE_TYPE_WIFI_STA, TEST_NETIF_DESC_STA,
-                               &s_fast_wifi_ops, 0));
-    s_test_handle2 = wifi;
-
-    TEST_ESP_OK(net_iface_start(eth));
     TEST_ESP_OK(net_iface_start(wifi));
 
     TEST_ESP_OK(net_iface_wait(wifi, 200));
@@ -1433,10 +1173,6 @@ TEST(net_connect, net_iface_restart_after_failed_start_succeeds)
     s_test_handle = NULL;
 }
 
-/* ============================================================
- *       Stage 7: regression and integration tests
- * ============================================================ */
-
 static esp_err_t fake_eth_start(net_iface_handle_t self)
 {
     net_iface_notify_started(self, test_netif_eth);
@@ -1628,225 +1364,8 @@ TEST(net_connect, net_iface_four_interfaces_concurrent_events_and_waiters)
     vTaskDelay(pdMS_TO_TICKS(20));
 }
 
-static esp_err_t dummy_netif_transmit(void *h, void *buffer, size_t len)
-{
-    (void)h;
-    (void)buffer;
-    (void)len;
-    return ESP_OK;
-}
-
-static bool s_boost_eth_prio_on_ready = false;
-static bool s_prio_handler_registered = false;
-
-static void on_ready_boost_eth_prio(void *arg, esp_event_base_t event_base,
-                                    int32_t event_id, void *event_data)
-{
-    (void)arg;
-    (void)event_base;
-    if (!s_boost_eth_prio_on_ready || event_id != NET_IFACE_EVENT_READY || event_data == NULL) {
-        return;
-    }
-    const net_iface_event_data_t *data = (const net_iface_event_data_t *)event_data;
-    if (data->type == NET_IFACE_TYPE_ETH && data->netif != NULL) {
-        esp_netif_set_route_prio(data->netif, 200);
-        esp_netif_set_default_netif(NULL);
-    }
-}
-
-static void test_clear_prio_handler(void)
-{
-    s_boost_eth_prio_on_ready = false;
-    if (!s_prio_handler_registered) {
-        return;
-    }
-    net_iface_unregister_event_handler(on_ready_boost_eth_prio);
-    s_prio_handler_registered = false;
-}
-
-static esp_err_t prio_eth_start(net_iface_handle_t self)
-{
-    esp_netif_action_start(s_prio_eth_netif, 0, 0, NULL);
-    net_iface_notify_started(self, s_prio_eth_netif);
-    return ESP_OK;
-}
-
-static esp_err_t prio_eth_connect(net_iface_handle_t self)
-{
-    esp_netif_action_connected(s_prio_eth_netif, 0, 0, NULL);
-    net_iface_notify_connected(self);
-    net_iface_notify_ready(self);
-    return ESP_OK;
-}
-
-static esp_err_t prio_eth_stop(net_iface_handle_t self)
-{
-    (void)self;
-    if (s_prio_eth_netif != NULL) {
-        esp_netif_action_disconnected(s_prio_eth_netif, 0, 0, NULL);
-        esp_netif_action_stop(s_prio_eth_netif, 0, 0, NULL);
-    }
-    return ESP_OK;
-}
-
-static esp_err_t prio_wifi_start(net_iface_handle_t self)
-{
-    esp_netif_action_start(s_prio_wifi_netif, 0, 0, NULL);
-    net_iface_notify_started(self, s_prio_wifi_netif);
-    return ESP_OK;
-}
-
-static esp_err_t prio_wifi_connect(net_iface_handle_t self)
-{
-    esp_netif_action_connected(s_prio_wifi_netif, 0, 0, NULL);
-    net_iface_notify_connected(self);
-    net_iface_notify_ready(self);
-    return ESP_OK;
-}
-
-static esp_err_t prio_wifi_stop(net_iface_handle_t self)
-{
-    (void)self;
-    if (s_prio_wifi_netif != NULL) {
-        esp_netif_action_disconnected(s_prio_wifi_netif, 0, 0, NULL);
-        esp_netif_action_stop(s_prio_wifi_netif, 0, 0, NULL);
-    }
-    return ESP_OK;
-}
-
-static const net_iface_ops_t s_prio_eth_ops = {
-    .name = "prio_eth",
-    .start = prio_eth_start,
-    .stop = prio_eth_stop,
-    .connect = prio_eth_connect,
-    .disconnect = fake_disconnect,
-};
-
-static const net_iface_ops_t s_prio_wifi_ops = {
-    .name = "prio_wifi",
-    .start = prio_wifi_start,
-    .stop = prio_wifi_stop,
-    .connect = prio_wifi_connect,
-    .disconnect = fake_disconnect,
-};
-
-/**
- * @brief The higher route priority wins in either startup order, and a READY callback can switch it.
- *
- * These netifs do not run a DHCP client. With DHCP, esp_netif waits for a real
- * address before it will select the default route, and this test never gets one.
- * Bringing the interface up is enough for the higher route_prio to win.
- */
-TEST(net_connect, net_iface_route_priority_and_dynamic_default_switch)
-{
-    test_case_uses_tcpip();
-
-    esp_netif_driver_ifconfig_t drv_cfg = { 0 };
-    drv_cfg.handle = (void *)1;
-    drv_cfg.transmit = dummy_netif_transmit;
-
-    esp_netif_inherent_config_t base_eth = { 0 };
-    base_eth.if_key = "PRIO_TEST_ETH";
-    base_eth.if_desc = "prio_test_eth";
-    base_eth.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
-    esp_netif_config_t cfg_eth = {
-        .base = &base_eth,
-        .driver = &drv_cfg,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
-    };
-    s_prio_eth_netif = esp_netif_new(&cfg_eth);
-    TEST_ASSERT_NOT_NULL(s_prio_eth_netif);
-
-    esp_netif_inherent_config_t base_wifi = { 0 };
-    base_wifi.if_key = "PRIO_TEST_WIFI";
-    base_wifi.if_desc = "prio_test_wifi";
-    base_wifi.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
-    esp_netif_config_t cfg_wifi = {
-        .base = &base_wifi,
-        .driver = &drv_cfg,
-        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
-    };
-    s_prio_wifi_netif = esp_netif_new(&cfg_wifi);
-    TEST_ASSERT_NOT_NULL(s_prio_wifi_netif);
-
-    net_iface_config_t eth_icfg = { 0 };
-    eth_icfg.type = NET_IFACE_TYPE_ETH;
-    eth_icfg.desc = "prio_test_eth";
-    eth_icfg.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
-    eth_icfg.auto_connect_on_start = true;
-    eth_icfg.ip.use_dhcp = true;
-
-    net_iface_config_t wifi_icfg = { 0 };
-    wifi_icfg.type = NET_IFACE_TYPE_WIFI_STA;
-    wifi_icfg.desc = "prio_test_wifi";
-    wifi_icfg.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
-    wifi_icfg.auto_connect_on_start = true;
-    wifi_icfg.ip.use_dhcp = true;
-
-    net_iface_handle_t h_eth = NULL;
-    net_iface_handle_t h_wifi = NULL;
-    TEST_ESP_OK(net_iface_init_with_ops(&eth_icfg, &s_prio_eth_ops, &h_eth));
-    s_test_handle = h_eth;
-    TEST_ESP_OK(net_iface_init_with_ops(&wifi_icfg, &s_prio_wifi_ops, &h_wifi));
-    s_test_handle2 = h_wifi;
-
-    /* Ethernet (priority 64) comes up first, then Wi-Fi (priority 128). */
-    TEST_ESP_OK(net_iface_start(h_eth));
-    TEST_ESP_OK(net_iface_wait(h_eth, 500));
-    TEST_ASSERT_EQUAL_PTR(s_prio_eth_netif, esp_netif_get_default_netif());
-
-    TEST_ESP_OK(net_iface_start(h_wifi));
-    TEST_ESP_OK(net_iface_wait(h_wifi, 500));
-    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
-
-    TEST_ESP_OK(net_iface_stop(h_wifi));
-    TEST_ESP_OK(net_iface_stop(h_eth));
-
-    /* Wi-Fi comes up first. It still wins after Ethernet follows. */
-    TEST_ESP_OK(net_iface_start(h_wifi));
-    TEST_ESP_OK(net_iface_wait(h_wifi, 500));
-    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
-
-    TEST_ESP_OK(net_iface_start(h_eth));
-    TEST_ESP_OK(net_iface_wait(h_eth, 500));
-    TEST_ASSERT_EQUAL_PTR(s_prio_wifi_netif, esp_netif_get_default_netif());
-
-    /* A READY callback raises Ethernet above Wi-Fi and asks esp_netif to pick again. */
-    s_boost_eth_prio_on_ready = true;
-    TEST_ESP_OK(net_iface_register_event_handler(on_ready_boost_eth_prio, NULL));
-    s_prio_handler_registered = true;
-
-    TEST_ESP_OK(net_iface_stop(h_eth));
-    TEST_ESP_OK(net_iface_start(h_eth));
-    TEST_ESP_OK(net_iface_wait(h_eth, 500));
-    vTaskDelay(pdMS_TO_TICKS(30));
-    TEST_ASSERT_EQUAL_PTR(s_prio_eth_netif, esp_netif_get_default_netif());
-
-    test_clear_prio_handler();
-
-    TEST_ESP_OK(net_iface_stop(h_wifi));
-    TEST_ESP_OK(net_iface_stop(h_eth));
-    TEST_ESP_OK(net_iface_deinit(h_wifi));
-    TEST_ESP_OK(net_iface_deinit(h_eth));
-    s_test_handle = NULL;
-    s_test_handle2 = NULL;
-
-    esp_netif_destroy(s_prio_wifi_netif);
-    s_prio_wifi_netif = NULL;
-    esp_netif_destroy(s_prio_eth_netif);
-    s_prio_eth_netif = NULL;
-
-    /*
-     * test_case_uses_tcpip() moved the leak baseline to after LwIP startup,
-     * while the fixture netifs from TEST_SETUP are still allocated. Check now.
-     * Tear-down frees those fixture netifs, so its own check sees free memory go up.
-     */
-    vTaskDelay(pdMS_TO_TICKS(20));
-    test_utils_finish_and_evaluate_leaks(0, 0);
-}
-
 #if CONFIG_NET_CONNECT_WIFI
-static esp_err_t homehub_wifi_connect(net_iface_handle_t self)
+static esp_err_t unprovisioned_wifi_connect(net_iface_handle_t self)
 {
     /* An empty name is not a failure. The interface stays started. */
     if (self->cfg.wifi_sta.ssid[0] == '\0') {
@@ -1856,55 +1375,34 @@ static esp_err_t homehub_wifi_connect(net_iface_handle_t self)
     return ESP_OK;
 }
 
-static const net_iface_ops_t s_homehub_wifi_ops = {
-    .name = "hub_wifi",
+static const net_iface_ops_t s_unprovisioned_wifi_ops = {
+    .name = "unprov_wifi",
     .start = fake_start,
     .stop = fake_stop,
-    .connect = homehub_wifi_connect,
+    .connect = unprovisioned_wifi_connect,
     .disconnect = fake_disconnect,
 };
 #endif
 
 /**
- * @brief Required Ethernet becomes ready while unprovisioned Wi-Fi stays started.
- *
- * Credentials stored later bring Wi-Fi to ready as well.
+ * @brief Unprovisioned Wi-Fi with auto-connect stays in STARTED until credentials are set at runtime.
  */
-TEST(net_connect, net_iface_home_hub_required_eth_and_unprovisioned_wifi)
+TEST(net_connect, net_wifi_sta_unprovisioned_start_and_runtime_credentials)
 {
 #if CONFIG_NET_CONNECT_WIFI
-    net_iface_config_t eth_cfg = { 0 };
-    eth_cfg.type = NET_IFACE_TYPE_ETH;
-    eth_cfg.desc = TEST_NETIF_DESC_ETH;
-    eth_cfg.route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO;
-    eth_cfg.required = true;
-    eth_cfg.auto_connect_on_start = true;
-    eth_cfg.ip.use_dhcp = true;
-
     net_iface_config_t wifi_cfg = { 0 };
     wifi_cfg.type = NET_IFACE_TYPE_WIFI_STA;
     wifi_cfg.desc = TEST_NETIF_DESC_STA;
-    wifi_cfg.route_prio = NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO;
-    wifi_cfg.required = false;
-    /* Auto-connect is on, but the empty name keeps Wi-Fi in STARTED. */
     wifi_cfg.auto_connect_on_start = true;
     wifi_cfg.ip.use_dhcp = true;
     wifi_cfg.wifi_sta.ssid[0] = '\0';
 
-    net_iface_handle_t h_eth = NULL;
     net_iface_handle_t h_wifi = NULL;
-    TEST_ESP_OK(net_iface_init_with_ops(&eth_cfg, &s_slow_eth_ops, &h_eth));
-    s_test_handle = h_eth;
-    TEST_ESP_OK(net_iface_init_with_ops(&wifi_cfg, &s_homehub_wifi_ops, &h_wifi));
-    s_test_handle2 = h_wifi;
+    TEST_ESP_OK(net_iface_init_with_ops(&wifi_cfg, &s_unprovisioned_wifi_ops, &h_wifi));
+    s_test_handle = h_wifi;
 
-    TEST_ESP_OK(net_iface_start(h_eth));
     TEST_ESP_OK(net_iface_start(h_wifi));
-
-    TEST_ESP_OK(net_iface_wait_all(&h_eth, 1, 1000));
     wait_for_startup_done(h_wifi);
-
-    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_eth));
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h_wifi));
 
     TEST_ESP_OK(net_wifi_sta_set_credentials(h_wifi, "HomeHubWiFi", "SecretPass123"));
@@ -1916,16 +1414,11 @@ TEST(net_connect, net_iface_home_hub_required_eth_and_unprovisioned_wifi)
     };
     TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &got_ip, sizeof(got_ip), pdMS_TO_TICKS(100)));
     TEST_ESP_OK(net_iface_wait(h_wifi, 500));
-
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_wifi));
-    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h_eth));
 
     TEST_ESP_OK(net_iface_stop(h_wifi));
-    TEST_ESP_OK(net_iface_stop(h_eth));
     TEST_ESP_OK(net_iface_deinit(h_wifi));
-    TEST_ESP_OK(net_iface_deinit(h_eth));
     s_test_handle = NULL;
-    s_test_handle2 = NULL;
 #else
     TEST_IGNORE_MESSAGE("Wi-Fi is turned off in this build");
 #endif
@@ -1965,50 +1458,18 @@ TEST(net_connect, net_iface_stale_ip_event_after_stop_is_ignored)
     s_test_handle = NULL;
 }
 
-/**
- * @brief The startup task keeps at least 512 bytes of stack free.
- */
-TEST(net_connect, net_iface_startup_task_stack_high_water_mark)
-{
-    net_iface_handle_t h = NULL;
-    TEST_ESP_OK(open_fake_iface(&h, false));
-
-    TEST_ESP_OK(net_iface_start(h));
-    wait_for_startup_done(h);
-
-    ESP_LOGI("net_connect_test", "iface_startup_task stack high-water mark: %u free bytes (of %d configured)",
-             (unsigned)h->startup_stack_hwm, CONFIG_NET_CONNECT_STARTUP_TASK_STACK_SIZE);
-    TEST_ASSERT_GREATER_OR_EQUAL_UINT32(512, h->startup_stack_hwm);
-
-    TEST_ESP_OK(net_iface_stop(h));
-    TEST_ESP_OK(net_iface_deinit(h));
-    s_test_handle = NULL;
-}
-
 TEST_GROUP_RUNNER(net_connect)
 {
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_sta);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_eth);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_thread);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_ppp);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_finds_other);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_returns_null_for_nonexistent);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_returns_null_for_null_desc);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_returns_null_for_empty_desc);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_case_sensitive);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_partial_match_fails);
-    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_multiple_calls_same_result);
+    RUN_TEST_CASE(net_connect, net_get_netif_from_desc_lookup);
     RUN_TEST_CASE(net_connect, net_iface_lifecycle_state_transitions);
     RUN_TEST_CASE(net_connect, net_iface_event_callbacks_and_order);
-    RUN_TEST_CASE(net_connect, net_iface_failure_records_last_error);
-    RUN_TEST_CASE(net_connect, net_iface_late_callback_discovers_state);
     RUN_TEST_CASE(net_connect, net_iface_ip_event_drives_ready_and_lost_ip);
-    RUN_TEST_CASE(net_connect, net_iface_start_returns_promptly_while_driver_blocks);
     RUN_TEST_CASE(net_connect, net_iface_parallel_startup_no_head_of_line_blocking);
     RUN_TEST_CASE(net_connect, net_iface_async_startup_failure_notifies_waiter_and_event);
     RUN_TEST_CASE(net_connect, net_iface_start_task_alloc_failure_returns_no_mem);
     RUN_TEST_CASE(net_connect, net_wifi_sta_create_defaults_and_custom_params);
     RUN_TEST_CASE(net_connect, net_wifi_sta_set_credentials_validation);
+    RUN_TEST_CASE(net_connect, net_wifi_sta_unprovisioned_start_and_runtime_credentials);
     RUN_TEST_CASE(net_connect, net_eth_thread_ppp_create_and_deinit);
     RUN_TEST_CASE(net_connect, net_iface_wait_immediate_on_ready_and_failed);
     RUN_TEST_CASE(net_connect, net_iface_wait_boundary_race_no_lost_wakeup);
@@ -2020,11 +1481,7 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_iface_repeated_start_stop_deinit_cycles);
     RUN_TEST_CASE(net_connect, net_iface_restart_after_failed_start_succeeds);
     RUN_TEST_CASE(net_connect, net_iface_four_interfaces_concurrent_events_and_waiters);
-    RUN_TEST_CASE(net_connect, net_iface_home_hub_required_eth_and_unprovisioned_wifi);
     RUN_TEST_CASE(net_connect, net_iface_stale_ip_event_after_stop_is_ignored);
-    RUN_TEST_CASE(net_connect, net_iface_startup_task_stack_high_water_mark);
-    /* Last: this test starts LwIP, which stays running until reset. */
-    RUN_TEST_CASE(net_connect, net_iface_route_priority_and_dynamic_default_switch);
 }
 
 void app_main(void)

@@ -31,37 +31,40 @@ sequenceDiagram
     participant Task as Startup Task
     participant Worker as UART Task (ppp_task)
     participant IDF as ESP-IDF PPP netif / Transport
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Create handle (UNINIT -> INIT)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Create handle (UNINIT -> INIT)
     App->>PPP: net_ppp_create()
     PPP->>PPP: Fill defaults (route_prio = 32, max_retry, auto_connect_on_start = true), apply params
     PPP->>Core: net_iface_init_with_ops(g_net_iface_ppp_ops)
     Core->>Core: Allocate handle, state = INIT (ops->init is NULL)
     opt Event loop exists and global handlers not registered yet
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core-->>PPP: Return handle
     PPP-->>App: Return handle (ESP_OK)
     end
 
-    rect 2. Start interface (INIT -> STARTING)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Start interface (INIT -> STARTING)
     App->>Core: net_iface_start()
     opt Global handlers not registered in step 1 (event loop created after handle)
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core->>Core: Clear liveness and STARTUP_DONE bits, state = STARTING
     Core->>Task: xTaskCreate(iface_startup_task)
     Core-->>App: Return ESP_OK immediately
     end
 
-    rect 3. Driver start (STARTING -> STARTED)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Driver start (STARTING -> STARTED)
     Task->>PPP: ops->start() (ppp_ops_start)
     opt CONFIG_NET_CONNECT_PPP_DEVICE_USB
         PPP->>IDF: ppp_usb_install() -> tinyusb_driver_install(), tinyusb_cdcacm_init(cdc_rx_callback)
@@ -71,17 +74,18 @@ sequenceDiagram
     end
     PPP->>IDF: esp_netif_new() with ESP_NETIF_DEFAULT_PPP and s_ppp_driver_cfg (.transmit = transmit)
     IDF-->>PPP: Return s_netif
-    PPP->>Loop: Register (IP_EVENT, IP_EVENT_PPP_LOST_IP) -> on_ppp_lost_ip
-    Loop-->>PPP: Return ESP_OK
+    PPP->>EventLoop: Register (IP_EVENT, IP_EVENT_PPP_LOST_IP) -> on_ppp_lost_ip
+    EventLoop-->>PPP: Return ESP_OK
     PPP->>Core: net_iface_notify_started(s_netif)
     Core->>Core: Save netif, state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_STARTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STARTED
+    EventLoop-->>Core: Queued
     Core-->>PPP: Return from net_iface_notify_started()
     PPP-->>Task: Return ESP_OK from ppp_ops_start()
     end
 
-    rect 4. Auto-connect and start PPP negotiation (STARTED -> CONNECTING -> CONNECTED)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: 4. Auto-connect and start PPP negotiation (STARTED -> CONNECTING -> CONNECTED)
     Note over Task,Core: auto_connect_on_start is true and stop was not requested
     Task->>Core: net_iface_connect()
     Core->>Core: Clear READY/FAILED bits, state = CONNECTING
@@ -95,8 +99,8 @@ sequenceDiagram
         PPP->>Worker: xTaskCreate(ppp_task, "ppp connect")
         Worker->>IDF: uart_driver_install(UART_NUM_1), uart_param_config(), uart_set_pin(), uart_set_rx_timeout()
         IDF-->>Worker: Return ESP_OK
-        Worker->>Loop: Register (IP_EVENT, IP_EVENT_PPP_GOT_IP) -> esp_netif_action_connected
-        Loop-->>Worker: Return ESP_OK
+        Worker->>EventLoop: Register (IP_EVENT, IP_EVENT_PPP_GOT_IP) -> esp_netif_action_connected
+        EventLoop-->>Worker: Return ESP_OK
         Worker->>IDF: esp_netif_action_start(s_netif) and esp_netif_action_connected(s_netif)
         IDF-->>Worker: Return
         Note over Worker,IDF: Worker loops on event_queue -> uart_read_bytes() -> esp_netif_receive(s_netif)
@@ -107,8 +111,8 @@ sequenceDiagram
         Core->>IDF: esp_netif_create_ip6_linklocal()
         IDF-->>Core: Return
     end
-    Core->>Loop: Post NET_IFACE_EVENT_CONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_CONNECTED
+    EventLoop-->>Core: Queued
     Core-->>PPP: Return from net_iface_notify_connected()
     PPP-->>Core: Return ESP_OK from ppp_ops_connect()
     Core-->>Task: Return ESP_OK from net_iface_connect()
@@ -117,17 +121,19 @@ sequenceDiagram
     Task->>Task: vTaskDelete(NULL)
     end
 
-    rect 5. IPCP address acquired (CONNECTED -> READY)
-    IDF->>Loop: Post IP_EVENT_PPP_GOT_IP (and IP_EVENT_GOT_IP6 if required)
-    Loop->>Core: on_global_ip_event()
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 5. IPCP address acquired (CONNECTED -> READY)
+    IDF->>EventLoop: Post IP_EVENT_PPP_GOT_IP (and IP_EVENT_GOT_IP6 if required)
+    EventLoop->>Core: on_global_ip_event()
     Core->>Core: Set IPV4 / IPV6 bit, check is_ready_satisfied_locked()
     Core->>Core: net_iface_notify_ready() -> state = READY, set READY bit, pulse global wait
-    Core->>Loop: Post NET_IFACE_EVENT_READY
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_READY
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
     end
 
-    rect 6. Wait for readiness (READY)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 6. Wait for readiness (READY)
     App->>Core: net_iface_wait(timeout)
     Core-->>App: READY bit is set -> return ESP_OK
     end
@@ -144,15 +150,16 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Worker as UART Task (ppp_task)
     participant IDF as ESP-IDF PPP netif / Transport
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Disconnect (READY/CONNECTED -> STARTED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Disconnect (READY/CONNECTED -> STARTED)
     App->>Core: net_iface_disconnect()
     Core->>PPP: ops->disconnect() (ppp_ops_disconnect)
     opt CONFIG_NET_CONNECT_PPP_DEVICE_UART
         PPP->>PPP: ppp_stop_uart_task() -> s_stop_task = true, wait on s_ppp_exit_sem (up to 1 s)
-        Worker->>Loop: Unregister (IP_EVENT, IP_EVENT_PPP_GOT_IP) -> esp_netif_action_connected
-        Loop-->>Worker: Return ESP_OK
+        Worker->>EventLoop: Unregister (IP_EVENT, IP_EVENT_PPP_GOT_IP) -> esp_netif_action_connected
+        EventLoop-->>Worker: Return ESP_OK
         Worker->>IDF: uart_driver_delete(UART_NUM_1), free(buffer)
         IDF-->>Worker: Return
         Worker->>PPP: xSemaphoreGive(s_ppp_exit_sem) (ppp_signal_task_exited)
@@ -163,19 +170,20 @@ sequenceDiagram
     IDF-->>PPP: Return
     PPP-->>Core: Return ESP_OK from ppp_ops_disconnect()
     Core->>Core: net_iface_notify_disconnected() -> state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_DISCONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_DISCONNECTED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK (s_netif stays allocated)
     end
 
-    rect 2. Stop driver (STARTED -> STOPPING -> INIT)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Stop driver (STARTED -> STOPPING -> INIT)
     App->>Core: net_iface_stop()
     Core->>Core: state = STOPPING (wait for STARTUP_DONE if startup task is running)
     Core->>PPP: ops->disconnect() (ppp_ops_disconnect)
     PPP-->>Core: Return ESP_OK
     Core->>PPP: ops->stop() (ppp_ops_stop)
-    PPP->>Loop: Unregister (IP_EVENT, IP_EVENT_PPP_LOST_IP) -> on_ppp_lost_ip
-    Loop-->>PPP: Return ESP_OK
+    PPP->>EventLoop: Unregister (IP_EVENT, IP_EVENT_PPP_LOST_IP) -> on_ppp_lost_ip
+    EventLoop-->>PPP: Return ESP_OK
     opt CONFIG_NET_CONNECT_PPP_DEVICE_UART
         PPP->>PPP: ppp_stop_uart_task() (if still running)
     end
@@ -187,19 +195,20 @@ sequenceDiagram
     end
     PPP-->>Core: Return ESP_OK from ppp_ops_stop()
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK
     end
 
-    rect 3. Destroy handle (INIT -> UNINIT)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Destroy handle (INIT -> UNINIT)
     App->>Core: net_iface_deinit()
     Core->>Core: Verify state == INIT, unlink from registry
     opt Last interface removed from registry
-        Core->>Loop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return
-        Core->>Loop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return
+        Core->>EventLoop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return
+        Core->>EventLoop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return
     end
     Note over Core,PPP: ops->deinit is NULL for PPP
     Core->>Core: Free event group, mutex, and handle (state = UNINIT)
@@ -218,40 +227,42 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Worker as UART Task (ppp_task)
     participant IDF as ESP-IDF PPP netif / Transport
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect Flow 6a - PPP lost IP, retry or fail (READY/CONNECTED -> CONNECTING or FAILED)
-    IDF->>Loop: 1. Post IP_EVENT_PPP_LOST_IP
-    Loop->>Core: on_global_ip_event(IP_EVENT_PPP_LOST_IP)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: Flow 6a - PPP lost IP, retry or fail (READY/CONNECTED -> CONNECTING or FAILED)
+    IDF->>EventLoop: 1. Post IP_EVENT_PPP_LOST_IP
+    EventLoop->>Core: on_global_ip_event(IP_EVENT_PPP_LOST_IP)
     Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
-    Core->>Loop: Post NET_IFACE_EVENT_LOST_IP
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ip_event()
-    Loop->>PPP: on_ppp_lost_ip(IP_EVENT_PPP_LOST_IP)
+    Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ip_event()
+    EventLoop->>PPP: on_ppp_lost_ip(IP_EVENT_PPP_LOST_IP)
     PPP->>PPP: Increment retry_num under self->lock
     alt retry_num <= max_retry
         PPP->>IDF: esp_netif_action_start(s_netif) and esp_netif_action_connected(s_netif)
         IDF-->>PPP: Return
-        PPP-->>Loop: Return from on_ppp_lost_ip()
+        PPP-->>EventLoop: Return from on_ppp_lost_ip()
     else retry_num > max_retry
         PPP->>Core: net_iface_notify_failed(self, ESP_FAIL)
         Core->>Core: state = FAILED, set FAILED bit, wake waiters
-        Core->>Loop: Post NET_IFACE_EVENT_FAILED
-        Loop-->>Core: Queued
+        Core->>EventLoop: Post NET_IFACE_EVENT_FAILED
+        EventLoop-->>Core: Queued
         Core-->>PPP: Return from net_iface_notify_failed()
-        PPP-->>Loop: Return from on_ppp_lost_ip()
+        PPP-->>EventLoop: Return from on_ppp_lost_ip()
     end
     end
 
-    rect Flow 6b - UART setup failure inside ppp_task (CONNECTED -> FAILED)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: Flow 6b - UART setup failure inside ppp_task (CONNECTED -> FAILED)
     Worker->>IDF: 2. uart_driver_install(), uart_param_config(), uart_set_pin(), or malloc() fails
     IDF-->>Worker: Return error
     Worker->>IDF: uart_driver_delete(UART_NUM_1) if installed
     IDF-->>Worker: Return
     Worker->>Core: net_iface_notify_failed(self, err)
     Core->>Core: state = FAILED, set FAILED bit, wake waiters
-    Core->>Loop: Post NET_IFACE_EVENT_FAILED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_FAILED
+    EventLoop-->>Core: Queued
     Core-->>Worker: Return from net_iface_notify_failed()
     Worker->>PPP: ppp_signal_task_exited() (give s_ppp_exit_sem)
     Worker->>Worker: vTaskDelete(NULL)

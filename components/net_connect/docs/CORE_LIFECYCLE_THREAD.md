@@ -31,47 +31,50 @@ sequenceDiagram
     participant Task as Startup Task
     participant Worker as OT Worker (ot_task_worker)
     participant IDF as ESP-IDF OpenThread / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Create handle (UNINIT -> INIT)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Create handle (UNINIT -> INIT)
     App->>Thread: net_thread_create()
     Thread->>Thread: Fill defaults (route_prio = 16, auto_connect_on_start = true), apply params
     Thread->>Core: net_iface_init_with_ops(g_net_iface_thread_ops)
     Core->>Core: Allocate handle, state = INIT (ops->init is NULL)
     opt Event loop exists and global handlers not registered yet
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core-->>Thread: Return handle
     Thread-->>App: Return handle (ESP_OK)
     end
 
-    rect 2. Start interface (INIT -> STARTING)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Start interface (INIT -> STARTING)
     App->>Core: net_iface_start()
     opt Global handlers not registered in step 1 (event loop created after handle)
-        Core->>Loop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return ESP_OK
-        Core->>Loop: Register (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
-        Loop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return ESP_OK
+        Core->>EventLoop: Register (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
+        EventLoop-->>Core: Return ESP_OK
     end
     Core->>Core: Clear liveness and STARTUP_DONE bits, state = STARTING
     Core->>Task: xTaskCreate(iface_startup_task)
     Core-->>App: Return ESP_OK immediately
     end
 
-    rect 3. Driver start (STARTING -> spawns ot_task_worker)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Driver start (STARTING -> spawns ot_task_worker)
     Task->>Thread: ops->start() (thread_ops_start)
     Thread->>Thread: Create/clear s_ot_stop_sem, s_ot_stop_requested = false
     Thread->>IDF: esp_vfs_eventfd_register()
     IDF-->>Thread: Return ESP_OK
-    Thread->>Loop: Register (OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER) -> on_thread_dns_server
-    Loop-->>Thread: Return ESP_OK
+    Thread->>EventLoop: Register (OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER) -> on_thread_dns_server
+    EventLoop-->>Thread: Return ESP_OK
     Thread->>Worker: xTaskCreate(ot_task_worker, "ot_br_main")
     Thread-->>Task: Return ESP_OK from thread_ops_start()
     Task->>Core: Save stack HWM, set STARTUP_DONE
@@ -79,7 +82,8 @@ sequenceDiagram
     Task->>Task: vTaskDelete(NULL)
     end
 
-    rect 4. OT worker initializes stack and auto-connects (STARTING -> STARTED -> CONNECTING)
+    rect rgba(137,87,229,0.20)
+    Note over App,EventLoop: 4. OT worker initializes stack and auto-connects (STARTING -> STARTED -> CONNECTING)
     Worker->>IDF: esp_netif_new() and esp_openthread_init(&config)
     IDF-->>Worker: Return ESP_OK
     Worker->>IDF: esp_openthread_netif_glue_init(&config) and esp_netif_attach()
@@ -88,8 +92,8 @@ sequenceDiagram
     IDF-->>Worker: Return
     Worker->>Core: net_iface_notify_started(s_openthread_netif)
     Core->>Core: Save netif, state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_STARTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STARTED
+    EventLoop-->>Core: Queued
     Core-->>Worker: Return from net_iface_notify_started()
     opt auto_connect_on_start is true and state == STARTED
         Worker->>Core: net_iface_connect()
@@ -103,18 +107,20 @@ sequenceDiagram
     Worker->>IDF: esp_openthread_launch_mainloop() (blocks while Thread runs)
     end
 
-    rect 5. Mesh attached (CONNECTING -> READY)
-    IDF->>Loop: Post OPENTHREAD_EVENT_ATTACHED
-    Loop->>Core: on_global_ot_event(OPENTHREAD_EVENT_ATTACHED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 5. Mesh attached (CONNECTING -> READY)
+    IDF->>EventLoop: Post OPENTHREAD_EVENT_ATTACHED
+    EventLoop->>Core: on_global_ot_event(OPENTHREAD_EVENT_ATTACHED)
     Core->>Core: net_iface_get_by_type(NET_IFACE_TYPE_THREAD) -> set OT_ATTACHED bit
     Core->>Core: is_ready_satisfied_locked() is true -> net_iface_notify_ready()
     Core->>Core: state = READY, set READY bit, pulse global wait
-    Core->>Loop: Post NET_IFACE_EVENT_READY
-    Loop-->>Core: Queued
-    Core-->>Loop: Return from on_global_ot_event()
+    Core->>EventLoop: Post NET_IFACE_EVENT_READY
+    EventLoop-->>Core: Queued
+    Core-->>EventLoop: Return from on_global_ot_event()
     end
 
-    rect 6. Wait for readiness (READY)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 6. Wait for readiness (READY)
     App->>Core: net_iface_wait(timeout)
     Core-->>App: READY bit is set -> return ESP_OK
     end
@@ -131,21 +137,23 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Worker as OT Worker (ot_task_worker)
     participant IDF as ESP-IDF OpenThread / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect 1. Disconnect (READY/CONNECTING -> STARTED)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: 1. Disconnect (READY/CONNECTING -> STARTED)
     App->>Core: net_iface_disconnect()
     Core->>Thread: ops->disconnect() (thread_ops_disconnect)
     Thread->>IDF: Acquire OT lock, otThreadSetEnabled(instance, false), release OT lock
     IDF-->>Thread: Return OT_ERROR_NONE
     Thread-->>Core: Return ESP_OK from thread_ops_disconnect()
     Core->>Core: net_iface_notify_disconnected() -> state = STARTED
-    Core->>Loop: Post NET_IFACE_EVENT_DISCONNECTED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_DISCONNECTED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK (ot_task_worker keeps running)
     end
 
-    rect 2. Stop driver and cooperative mainloop exit (STARTED -> STOPPING -> INIT)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: 2. Stop driver and cooperative mainloop exit (STARTED -> STOPPING -> INIT)
     App->>Core: net_iface_stop()
     Core->>Core: state = STOPPING (wait for STARTUP_DONE if startup task is running)
     Core->>Thread: ops->disconnect() (thread_ops_disconnect)
@@ -153,8 +161,8 @@ sequenceDiagram
     IDF-->>Thread: Return
     Thread-->>Core: Return ESP_OK
     Core->>Thread: ops->stop() (thread_ops_stop)
-    Thread->>Loop: Unregister (OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER) -> on_thread_dns_server
-    Loop-->>Thread: Return ESP_OK
+    Thread->>EventLoop: Unregister (OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER) -> on_thread_dns_server
+    EventLoop-->>Thread: Return ESP_OK
     Thread->>Thread: s_ot_stop_requested = true
     Thread->>IDF: Acquire OT lock, otThreadSetEnabled(false), otIp6SetEnabled(false), release OT lock
     IDF-->>Thread: Return
@@ -170,21 +178,22 @@ sequenceDiagram
     Thread->>Thread: vSemaphoreDelete(s_ot_stop_sem)
     Thread-->>Core: Return ESP_OK from thread_ops_stop()
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK
     end
 
-    rect 3. Destroy handle (INIT -> UNINIT)
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: 3. Destroy handle (INIT -> UNINIT)
     App->>Core: net_iface_deinit()
     Core->>Core: Verify state == INIT, unlink from registry
     opt Last interface removed from registry
-        Core->>Loop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
-        Loop-->>Core: Return
-        Core->>Loop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
-        Loop-->>Core: Return
-        Core->>Loop: Unregister (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
-        Loop-->>Core: Return
+        Core->>EventLoop: Unregister (NET_IFACE_EVENT, ESP_EVENT_ANY_ID) -> on_global_iface_event
+        EventLoop-->>Core: Return
+        Core->>EventLoop: Unregister (IP_EVENT, ESP_EVENT_ANY_ID) -> on_global_ip_event
+        EventLoop-->>Core: Return
+        Core->>EventLoop: Unregister (OPENTHREAD_EVENT, ESP_EVENT_ANY_ID) -> on_global_ot_event
+        EventLoop-->>Core: Return
     end
     Note over Core,Thread: ops->deinit is NULL for OpenThread
     Core->>Core: Free event group, mutex, and handle (state = UNINIT)
@@ -203,9 +212,10 @@ sequenceDiagram
     participant Core as net_iface Core
     participant Worker as OT Worker (ot_task_worker)
     participant IDF as ESP-IDF OpenThread / netif
-    participant Loop as Default Event Loop
+    participant EventLoop as Default Event Loop
 
-    rect Flow 5 - Start without auto-connect, connect later (INIT -> STARTED -> CONNECTING)
+    rect rgba(56,139,253,0.22)
+    Note over App,EventLoop: Flow 5 - Start without auto-connect, connect later (INIT -> STARTED -> CONNECTING)
     App->>Thread: 1. net_thread_create() with auto_connect_on_start = false
     Thread->>Core: net_iface_init_with_ops(g_net_iface_thread_ops)
     Core-->>Thread: Return handle
@@ -224,21 +234,23 @@ sequenceDiagram
     Core-->>App: Return ESP_OK from net_iface_connect()
     end
 
-    rect Flow 6 - Initialization failure inside ot_task_worker (STARTING -> FAILED)
+    rect rgba(46,160,67,0.20)
+    Note over App,EventLoop: Flow 6 - Initialization failure inside ot_task_worker (STARTING -> FAILED)
     Worker->>IDF: 4. esp_netif_new(), esp_openthread_init(), or esp_openthread_netif_glue_init() fails
     IDF-->>Worker: Return error
     Worker->>IDF: Clean up partial resources (netif, OT stack, eventfd)
     IDF-->>Worker: Return
     Worker->>Core: net_iface_notify_failed(self, err)
     Core->>Core: state = FAILED, set FAILED bit, wake waiters
-    Core->>Loop: Post NET_IFACE_EVENT_FAILED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_FAILED
+    EventLoop-->>Core: Queued
     Core-->>Worker: Return from net_iface_notify_failed()
     Worker->>Thread: ot_signal_task_exited() (give s_ot_stop_sem)
     Worker->>Worker: vTaskDelete(NULL)
     end
 
-    rect Flow 7 - Stop before ot_task_worker enters esp_openthread_launch_mainloop()
+    rect rgba(187,128,9,0.22)
+    Note over App,EventLoop: Flow 7 - Stop before ot_task_worker enters esp_openthread_launch_mainloop()
     Note over App,Worker: 5a. App calls net_iface_stop() before Worker reaches launch_mainloop()
     App->>Core: net_iface_stop()
     Core->>Thread: ops->stop() (thread_ops_stop)
@@ -252,12 +264,12 @@ sequenceDiagram
     Worker->>Thread: ot_signal_task_exited() (wakes App task on s_ot_stop_sem)
     Worker->>Worker: vTaskDelete(NULL)
 
-    Note over App,Loop: 5c. App task wakes up, deletes s_ot_stop_sem, and finishes stop()
+    Note over App,EventLoop: 5c. App task wakes up, deletes s_ot_stop_sem, and finishes stop()
     Thread->>Thread: vSemaphoreDelete(s_ot_stop_sem)
     Thread-->>Core: Return ESP_OK from thread_ops_stop()
     Core->>Core: net_iface_notify_stopped() -> state = INIT, set STOPPED bit
-    Core->>Loop: Post NET_IFACE_EVENT_STOPPED
-    Loop-->>Core: Queued
+    Core->>EventLoop: Post NET_IFACE_EVENT_STOPPED
+    EventLoop-->>Core: Queued
     Core-->>App: Return ESP_OK from net_iface_stop()
     end
 ```
