@@ -4,9 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #pragma once
-#undef _POSIX_C_SOURCE    /* Note: mosquitto's config.h bug: defines _POSIX_C_SOURCE=200809L
-                           * - fixed in v2.1.0, but IDF port doesn't support yet (due to json deps)
-                           */
+/* Note: mosquitto's config.h bug: defines _POSIX_C_SOURCE=200809L and _XOPEN_SOURCE=700
+ * - fixed in v2.1.0, but IDF port doesn't support yet (due to json deps)
+ */
+#undef _POSIX_C_SOURCE
+#undef _XOPEN_SOURCE
+
 #include_next "config.h"
 
 /*
