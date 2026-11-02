@@ -78,11 +78,9 @@ bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry,
 
 /**
  * @brief Notify one browse about one visible cache service.
- *
- * @return true if browse is successfully notified, false otherwise
  */
-bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                mdns_browse_t *browse);
+esp_err_t mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                     mdns_browse_t *browse);
 
 /**
  * @brief Notify the affected normal/subtype browse about a PTR goodbye.
@@ -93,9 +91,10 @@ bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry,
  *
  * @note Must be called before the PTR/subtype is removed from the cache to avoid UAF.
  */
-bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
-                                                            const mdns_service_cache_t *service,
-                                                            const char *subtype);
+bool mdns_priv_browse_notify_record_removed_from_service_cache(const mdns_cache_entry_t *entry,
+                                                               const mdns_service_cache_t *service,
+                                                               const mdns_cache_subtype_t *subtype,
+                                                               mdns_cache_record_type_t removed_record);
 #ifdef __cplusplus
 }
 #endif

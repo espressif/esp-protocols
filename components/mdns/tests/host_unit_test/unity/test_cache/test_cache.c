@@ -192,12 +192,14 @@ static bool browse_update_callback(const mdns_cache_entry_t *entry, const mdns_s
 }
 
 static bool browse_goodbye_callback(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                    const char *subtype, int cmock_num_calls)
+                                    const mdns_cache_subtype_t *subtype, mdns_cache_record_type_t removed_record,
+                                    int cmock_num_calls)
 {
+    (void)removed_record;
     (void)cmock_num_calls;
     s_observer.goodbye_calls++;
     capture_cache(entry, service, 0);
-    copy_optional_string(s_observer.goodbye_subtype, sizeof(s_observer.goodbye_subtype), subtype);
+    copy_optional_string(s_observer.goodbye_subtype, sizeof(s_observer.goodbye_subtype), subtype ? subtype->subtype : NULL);
     return s_observer.goodbye_result;
 }
 
@@ -345,7 +347,10 @@ static void assert_observed_complete_service(void)
 static mdns_result_t *project_observed_service(void)
 {
     mdns_result_t *result = NULL;
-    TEST_ASSERT_EQUAL(ESP_OK, mdns_priv_service_cache_to_result(s_observer.entry, s_observer.service_cache, &result));
+    mdns_cache_record_mask_t ptr_record = s_observer.subtype ? MDNS_CACHE_RECORD_SUBTYPE : MDNS_CACHE_RECORD_PTR;
+    mdns_cache_record_mask_t projection_records = ptr_record | MDNS_CACHE_RECORD_SRV | MDNS_CACHE_RECORD_TXT | MDNS_CACHE_RECORD_ADDR;
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_priv_service_cache_to_result(s_observer.entry, s_observer.service_cache, s_observer.subtype,
+                                                                projection_records, MDNS_CACHE_RECORD_INVALID, &result));
     TEST_ASSERT_NOT_NULL(result);
     return result;
 }
@@ -390,9 +395,9 @@ void mdns_test_tear_down(void)
 void setup_cmock(void)
 {
     mdns_priv_browse_update_from_service_cache_Stub(browse_update_callback);
-    mdns_priv_browse_notify_ptr_goodbye_from_service_cache_Stub(browse_goodbye_callback);
+    mdns_priv_browse_notify_record_removed_from_service_cache_Stub(browse_goodbye_callback);
 
-    mdns_priv_browse_notify_from_service_cache_IgnoreAndReturn(true);
+    mdns_priv_browse_notify_from_service_cache_IgnoreAndReturn(ESP_OK);
 }
 
 static void test_cache_ptr_add_repeat_update_remove(void)
