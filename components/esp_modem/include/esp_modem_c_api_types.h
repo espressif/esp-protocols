@@ -192,7 +192,24 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
  * @return ESP_OK on success, ESP_FAIL on failure
  */
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
+
 #endif
+
+/**
+ * @brief Writes raw bytes to the modem's command channel
+ *
+ * Local addition (see VENDORED.md): the C API otherwise carries only
+ * NUL-terminated command strings. A prompt-driven upload such as the payload
+ * after AT+CCHSEND's '>' needs arbitrary bytes. The DCE must be in command
+ * mode (or CMUX manual command mode); the caller sequences the prompt and the
+ * final result through esp_modem_command().
+ *
+ * @param dce Modem DCE handle
+ * @param data Bytes to write
+ * @param len Number of bytes
+ * @return ESP_OK when every byte was accepted by the DTE, ESP_FAIL otherwise
+ */
+esp_err_t esp_modem_write(esp_modem_dce_t *dce, const uint8_t *data, size_t len);
 
 esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context);
 
