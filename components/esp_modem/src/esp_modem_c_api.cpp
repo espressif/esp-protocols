@@ -656,6 +656,15 @@ extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *ap
 }
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+extern "C" esp_err_t esp_modem_set_rx_observer(esp_modem_dce_t *dce_wrap,
+    void (*observer)(const uint8_t *, size_t))
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    dce_wrap->dte->set_rx_observer(observer);
+    return ESP_OK;
+}
 
 extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got_line_fn)(uint8_t *data, size_t len))
 {

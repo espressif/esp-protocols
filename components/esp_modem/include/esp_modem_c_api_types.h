@@ -193,6 +193,13 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
  */
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
 
+/** Observe new command-channel bytes, including replies and URCs, once each.
+ * Local addition: unlike the cumulative legacy callback, fragments are never
+ * replayed. The observer owns partial-line framing and must not block or call
+ * command APIs. It does not consume replies needed by an active command.
+ * Pass NULL to detach; return waits for any in-flight callback. */
+esp_err_t esp_modem_set_rx_observer(esp_modem_dce_t *dce,
+    void (*observer)(const uint8_t *data, size_t len));
 #endif
 
 /**
