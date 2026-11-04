@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.15.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.15.0)
+
+### Features
+
+- support subtype browsing (RFC 6763 Section 7.1) ([19a0c32c](https://github.com/espressif/esp-protocols/commit/19a0c32c))
+- clean up unsubscribed cache records in defined grace time ([951b9d56](https://github.com/espressif/esp-protocols/commit/951b9d56))
+
+### Bug Fixes
+
+- Fix app partition is nearly full warning in CI ([708a6de2](https://github.com/espressif/esp-protocols/commit/708a6de2))
+- Fix console strict discard-qualifiers warning ([2b7db98a](https://github.com/espressif/esp-protocols/commit/2b7db98a))
+- Don't free a queued TX packet when cleaning up its action ([30c8d501](https://github.com/espressif/esp-protocols/commit/30c8d501))
+- avoid stack overflow in SRV and TXT collision checks ([e594544c](https://github.com/espressif/esp-protocols/commit/e594544c))
+- Require console directly under IDF build system v2 ([6aa13b72](https://github.com/espressif/esp-protocols/commit/6aa13b72))
+- Only depend on console when the CLI is enabled ([4e62c23d](https://github.com/espressif/esp-protocols/commit/4e62c23d))
+
+### Updated
+
+- test(mdns): cover subtype cache expiry and browsing ([c17fb015](https://github.com/espressif/esp-protocols/commit/c17fb015))
+
 ## [1.14.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.14.1)
 
 ### Bug Fixes
