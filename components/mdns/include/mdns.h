@@ -136,6 +136,10 @@ typedef struct mdns_result_s {
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
     // PTR extra
     char *subtype;                          /*!< consumer subtype, or NULL for base PTR */
+    // SRV extra
+    uint16_t priority;                      /*!< priority */
+    uint16_t weight;                        /*!< weight */
+    uint32_t srv_ttl;                       /*!< time to live of SRV record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -1465,6 +1469,80 @@ esp_err_t mdns_browse_delete_handler_with_subtype_with_context(const char *servi
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 esp_err_t mdns_browse_record_ptr_delete_handler(const char *service, const char *proto, const char *subtype,
+                                                mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Start a continuous SRV record browse for `instance._service._proto`.
+ *
+ * An SRV record browse will update SRV cache and notify on SRV record changes.
+ *
+ * @param instance          Service instance name. Must not be NULL or empty.
+ * @param service           Service type, e.g. `_http`, `_ftp` etc.
+ * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the record browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `instance`, `service`, `proto`, `handler` and `context` exists.
+ *
+ * @note Registering a different callback or context for the same browse returns the existing handle,
+ *       and triggers another query and cache replay only to the newly registered callback and context.
+ *
+ * @note If matching services already present in the internal mDNS cache,
+ *       the notifier will be called once for each cached service after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_handler_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_srv_new(const char *instance, const char *service, const char *proto,
+                                          mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Stop the continuous SRV record browse for `instance._service._proto`.
+ * @param instance  Service instance name. Must not be NULL or empty.
+ * @param service   Service type of the SRV record browse.
+ * @param proto     Service protocol of the SRV record browse.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_FAIL               invalid names, mDNS is not running, or the SRV record browse is not found.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note This function deletes the matching SRV record browse and all its callbacks.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_srv_delete(const char *instance, const char *service, const char *proto);
+
+/**
+ * @brief Remove one handler-context pair from the matching SRV record browse.
+ *
+ * @param instance  Service instance name. Must not be NULL or empty.
+ * @param service   Service type of the SRV record browse.
+ * @param proto     Service protocol of the SRV record browse.
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the SRV record browse or handler-context pair is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note The browse item will be deleted if no legacy or handler-context pair exist under the browse.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_srv_delete_handler(const char *instance, const char *service, const char *proto,
                                                 mdns_browse_handler_t handler, void *context);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
