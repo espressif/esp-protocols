@@ -84,16 +84,6 @@ add_subdirectory(libwebsockets)
 # esp_config.h redefinition bug.
 target_compile_options(websockets PRIVATE -Wno-unused-variable -Wno-error)
 
-# IDF v6's libc (picolibc) makes errno thread-local. With lws's LWIP_PROVIDE_ERRNO
-# now gated off on v6, lwip's errno.h forwards to the system errno - but lws's
-# hardcoded include list (lib/CMakeLists.txt) puts .../lwip/src/include/lwip on the
-# path, so a bare <errno.h> resolves to lwip's own errno.h (LWIP_ERRNO_STDINCLUDE
-# would re-include itself). Point lwip at <sys/errno.h> instead, which is not
-# shadowed and pulls picolibc's TLS errno + E* macros via esp_libc's #include_next.
-# Otherwise lws objects fail with "errno undeclared" (compile) or "TLS definition
-# ... mismatches non-TLS reference" (link).
-target_compile_definitions(websockets PRIVATE "LWIP_ERRNO_INCLUDE=<sys/errno.h>")
-
 # Supply a UTC timegm() for lws (LWS_HAVE_TIMEGM set above). lws_http_date_parse_unix()
 # calls timegm(); the port source defines it and the shim force-includes a prototype
 # so date.c links against it instead of an implicit (int-returning) declaration.
