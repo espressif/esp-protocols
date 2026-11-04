@@ -33,6 +33,16 @@ menu "Autobahn Testsuite Configuration"
             Example: ws://192.168.1.100:9001
             Only used when WEBSOCKET_URI_FROM_STRING is selected.
 
+    config AUTOBAHN_PERF_MODE
+        bool "Performance mode (Autobahn 9.*)"
+        default n
+        help
+            Use with config/fuzzingserver-perf.json. Echoes each received chunk
+            immediately so multi-MB messages need no buffering, and waits up to
+            1010s per case. Linux builds also use the targets' 4 KB buffer instead
+            of 64 KB. Leave disabled for compliance runs, which reassemble
+            each message before echoing it and wait up to 60s per case.
+
     if CONFIG_IDF_TARGET = "linux"
         config GCOV_ENABLED
             bool "Coverage analyzer"
