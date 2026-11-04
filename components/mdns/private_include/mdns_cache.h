@@ -13,18 +13,19 @@ extern "C" {
 #endif
 
 /**
- * @brief Check if a host has a service by hostname, esp_netif, ip_protocol, service, and proto.
+ * @brief Check if a host cache contains a matching service instance.
  *
  * @param hostname      The hostname to check.
  * @param esp_netif     Pointer to the esp_netif to check.
  * @param ip_protocol   IP protocol to check.
+ * @param instance      Instance name, or NULL/empty to match any instance.
  * @param service       The service name to check.
  * @param proto         The protocol to check.
  *
  * @return true if the host has the service, false otherwise.
  */
 bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
-                                      const char *service, const char *proto);
+                                      const char *instance, const char *service, const char *proto);
 
 /**
  * @brief Find the subtype node in a service cache by subtype name.

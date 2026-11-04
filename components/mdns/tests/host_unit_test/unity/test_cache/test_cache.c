@@ -195,8 +195,11 @@ static bool browse_goodbye_callback(const mdns_cache_entry_t *entry, const mdns_
                                     const mdns_cache_subtype_t *subtype, mdns_cache_record_type_t removed_record,
                                     int cmock_num_calls)
 {
-    (void)removed_record;
     (void)cmock_num_calls;
+    // This observer counts PTR/subtype removals, not SRV record notifications.
+    if (removed_record != MDNS_CACHE_RECORD_PTR && removed_record != MDNS_CACHE_RECORD_SUBTYPE) {
+        return s_observer.goodbye_result;
+    }
     s_observer.goodbye_calls++;
     capture_cache(entry, service, 0);
     copy_optional_string(s_observer.goodbye_subtype, sizeof(s_observer.goodbye_subtype), subtype ? subtype->subtype : NULL);

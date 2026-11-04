@@ -20,13 +20,15 @@ extern "C" {
 void mdns_priv_browse_free(void);
 
 /**
- * @brief Check if a running browse `_service._proto` exists.
+ * @brief Check if a running browse consumes a service instance.
  *
+ * @param instance Instance name.
  * @param service Service name.
  * @param proto Protocol name.
- * @return true if a running browse `_service._proto` exists, false otherwise.
+ * @return true if a matching running browse exists.
+ *         Service and PTR record browses match all service instances; SRV record browses match only the named instance.
  */
-bool mdns_priv_browse_has_service(const char *service, const char *proto);
+bool mdns_priv_browse_has_service(const char *instance, const char *service, const char *proto);
 
 /**
  * @brief Check if a running browse `_service._proto` with the given subtype exists.

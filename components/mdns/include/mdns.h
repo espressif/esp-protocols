@@ -142,6 +142,10 @@ typedef struct mdns_result_s {
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
     // PTR extra
     char *subtype;                          /*!< consumer subtype, or NULL for base PTR */
+    // SRV extra
+    uint16_t priority;                      /*!< priority */
+    uint16_t weight;                        /*!< weight */
+    uint32_t srv_ttl;                       /*!< time to live of SRV record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -1289,6 +1293,40 @@ esp_err_t mdns_browse_record_ptr_delete(const char *service, const char *proto, 
  * @note Removing the last active subscription stops the browse and schedules its deletion.
  */
 esp_err_t mdns_browse_record_ptr_delete_handler(const char *service, const char *proto, const char *subtype,
+                                                mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Start a continuous SRV record browse for `instance._service._proto`.
+ *
+ * An SRV record browse will update SRV cache and notify on SRV record changes.
+ *
+ * @copydetails mdns_browse_new_with_context
+ *
+ * @param instance          Service instance name. Must not be NULL or empty.
+ */
+mdns_browse_t *mdns_browse_record_srv_new(const char *instance, const char *service, const char *proto,
+                                          mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief Stop the continuous SRV record browse for `instance._service._proto` and all its callbacks.
+ *
+ * @copydetails mdns_browse_delete
+ *
+ * @param instance  Service instance name. Must not be NULL or empty.
+ */
+esp_err_t mdns_browse_record_srv_delete(const char *instance, const char *service, const char *proto);
+
+/**
+ * @brief Remove one handler-context pair from the matching SRV record browse.
+ *
+ * @copydetails mdns_browse_record_srv_delete
+ *
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @note Removing the last active subscription stops the browse and schedules its deletion.
+ */
+esp_err_t mdns_browse_record_srv_delete_handler(const char *instance, const char *service, const char *proto,
                                                 mdns_browse_handler_t handler, void *context);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
 

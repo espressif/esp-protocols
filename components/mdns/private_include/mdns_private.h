@@ -361,6 +361,7 @@ typedef struct mdns_search_once_s {
 typedef enum {
     MDNS_BROWSE_TYPE_SERVICE, /* service browse */
     MDNS_BROWSE_TYPE_RECORD_PTR, /* PTR record browse */
+    MDNS_BROWSE_TYPE_RECORD_SRV, /* SRV record browse */
 } mdns_browse_type_t;
 
 typedef struct mdns_browse_notifier_s {
@@ -377,6 +378,7 @@ typedef struct mdns_browse_s {
     mdns_browse_state_t state;
     mdns_browse_notifier_t *notifiers;
 
+    char *instance;
     char *service;
     char *proto;
     char *subtype;
