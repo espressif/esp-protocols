@@ -194,6 +194,56 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
 #endif
 
+/**
+ * @brief Transmit hook callback type
+ * @param user_ctx Opaque context pointer registered with esp_modem_set_transmit_hooks()
+ */
+typedef void (*esp_modem_transmit_hook_t)(void *user_ctx);
+
+/**
+ * @brief Register hooks that fire around every DTE write operation
+ *
+ * Allows toggling a GPIO (DTR, sleep pin, etc.) before and after UART writes,
+ * covering both application-initiated AT commands and internal PPP traffic.
+ *
+ * @param dce       Modem DCE handle
+ * @param before_tx Called just before bytes are sent (NULL to clear)
+ * @param after_tx  Called just after bytes are sent (NULL to clear)
+ * @param user_ctx  Opaque pointer forwarded to both hooks
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if dce is invalid
+ */
+esp_err_t esp_modem_set_transmit_hooks(esp_modem_dce_t *dce,
+                                       esp_modem_transmit_hook_t before_tx,
+                                       esp_modem_transmit_hook_t after_tx,
+                                       void *user_ctx);
+
+/**
+ * @brief Receive hook callback type
+ * @param user_ctx Opaque context pointer registered with esp_modem_set_receive_hooks()
+ */
+typedef void (*esp_modem_receive_hook_t)(void *user_ctx);
+
+/**
+ * @brief Register RX-side hooks on the physical UART terminal
+ *
+ * Complements esp_modem_set_transmit_hooks() for modem host-sleep modes
+ * (QSCLK / CSCLK / UPSV) while PPP is kept up during ESP light sleep.
+ *
+ * @param dce             Modem DCE handle
+ * @param on_uart_wakeup  Called on UART_WAKEUP (NULL to clear)
+ * @param on_rx_activity  Called when RX bytes are observed, before data is
+ *                        delivered to PPP/commands (NULL to clear)
+ * @param user_ctx        Opaque pointer forwarded to both hooks
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if dce is invalid
+ *
+ * @note Hooks run on the UART event task. Keep them short and non-blocking.
+ *       UART wakeup itself must still be enabled by the application.
+ */
+esp_err_t esp_modem_set_receive_hooks(esp_modem_dce_t *dce,
+                                      esp_modem_receive_hook_t on_uart_wakeup,
+                                      esp_modem_receive_hook_t on_rx_activity,
+                                      void *user_ctx);
+
 esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context);
 
 /**
