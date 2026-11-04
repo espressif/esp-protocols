@@ -21,6 +21,7 @@
 #define HOSTNAME    "cache-host"
 #define PORT        8080
 #define TTL         120
+#define SUBTYPE     "alpha"
 
 #define TXT_VAL     "value"
 #define TXT_VAL_LEN 5
@@ -36,13 +37,15 @@ static const esp_ip_addr_t s_addr = ESP_IP4ADDR_INIT(192, 168, 1, 100);
 
 static size_t s_notify_calls;
 static uint32_t s_last_ttl;
+static size_t s_subtype_calls;
+static uint32_t s_subtype_ttl;
 
 static esp_netif_t *test_netif(void)
 {
     return (esp_netif_t *)&s_netif_storage;
 }
 
-static void browse_callback(mdns_result_t *result)
+static void assert_browse_result(const mdns_result_t *result)
 {
     // Results belong to the browser and are only valid during this callback.
     TEST_ASSERT_NOT_NULL(result);
@@ -60,9 +63,22 @@ static void browse_callback(mdns_result_t *result)
     TEST_ASSERT_NOT_NULL(result->addr);
     TEST_ASSERT_EQUAL(ESP_IPADDR_TYPE_V4, result->addr->addr.type);
     TEST_ASSERT_EQUAL_UINT32(s_addr.u_addr.ip4.addr, result->addr->addr.u_addr.ip4.addr);
+}
 
+static void browse_callback(mdns_result_t *result)
+{
+    assert_browse_result(result);
+    TEST_ASSERT_NULL(result->subtype);
     s_notify_calls++;
     s_last_ttl = result->ttl;
+}
+
+static void subtype_callback(mdns_result_t *result)
+{
+    assert_browse_result(result);
+    TEST_ASSERT_EQUAL_STRING(SUBTYPE, result->subtype);
+    s_subtype_calls++;
+    s_subtype_ttl = result->ttl;
 }
 
 static void unexpected_callback(mdns_result_t *result)
@@ -104,7 +120,7 @@ static void cache_service_details(void)
 static void cache_service(void)
 {
     TEST_ASSERT_NOT_EQUAL(MDNS_CACHE_ERROR, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
-                                                                       INSTANCE, SERVICE, PROTO, TTL));
+                                                                       INSTANCE, SERVICE, PROTO, NULL, TTL));
     cache_service_details();
 }
 
@@ -114,6 +130,8 @@ void mdns_test_set_up(void)
     mdns_priv_cache_clear();
     s_notify_calls = 0;
     s_last_ttl = 0;
+    s_subtype_calls = 0;
+    s_subtype_ttl = 0;
 }
 
 void mdns_test_tear_down(void)
@@ -201,7 +219,7 @@ static void test_browse_matches_service_and_requires_ptr(void)
     TEST_ASSERT_EQUAL_size_t(0, s_notify_calls);
 
     TEST_ASSERT_NOT_EQUAL(MDNS_CACHE_ERROR, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
-                                                                       INSTANCE, SERVICE, PROTO, TTL));
+                                                                       INSTANCE, SERVICE, PROTO, NULL, TTL));
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(1, s_notify_calls);
     TEST_ASSERT_EQUAL_UINT32(TTL, s_last_ttl);
@@ -218,7 +236,7 @@ static void test_browse_goodbye_and_rediscovery(void)
 
     // Cache goodbye should notify the browse.
     TEST_ASSERT_NOT_EQUAL(MDNS_CACHE_ERROR, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
-                                                                       INSTANCE, SERVICE, PROTO, 0));
+                                                                       INSTANCE, SERVICE, PROTO, NULL, 0));
     mdns_priv_cache_remove_expired_records(esp_timer_get_time());
     mdns_priv_cache_process_sync();
     TEST_ASSERT_EQUAL_size_t(2, s_notify_calls);
@@ -231,6 +249,56 @@ static void test_browse_goodbye_and_rediscovery(void)
     TEST_ASSERT_EQUAL_UINT32(TTL, s_last_ttl);
 }
 
+static void test_browse_subtype_update_filtering(void)
+{
+    TEST_ASSERT_NOT_NULL(mdns_browse_new(SERVICE, PROTO, browse_callback));
+    TEST_ASSERT_NOT_NULL(mdns_browse_new_with_subtype(SERVICE, PROTO, SUBTYPE, subtype_callback));
+    cache_service();
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_notify_calls);
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                     INSTANCE, SERVICE, PROTO, SUBTYPE, TTL));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_subtype_calls);
+
+    // Changes to shared record (SRV/TXT/ADDR) TTLs reach both browsers.
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_srv(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                     HOSTNAME, INSTANCE, SERVICE, PROTO,
+                                                                     0, 0, PORT, TTL + 1));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(2, s_notify_calls);
+    TEST_ASSERT_EQUAL_size_t(2, s_subtype_calls);
+
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_txt(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                     INSTANCE, SERVICE, PROTO, clone_txt(&s_txt), TTL + 1));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(3, s_notify_calls);
+    TEST_ASSERT_EQUAL_size_t(3, s_subtype_calls);
+
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_addr(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                      HOSTNAME, &s_addr, TTL + 1));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(4, s_notify_calls);
+    TEST_ASSERT_EQUAL_size_t(4, s_subtype_calls);
+
+    // Base and subtype PTR updates notify only their matching browser.
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                     INSTANCE, SERVICE, PROTO, NULL, TTL + 1));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(5, s_notify_calls);
+    TEST_ASSERT_EQUAL_size_t(4, s_subtype_calls);
+    TEST_ASSERT_EQUAL_UINT32(TTL + 1, s_last_ttl);
+    TEST_ASSERT_EQUAL_UINT32(TTL, s_subtype_ttl);
+
+    TEST_ASSERT_EQUAL(MDNS_CACHE_UPDATED, mdns_priv_cache_update_ptr(test_netif(), MDNS_IP_PROTOCOL_V4,
+                                                                     INSTANCE, SERVICE, PROTO, SUBTYPE, TTL + 2));
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(5, s_notify_calls);
+    TEST_ASSERT_EQUAL_size_t(5, s_subtype_calls);
+    TEST_ASSERT_EQUAL_UINT32(TTL + 1, s_last_ttl);
+    TEST_ASSERT_EQUAL_UINT32(TTL + 2, s_subtype_ttl);
+}
+
 void run_unity_tests(void)
 {
     UNITY_BEGIN();
@@ -238,5 +306,6 @@ void run_unity_tests(void)
     RUN_TEST(test_browse_cached_result_and_delete);
     RUN_TEST(test_browse_matches_service_and_requires_ptr);
     RUN_TEST(test_browse_goodbye_and_rediscovery);
+    RUN_TEST(test_browse_subtype_update_filtering);
     UNITY_END();
 }
