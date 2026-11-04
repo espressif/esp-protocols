@@ -136,6 +136,10 @@ typedef struct mdns_result_s {
     mdns_ip_addr_t *addr;                   /*!< linked list of IP addresses found */
     // PTR extra
     char *subtype;                          /*!< consumer subtype, or NULL for base PTR */
+    // SRV extra
+    uint16_t priority;                      /*!< priority */
+    uint16_t weight;                        /*!< weight */
+    uint32_t srv_ttl;                       /*!< time to live of SRV record */
 } mdns_result_t;
 
 typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
@@ -1224,6 +1228,30 @@ esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 mdns_browse_t *mdns_browse_record_ptr_new(const char *service, const char *proto, const char *subtype,
+                                          mdns_browse_notify_t notifier);
+
+/**
+ * @brief Start a continuous SRV record browse for `instance._service._proto`.
+ *
+ * An SRV record browse will update SRV cache and notify on SRV record changes.
+ *
+ * @param instance          Service instance name. Must not be NULL or empty.
+ * @param service           Service type, e.g. `_http`, `_ftp` etc.
+ * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
+ * @param notifier          Callback invoked on SRV updates and removal. Must not be NULL.
+ * @return Pointer to the new record browse if initiated successfully, NULL otherwise.
+ *
+ * @note If matching services already present in the internal mDNS cache,
+ *       the notifier will be called once for each cached service after this browse is registered.
+ *
+ * @note The notifier receives a temporary result that is valid only during the callback.
+ *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_record_srv_new(const char *instance, const char *service, const char *proto,
                                           mdns_browse_notify_t notifier);
 
 /**

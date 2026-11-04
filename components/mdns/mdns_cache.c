@@ -259,7 +259,7 @@ static mdns_service_cache_t *cache_find_service(const esp_netif_t *esp_netif, md
 }
 
 bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
-                                      const char *service, const char *proto)
+                                      const char *instance, const char *service, const char *proto)
 {
     mdns_cache_entry_t *entry = cache_find_entry(hostname, esp_netif, ip_protocol);
     if (!entry) {
@@ -267,7 +267,8 @@ bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *e
     }
 
     for (const mdns_service_cache_t *it = entry->service_cache_list; it; it = it->next) {
-        if (mdns_utils_str_case_equal(it->service, service) && mdns_utils_str_case_equal(it->proto, proto)) {
+        if (mdns_utils_str_case_equal(it->service, service) && mdns_utils_str_case_equal(it->proto, proto)
+                && (mdns_utils_str_null_or_empty(instance) || mdns_utils_str_case_equal(it->instance_name, instance))) {
             return true;
         }
     }
@@ -542,7 +543,7 @@ static void cache_remove_service_if_empty(mdns_cache_entry_t *entry, mdns_servic
 
 static bool cache_service_has_consumer(const mdns_service_cache_t *service)
 {
-    return service && mdns_priv_browse_has_service(service->service, service->proto);
+    return service && mdns_priv_browse_has_service(service->instance_name, service->service, service->proto);
 }
 
 static bool cache_record_has_consumer(const mdns_cache_expiry_t *node)
@@ -1025,6 +1026,9 @@ void mdns_priv_cache_remove_expired_records(int64_t now_us)
                 mdns_mem_free(node);
                 continue;
             }
+            if (!mdns_priv_browse_notify_record_removed_from_service_cache(entry, service, NULL, MDNS_CACHE_RECORD_SRV)) {
+                ESP_LOGE(TAG, "Failed to notify SRV expiration");
+            }
             service->srv_present = false;
             service->priority = 0;
             service->weight = 0;
@@ -1241,6 +1245,9 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
             ESP_GOTO_ON_FALSE(result->hostname, ESP_ERR_NO_MEM, error, TAG, "Failed to allocate hostname");
         }
         result->port = service->port;
+        result->priority = service->priority;
+        result->weight = service->weight;
+        result->srv_ttl = (removed_records & MDNS_CACHE_RECORD_SRV) ? 0 : service->srv_ttl;
     }
 
     if ((projection_records & MDNS_CACHE_RECORD_TXT) && service->txt_present) {

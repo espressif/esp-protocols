@@ -156,32 +156,32 @@ static void test_browse_add_delete_sequence(void)
 
     // Register A and reject an immediate duplicate.
     TEST_ASSERT_NOT_NULL(mdns_browse_new(SERVICE, PROTO, browse_callback));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(SERVICE, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
 
     TEST_ASSERT_NULL(mdns_browse_new(SERVICE, PROTO, browse_callback));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(SERVICE, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
 
     // Register B without affecting A.
     TEST_ASSERT_NOT_NULL(mdns_browse_new(other_service, PROTO, unexpected_callback));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(SERVICE, PROTO));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(other_service, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, other_service, PROTO));
 
     // Delete A. B remains registered, and deleting A again must fail.
     TEST_ASSERT_EQUAL(ESP_OK, mdns_browse_delete(SERVICE, PROTO));
-    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(SERVICE, PROTO));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(other_service, PROTO));
+    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, other_service, PROTO));
 
     TEST_ASSERT_EQUAL(ESP_FAIL, mdns_browse_delete(SERVICE, PROTO));
 
     // A can be registered again immediately after deletion.
     TEST_ASSERT_NOT_NULL(mdns_browse_new(SERVICE, PROTO, browse_callback));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(SERVICE, PROTO));
-    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(other_service, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
+    TEST_ASSERT_TRUE(mdns_priv_browse_has_service(NULL, other_service, PROTO));
 
     TEST_ASSERT_EQUAL(ESP_OK, mdns_browse_delete(SERVICE, PROTO));
     TEST_ASSERT_EQUAL(ESP_OK, mdns_browse_delete(other_service, PROTO));
-    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(SERVICE, PROTO));
-    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(other_service, PROTO));
+    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
+    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(NULL, other_service, PROTO));
 }
 
 static void test_browse_cached_result_and_delete(void)
@@ -197,7 +197,7 @@ static void test_browse_cached_result_and_delete(void)
     TEST_ASSERT_EQUAL_UINT32(TTL, s_last_ttl);
 
     TEST_ASSERT_EQUAL(ESP_OK, mdns_browse_delete(SERVICE, PROTO));
-    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(SERVICE, PROTO));
+    TEST_ASSERT_FALSE(mdns_priv_browse_has_service(NULL, SERVICE, PROTO));
 
     // Further cache changes must not call the deleted browse notifier.
     TEST_ASSERT_NOT_EQUAL(MDNS_CACHE_ERROR, mdns_priv_cache_update_srv(test_netif(), MDNS_IP_PROTOCOL_V4,
