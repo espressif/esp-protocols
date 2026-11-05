@@ -1058,7 +1058,7 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
             } else if (type == MDNS_TYPE_SRV) {
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 char browse_instance_name[MDNS_NAME_BUF_LEN] = {0};
-                strncpy(browse_instance_name, name->host, MDNS_NAME_MAX_LEN);
+                memcpy(browse_instance_name, name->host, MDNS_NAME_BUF_LEN);
 #endif
                 mdns_result_t *result = NULL;
                 if (search_result && search_result->type == MDNS_TYPE_PTR) {
