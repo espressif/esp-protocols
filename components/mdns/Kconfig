@@ -32,6 +32,16 @@ menu "mDNS"
         help
             Allows setting the length of mDNS action queue.
 
+    config MDNS_TX_QUEUE_MAX
+        int "Max deferred mDNS responses queued for transmit"
+        range 0 256
+        default 0
+        help
+            Maximum mdns_tx_packet_t entries held on the deferred transmit
+            list. 0 keeps the list unbounded (existing behaviour).
+            A positive value drops a further deferred query response instead
+            of queueing it. Probe and announce packets are still queued.
+
     config MDNS_TASK_STACK_SIZE
         int "mDNS task stack size"
         default 4096
