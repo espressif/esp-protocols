@@ -94,12 +94,13 @@ int esp_dns_cleanup_udp(esp_dns_handle_t handle)
  *
  * @param handle DNS handle
  * @param name Hostname to resolve
- * @param addr Pointer to store the resolved IP address
+ * @param addr Pointer to store the resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype DNS record type
  *
  * @return ERR_OK on success, error code on failure
  */
-err_t dns_resolve_udp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype)
+err_t dns_resolve_udp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype)
 {
     // TBD: Implement UDP DNS resolution
     if (addr == NULL) {
