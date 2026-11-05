@@ -227,12 +227,23 @@ echo
 echo -e "${GREEN}Step 3: Viewing Results${NC}"
 echo
 
-# Define report paths
-REPORT_FILE="$SCRIPT_DIR/reports/clients/index.html"
+# Autobahn writes into reports/ (fuzzingserver.json outdir). Some runs
+# also populate reports/clients/. Accept either.
+REPORT_DIR="$SCRIPT_DIR/reports"
+REPORT_FILE=""
+if [[ -f "$REPORT_DIR/index.html" ]]; then
+    REPORT_FILE="$REPORT_DIR/index.html"
+elif [[ -f "$REPORT_DIR/clients/index.html" ]]; then
+    REPORT_FILE="$REPORT_DIR/clients/index.html"
+fi
 WEB_INTERFACE="http://localhost:8080"
 
-# Check if reports directory exists and has content
-if [ -d "$SCRIPT_DIR/reports/clients" ] && [ "$(ls -A $SCRIPT_DIR/reports/clients/*.json 2>/dev/null)" ]; then
+has_reports=false
+if find "$REPORT_DIR" -maxdepth 2 -name '*.json' -print -quit 2>/dev/null | grep -q .; then
+    has_reports=true
+fi
+
+if [ "$has_reports" = true ]; then
     echo -e "${GREEN}✓ Test reports found${NC}"
     echo
 
@@ -260,13 +271,13 @@ echo
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}Test Reports Available:${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-if [[ -f "$REPORT_FILE" ]]; then
+if [[ -n "$REPORT_FILE" && -f "$REPORT_FILE" ]]; then
     echo "  📄 Direct file: file://$REPORT_FILE"
 fi
 echo "  🌐 Web interface: $WEB_INTERFACE (click 'Client Reports' link)"
-echo "  📁 Directory: $SCRIPT_DIR/reports/clients/"
-if [[ -f "$SCRIPT_DIR/reports/summary.html" ]]; then
-    echo "  📊 Summary: file://$SCRIPT_DIR/reports/summary.html"
+echo "  📁 Directory: $REPORT_DIR/"
+if [[ -f "$REPORT_DIR/summary.html" ]]; then
+    echo "  📊 Summary: file://$REPORT_DIR/summary.html"
 fi
 echo
 
