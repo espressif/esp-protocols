@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.15.1](https://github.com/espressif/esp-protocols/commits/mdns-v1.15.1)
+
+### Bug Fixes
+
+- Fix gcc stringop-truncation warning ([7cb5e9db](https://github.com/espressif/esp-protocols/commit/7cb5e9db))
+
 ## [1.15.0](https://github.com/espressif/esp-protocols/commits/mdns-v1.15.0)
 
 ### Features
