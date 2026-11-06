@@ -5,6 +5,7 @@
  */
 #include <string>
 #include <strings.h>
+#include <poll.h>
 #include "gethostname.h"
 #include "ifaddrs.h"
 #include "esp_netif.h"
@@ -192,6 +193,16 @@ static void test_pipe(int read_fd, int write_fd)
     CHECK(write(write_fd, buffer, 1) > 0);
     CHECK(read(read_fd, buffer, 1) == 1);
     CHECK(read(read_fd, buffer, 1) == 1);
+}
+
+TEST_CASE("poll.h declares the poll API", "[sock_utils]")
+{
+    struct pollfd pfd = { };
+    pfd.fd = -1;
+    pfd.events = POLLIN | POLLOUT;
+    CHECK(pfd.revents == 0);
+    // no descriptors and no timeout: returns at once
+    CHECK(poll(&pfd, 0, 0) == 0);
 }
 
 TEST_CASE("socketpair()", "[sock_utils]")

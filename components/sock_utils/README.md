@@ -14,6 +14,7 @@ This component provides simplified implementations of common socket-related util
 | `getnameinfo()`    | Converts IP addresses to human-readable form using `lwIP`'s `inet_ntop()` | IPv4 and IPv6 (with the `%scope` suffix); supports `NI_NUMERICHOST` and `NI_NUMERICSERV` flags only | `getnameinfo.h`, `netdb.h` in ESP-IDF  |
 | `gai_strerror()`   | Returns error code as a string                              | Simple numeric string representation only                         | `gai_strerror.h`, `netdb.h` **)        |
 | `gethostname()`    | Returns lwip netif hostname                                 | Not a system-wide hostname, but interface specific hostname       | `gethostname.h`, `unistd.h` in ESP-IDF |
+| `poll()`           | Makes the POSIX `<poll.h>` header available, as ESP-IDF declares the poll API in `<sys/poll.h>` | None, it is ESP-IDF's `poll()`                                  | `poll.h`, `sys/poll.h` in ESP-IDF      |
 
 **Notes**:
 
