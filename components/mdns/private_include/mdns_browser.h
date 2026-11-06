@@ -20,13 +20,15 @@ extern "C" {
 void mdns_priv_browse_free(void);
 
 /**
- * @brief Check if a running browse `_service._proto` exists.
+ * @brief Check if a running browse consumes a service instance.
  *
+ * @param instance Instance name.
  * @param service Service name.
  * @param proto Protocol name.
- * @return true if a running browse `_service._proto` exists, false otherwise.
+ * @return true if a matching running browse exists.
+ *         Service browses and PTR record browses consumes all records, other record browses consume only their named record.
  */
-bool mdns_priv_browse_has_service(const char *service, const char *proto);
+bool mdns_priv_browse_has_service(const char *instance, const char *service, const char *proto);
 
 /**
  * @brief Check if a running browse `_service._proto` with the given subtype exists.
@@ -78,11 +80,9 @@ bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry,
 
 /**
  * @brief Notify one browse about one visible cache service.
- *
- * @return true if browse is successfully notified, false otherwise
  */
-bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                mdns_browse_t *browse);
+esp_err_t mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                                     mdns_browse_t *browse);
 
 /**
  * @brief Notify the affected normal/subtype browse about a PTR goodbye.
@@ -93,9 +93,10 @@ bool mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry,
  *
  * @note Must be called before the PTR/subtype is removed from the cache to avoid UAF.
  */
-bool mdns_priv_browse_notify_ptr_goodbye_from_service_cache(const mdns_cache_entry_t *entry,
-                                                            const mdns_service_cache_t *service,
-                                                            const char *subtype);
+bool mdns_priv_browse_notify_record_removed_from_service_cache(const mdns_cache_entry_t *entry,
+                                                               const mdns_service_cache_t *service,
+                                                               const mdns_cache_subtype_t *subtype,
+                                                               mdns_cache_record_type_t removed_record);
 #ifdef __cplusplus
 }
 #endif
