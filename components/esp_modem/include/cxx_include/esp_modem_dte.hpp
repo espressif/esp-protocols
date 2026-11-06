@@ -216,7 +216,7 @@ private:
     void handle_error(terminal_error err);                  /*!< Performs internal error handling */
     [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
-    void exit_cmux_internal();                              /*!< Cleanup CMUX */
+    void exit_cmux_internal(const std::shared_ptr<CMux> &cmux); /*!< Cleanup CMUX */
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     /**
