@@ -355,12 +355,23 @@ typedef struct mdns_search_once_s {
     mdns_result_t *result;
 } mdns_search_once_t;
 
+/*
+ * @brief mDNS browse types enum
+ */
+typedef enum {
+    MDNS_BROWSE_TYPE_SERVICE, /* service browse */
+    MDNS_BROWSE_TYPE_RECORD_PTR, /* PTR record browse */
+    MDNS_BROWSE_TYPE_RECORD_SRV, /* SRV record browse */
+} mdns_browse_type_t;
+
 typedef struct mdns_browse_s {
     struct mdns_browse_s *next;
 
+    mdns_browse_type_t type;
     mdns_browse_state_t state;
     mdns_browse_notify_t notifier;
 
+    char *instance;
     char *service;
     char *proto;
     char *subtype;
@@ -401,16 +412,11 @@ typedef struct {
 } mdns_action_t;
 
 typedef enum {
-    MDNS_CACHE_CONSUMER_BROWSE     = (1U << 0),
-} mdns_cache_consumer_type_t;
-
-typedef uint8_t mdns_cache_consumer_mask_t;
-
-typedef enum {
-    // Browse update flags
+    MDNS_CACHE_RECORD_INVALID       = 0,
+    // PTR update flags
     MDNS_CACHE_RECORD_PTR           = (1U << 0), /*!< Normal PTR record updated, only notify no-subtype browses. */
     MDNS_CACHE_RECORD_SUBTYPE       = (1U << 1), /*!< PTR record with subtype updated, only notify browse with identical subtype. */
-    // Resolver update flags
+    // Other record update flags
     MDNS_CACHE_RECORD_SRV           = (1U << 2),
     MDNS_CACHE_RECORD_TXT           = (1U << 3),
     MDNS_CACHE_RECORD_ADDR          = (1U << 4),
@@ -476,7 +482,6 @@ typedef struct mdns_service_cache_s {
     uint32_t txt_ttl;
     // To-sync flags
     mdns_cache_record_mask_t sync_records;      /*!< bitmask of records to sync, see @ref mdns_cache_record_type_t */
-    mdns_cache_consumer_mask_t sync_consumers;  /*!< bitmask of consumers to sync, see @ref mdns_cache_consumer_type_t */
     struct mdns_service_cache_s *next;
 } mdns_service_cache_t;
 
