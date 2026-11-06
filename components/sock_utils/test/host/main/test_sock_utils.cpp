@@ -185,6 +185,35 @@ TEST_CASE("esp_getifaddrs() with IPv6 addresses", "[sock_utils]")
     CHECK(global_scope == 0);
 }
 
+TEST_CASE("esp_getifaddrs() with a three-digit interface number", "[sock_utils]")
+{
+    // lwIP does not reuse interface numbers: create interfaces until one is named like `st100`
+    esp_netif_t *esp_netif = NULL;
+    char if_name[8] = { };
+    for (int i = 0; i < 256 && esp_netif == NULL; ++i) {
+        esp_netif = create_test_netif("station_num", 5);   // 1.2.3.5
+        REQUIRE(esp_netif != NULL);
+        REQUIRE(esp_netif_get_netif_impl_name(esp_netif, if_name) == ESP_OK);
+        if (strlen(if_name) < 5) {
+            esp_netif_destroy(esp_netif);
+            esp_netif = NULL;
+        }
+    }
+    REQUIRE(esp_netif != NULL);
+
+    struct ifaddrs *addresses = NULL;
+    const int result = esp_getifaddrs(&addresses);
+    bool found = false;
+    for (struct ifaddrs *addr = addresses; addr; addr = addr->ifa_next) {
+        found = found || strcmp(addr->ifa_name, if_name) == 0;
+    }
+    esp_freeifaddrs(addresses);
+    esp_netif_destroy(esp_netif);
+
+    CHECK(result != -1);
+    CHECK(found);
+}
+
 static void test_pipe(int read_fd, int write_fd)
 {
     CHECK(read_fd  >= 0);

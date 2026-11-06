@@ -37,7 +37,7 @@ static esp_err_t getifaddrs_unsafe(void *ctx)
     struct ifaddrs **ifap = ctx;
     struct ifaddrs **tail = ifap;
     esp_netif_t *netif = NULL;
-    char if_name[5];    // lwip netif name buffer (e.g. `st1`, 2 letters + number)
+    char if_name[NETIF_NAMESIZE];   // lwip netif name buffer (e.g. `st1`, 2 letters + number up to 255)
     esp_netif_ip_info_t ip;
     esp_err_t ret = ESP_OK;
 
