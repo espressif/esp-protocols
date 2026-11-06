@@ -260,6 +260,19 @@ TEST_CASE("DCE modes", "[esp_modem]")
     CHECK(dce->set_mode(esp_modem::modem_mode::COMMAND_MODE) == true);
 }
 
+TEST_CASE("DTE recover is safe without CMUX", "[esp_modem]")
+{
+    // Dual-terminal DTE starts in DUAL_MODE with no cmux instance.
+    // recover() must return false instead of dereferencing a null cmux_term.
+    auto dte = std::make_shared<DTE>(std::make_unique<LoopbackTerm>(true),
+                                     std::make_unique<LoopbackTerm>(false));
+    CHECK(dte->recover() == false);
+
+    // Single-terminal DTE with no CMUX setup must also be safe.
+    auto single = std::make_shared<DTE>(std::make_unique<LoopbackTerm>(true));
+    CHECK(single->recover() == false);
+}
+
 TEST_CASE("DCE CMUX test", "[esp_modem]")
 {
     auto term = std::make_unique<LoopbackTerm>();
