@@ -45,6 +45,8 @@ static esp_err_t getifaddrs_unsafe(void *ctx)
     while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
         ESP_GOTO_ON_ERROR(esp_netif_get_netif_impl_name(netif, if_name), err, TAG, "Failed to get netif name");
         const unsigned int flags = esp_netif_is_netif_up(netif) ? IFF_UP : 0;
+
+        // One IPv4 entry per interface, as before
         ESP_GOTO_ON_ERROR(esp_netif_get_ip_info(netif, &ip), err, TAG, "Failed to get netif IP");
         ESP_LOGD(TAG, "IPv4 address: " IPSTR, IP2STR(&ip.ip));
         struct sockaddr_in *addr_in = (struct sockaddr_in *)calloc(1, sizeof(struct sockaddr_in));
@@ -53,6 +55,26 @@ static esp_err_t getifaddrs_unsafe(void *ctx)
         addr_in->sin_addr.s_addr = ip.ip.addr;
         ESP_GOTO_ON_ERROR(append_ifaddr(&tail, if_name, flags, (struct sockaddr *)addr_in), err, TAG,
                           "Failed to allocate ifaddr");
+
+#if CONFIG_LWIP_IPV6
+        // One IPv6 entry per valid address, as on Linux. Tentative addresses (DAD not done) are left out:
+        // they cannot be bound to yet.
+        esp_ip6_addr_t ip6[CONFIG_LWIP_IPV6_NUM_ADDRESSES];
+        const int ip6_count = esp_netif_get_all_ip6(netif, ip6);
+        for (int i = 0; i < ip6_count; ++i) {
+            ESP_LOGD(TAG, "IPv6 address: " IPV6STR, IPV62STR(ip6[i]));
+            struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)calloc(1, sizeof(struct sockaddr_in6));
+            ESP_GOTO_ON_FALSE(addr_in6, ESP_ERR_NO_MEM, err, TAG, "Failed to allocate addr_in6");
+            addr_in6->sin6_family = AF_INET6;
+            memcpy(&addr_in6->sin6_addr, ip6[i].addr, sizeof(addr_in6->sin6_addr));
+            // As on Linux, a link-local address carries its interface as the scope
+            if (esp_netif_ip6_get_addr_type(&ip6[i]) == ESP_IP6_ADDR_IS_LINK_LOCAL) {
+                addr_in6->sin6_scope_id = (u32_t)esp_netif_get_netif_impl_index(netif);
+            }
+            ESP_GOTO_ON_ERROR(append_ifaddr(&tail, if_name, flags, (struct sockaddr *)addr_in6), err, TAG,
+                              "Failed to allocate ifaddr");
+        }
+#endif
     }
     return ret;
 
