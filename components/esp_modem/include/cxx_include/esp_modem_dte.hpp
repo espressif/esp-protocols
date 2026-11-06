@@ -107,6 +107,14 @@ public:
     void set_error_cb(std::function<void(terminal_error err)> f);
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    /** Observe each newly received command-channel byte once, without
+     * consuming the command parser's response. The callback must not block. */
+    void set_rx_observer(std::function<void(const uint8_t *, size_t)> observer)
+    {
+        Scoped<Lock> lock(command_cb.line_lock);
+        command_cb.rx_observer = std::move(observer);
+    }
+
     /**
      * @brief Allow setting a line callback for all incoming data
      * @param line_cb
@@ -213,6 +221,9 @@ protected:
     friend class Scoped<DTE>;                               /*!< Declaring "Scoped<DTE> lock(dte)" locks this instance */
 private:
 
+    bool process_command_input(uint8_t *data, size_t accumulated, size_t length);
+    void reset_command_buffer();
+
     void handle_error(terminal_error err);                  /*!< Performs internal error handling */
     [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
@@ -290,6 +301,7 @@ private:
      */
     struct command_cb {
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+        std::function<void(const uint8_t *, size_t)> rx_observer {};
         got_line_cb urc_handler {};                             /*!< URC callback if enabled */
         enhanced_urc_cb enhanced_urc_handler {};                /*!< Enhanced URC callback with consumption control */
 #endif

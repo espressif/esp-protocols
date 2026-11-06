@@ -106,7 +106,7 @@ void DTE::set_command_callbacks()
                 std::memcpy(inflatable.current(), data, len);
                 data = inflatable.begin();
             }
-            if (command_cb.process_line(data, inflatable.consumed, len, this)) {
+            if (process_command_input(data, inflatable.consumed, len)) {
                 return true;
             }
             // at this point we're sure that the data processing hasn't finished,
@@ -118,7 +118,7 @@ void DTE::set_command_callbacks()
             inflatable.consumed += len;
             return false;
 #else
-            if (command_cb.process_line(data, 0, len, this)) {
+            if (process_command_input(data, 0, len)) {
                 return true;
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
@@ -131,7 +131,7 @@ void DTE::set_command_callbacks()
         if (buffer.size > buffer.consumed) {
             data = buffer.get();
             len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
-            if (command_cb.process_line(data, buffer.consumed, len, this)) {
+            if (process_command_input(data, buffer.consumed, len)) {
                 return true;
             }
             buffer.consumed += len;
@@ -147,7 +147,7 @@ void DTE::set_command_callbacks()
             inflatable.grow(inflatable.consumed + len);
         }
         len = primary_term->read(inflatable.current(), len);
-        if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len, this)) {
+        if (process_command_input(inflatable.begin(), inflatable.consumed, len)) {
             return true;
         }
         inflatable.consumed += len;
@@ -184,17 +184,43 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     command_cb.set(got_line, separator);
     primary_term->write((uint8_t *)command.c_str(), command.length());
     command_cb.wait_for_line(time_ms);
+    Scoped<Lock> receive_lock(command_cb.line_lock);
     command_cb.set(nullptr);
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Track command end
     buffer_state.command_waiting = false;
-    buffer_state.last_urc_processed = 0;
 #endif
+    reset_command_buffer();
+    return command_cb.result;
+}
+
+void DTE::reset_command_buffer()
+{
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
     inflatable.deflate();
 #endif
-    return command_cb.result;
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    buffer_state.last_urc_processed = 0;
+#endif
+}
+
+bool DTE::process_command_input(uint8_t *data, size_t accumulated, size_t length)
+{
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+    if (command_cb.rx_observer) {
+        command_cb.rx_observer(data + accumulated, length);
+        if (!command_cb.got_line || command_cb.result != command_result::TIMEOUT) {
+            // The observer owns its partial lines; idle input needs no
+            // indefinitely growing command-response buffer.
+            reset_command_buffer();
+            return true;
+        }
+    }
+#endif
+    const bool complete = command_cb.process_line(data, accumulated, length, this);
+    if (complete) reset_command_buffer();
+    return complete;
 }
 
 command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32_t time_ms)

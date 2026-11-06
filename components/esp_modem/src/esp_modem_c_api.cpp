@@ -566,6 +566,19 @@ extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce_wrap, int mode, 
     return command_response_to_esp_err(dce_wrap->dce->config_edrx(mode, access_technology, std::string(edrx_value)));
 }
 
+extern "C" esp_err_t esp_modem_write(esp_modem_dce_t *dce_wrap, const uint8_t *data, size_t len)
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr || (data == nullptr && len > 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* The payload belongs on the command terminal, where DTE::command()
+     * writes: in CMUX mode that is the command DLCI, while the raw
+     * DTE::write(data, len) targets the secondary (data/PPP) terminal. */
+    const std::string payload(reinterpret_cast<const char *>(data), len);
+    const int written = dce_wrap->dte->write(esp_modem::DTE_Command(payload));
+    return written == static_cast<int>(len) ? ESP_OK : ESP_FAIL;
+}
+
 extern "C" esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce_wrap, const esp_modem_PdpContext_t *pdp_context)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || pdp_context == nullptr) {
@@ -643,6 +656,16 @@ extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *ap
 }
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+extern "C" esp_err_t esp_modem_set_rx_observer(esp_modem_dce_t *dce_wrap,
+    void (*observer)(const uint8_t *, size_t))
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    dce_wrap->dte->set_rx_observer(observer);
+    return ESP_OK;
+}
+
 extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got_line_fn)(uint8_t *data, size_t len))
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
