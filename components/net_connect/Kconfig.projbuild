@@ -45,6 +45,15 @@ menu "Net Connect Configuration"
                 Set the Maximum retry to avoid station reconnecting to the AP unlimited,
                 in case the AP is really inexistent.
 
+        config NET_CONNECT_WIFI_REQUIRED
+            bool "WiFi is required for net_connect() to succeed"
+            default n if NET_CONNECT_ETHERNET
+            default y
+            help
+                When enabled, net_connect() fails if WiFi cannot connect.
+                Disable this to make WiFi optional (for example, when Ethernet
+                is the primary connection or WiFi will be provisioned later).
+
         choice NET_CONNECT_WIFI_SCAN_METHOD
             prompt "WiFi Scan Method"
             default NET_CONNECT_WIFI_SCAN_METHOD_ALL_CHANNEL
@@ -123,6 +132,14 @@ menu "Net Connect Configuration"
             Choose this option to enable connection with Ethernet.
             Go to `Top -> Ethernet Configuration` to configure the Ethernet interface.
 
+    if NET_CONNECT_ETHERNET
+        config NET_CONNECT_ETHERNET_REQUIRED
+            bool "Ethernet is required for net_connect() to succeed"
+            default y
+            help
+                When enabled, net_connect() fails if Ethernet does not become ready.
+    endif
+
     config NET_CONNECT_DISABLE_ETHERNET_CONFIG
         bool
         select ETHERNET_INIT_OVERRIDE_DISABLE
@@ -189,6 +206,19 @@ menu "Net Connect Configuration"
                 Set the Maximum retry to avoid station reconnecting if the pppd
                 is not available
 
+        config NET_CONNECT_PPP_REQUIRED
+            bool "PPP is required for net_connect() to succeed"
+            default y
+            help
+                When enabled, net_connect() fails if PPP does not become ready.
+
+        config NET_CONNECT_PPP_TASK_STACK_SIZE
+            int "PPP UART task stack size"
+            default 4096
+            range 2048 32768
+            help
+                Stack size in bytes for the PPP UART RX task.
+
     endif # NET_CONNECT_PPP
 
     config NET_CONNECT_THREAD
@@ -208,6 +238,12 @@ menu "Net Connect Configuration"
             default 8192
             help
                 Thread task stack size
+
+        config NET_CONNECT_THREAD_REQUIRED
+            bool "Thread is required for net_connect() to succeed"
+            default y
+            help
+                When enabled, net_connect() fails if Thread does not attach.
 
         menu "Radio Spinel Options"
             depends on OPENTHREAD_RADIO_SPINEL_UART || OPENTHREAD_RADIO_SPINEL_SPI
@@ -310,5 +346,20 @@ menu "Net Connect Configuration"
 
     endif
 
+    config NET_CONNECT_TIMEOUT_MS
+        int "Default connection wait timeout in milliseconds (0 = wait forever)"
+        default 30000
+        range 0 600000
+        help
+            Maximum time in milliseconds that net_connect() waits for required
+            interfaces to become ready. Set to 0 to wait indefinitely.
+
+    config NET_CONNECT_STARTUP_TASK_STACK_SIZE
+        int "Interface startup task stack size"
+        default 4096
+        range 2048 32768
+        help
+            Stack size in bytes for the temporary per-interface startup tasks
+            used to run blocking driver initialization in the background.
 
 endmenu

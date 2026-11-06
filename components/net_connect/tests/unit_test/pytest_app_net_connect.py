@@ -5,4 +5,4 @@ from pytest_embedded import Dut
 
 
 def test_net_connect(dut: Dut) -> None:
-    dut.expect_unity_test_output()
+    dut.expect_unity_test_output(timeout=120)
