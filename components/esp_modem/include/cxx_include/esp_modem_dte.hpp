@@ -125,8 +125,8 @@ public:
         const uint8_t* buffer_start;        // Start of entire buffer
         size_t buffer_total_size;           // Total buffer size
         size_t processed_offset;            // Offset of already processed data
-        size_t new_data_size;               // Size of new data since last call
-        const uint8_t* new_data_start;      // Pointer to start of new data
+        size_t new_data_size;               // Size of new data since the previous callback
+        const uint8_t* new_data_start;      // Pointer to start of that new data
         bool is_command_active;             // Whether a command is currently waiting for response
     };
 
@@ -225,6 +225,7 @@ private:
     struct BufferState {
         size_t total_processed = 0;         /*!< Total bytes processed by URC handlers */
         size_t last_urc_processed = 0;      /*!< Last offset processed by URC */
+        size_t last_urc_seen = 0;           /*!< Buffer size at the previous enhanced URC callback */
         bool command_waiting = false;       /*!< Whether command is waiting for response */
         size_t command_start_offset = 0;    /*!< Where current command response started */
     } buffer_state;

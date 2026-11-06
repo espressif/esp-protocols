@@ -189,6 +189,7 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     // Track command end
     buffer_state.command_waiting = false;
     buffer_state.last_urc_processed = 0;
+    buffer_state.last_urc_seen = 0;
 #endif
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
@@ -418,6 +419,8 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
     if (enhanced_urc_handler && dte) {
         // Create buffer info for enhanced URC handler
         UrcBufferInfo buffer_info = dte->create_urc_info(data, consumed, len);
+        // The next callback reports only bytes added after this one
+        dte->buffer_state.last_urc_seen = consumed + len;
 
         // Call enhanced URC handler
         UrcConsumeInfo consume_info = enhanced_urc_handler(buffer_info);
@@ -445,6 +448,7 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
         case UrcConsumeResult::CONSUME_ALL:
             // Consume entire buffer
             dte->buffer_state.last_urc_processed = 0;
+            dte->buffer_state.last_urc_seen = 0;
             return true;  // Signal buffer consumption
         }
     }
@@ -522,8 +526,11 @@ DTE::UrcBufferInfo DTE::create_urc_info(uint8_t* data, size_t consumed, size_t l
         .buffer_start = data,
         .buffer_total_size = consumed + len,
         .processed_offset = buffer_state.last_urc_processed,
-        .new_data_size = (consumed + len) - buffer_state.last_urc_processed,
-        .new_data_start = data + buffer_state.last_urc_processed,
+        // Delta since the previous callback: a buffer that shrank was reset
+        .new_data_size = (consumed + len) - (buffer_state.last_urc_seen <= consumed + len
+                                             ? buffer_state.last_urc_seen : 0),
+        .new_data_start = data + (buffer_state.last_urc_seen <= consumed + len
+                                  ? buffer_state.last_urc_seen : 0),
         .is_command_active = buffer_state.command_waiting
     };
 }
