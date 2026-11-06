@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2022-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2022-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -28,7 +28,11 @@
 #endif
 #include "esp_log.h"
 #include "console_helper.hpp"
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
+#include "NetworkDCE.hpp"
+#else
 #include "my_module_dce.hpp"
+#endif
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
 #define GET_WAKEUP_CAUSE() esp_sleep_get_wakeup_causes()
@@ -96,6 +100,36 @@ void wakeup_modem(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
 }
 
+
+static void on_ip_event(void *arg, esp_event_base_t event_base,
+                        int32_t event_id, void *event_data)
+{
+    ESP_LOGD(TAG, "IP event! %" PRIu32, event_id);
+    if (event_id == IP_EVENT_PPP_GOT_IP) {
+        esp_netif_dns_info_t dns_info;
+
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        esp_netif_t *netif = event->esp_netif;
+
+        ESP_LOGI(TAG, "Modem Connect to PPP Server");
+        ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
+        ESP_LOGI(TAG, "IP          : " IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "Netmask     : " IPSTR, IP2STR(&event->ip_info.netmask));
+        ESP_LOGI(TAG, "Gateway     : " IPSTR, IP2STR(&event->ip_info.gw));
+        ESP_LOGI(TAG, "~~~~~~~~~~~~~~");
+
+        ESP_LOGI(TAG, "GOT ip event!!!");
+    } else if (event_id == IP_EVENT_PPP_LOST_IP) {
+        ESP_LOGI(TAG, "Modem Disconnect from PPP Server");
+    } else if (event_id == IP_EVENT_GOT_IP6) {
+        ESP_LOGI(TAG, "GOT IPv6 event!");
+
+        ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
+        ESP_LOGI(TAG, "Got IPv6 address " IPV6STR, IPV62STR(event->ip6_info.ip));
+    }
+}
+
+
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
 esp_modem::DTE::UrcConsumeInfo handle_enhanced_urc(const esp_modem::DTE::UrcBufferInfo &info)
 {
@@ -117,7 +151,9 @@ esp_modem::DTE::UrcConsumeInfo handle_enhanced_urc(const esp_modem::DTE::UrcBuff
 
 extern "C" void app_main(void)
 {
+#if !defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
     static RTC_RODATA_ATTR char apn_rtc[20] = DEFAULT_APN;
+#endif
     static RTC_DATA_ATTR modem_mode mode_rtc = esp_modem::modem_mode::COMMAND_MODE;
 
     config_gpio();
@@ -125,6 +161,8 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &on_ip_event, NULL));
+
 
     // init the netif, DTE and DCE respectively
     esp_modem_dce_config_t dce_config = ESP_MODEM_DCE_DEFAULT_CONFIG(DEFAULT_APN);
@@ -148,7 +186,10 @@ extern "C" void app_main(void)
     dte_config.dte_buffer_size = CONFIG_EXAMPLE_MODEM_UART_RX_BUFFER_SIZE / 2;
     auto uart_dte = create_uart_dte(&dte_config);
 
-#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
+#if defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
+    ESP_LOGI(TAG, "Initializing esp_modem NetworkDCE (pppd)...");
+    auto dce = Network::create_network_dce(&dce_config, uart_dte, esp_netif);
+#elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_SHINY)
     ESP_LOGI(TAG, "Initializing esp_modem for the SHINY module...");
     auto dce = create_shiny_dce(&dce_config, uart_dte, esp_netif);
 #elif defined(CONFIG_EXAMPLE_MODEM_DEVICE_BG96)
@@ -213,6 +254,7 @@ extern "C" void app_main(void)
 
     assert(dce != nullptr);
 
+#if !defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
     if (dte_config.uart_config.flow_control == ESP_MODEM_FLOW_CONTROL_HW) {
         if (command_result::OK != dce->set_flow_control(2, 2)) {
             ESP_LOGE(TAG, "Failed to set the set_flow_control mode");
@@ -220,12 +262,14 @@ extern "C" void app_main(void)
         }
         ESP_LOGI(TAG, "set_flow_control OK");
     }
+#endif
 
     // init console REPL environment
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     esp_console_dev_uart_config_t uart_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &s_repl));
 
+#if !defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
     switch (GET_WAKEUP_CAUSE()) {
     case ESP_SLEEP_WAKEUP_TIMER:
         if (esp_modem::modem_mode::CMUX_MODE == mode_rtc) {
@@ -245,6 +289,7 @@ extern "C" void app_main(void)
     default:
         ESP_LOGD(TAG, "Not a deep sleep reset\n");
     }
+#endif
 
     modem_console_register_http();
     modem_console_register_ping();
@@ -295,6 +340,29 @@ extern "C" void app_main(void)
         return 0;
     });
 
+    {
+        const std::vector<CommandArgs> no_args;
+        const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand * c) {
+            ESP_LOGI(TAG, "Exiting...");
+            exit_signal.set(1);
+            return 0;
+        });
+    }
+
+    /* Put the esp32 into deep sleep */
+    const struct DeepSleepArgs {
+        DeepSleepArgs(): timeout(INT1, nullptr, nullptr, "<tout>", "TIMEOUT") {}
+        CommandArgs timeout;
+    } deep_sleep_args;
+    const ConsoleCommand SetDeepSleep("set_deep_sleep", "Put esp32 to deep sleep", &deep_sleep_args, sizeof(deep_sleep_args), [&](ConsoleCommand * c) {
+        int tout = c->get_int_of(&DeepSleepArgs::timeout);
+        ESP_LOGI(TAG, "Entering deep sleep for %d sec", tout);
+        ESP_LOGI(TAG, "Wakeup Cause: %d ", GET_WAKEUP_CAUSE());
+        esp_deep_sleep(tout * 1000000);
+        return 0;
+    });
+
+#if !defined(CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK)
     const struct SetPinArgs {
         SetPinArgs(): pin(STR1, nullptr, nullptr, "<pin>", "PIN") {}
         CommandArgs pin;
@@ -315,7 +383,7 @@ extern "C" void app_main(void)
     });
 
     const std::vector<CommandArgs> no_args;
-    const ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand * c) {
+    const ConsoleCommand ReadPinArgs("read_pin", "checks if SIM is unlocked", no_args, [&](ConsoleCommand * /*c*/) {
         bool pin_ok;
         ESP_LOGI(TAG, "Checking pin...");
         auto err = dce->read_pin(pin_ok);
@@ -432,25 +500,6 @@ extern "C" void app_main(void)
         return 0;
     });
 
-    const ConsoleCommand ExitConsole("exit", "exit the console application", no_args, [&](ConsoleCommand * c) {
-        ESP_LOGI(TAG, "Exiting...");
-        exit_signal.set(1);
-        return 0;
-    });
-
-    /* Put the esp32 into deep sleep */
-    const struct DeepSleepArgs {
-        DeepSleepArgs(): timeout(INT1, nullptr, nullptr, "<tout>", "TIMEOUT") {}
-        CommandArgs timeout;
-    } deep_sleep_args;
-    const ConsoleCommand SetDeepSleep("set_deep_sleep", "Put esp32 to deep sleep", &deep_sleep_args, sizeof(deep_sleep_args), [&](ConsoleCommand * c) {
-        int tout = c->get_int_of(&DeepSleepArgs::timeout);
-        ESP_LOGI(TAG, "Entering deep sleep for %d sec", tout);
-        ESP_LOGI(TAG, "Wakeup Cause: %d ", GET_WAKEUP_CAUSE());
-        esp_deep_sleep(tout * 1000000);
-        return 0;
-    });
-
     /* Wake up modem */
     const ConsoleCommand WakeupModem("wakeup_modem", "Wakes up the modem from PSM", no_args, [&](ConsoleCommand * c) {
         wakeup_modem();
@@ -512,6 +561,7 @@ extern "C" void app_main(void)
 
         return 0;
     });
+#endif // !CONFIG_EXAMPLE_MODEM_DEVICE_NETWORK
 
 
     // start console REPL
