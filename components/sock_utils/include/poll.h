@@ -1,8 +1,10 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#pragma once
 
-// This is a placeholder for poll API
-// Note: some libraries require `poll.h` in public include dirs
+// POSIX declares the poll API in <poll.h>, ESP-IDF provides it as <sys/poll.h>:
+// libraries ported from Linux include <poll.h> for struct pollfd, poll() and the POLL* flags
+#include <sys/poll.h>
