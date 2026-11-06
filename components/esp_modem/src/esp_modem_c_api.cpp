@@ -678,6 +678,42 @@ extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got
     });
     return ESP_OK;
 }
+
+extern "C" esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce_wrap,
+                                                esp_modem_urc_consume_info_t (*urc_cb)(const esp_modem_urc_buffer_info_t *info))
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (urc_cb == nullptr) {
+        dce_wrap->dte->set_enhanced_urc_cb(nullptr);
+        return ESP_OK;
+    }
+    dce_wrap->dte->set_enhanced_urc_cb([urc_cb](const DTE::UrcBufferInfo &info) {
+        const esp_modem_urc_buffer_info_t c_info = {
+            .buffer_start = info.buffer_start,
+            .buffer_total_size = info.buffer_total_size,
+            .processed_offset = info.processed_offset,
+            .new_data_size = info.new_data_size,
+            .new_data_start = info.new_data_start,
+            .is_command_active = info.is_command_active,
+        };
+        const esp_modem_urc_consume_info_t consume = urc_cb(&c_info);
+        DTE::UrcConsumeInfo result = { DTE::UrcConsumeResult::CONSUME_NONE, 0 };
+        switch (consume.result) {
+        case ESP_MODEM_URC_CONSUME_PARTIAL:
+            result = { DTE::UrcConsumeResult::CONSUME_PARTIAL, consume.consume_size };
+            break;
+        case ESP_MODEM_URC_CONSUME_ALL:
+            result = { DTE::UrcConsumeResult::CONSUME_ALL, SIZE_MAX };
+            break;
+        default:
+            break;
+        }
+        return result;
+    });
+    return ESP_OK;
+}
 #endif
 
 extern "C" esp_err_t esp_modem_pause_net(esp_modem_dce_t *dce_wrap, bool pause)

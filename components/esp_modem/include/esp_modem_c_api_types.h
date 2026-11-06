@@ -193,6 +193,46 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
  */
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
 
+/**
+ * @brief Command-channel buffer state handed to an enhanced URC callback
+ *
+ * Mirrors DTE::UrcBufferInfo for C callers. The callback runs before the
+ * active command's own parser sees the same bytes.
+ */
+typedef struct {
+    const uint8_t *buffer_start;     /*!< Start of the accumulated command buffer */
+    size_t buffer_total_size;        /*!< Bytes currently in the buffer */
+    size_t processed_offset;         /*!< Bytes already consumed by earlier callbacks */
+    size_t new_data_size;            /*!< Bytes since the last consumed offset */
+    const uint8_t *new_data_start;   /*!< Start of those bytes */
+    bool is_command_active;          /*!< A command is waiting for its reply */
+} esp_modem_urc_buffer_info_t;
+
+typedef enum {
+    ESP_MODEM_URC_CONSUME_NONE,      /*!< Leave the buffer to the active command */
+    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size leading bytes */
+    ESP_MODEM_URC_CONSUME_ALL,       /*!< Consume the whole buffer */
+} esp_modem_urc_consume_result_t;
+
+typedef struct {
+    esp_modem_urc_consume_result_t result;
+    size_t consume_size;             /*!< Bytes to consume for CONSUME_PARTIAL */
+} esp_modem_urc_consume_info_t;
+
+/**
+ * @brief Set the enhanced URC callback with buffer consumption control
+ *
+ * C entry for DTE::set_enhanced_urc_cb(). The callback decides how much of
+ * the command buffer it consumed; returning ESP_MODEM_URC_CONSUME_NONE while
+ * a command is active leaves the reply to that command. Pass NULL to detach.
+ *
+ * @param dce Modem DCE handle
+ * @param urc_cb Callback receiving the buffer state and returning the consumption
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG on a bad handle
+ */
+esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce,
+                                     esp_modem_urc_consume_info_t (*urc_cb)(const esp_modem_urc_buffer_info_t *info));
+
 #endif
 
 /**
