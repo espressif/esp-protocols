@@ -183,6 +183,7 @@ jobs:
             bash -c "
               . \$IDF_PATH/export.sh
               cp sdkconfig.ci.linux sdkconfig.defaults
+              echo 'CONFIG_AUTOBAHN_PERF_MODE=y' >> sdkconfig.defaults
               echo 'Building...'
               idf.py build
             "

@@ -88,6 +88,8 @@ autobahn-testsuite/
 ### Fuzzing Server
 Edit `config/fuzzingserver.json` to include/exclude cases (e.g., exclude performance/compression tests).
 
+To run the performance cases (9.*), use `config/fuzzingserver-perf.json`, build the testee with `CONFIG_AUTOBAHN_PERF_MODE=y`, and pass `--autobahn-timeout 7200` to pytest.
+
 ## 📊 Test Categories
 
 | Category | Tests | Time | Critical? | Notes |

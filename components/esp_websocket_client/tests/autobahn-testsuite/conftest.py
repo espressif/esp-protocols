@@ -9,3 +9,10 @@ def pytest_addoption(parser):
         default=None,
         help="Server URI to send via serial (stdin)",
     )
+    parser.addoption(
+        "--autobahn-timeout",
+        action="store",
+        type=int,
+        default=2400,
+        help="Overall test timeout in seconds; use 7200 for performance (9.*) runs",
+    )

@@ -28,8 +28,7 @@ def test_autobahn(dut, request):
 
     last_case = None
     start_time = time.time()
-    # 40 minutes timeout as in monitor_serial.py
-    timeout = 2400
+    timeout = request.config.getoption("--autobahn-timeout")
 
     print('\n--- Waiting for ESP32 output (tests should start shortly) ---\n')
 
