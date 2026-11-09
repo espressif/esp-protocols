@@ -181,15 +181,6 @@ if(IDF_TARGET STREQUAL "linux")
     idf_component_get_property(_lws_mbedtls_lib mbedtls COMPONENT_LIB)
     target_link_libraries(websockets "$<TARGET_FILE:${_lws_mbedtls_lib}>")
     add_dependencies(websockets ${_lws_mbedtls_lib})
-    # The lwip component is registered on the linux target but provides no
-    # headers; its propagated port/include shadows the host's <netinet/in.h>
-    # with a wrapper forwarding to lwip/inet.h. Drop lwip dirs from the target
-    # so the host headers resolve.
-    get_target_property(_lws_inc websockets INCLUDE_DIRECTORIES)
-    if(_lws_inc)
-        list(FILTER _lws_inc EXCLUDE REGEX "components/lwip/")
-        set_target_properties(websockets PROPERTIES INCLUDE_DIRECTORIES "${_lws_inc}")
-    endif()
     # lws writes lws_config.h into two dirs on the consumer include path, both
     # defining LWS_WITH_CUSTOM_HEADERS unguarded. Clang (macOS host) flags the
     # redefinition; GCC rejects the option name, so gate it to Clang.
