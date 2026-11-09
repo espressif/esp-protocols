@@ -199,9 +199,9 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
 void mdns_priv_cache_process_sync(void);
 
 /**
- * @brief Replay all currently visible cache services to a newly registered browse.
+ * @brief Replay all currently visible cache services to the specified notifier on a browse.
  */
-esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse);
+esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse, const mdns_browse_notifier_t *notifier);
 #ifdef __cplusplus
 }
 #endif
