@@ -144,25 +144,36 @@ typedef void (*mdns_query_notify_t)(mdns_search_once_t *search);
  * @brief Browse result change notifier
  *
  * Called once for every matching browse result changed by a received response,
- * or once for every currently cached result when a new browse is registered.
+ * or once for every currently cached result when a new callback is registered on the browse.
  *
- * The @p result is a temporary projection of the internal mDNS cache, which is only valid
- * during the lifetime of this callback and is freed immediately after the callback returns.
- *
- * @note For record browsers, the result contains only the fields for subscribed record type.
+ * The @p result is a temporary projection of the internal mDNS cache, which is shared by all callbacks
+ * on the browse, only valid inside the callback, and freed after all callbacks return.
+ * Users MUST NOT modify or free the result or any of its components.
  *
  * @warning @p result->next is always NULL. Other instances cannot be obtained from @p result.
  *
  * @warning If handling is deferred outside this callback, applications must make a deep copy
  *          of @p result with all components, including strings, TXT entries, address list, and subtype.
  *
- * @warning This callback runs in the mDNS service task and holds the mDNS service lock.
- *          Users must not call APIs that acquire mDNS service lock in this callback.
- *          For example, mdns_browse_new() and mdns_browse_delete().
+ * @warning Browse callbacks run in the mDNS service task with the mDNS service lock released.
+ *          Users can call browse create and delete functions, but must not call functions that wait for service task.
+ *          e.g. @ref mdns_free, @ref mdns_hostname_set, @ref mdns_delegate_hostname_add, `mdns_query*`.
  *
  * @param result  Temporary result of the browse that changed.
  */
 typedef void (*mdns_browse_notify_t)(mdns_result_t *result);
+
+/**
+ * @brief Browse result change handler with user context
+ *
+ * Result lifetime, ownership, and execution restrictions follow @ref mdns_browse_notify_t,
+ *
+ * @note For record browsers, the result contains only the fields for subscribed record type.
+ *
+ * @param result  Temporary result of the browse that changed.
+ * @param context User context provided upon registration, passed unchanged. Can be NULL.
+ */
+typedef void (*mdns_browse_handler_t)(mdns_result_t *result, void *context);
 
 /**
  * @brief Hostname change notifier
@@ -1120,21 +1131,38 @@ esp_err_t mdns_netif_action(esp_netif_t *esp_netif, mdns_event_actions_t event_a
  * @param proto    Pointer to the `_proto` which will be browsed.
  * @param notifier The callback which will be called when a browse result changes. Must not be NULL.
  *                 See @ref mdns_browse_notify_t for callback semantics and limitations.
- * @return mdns_browse_t pointer to new browse object if initiated successfully.
- *         NULL otherwise.
+ * @return `mdns_browse_t` pointer to the browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `service`, `proto`, and `notifier` exists.
  *
- * @note If matching services already present in the internal mDNS cache,
- *       the notifier will be called once for each cached service after this browse
- *       is registered.
- *
- * @note The notifier receives a temporary result that is valid only during the callback.
- *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ * @note Registering a different callback reuses the browse, resends a query,
+ *       and replays each matching cached result only to the new callback.
  *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
  *
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier);
+
+/**
+ * @brief   Browse mDNS for a service `_service._proto` and provide user context.
+ *
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `service`, `proto`, `handler` and `context` exists.
+ *
+ * @note Registering a different callback or context reuses the browse, resends a query,
+ *       and replays each matching cached result only to the new callback.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_new_with_context(const char *service, const char *proto, mdns_browse_handler_t handler,
+                                            void *context);
 
 /**
  * @brief   Browse mDNS for a service subtype `_subtype._sub._service._proto`
@@ -1144,15 +1172,10 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  * @param proto    Pointer to the `_proto` which will be browsed.
  * @param subtype  Pointer to the `_subtype` to restrict browsing to. Pass in NULL or empty string for standard browse.
  * @param notifier The callback which will be called when the browsing service changed. Must not be NULL.
- * @return mdns_browse_t pointer to new browse object if initiated successfully.
+ * @return `mdns_browse_t` pointer to the browse object if initiated or new notifier added successfully.
  *         NULL otherwise.
  *
- * @note If matching services already present in the internal mDNS cache,
- *       the notifier will be called once for each cached service after this browse
- *       is registered.
- *
- * @note The notifier receives a temporary result that is valid only during the callback.
- *       See @ref mdns_browse_notify_t for ownership and lifetime details.
+ * @note See @ref mdns_browse_new for notification behaviors.
  *
  * @note Passing in "_sub" to `subtype` is currently unsupported due to a limitation in mDNS name parser.
  *       Browsing this subtype will not obtain PTR record until this issue is fixed.
@@ -1163,16 +1186,37 @@ mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_brow
  */
 mdns_browse_t *mdns_browse_new_with_subtype(const char *service, const char *proto, const char *subtype, mdns_browse_notify_t notifier);
 
+
 /**
- * @brief   Stop the `_service._proto` service browse.
+ * @brief   Browse mDNS for a service subtype `_subtype._sub._service._proto` and provide user context
+ *          (Selective Instance Enumeration per RFC 6763 Section 7.1).
+ *
+ * @param service  Pointer to the `_service` which will be browsed.
+ * @param proto    Pointer to the `_proto` which will be browsed.
+ * @param subtype  Pointer to the `_subtype` to restrict browsing to. Pass in NULL or empty string for standard browse.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `service`, `proto`, `subtype`, `handler` and `context` exists.
+ *
+ * @note See @ref mdns_browse_new_with_subtype for subtype limitations and notification behaviors.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+mdns_browse_t *mdns_browse_new_with_subtype_with_context(const char *service, const char *proto, const char *subtype,
+                                                         mdns_browse_handler_t handler, void *context);
+
+/**
+ * @brief   Stop the `_service._proto` service browse and all its callbacks.
  * @param service  Pointer to the `_service` which will be browsed.
  * @param proto    Pointer to the `_proto` which will be browsed.
  * @return
  *     - ESP_OK                 success.
  *     - ESP_FAIL               mDNS is not running or the browsing of `_service._proto` is never started.
  *     - ESP_ERR_NO_MEM         memory error.
- *
- * @note This function only deletes a service browse created by `mdns_browse_new()` or `mdns_browse_new_with_subtype()`
  *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
  *
@@ -1181,7 +1225,7 @@ mdns_browse_t *mdns_browse_new_with_subtype(const char *service, const char *pro
 esp_err_t mdns_browse_delete(const char *service, const char *proto);
 
 /**
- * @brief   Stop the `_subtype._sub._service._proto` service browse.
+ * @brief   Stop the `_service._proto` service browse with possible subtype and all its callbacks.
  * @param service  Pointer to the `_service` which will be browsed.
  * @param proto    Pointer to the `_proto` which will be browsed.
  * @param subtype  Pointer to the `_subtype`. Can be NULL to match a browse without subtype.
@@ -1190,13 +1234,60 @@ esp_err_t mdns_browse_delete(const char *service, const char *proto);
  *     - ESP_FAIL               mDNS is not running or the browsing was never started.
  *     - ESP_ERR_NO_MEM         memory error.
  *
- * @note This function only deletes a service browse created by `mdns_browse_new()` or `mdns_browse_new_with_subtype()`
- *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
  *
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto, const char *subtype);
+
+/**
+ * @brief Remove one legacy callback from the matching service browse with possible subtype.
+ *
+ * @param service   Service type of the service browse.
+ * @param proto     Service protocol of the service browse.
+ * @param subtype   Subtype, pass in NULL or empty string to match a browse without subtype.
+ * @param notifier  Legacy callback to remove. Must not be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the service browse or legacy callback is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note Removing the last active subscription stops the browse and schedules its deletion.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_delete_notify(const char *service, const char *proto, const char *subtype,
+                                    mdns_browse_notify_t notifier);
+
+/**
+ * @brief Remove one handler-context pair from the matching service browse with possible subtype.
+ *
+ * @param service   Service type of the service browse.
+ * @param proto     Service protocol of the service browse.
+ * @param subtype   Subtype, or NULL or empty string to match a browse without subtype.
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the service browse or handler-context pair is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note Removing the last active subscription stops the browse and schedules its deletion.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_delete_handler(const char *service, const char *proto, const char *subtype,
+                                     mdns_browse_handler_t handler, void *context);
 
 /**
  * @brief Start a continuous PTR record browse for `_service._proto` with possible subtype.
@@ -1207,21 +1298,23 @@ esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto
  * @param service           Service type, e.g. `_http`, `_ftp` etc.
  * @param proto             Service protocol, e.g. `_tcp`, `_udp` etc.
  * @param subtype           Subtype, e.g. `_printer` etc. Can be NULL for base-service PTR.
- * @param notifier          Callback invoked on PTR updates and goodbye messages. Must not be NULL.
- * @return Pointer to the new record browse if initiated successfully, NULL otherwise.
+ * @param handler  The callback which will be called when a browse result changes. Must not be NULL.
+ *                 See @ref mdns_browse_handler_t for callback and context semantics and limitations.
+ * @param context  User context, can be NULL.
+ * @return `mdns_browse_t` pointer to the record browse object if initiated or new notifier added successfully.
+ *         NULL when failed to create new browse, or a browse with the same `service`, `proto`, `subtype`, `handler` and `context` exists.
  *
- * @note PTR record browse subtype limitiations and notify behaviors are the same as @ref mdns_browse_new_with_subtype,
- *       please refer to that for detailed information.
+ * @note See @ref mdns_browse_new_with_subtype_with_context for subtype limitations and cache replay behaviors.
  *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
  *
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 mdns_browse_t *mdns_browse_record_ptr_new(const char *service, const char *proto, const char *subtype,
-                                          mdns_browse_notify_t notifier);
+                                          mdns_browse_handler_t handler, void *context);
 
 /**
- * @brief Stop the continuous PTR record browse for `_service._proto` with possible subtype.
+ * @brief Stop the continuous PTR record browse for `_service._proto` with possible subtype and all its callbacks.
  * @param service   Service type of the PTR record browse.
  * @param proto     Service protocol of the PTR record browse.
  * @param subtype   Subtype, or NULL or empty string to match a browse without subtype.
@@ -1231,13 +1324,36 @@ mdns_browse_t *mdns_browse_record_ptr_new(const char *service, const char *proto
  *     - ESP_FAIL               invalid names, mDNS is not running, or the PTR record browse is not found.
  *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
  *
- * @note This function only deletes a PTR record browse created by `mdns_browse_record_ptr_new()`.
- *
  * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
  *
  * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
  */
 esp_err_t mdns_browse_record_ptr_delete(const char *service, const char *proto, const char *subtype);
+
+/**
+ * @brief Remove one handler-context pair from the matching PTR record browse.
+ *
+ * @param service   Service type of the PTR record browse.
+ * @param proto     Service protocol of the PTR record browse.
+ * @param subtype   Subtype, or NULL or empty string to match a browse without subtype.
+ * @param handler   Callback to remove. Must not be NULL.
+ * @param context   User context to match, can be NULL.
+ *
+ * @return
+ *     - ESP_OK                 success.
+ *     - ESP_ERR_INVALID_ARG    invalid names or NULL callback.
+ *     - ESP_ERR_NOT_FOUND      the PTR record browse or handler-context pair is not found.
+ *     - ESP_ERR_INVALID_STATE  mDNS is not running.
+ *     - ESP_ERR_NO_MEM         failed to allocate or enqueue the deletion action.
+ *
+ * @note Removing the last active subscription stops the browse and schedules its deletion.
+ *
+ * @note Available when CONFIG_MDNS_ENABLE_BROWSE is enabled (default); can be disabled to reduce binary size.
+ *
+ * @warning This function acquires the mDNS service lock and must not be called from the mDNS service task.
+ */
+esp_err_t mdns_browse_record_ptr_delete_handler(const char *service, const char *proto, const char *subtype,
+                                                mdns_browse_handler_t handler, void *context);
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
 
 #ifdef __cplusplus
