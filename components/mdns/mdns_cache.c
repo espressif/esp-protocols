@@ -1283,9 +1283,9 @@ void mdns_priv_cache_process_sync(void)
     }
 }
 
-esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse)
+esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse, const mdns_browse_notifier_t *notifier)
 {
-    if (!browse) {
+    if (!browse || !notifier) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -1293,7 +1293,7 @@ esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse)
 
     for (mdns_cache_entry_t *entry = s_cache; entry; entry = entry->next) {
         for (mdns_service_cache_t *service = entry->service_cache_list; service; service = service->next) {
-            esp_err_t ret = mdns_priv_browse_notify_from_service_cache(entry, service, browse);
+            esp_err_t ret = mdns_priv_browse_notify_from_service_cache(entry, service, browse, notifier);
             notified &= (ret == ESP_OK || ret == ESP_ERR_NOT_FOUND);
         }
     }

@@ -363,12 +363,28 @@ typedef enum {
     MDNS_BROWSE_TYPE_RECORD_PTR, /* PTR record browse */
 } mdns_browse_type_t;
 
+typedef enum {
+    MDNS_BROWSE_CALLBACK_LEGACY, /* legacy `mdns_browse_notify_t` */
+    MDNS_BROWSE_CALLBACK_WITH_CONTEXT, /* new `mdns_browse_handler_t` */
+} mdns_browse_callback_type_t;
+
+typedef struct mdns_browse_notifier_s {
+    struct mdns_browse_notifier_s *next;
+    mdns_browse_callback_type_t type;
+    union {
+        mdns_browse_notify_t legacy;
+        mdns_browse_handler_t handler;
+    } callback;
+    void *context; /*!< User provided context pointer, mDNS component must not modify */
+    bool active; /*!< Registered and not pending deletion */
+} mdns_browse_notifier_t;
+
 typedef struct mdns_browse_s {
     struct mdns_browse_s *next;
 
     mdns_browse_type_t type;
     mdns_browse_state_t state;
-    mdns_browse_notify_t notifier;
+    mdns_browse_notifier_t *notifiers;
 
     char *service;
     char *proto;
@@ -401,6 +417,7 @@ typedef struct {
         } delegate_hostname;
         struct {
             mdns_browse_t *browse;
+            mdns_browse_notifier_t *notifier;
         } browse_add;
         struct {
             mdns_if_t interface;

@@ -27,7 +27,7 @@ static mdns_browse_t *s_browse;
 /**
  * @brief  Browse action
  */
-static esp_err_t send_browse_action(mdns_action_type_t type, mdns_browse_t *browse)
+static esp_err_t send_browse_action(mdns_action_type_t type, mdns_browse_t *browse, mdns_browse_notifier_t *notifier)
 {
     mdns_action_t *action = NULL;
 
@@ -40,6 +40,7 @@ static esp_err_t send_browse_action(mdns_action_type_t type, mdns_browse_t *brow
 
     action->type = type;
     action->data.browse_add.browse = browse;
+    action->data.browse_add.notifier = notifier;
     if (!mdns_priv_queue_action(action)) {
         mdns_mem_free(action);
         return ESP_ERR_NO_MEM;
@@ -56,6 +57,11 @@ static void browse_item_free(mdns_browse_t *browse)
         return;
     }
 
+    while (browse->notifiers) {
+        mdns_browse_notifier_t *notifier = browse->notifiers;
+        browse->notifiers = notifier->next;
+        mdns_mem_free(notifier);
+    }
     mdns_mem_free(browse->service);
     mdns_mem_free(browse->proto);
     mdns_mem_free(browse->subtype);
@@ -137,6 +143,40 @@ static bool browse_match(const mdns_browse_t *a, const mdns_browse_t *b)
     }
 }
 
+/*
+ * @brief Check if two `mdns_browse_notifier_t` items are identical.
+ */
+static bool browse_notifier_matches(const mdns_browse_notifier_t *a, const mdns_browse_notifier_t *b)
+{
+    if (!a || !b || a->type != b->type || a->context != b->context) {
+        return false;
+    }
+
+    switch (a->type) {
+    case MDNS_BROWSE_CALLBACK_LEGACY:
+        return a->callback.legacy == b->callback.legacy;
+    case MDNS_BROWSE_CALLBACK_WITH_CONTEXT:
+        return a->callback.handler == b->callback.handler;
+    default:
+        return false;
+    }
+}
+
+/*
+ * @brief Invokes the callback of an `mdns_browse_notifier_t` item to notify the result
+ */
+static void browse_callback(const mdns_browse_notifier_t *notifier, mdns_result_t *result)
+{
+    switch (notifier->type) {
+    case MDNS_BROWSE_CALLBACK_LEGACY:
+        notifier->callback.legacy(result);
+        break;
+    case MDNS_BROWSE_CALLBACK_WITH_CONTEXT:
+        notifier->callback.handler(result, notifier->context);
+        break;
+    }
+}
+
 /**
  * @brief Generate `mdns_cache_record_mask_t` from a browse item for removed records
  */
@@ -188,9 +228,11 @@ bool mdns_priv_browse_has_subtype(const char *service, const char *proto, const 
 }
 
 /**
- * @brief  Remove and free the browse from browse linked list
+ * @brief  Remove and free the notifier item from the browse item when `notifier` is not NULL,
+ *         otherwise remove and free the browse from browse linked list.
+ *         Browse will be freed when no notifiers exist.
  */
-static void browse_finish(mdns_browse_t *browse)
+static void browse_finish(mdns_browse_t *browse, mdns_browse_notifier_t *notifier)
 {
     if (!browse) {
         return;
@@ -198,9 +240,16 @@ static void browse_finish(mdns_browse_t *browse)
 
     for (mdns_browse_t *it = s_browse; it; it = it->next) {
         if (it == browse) {
-            queueDetach(mdns_browse_t, s_browse, it);
-            browse_item_free(it);
-            mdns_priv_cache_trim_unsubscribed_records(esp_timer_get_time());
+            if (notifier) {
+                queueDetach(mdns_browse_notifier_t, it->notifiers, notifier);
+                mdns_mem_free(notifier);
+            }
+
+            if (!notifier || !browse->notifiers) {
+                queueDetach(mdns_browse_t, s_browse, it);
+                browse_item_free(it);
+                mdns_priv_cache_trim_unsubscribed_records(esp_timer_get_time());
+            }
             return;
         }
     }
@@ -209,8 +258,8 @@ static void browse_finish(mdns_browse_t *browse)
 /**
  * @brief  Allocate new browse structure
  */
-static mdns_browse_t *browse_init(const char *service, const char *proto, const char *subtype, mdns_browse_notify_t notifier,
-                                  mdns_browse_type_t type)
+static mdns_browse_t *browse_init(const char *service, const char *proto, const char *subtype,
+                                  const mdns_browse_notifier_t *notifier, mdns_browse_type_t type)
 {
     mdns_browse_t *browse = (mdns_browse_t *)mdns_mem_calloc(1, sizeof(mdns_browse_t));
 
@@ -245,21 +294,32 @@ static mdns_browse_t *browse_init(const char *service, const char *proto, const 
         }
     }
 
-    browse->notifier = notifier;
+    browse->notifiers = mdns_mem_calloc(1, sizeof(mdns_browse_notifier_t));
+    mdns_browse_notifier_t *node = browse->notifiers;
+    if (!node) {
+        HOOK_MALLOC_FAILED;
+        browse_item_free(browse);
+        return NULL;
+    }
+    node->type = notifier->type;
+    node->callback = notifier->callback;
+    node->context = notifier->context;
+    node->active = true;
+
     return browse;
 }
 
 /**
- * @brief  Send initial PTR queries for a registered browse.
+ * @brief Replay cached results and send PTR queries after registering a callback.
  */
-static void browse_start(mdns_browse_t *browse)
+static void browse_start(mdns_browse_t *browse, mdns_browse_notifier_t *notifier)
 {
-    if (!browse || browse->state != BROWSE_INIT) {
+    if (!browse || browse->state == BROWSE_OFF || !notifier || !notifier->active) {
         return;
     }
     browse->state = BROWSE_RUNNING;
 
-    if (mdns_priv_cache_notify_browse(browse) != ESP_OK) {
+    if (mdns_priv_cache_notify_browse(browse, notifier) != ESP_OK) {
         ESP_LOGW(TAG, "Fails to notify browse on registration");
     }
 
@@ -312,10 +372,10 @@ void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
     if (type == ACTION_RUN) {
         switch (action->type) {
         case ACTION_BROWSE_START:
-            browse_start(action->data.browse_add.browse);
+            browse_start(action->data.browse_add.browse, action->data.browse_add.notifier);
             break;
         case ACTION_BROWSE_END:
-            browse_finish(action->data.browse_add.browse);
+            browse_finish(action->data.browse_add.browse, action->data.browse_add.notifier);
             break;
         default:
             abort();
@@ -329,7 +389,7 @@ void mdns_priv_browse_action(mdns_action_t *action, mdns_action_subtype_t type)
  */
 static bool browse_matches_service_cache(const mdns_browse_t *browse, const mdns_service_cache_t *service)
 {
-    return browse && service && browse->state == BROWSE_RUNNING && browse->notifier
+    return browse && service && browse->state == BROWSE_RUNNING && browse->notifiers
            && mdns_utils_str_case_equal(browse->service, service->service)
            && mdns_utils_str_case_equal(browse->proto, service->proto);
 }
@@ -362,10 +422,12 @@ static bool browse_matches_service_cache_with_subtype(const mdns_browse_t *brows
 
 /**
  * @brief Build and sync a temporary result for a browse from cache.
+ *
+ * @note Notify the specific callback when `notifier` is not NULL, otherwise notify all active callbacks under `browse`
  */
 static esp_err_t browse_build_and_notify_temp_result(mdns_browse_t *browse, const mdns_cache_entry_t *entry,
                                                      const mdns_service_cache_t *service, const mdns_cache_subtype_t *subtype,
-                                                     mdns_cache_record_mask_t removed_records)
+                                                     mdns_cache_record_mask_t removed_records, const mdns_browse_notifier_t *notifier)
 {
     mdns_result_t *result = NULL;
     esp_err_t ret = mdns_priv_service_cache_to_result(entry, service, subtype, get_browse_projection_record_mask(browse),
@@ -375,8 +437,15 @@ static esp_err_t browse_build_and_notify_temp_result(mdns_browse_t *browse, cons
     }
 
     DBG_BROWSE_RESULTS(result, browse);
-    if (browse->notifier) {
-        browse->notifier(result);
+
+    if (notifier) {
+        browse_callback(notifier, result);
+    } else {
+        for (mdns_browse_notifier_t *it = browse->notifiers; it; it = it->next) {
+            if (it->active) {
+                browse_callback(it, result);
+            }
+        }
     }
 
     mdns_priv_query_results_free(result);
@@ -421,18 +490,18 @@ bool mdns_priv_browse_update_from_service_cache(const mdns_cache_entry_t *entry,
         if (!browse_need_update(browse, service, subtype, records)) {
             continue;
         }
-        updated &= (browse_build_and_notify_temp_result(browse, entry, service, subtype, MDNS_CACHE_RECORD_INVALID) == ESP_OK);
+        updated &= (browse_build_and_notify_temp_result(browse, entry, service, subtype, MDNS_CACHE_RECORD_INVALID, NULL) == ESP_OK);
     }
 
     return updated;
 }
 
 esp_err_t mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                                     mdns_browse_t *browse)
+                                                     mdns_browse_t *browse, const mdns_browse_notifier_t *notifier)
 {
     const mdns_cache_subtype_t *subtype = NULL;
 
-    if (!entry || !service || !browse) {
+    if (!entry || !service || !browse || !notifier) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -440,7 +509,7 @@ esp_err_t mdns_priv_browse_notify_from_service_cache(const mdns_cache_entry_t *e
         return ESP_ERR_NOT_FOUND;
     }
 
-    return browse_build_and_notify_temp_result(browse, entry, service, subtype, MDNS_CACHE_RECORD_INVALID);
+    return browse_build_and_notify_temp_result(browse, entry, service, subtype, MDNS_CACHE_RECORD_INVALID, notifier);
 }
 
 bool mdns_priv_browse_notify_record_removed_from_service_cache(const mdns_cache_entry_t *entry,
@@ -465,19 +534,35 @@ bool mdns_priv_browse_notify_record_removed_from_service_cache(const mdns_cache_
         if (subtype && !mdns_utils_str_case_equal(subtype->subtype, browse->subtype)) {
             continue;
         }
-        notified &= (browse_build_and_notify_temp_result(browse, entry, service, subtype, browse_record_mask) == ESP_OK);
+        notified &= (browse_build_and_notify_temp_result(browse, entry, service, subtype, browse_record_mask, NULL) == ESP_OK);
     }
 
     return notified;
 }
 
-static mdns_browse_t *browse_new(const char *service, const char *proto, const char *subtype, mdns_browse_notify_t notifier,
-                                 mdns_browse_type_t type)
+static mdns_browse_t *browse_new(const char *service, const char *proto, const char *subtype,
+                                 const mdns_browse_notifier_t *notifier, mdns_browse_type_t type)
 {
     mdns_browse_t *browse = NULL;
+    mdns_browse_notifier_t *notifier_item = NULL;
+    bool browse_exists = false;
 
     if (!mdns_priv_is_server_init() || mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto)
             || !notifier) {
+        return NULL;
+    }
+    switch (notifier->type) {
+    case MDNS_BROWSE_CALLBACK_LEGACY:
+        if (!notifier->callback.legacy) {
+            return NULL;
+        }
+        break;
+    case MDNS_BROWSE_CALLBACK_WITH_CONTEXT:
+        if (!notifier->callback.handler) {
+            return NULL;
+        }
+        break;
+    default:
         return NULL;
     }
 
@@ -491,30 +576,51 @@ static mdns_browse_t *browse_new(const char *service, const char *proto, const c
     if (!browse) {
         return NULL;
     }
+    notifier_item = browse->notifiers;
+    notifier_item->active = true;
 
     mdns_priv_service_lock();
     // Check if the browse already exists before sending action
     for (mdns_browse_t *it = s_browse; it; it = it->next) {
         if (it->state != BROWSE_OFF && browse_match(it, browse)) {
-            bool has_subtype = !mdns_utils_str_null_or_empty(subtype);
-            ESP_LOGW(TAG, "Browse already exists: %s%s%s.%s", has_subtype ? subtype : "",
-                     has_subtype ? "._sub." : "", browse->service, browse->proto);
-            goto error;
+            for (mdns_browse_notifier_t *node = it->notifiers; node; node = node->next) {
+                if (node->active && browse_notifier_matches(node, notifier_item)) {
+                    bool has_subtype = !mdns_utils_str_null_or_empty(subtype);
+                    ESP_LOGW(TAG, "Browse already exists: %s%s%s.%s", has_subtype ? subtype : "",
+                             has_subtype ? "._sub." : "", browse->service, browse->proto);
+                    goto error;
+                }
+            }
+            browse_exists = true;
+            // `browse->notifiers` will be reused, other components are freed.
+            browse->notifiers = NULL;
+            browse_item_free(browse);
+            browse = it;
         }
     }
 
-    if (send_browse_action(ACTION_BROWSE_START, browse) != ESP_OK) {
+    if (send_browse_action(ACTION_BROWSE_START, browse, notifier_item) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to send browse start action");
         goto error;
     }
 
-    browse->next = s_browse;
-    s_browse = browse;
+    if (!browse_exists) {
+        browse->next = s_browse;
+        s_browse = browse;
+    } else {
+        // Reuse the `mdns_browse_notifier_t` created by `browse_init()`
+        notifier_item->next = browse->notifiers;
+        browse->notifiers = notifier_item;
+    }
     mdns_priv_service_unlock();
     return browse;
 
 error:
-    browse_item_free(browse);
+    if (!browse_exists) {
+        browse_item_free(browse);
+    } else {
+        mdns_mem_free(notifier_item);
+    }
     mdns_priv_service_unlock();
     return NULL;
 }
@@ -549,7 +655,7 @@ static esp_err_t browse_delete(const char *service, const char *proto, const cha
     mdns_browse_state_t prev_state = browse->state;
     browse->state = BROWSE_OFF;
 
-    if (send_browse_action(ACTION_BROWSE_END, browse) != ESP_OK) {
+    if (send_browse_action(ACTION_BROWSE_END, browse, NULL) != ESP_OK) {
         browse->state = prev_state;
         mdns_priv_service_unlock();
         return ESP_ERR_NO_MEM;
@@ -559,17 +665,107 @@ static esp_err_t browse_delete(const char *service, const char *proto, const cha
     return ESP_OK;
 }
 
+static esp_err_t browse_delete_notifier(const char *service, const char *proto, const char *subtype,
+                                        mdns_browse_type_t type, const mdns_browse_notifier_t *notifier)
+{
+    if (mdns_utils_str_null_or_empty(service) || mdns_utils_str_null_or_empty(proto) || !notifier) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (notifier->type) {
+    case MDNS_BROWSE_CALLBACK_LEGACY:
+        if (!notifier->callback.legacy) {
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    case MDNS_BROWSE_CALLBACK_WITH_CONTEXT:
+        if (!notifier->callback.handler) {
+            return ESP_ERR_INVALID_ARG;
+        }
+        break;
+    default:
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (subtype && strlen(subtype) > MDNS_SUBTYPE_MAX_LEN) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (!mdns_priv_is_server_init()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    mdns_priv_service_lock();
+    for (mdns_browse_t *it = s_browse; it; it = it->next) {
+        if (it->state == BROWSE_OFF || it->type != type
+                || !browse_matches_identity_with_subtype(it, service, proto, subtype)) {
+            continue;
+        }
+
+        for (mdns_browse_notifier_t *node = it->notifiers; node; node = node->next) {
+            if (!node->active || !browse_notifier_matches(node, notifier)) {
+                continue;
+            }
+
+            mdns_browse_state_t prev_state = it->state;
+            bool prev_notifier_state = node->active;
+
+            node->active = false;
+            // Stop the browse when no active callbacks remain
+            bool has_active = false;
+            for (mdns_browse_notifier_t *n = it->notifiers; n; n = n->next) {
+                has_active |= n->active;
+            }
+            if (!has_active) {
+                it->state = BROWSE_OFF;
+            }
+
+            esp_err_t err = send_browse_action(ACTION_BROWSE_END, it, node);
+            if (err != ESP_OK) {
+                it->state = prev_state;
+                node->active = prev_notifier_state;
+            }
+            mdns_priv_service_unlock();
+            return err;
+        }
+        break;
+    }
+    mdns_priv_service_unlock();
+    return ESP_ERR_NOT_FOUND;
+}
+
 /**
  * @defgroup MDNS_PUBLIC_API
  */
 mdns_browse_t *mdns_browse_new(const char *service, const char *proto, mdns_browse_notify_t notifier)
 {
-    return browse_new(service, proto, NULL, notifier, MDNS_BROWSE_TYPE_SERVICE);
+    return mdns_browse_new_with_subtype(service, proto, NULL, notifier);
+}
+
+mdns_browse_t *mdns_browse_new_with_context(const char *service, const char *proto, mdns_browse_handler_t handler,
+                                            void *context)
+{
+    return mdns_browse_new_with_subtype_with_context(service, proto, NULL, handler, context);
 }
 
 mdns_browse_t *mdns_browse_new_with_subtype(const char *service, const char *proto, const char *subtype, mdns_browse_notify_t notifier)
 {
-    return browse_new(service, proto, subtype, notifier, MDNS_BROWSE_TYPE_SERVICE);
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_LEGACY,
+        .callback.legacy = notifier,
+    };
+    return browse_new(service, proto, subtype, &spec, MDNS_BROWSE_TYPE_SERVICE);
+}
+
+mdns_browse_t *mdns_browse_new_with_subtype_with_context(const char *service, const char *proto, const char *subtype,
+                                                         mdns_browse_handler_t handler, void *context)
+{
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_new(service, proto, subtype, &spec, MDNS_BROWSE_TYPE_SERVICE);
 }
 
 esp_err_t mdns_browse_delete(const char *service, const char *proto)
@@ -583,12 +779,61 @@ esp_err_t mdns_browse_delete_with_subtype(const char *service, const char *proto
 }
 
 mdns_browse_t *mdns_browse_record_ptr_new(const char *service, const char *proto, const char *subtype,
-                                          mdns_browse_notify_t notifier)
+                                          mdns_browse_handler_t handler, void *context)
 {
-    return browse_new(service, proto, subtype, notifier, MDNS_BROWSE_TYPE_RECORD_PTR);
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_new(service, proto, subtype, &spec, MDNS_BROWSE_TYPE_RECORD_PTR);
 }
 
 esp_err_t mdns_browse_record_ptr_delete(const char *service, const char *proto, const char *subtype)
 {
     return browse_delete(service, proto, subtype, MDNS_BROWSE_TYPE_RECORD_PTR);
+}
+
+esp_err_t mdns_browse_delete_notifier(const char *service, const char *proto, mdns_browse_notify_t notifier)
+{
+    return mdns_browse_delete_notifier_with_subtype(service, proto, NULL, notifier);
+}
+
+esp_err_t mdns_browse_delete_notifier_with_subtype(const char *service, const char *proto, const char *subtype,
+                                                   mdns_browse_notify_t notifier)
+{
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_LEGACY,
+        .callback.legacy = notifier,
+    };
+    return browse_delete_notifier(service, proto, subtype, MDNS_BROWSE_TYPE_SERVICE, &spec);
+}
+
+esp_err_t mdns_browse_delete_handler_with_context(const char *service, const char *proto,
+                                                  mdns_browse_handler_t handler, void *context)
+{
+    return mdns_browse_delete_handler_with_subtype_with_context(service, proto, NULL, handler, context);
+}
+
+esp_err_t mdns_browse_delete_handler_with_subtype_with_context(const char *service, const char *proto,
+                                                               const char *subtype, mdns_browse_handler_t handler,
+                                                               void *context)
+{
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_delete_notifier(service, proto, subtype, MDNS_BROWSE_TYPE_SERVICE, &spec);
+}
+
+esp_err_t mdns_browse_record_ptr_delete_handler(const char *service, const char *proto, const char *subtype,
+                                                mdns_browse_handler_t handler, void *context)
+{
+    const mdns_browse_notifier_t spec = {
+        .type = MDNS_BROWSE_CALLBACK_WITH_CONTEXT,
+        .callback.handler = handler,
+        .context = context,
+    };
+    return browse_delete_notifier(service, proto, subtype, MDNS_BROWSE_TYPE_RECORD_PTR, &spec);
 }
