@@ -13,7 +13,7 @@ jobs:
     name: Socket helpers build
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "release-v6.1"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -43,7 +43,7 @@ jobs:
     name: Socket helpers host test
     strategy:
       matrix:
-        idf_ver: ["latest", "release-v5.3"]
+        idf_ver: ["latest", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "release-v6.1"]
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
