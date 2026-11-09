@@ -1,13 +1,35 @@
 /*
- * SPDX-FileCopyrightText: 2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2024-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <fcntl.h>
+#include <string.h>
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
 #include "ifaddrs.h"
 #include "esp_check.h"
+#include "esp_netif.h"
+
+#if CONFIG_LWIP_IPV6
+struct scope_name {
+    u32_t index;
+    char name[NETIF_NAMESIZE];
+};
+
+// The name of the interface with the index, like if_indextoname(), which lwIP provides only with CONFIG_LWIP_NETIF_API
+static esp_err_t scope_name_unsafe(void *ctx)
+{
+    struct scope_name *scope = ctx;
+    esp_netif_t *netif = NULL;
+    while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
+        if ((u32_t)esp_netif_get_netif_impl_index(netif) == scope->index) {
+            return esp_netif_get_netif_impl_name(netif, scope->name);
+        }
+    }
+    return ESP_ERR_NOT_FOUND;
+}
+#endif
 
 int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
                 char *host, socklen_t hostlen,
@@ -18,36 +40,64 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
         return EAI_BADFLAGS;
     }
 
-    const struct sockaddr_in *sinp = (const struct sockaddr_in *) addr;
+    const void *ip;         // address in network byte order
+    in_port_t port;         // port in network byte order
+#if CONFIG_LWIP_IPV6
+    u32_t scope_id = 0;
+#endif
 
     switch (addr->sa_family) {
-    case AF_INET:
-        // Handle numeric host address
-        if (flags & NI_NUMERICHOST) {
-            if (host == NULL || hostlen == 0) {
-                return 0;
-            }
-            if (inet_ntop(AF_INET, &sinp->sin_addr, host, hostlen) == NULL) {
-                return EOVERFLOW;  // Error if address couldn't be converted
-            }
-        }
-
-        // Handle numeric service (port)
-        if (flags & NI_NUMERICSERV) {
-            // Print the port number, but for UDP services (if NI_DGRAM), we treat it the same way
-            int port = ntohs(sinp->sin_port);  // Convert port from network byte order
-            if (serv == NULL || servlen == 0) {
-                return 0;
-            }
-            if (snprintf(serv, servlen, "%d", port) < 0) {
-                return EOVERFLOW;  // Error if snprintf failed
-            }
-        }
-
+    case AF_INET: {
+        const struct sockaddr_in *sinp = (const struct sockaddr_in *) addr;
+        ip = &sinp->sin_addr;
+        port = sinp->sin_port;
         break;
-
+    }
+#if CONFIG_LWIP_IPV6
+    case AF_INET6: {
+        const struct sockaddr_in6 *sin6p = (const struct sockaddr_in6 *) addr;
+        ip = &sin6p->sin6_addr;
+        port = sin6p->sin6_port;
+        scope_id = sin6p->sin6_scope_id;
+        break;
+    }
+#endif
     default:
         return EAI_FAMILY;  // Unsupported address family
+    }
+
+    // Handle numeric host address
+    if (flags & NI_NUMERICHOST) {
+        if (host == NULL || hostlen == 0) {
+            return 0;
+        }
+        if (inet_ntop(addr->sa_family, ip, host, hostlen) == NULL) {
+            return EOVERFLOW;  // Error if address couldn't be converted
+        }
+#if CONFIG_LWIP_IPV6
+        // Append the scope like glibc does: the interface name (e.g. fe80::1%en1), else its index
+        if (scope_id != 0) {
+            const size_t len = strlen(host);
+            struct scope_name scope = { .index = scope_id };
+            const int written = esp_netif_tcpip_exec(scope_name_unsafe, &scope) == ESP_OK
+                                ? snprintf(host + len, hostlen - len, "%%%s", scope.name)
+                                : snprintf(host + len, hostlen - len, "%%%u", (unsigned)scope_id);
+            if (written < 0 || (size_t)written >= hostlen - len) {
+                return EOVERFLOW;  // Error if the scope did not fit
+            }
+        }
+#endif
+    }
+
+    // Handle numeric service (port)
+    if (flags & NI_NUMERICSERV) {
+        // Print the port number, but for UDP services (if NI_DGRAM), we treat it the same way
+        if (serv == NULL || servlen == 0) {
+            return 0;
+        }
+        if (snprintf(serv, servlen, "%d", ntohs(port)) < 0) {
+            return EOVERFLOW;  // Error if snprintf failed
+        }
     }
 
     return 0;
