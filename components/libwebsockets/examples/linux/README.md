@@ -9,3 +9,7 @@ idf.py --preview set-target linux
 idf.py build
 ./build/lws_linux.elf
 ```
+
+The linux target needs `CONFIG_LWIP_ENABLE=n`, which is ESP-IDF's default there.
+lws uses the host's sockets on this target, not lwip. The component stops the
+build with an error if lwip is enabled.

@@ -9,6 +9,14 @@ else()
     idf_component_register(REQUIRES mbedtls esp_driver_gpio)
 endif()
 
+# On the linux target lws uses the host's sockets (plat/unix). With lwip
+# enabled there, the linux example crashes in lws_context_destroy(). IDF
+# defaults CONFIG_LWIP_ENABLE to n on linux and to y on chip targets.
+if(IDF_TARGET STREQUAL "linux" AND CONFIG_LWIP_ENABLE)
+    message(FATAL_ERROR "libwebsockets on the linux target needs CONFIG_LWIP_ENABLE=n. "
+                        "lws uses the host's sockets there, not lwip.")
+endif()
+
 set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE BOOL "Export libwebsockets CMake targets.  Disable if they conflict with an outer cmake project.")
 set(LWS_WITH_MBEDTLS ON CACHE BOOL "Use mbedTLS (>=2.0) replacement for OpenSSL.")
 set(LWS_WITH_JPEG OFF CACHE BOOL "Enable stateful JPEG stream decoder")
