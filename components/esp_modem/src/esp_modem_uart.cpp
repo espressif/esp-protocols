@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2021-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -111,6 +111,9 @@ private:
     void notify_read(size_t len)
     {
         Scoped<Lock> l(cb_lock);
+        if (on_rx_activity_) {
+            on_rx_activity_();
+        }
         if (on_read) {
             on_read(nullptr, len);
         }
@@ -168,6 +171,11 @@ void UartTerminal::task()
                     notify_read(len);
                 }
                 break;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+            case UART_WAKEUP:
+                invoke_uart_wakeup();
+                break;
+#endif
             case UART_FIFO_OVF:
                 ESP_LOGW(TAG, "HW FIFO Overflow");
                 notify_error(terminal_error::BUFFER_OVERFLOW);
