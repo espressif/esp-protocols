@@ -203,7 +203,7 @@ typedef struct {
     const uint8_t *buffer_start;     /*!< Start of the accumulated command buffer */
     size_t buffer_total_size;        /*!< Bytes currently in the buffer */
     size_t processed_offset;         /*!< Bytes already consumed by earlier callbacks */
-    size_t new_data_size;            /*!< Bytes since the last consumed offset */
+    size_t new_data_size;            /*!< Bytes added since the previous callback */
     const uint8_t *new_data_start;   /*!< Start of those bytes */
     bool is_command_active;          /*!< A command is waiting for its reply */
 } esp_modem_urc_buffer_info_t;
@@ -238,11 +238,11 @@ esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce,
 /**
  * @brief Writes raw bytes to the modem's command channel
  *
- * Local addition (see VENDORED.md): the C API otherwise carries only
- * NUL-terminated command strings. A prompt-driven upload such as the payload
- * after AT+CCHSEND's '>' needs arbitrary bytes. The DCE must be in command
- * mode (or CMUX manual command mode); the caller sequences the prompt and the
- * final result through esp_modem_command().
+ * The C API otherwise carries only NUL-terminated command strings. A
+ * prompt-driven upload, such as the payload after AT+CCHSEND's '>', needs
+ * arbitrary bytes. The DCE must be in command mode (or CMUX manual command
+ * mode); the caller sequences the prompt and the final result through
+ * esp_modem_command().
  *
  * @param dce Modem DCE handle
  * @param data Bytes to write
