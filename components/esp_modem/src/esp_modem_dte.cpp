@@ -87,6 +87,21 @@ void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {
         Scoped<Lock> l(command_cb.line_lock);
+        // process_line() returning true ends the accumulated buffer: forget it
+        // here, so that bytes arriving before DTE::command() returns (a late
+        // data report, the next URC) start a new buffer instead of being
+        // accounted against the finished one.
+        auto finished = [this]() {
+            buffer.consumed = 0;
+#ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
+            inflatable.deflate();
+#endif
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+            buffer_state.last_urc_processed = 0;
+            buffer_state.last_urc_seen = 0;
+#endif
+            return true;
+        };
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
         // Update buffer state when new data arrives
         update_buffer_state(len);
@@ -107,7 +122,7 @@ void DTE::set_command_callbacks()
                 data = inflatable.begin();
             }
             if (command_cb.process_line(data, inflatable.consumed, len, this)) {
-                return true;
+                return finished();
             }
             // at this point we're sure that the data processing hasn't finished,
             // and we have to grow the inflatable buffer (if enabled) or give up
@@ -119,7 +134,7 @@ void DTE::set_command_callbacks()
             return false;
 #else
             if (command_cb.process_line(data, 0, len, this)) {
-                return true;
+                return finished();
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
             // (will post next fragments to the parser, since we might be just missing a last token or OK
@@ -132,7 +147,7 @@ void DTE::set_command_callbacks()
             data = buffer.get();
             len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
             if (command_cb.process_line(data, buffer.consumed, len, this)) {
-                return true;
+                return finished();
             }
             buffer.consumed += len;
             return false;
@@ -148,7 +163,7 @@ void DTE::set_command_callbacks()
         }
         len = primary_term->read(inflatable.current(), len);
         if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len, this)) {
-            return true;
+            return finished();
         }
         inflatable.consumed += len;
         return false;
