@@ -233,7 +233,7 @@ sequenceDiagram
     Note over App,EventLoop: Flow 6a - PPP lost IP, retry or fail (READY/CONNECTED -> CONNECTING or FAILED)
     IDF->>EventLoop: 1. Post IP_EVENT_PPP_LOST_IP
     EventLoop->>Core: on_global_ip_event(IP_EVENT_PPP_LOST_IP)
-    Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
+    Core->>Core: net_iface_notify_lost_ip() -> clear READY, IPV4, and IPV6 bits, state = CONNECTING
     Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
     EventLoop-->>Core: Queued
     Core-->>EventLoop: Return from on_global_ip_event()
@@ -341,7 +341,7 @@ If `auto_connect_on_start` is true and `net_iface_stop()` was not requested, `if
 
 When LCP/IPCP negotiation completes with the peer, lwIP posts `IP_EVENT_PPP_GOT_IP` on the default event loop:
 
-1. `on_global_ip_event()` (`net_iface.c`, lines 673–678) matches `event->esp_netif` to the PPP handle and sets `NET_IFACE_BIT_IPV4` (and `IP_EVENT_GOT_IP6` sets `NET_IFACE_BIT_IPV6` when IPv6 is enabled and a preferred address arrives).
+1. `on_global_ip_event()` (`net_iface.c`) matches `event->esp_netif` to the PPP handle. If IPv6 is required and `NET_IFACE_BIT_IPV6` is clear, it restores that bit from a preferred address still on the netif, then sets `NET_IFACE_BIT_IPV4`. `IP_EVENT_GOT_IP6` also sets `NET_IFACE_BIT_IPV6` when IPv6 is enabled and a preferred address arrives.
 2. Once `is_ready_satisfied_locked()` passes, `net_iface_notify_ready()` transitions `CONNECTED` → `READY`, sets `NET_IFACE_BIT_READY`, pulses `s_global_wait_events`, and posts `NET_IFACE_EVENT_READY`.
 
 ---
@@ -350,7 +350,7 @@ When LCP/IPCP negotiation completes with the peer, lwIP posts `IP_EVENT_PPP_GOT_
 
 When the PPP session drops or negotiation times out, `IP_EVENT_PPP_LOST_IP` fires on the default event loop:
 
-1. `on_global_ip_event()` calls `net_iface_notify_lost_ip()`, which transitions `READY` or `CONNECTED` back to `CONNECTING`, clears `NET_IFACE_BIT_READY` and `NET_IFACE_BIT_IPV4`, and posts `NET_IFACE_EVENT_LOST_IP`.
+1. `on_global_ip_event()` calls `net_iface_notify_lost_ip()`, which transitions `READY` or `CONNECTED` back to `CONNECTING`, clears `NET_IFACE_BIT_READY`, `NET_IFACE_BIT_IPV4`, and `NET_IFACE_BIT_IPV6`, and posts `NET_IFACE_EVENT_LOST_IP`. A later `IP_EVENT_PPP_GOT_IP` restores `NET_IFACE_BIT_IPV6` only when a preferred IPv6 address is still on the netif.
 2. `on_ppp_lost_ip()` (`ppp_connect.c`, lines 280–317) checks that `event->esp_netif == s_netif` and that the handle is not in `STOPPING`, `INIT`, or `STARTED`.
 3. Increments `self->retry_num` under `self->lock`:
    - If `retry_num <= max_retry`, restarts PPP negotiation with `esp_netif_action_start(s_netif, 0, 0, 0)` and `esp_netif_action_connected(s_netif, 0, 0, 0)`.

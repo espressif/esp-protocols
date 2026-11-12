@@ -296,9 +296,14 @@ esp_err_t net_iface_disconnect(net_iface_handle_t h);
  * ============================================================ */
 
 /**
- * @brief Wait for a single interface to reach NET_IFACE_STATE_READY.
+ * @brief Wait for a single interface to reach its target state.
  *
- * - If the interface is already READY, returns ESP_OK immediately.
+ * The target is NET_IFACE_STATE_READY when auto_connect_on_start is true, or after
+ * net_iface_connect() has been called. When auto_connect_on_start is false and only
+ * net_iface_start() has been called, the target is NET_IFACE_STATE_STARTED: the wait
+ * returns ESP_OK once the driver is up, instead of blocking for READY.
+ *
+ * - If the interface is already at that target, returns ESP_OK immediately.
  * - If the interface is already FAILED, returns its last_err immediately.
  * - If timeout_ms expires first, returns ESP_ERR_TIMEOUT and leaves startup/connection
  *   running in the background.
@@ -307,7 +312,7 @@ esp_err_t net_iface_disconnect(net_iface_handle_t h);
  * @param[in] h          Interface handle.
  * @param[in] timeout_ms Timeout in milliseconds (or UINT32_MAX to wait indefinitely).
  * @return
- *  - ESP_OK when READY
+ *  - ESP_OK when READY, or when STARTED and auto_connect_on_start is false
  *  - ESP_ERR_TIMEOUT on timeout
  *  - ESP_ERR_INVALID_ARG if h is NULL
  *  - ESP_ERR_INVALID_STATE if called from the event loop task or interface is INIT/STOPPED
@@ -478,7 +483,7 @@ typedef enum {
     NET_IFACE_EVENT_STARTED = 0,  /*!< Driver and esp_netif created */
     NET_IFACE_EVENT_CONNECTED,    /*!< Physical / L2 link up */
     NET_IFACE_EVENT_READY,        /*!< Required IP configuration (or Thread attach) obtained */
-    NET_IFACE_EVENT_LOST_IP,      /*!< IP address lost; interface is no longer READY */
+    NET_IFACE_EVENT_LOST_IP,      /*!< IP address (or Thread attach) lost; interface is no longer READY */
     NET_IFACE_EVENT_DISCONNECTED, /*!< Physical / L2 link disconnected */
     NET_IFACE_EVENT_STOPPED,      /*!< Interface stopped and esp_netif destroyed */
     NET_IFACE_EVENT_FAILED        /*!< Startup or connection failed; see data->err */

@@ -33,6 +33,7 @@ extern "C" {
 #define NET_IFACE_BIT_IPV6         BIT4 /*!< Preferred IPv6 address acquired on this interface */
 #define NET_IFACE_BIT_OT_ATTACHED  BIT5 /*!< OpenThread attached event received */
 #define NET_IFACE_BIT_STARTUP_DONE BIT6 /*!< Transient startup task has finished executing */
+#define NET_IFACE_BIT_STARTED      BIT7 /*!< Sticky bit: startup finished in NET_IFACE_STATE_STARTED (auto-connect off) */
 
 /**
  * @brief Callbacks implemented by one interface driver.
@@ -99,7 +100,7 @@ void net_iface_notify_connected(net_iface_handle_t h);
 /* The address (or Thread attach) this interface needs is ready. */
 void net_iface_notify_ready(net_iface_handle_t h);
 
-/* The address went away. The link may still be up. */
+/* The address (or Thread attach) went away. The driver stays running and keeps trying. */
 void net_iface_notify_lost_ip(net_iface_handle_t h);
 
 /* The link dropped. The driver stays running. */

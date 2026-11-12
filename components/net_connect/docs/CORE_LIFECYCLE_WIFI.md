@@ -247,7 +247,7 @@ sequenceDiagram
     Note over App,EventLoop: Flow 6a - Address lost (READY -> CONNECTING)
     IDF->>EventLoop: 5. Post IP_EVENT_STA_LOST_IP
     EventLoop->>Core: on_global_ip_event()
-    Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
+    Core->>Core: net_iface_notify_lost_ip() -> clear READY, IPV4, and IPV6 bits, state = CONNECTING
     Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
     EventLoop-->>Core: Queued
     Core-->>EventLoop: Return from on_global_ip_event()
@@ -565,7 +565,7 @@ void net_iface_notify_connected(net_iface_handle_t h)
 
 `CONNECTED` means the AP association is up. It does not mean an address is present.
 
-**Layer 3.** `on_global_ip_event()` (`net_iface.c`, lines 661–681) handles every interface:
+**Layer 3.** `on_global_ip_event()` (`net_iface.c`) handles every interface:
 
 ```c
 static void on_global_ip_event(void *arg, esp_event_base_t event_base,
@@ -577,7 +577,11 @@ static void on_global_ip_event(void *arg, esp_event_base_t event_base,
             event_id == IP_EVENT_ETH_GOT_IP ||
             event_id == IP_EVENT_PPP_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        set_readiness_bit(find_iface_by_netif(event->esp_netif), NET_IFACE_BIT_IPV4);
+        net_iface_handle_t h = find_iface_by_netif(event->esp_netif);
+#if CONFIG_NET_CONNECT_IPV6
+        refresh_ipv6_readiness_from_netif(h, event->esp_netif);
+#endif
+        set_readiness_bit(h, NET_IFACE_BIT_IPV4);
         // ...
 #if CONFIG_NET_CONNECT_IPV6
     } else if (event_id == IP_EVENT_GOT_IP6) {
@@ -590,7 +594,7 @@ static void on_global_ip_event(void *arg, esp_event_base_t event_base,
 }
 ```
 
-- `IP_EVENT_STA_GOT_IP` (also Ethernet and PPP got-IP) → `find_iface_by_netif()` → `set_readiness_bit(..., NET_IFACE_BIT_IPV4)`
+- `IP_EVENT_STA_GOT_IP` (also Ethernet and PPP got-IP) → `find_iface_by_netif()` → `refresh_ipv6_readiness_from_netif()` (when IPv6 is built) → `set_readiness_bit(..., NET_IFACE_BIT_IPV4)`. The refresh sets `NET_IFACE_BIT_IPV6` again when IPv6 is required, the bit is clear, and the netif still has an address of `NET_CONNECT_PREFERRED_IPV6_TYPE`.
 - `IP_EVENT_GOT_IP6` counts only when `esp_netif_ip6_get_addr_type()` equals `NET_CONNECT_PREFERRED_IPV6_TYPE`, then sets `NET_IFACE_BIT_IPV6`
 - lost-IP events are Flow 6
 
@@ -662,7 +666,7 @@ This is the path when the SSID is empty at create time (unprovisioned station, o
 
 ## Flow 6: Address loss, disconnect, retry, and `FAILED`
 
-**Address lost, link still up.** `IP_EVENT_STA_LOST_IP` in `on_global_ip_event()` calls `net_iface_notify_lost_ip()` (`net_iface.c`, lines 550–569). From `READY` or `CONNECTED` the state goes back to `CONNECTING`, `READY` and `IPV4` bits are cleared, and `NET_IFACE_EVENT_LOST_IP` is posted. The driver is still running and may get another address. This does not pulse the global wait group, because the interface has not reached a terminal result.
+**Address lost, link still up.** `IP_EVENT_STA_LOST_IP` in `on_global_ip_event()` calls `net_iface_notify_lost_ip()` (`net_iface.c`). From `READY` or `CONNECTED` the state goes back to `CONNECTING`, `READY`, `IPV4`, and `IPV6` bits are cleared, and `NET_IFACE_EVENT_LOST_IP` is posted. The driver is still running and may get another address. The next `IP_EVENT_STA_GOT_IP` restores `IPV6` from a preferred address still on the netif, so a DHCP renew does not wait for an `IP_EVENT_GOT_IP6` that lwIP will not post again. This does not pulse the global wait group, because the interface has not reached a terminal result.
 
 **AP dropped.** `WIFI_EVENT_STA_DISCONNECTED` runs `on_wifi_sta_disconnected()` (`wifi_connect.c`, lines 133–172):
 

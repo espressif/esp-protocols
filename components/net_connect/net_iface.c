@@ -51,7 +51,8 @@ ESP_EVENT_DEFINE_BASE(NET_IFACE_EVENT);
 /* Every flag that a new start, or a stop, wipes clean. */
 #define NET_IFACE_BITS_LIVENESS (NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED | \
                                  NET_IFACE_BIT_STOPPED | NET_IFACE_BIT_IPV4 | \
-                                 NET_IFACE_BIT_IPV6 | NET_IFACE_BIT_OT_ATTACHED)
+                                 NET_IFACE_BIT_IPV6 | NET_IFACE_BIT_OT_ATTACHED | \
+                                 NET_IFACE_BIT_STARTED)
 
 /* Lock for the interface list. Take this before an interface's own lock. */
 static SemaphoreHandle_t s_registry_mutex = NULL;
@@ -413,8 +414,9 @@ static net_iface_handle_t find_iface_by_netif(esp_netif_t *netif)
  * are now present, mark it ready and tell listeners.
  * The check is done while holding the interface lock. The notification is
  * sent after the lock is released, so a listener can safely ask for the state.
- * An interface that is stopping, or that has not been started, is left alone.
- * A late IP event must not bring it back to life.
+ * Only a handle that is connecting, connected, or already ready accepts the
+ * event. A queued address after disconnect (STARTED) or a failed attempt
+ * (FAILED) must not bring the interface back to life.
  */
 static void set_readiness_bit(net_iface_handle_t h, EventBits_t bit)
 {
@@ -423,9 +425,10 @@ static void set_readiness_bit(net_iface_handle_t h, EventBits_t bit)
     }
     bool became_ready = false;
     xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* Skip a handle that is shutting down or was never started. */
-    if (h->state != NET_IFACE_STATE_STOPPING && h->state != NET_IFACE_STATE_INIT &&
-            h->state != NET_IFACE_STATE_UNINIT) {
+    /* A late event in any other state is leftover from an earlier attempt. */
+    if (h->state == NET_IFACE_STATE_CONNECTING ||
+            h->state == NET_IFACE_STATE_CONNECTED ||
+            h->state == NET_IFACE_STATE_READY) {
         xEventGroupSetBits(h->state_events, bit);
         became_ready = is_ready_satisfied_locked(h);
     }
@@ -460,6 +463,16 @@ void net_iface_notify_started(net_iface_handle_t h, esp_netif_t *netif)
     h->state = NET_IFACE_STATE_STARTED;
     /* A previous stop flag would make a new wait return immediately. Clear it. */
     xEventGroupClearBits(h->state_events, NET_IFACE_BIT_STOPPED);
+    /*
+     * OpenThread reports started from its worker, after the startup task has
+     * already exited. Wi-Fi, Ethernet, and PPP report started while that task
+     * is still running, and the task sets this bit itself on the way out.
+     * Setting it here as well would wake a waiter before a mock start() that
+     * continues on to ready.
+     */
+    if (!h->cfg.auto_connect_on_start && h->startup_task == NULL) {
+        xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTED);
+    }
     xSemaphoreGive(h->lock);
 
     post_iface_event(h, NET_IFACE_EVENT_STARTED, netif, NET_IFACE_STATE_STARTED, ESP_OK);
@@ -546,7 +559,15 @@ void net_iface_notify_ready(net_iface_handle_t h)
     post_iface_event(h, NET_IFACE_EVENT_READY, netif, NET_IFACE_STATE_READY, ESP_OK);
 }
 
-/* The IPv4 address is gone. The interface is no longer ready and goes back to connecting. */
+/*
+ * The IPv4 address (or Thread mesh attachment) is gone. The interface is no
+ * longer ready and goes back to connecting.
+ * For IP interfaces, the IPv6 readiness flag is cleared too: losing IPv4 can
+ * mean the link dropped and every IPv6 address was wiped; it is restored from
+ * the netif when IPv4 comes back, or by a new IP_EVENT_GOT_IP6.
+ * For Thread, the attach readiness flag is cleared until OPENTHREAD_EVENT_ATTACHED
+ * arrives again.
+ */
 void net_iface_notify_lost_ip(net_iface_handle_t h)
 {
     if (h == NULL) {
@@ -554,15 +575,21 @@ void net_iface_notify_lost_ip(net_iface_handle_t h)
     }
     esp_netif_t *netif = NULL;
     xSemaphoreTake(h->lock, portMAX_DELAY);
-    /* Only a live link can lose its address. Other states are left as they are. */
+    /* Only a live link can lose its address or mesh attachment. Other states are left as they are. */
     if (h->state != NET_IFACE_STATE_READY && h->state != NET_IFACE_STATE_CONNECTED) {
         xSemaphoreGive(h->lock);
         return;
     }
-    /* Back to connecting. The driver is still up and may get a new address. */
+    /* Back to connecting. The driver is still up and may get a new address or reattach. */
     h->state = NET_IFACE_STATE_CONNECTING;
     netif = h->netif;
-    xEventGroupClearBits(h->state_events, NET_IFACE_BIT_READY | NET_IFACE_BIT_IPV4);
+    EventBits_t clear_bits = NET_IFACE_BIT_READY;
+    if (h->cfg.type == NET_IFACE_TYPE_THREAD) {
+        clear_bits |= NET_IFACE_BIT_OT_ATTACHED;
+    } else {
+        clear_bits |= NET_IFACE_BIT_IPV4 | NET_IFACE_BIT_IPV6;
+    }
+    xEventGroupClearBits(h->state_events, clear_bits);
     xSemaphoreGive(h->lock);
 
     post_iface_event(h, NET_IFACE_EVENT_LOST_IP, netif, NET_IFACE_STATE_CONNECTING, ESP_OK);
@@ -618,7 +645,7 @@ void net_iface_notify_failed(net_iface_handle_t h, esp_err_t err)
     h->last_err = err;
     netif = h->netif;
     /* Clear ready first, then raise failed, so a waiter cannot see both as the result. */
-    xEventGroupClearBits(h->state_events, NET_IFACE_BIT_READY);
+    xEventGroupClearBits(h->state_events, NET_IFACE_BIT_READY | NET_IFACE_BIT_STARTED);
     xEventGroupSetBits(h->state_events, NET_IFACE_BIT_FAILED);
     xSemaphoreGive(h->lock);
 
@@ -651,6 +678,41 @@ void net_iface_notify_stopped(net_iface_handle_t h)
     post_iface_event(h, NET_IFACE_EVENT_STOPPED, NULL, NET_IFACE_STATE_INIT, ESP_OK);
 }
 
+#if CONFIG_NET_CONNECT_IPV6
+/*
+ * An IPv4 lease often comes back while the IPv6 addresses from the earlier
+ * connection are still valid on the netif. lwIP posts IP_EVENT_GOT_IP6 only
+ * when an address becomes valid, so it will not fire again for addresses
+ * that never left. When the IPv4 address returns and the IPv6 readiness bit
+ * was cleared by lost-ip, look at the netif itself and restore the bit.
+ */
+static void refresh_ipv6_readiness_from_netif(net_iface_handle_t h, esp_netif_t *netif)
+{
+    if (h == NULL || netif == NULL) {
+        return;
+    }
+    /* Nothing to restore when IPv6 is not required or the bit is already set. */
+    bool enable_ipv6 = false;
+    bool ipv6_bit_set = false;
+    xSemaphoreTake(h->lock, portMAX_DELAY);
+    enable_ipv6 = h->cfg.ip.enable_ipv6;
+    ipv6_bit_set = (xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV6) != 0;
+    xSemaphoreGive(h->lock);
+    if (!enable_ipv6 || ipv6_bit_set) {
+        return;
+    }
+    /* Do not hold the interface lock while reading the netif. */
+    esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];
+    int count = esp_netif_get_all_ip6(netif, ip6);
+    for (int i = 0; i < count; ++i) {
+        if (esp_netif_ip6_get_addr_type(&ip6[i]) == NET_CONNECT_PREFERRED_IPV6_TYPE) {
+            set_readiness_bit(h, NET_IFACE_BIT_IPV6);
+            return;
+        }
+    }
+}
+#endif /* CONFIG_NET_CONNECT_IPV6 */
+
 /*
  * Every interface shares this handler. The event says which network interface
  * got or lost an address, and that is matched to one of our handles.
@@ -675,7 +737,13 @@ static void on_global_ip_event(void *arg, esp_event_base_t event_base,
             event_id == IP_EVENT_ETH_GOT_IP ||
             event_id == IP_EVENT_PPP_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        set_readiness_bit(find_iface_by_netif(event->esp_netif), NET_IFACE_BIT_IPV4);
+        net_iface_handle_t h = find_iface_by_netif(event->esp_netif);
+#if CONFIG_NET_CONNECT_IPV6
+        /* The IPv4 address is back. If IPv6 is required and its readiness bit
+         * was cleared by lost-ip, restore it from addresses still on the netif. */
+        refresh_ipv6_readiness_from_netif(h, event->esp_netif);
+#endif
+        set_readiness_bit(h, NET_IFACE_BIT_IPV4);
     } else if (event_id == IP_EVENT_STA_LOST_IP ||
                event_id == IP_EVENT_ETH_LOST_IP ||
                event_id == IP_EVENT_PPP_LOST_IP) {
@@ -695,7 +763,8 @@ static void on_global_ip_event(void *arg, esp_event_base_t event_base,
 
 #if CONFIG_NET_CONNECT_THREAD
 /*
- * Thread is ready when it joins the network, not when it gets an IP address.
+ * Thread is ready when it joins the network, not when it gets an IP address,
+ * and leaves ready when it detaches from the mesh.
  * The event does not name a network interface, so the Thread handle is found
  * by type. Only one Thread interface is supported.
  */
@@ -710,6 +779,9 @@ static void on_global_ot_event(void *arg, esp_event_base_t event_base,
     if (event_id == OPENTHREAD_EVENT_ATTACHED) {
         /* This event does not name a network interface. Only one Thread interface is supported. */
         set_readiness_bit(net_iface_get_by_type(NET_IFACE_TYPE_THREAD), NET_IFACE_BIT_OT_ATTACHED);
+    } else if (event_id == OPENTHREAD_EVENT_DETACHED) {
+        /* The node left the mesh, so it is no longer ready. OpenThread keeps trying to reattach. */
+        net_iface_notify_lost_ip(net_iface_get_by_type(NET_IFACE_TYPE_THREAD));
     }
 }
 #endif
@@ -979,7 +1051,17 @@ done: {
         h->startup_stack_hwm = hwm_bytes;
         /* Clear the task handle and wake stop(), which may be waiting for this task to leave. */
         h->startup_task = NULL;
-        xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTUP_DONE);
+        /*
+         * Auto-connect off means STARTED is the end of start(). Set the bit
+         * here, after ops->start() has returned, so a start() that also
+         * reports connected and ready is already READY before a waiter wakes.
+         */
+        EventBits_t done_bits = NET_IFACE_BIT_STARTUP_DONE;
+        if (!h->cancel_requested && !h->cfg.auto_connect_on_start &&
+                h->state == NET_IFACE_STATE_STARTED) {
+            done_bits |= NET_IFACE_BIT_STARTED;
+        }
+        xEventGroupSetBits(h->state_events, done_bits);
         xSemaphoreGive(h->lock);
     }
 
@@ -1086,7 +1168,8 @@ esp_err_t net_iface_connect(net_iface_handle_t h)
     h->state = NET_IFACE_STATE_CONNECTING;
     h->last_err = ESP_OK;
     /* Clear the previous result. This attempt has not finished yet. */
-    xEventGroupClearBits(h->state_events, NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED);
+    xEventGroupClearBits(h->state_events,
+                         NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STARTED);
     xSemaphoreGive(h->lock);
 
     /* A driver with no connect step stays in "connecting" until an address event arrives. */
@@ -1098,6 +1181,13 @@ esp_err_t net_iface_connect(net_iface_handle_t h)
                 xSemaphoreTake(h->lock, portMAX_DELAY);
                 if (h->state == NET_IFACE_STATE_CONNECTING) {
                     h->state = NET_IFACE_STATE_STARTED;
+                    /*
+                     * Connect never started. With auto-connect off, STARTED is
+                     * still the state net_iface_wait() should report.
+                     */
+                    if (!h->cfg.auto_connect_on_start) {
+                        xEventGroupSetBits(h->state_events, NET_IFACE_BIT_STARTED);
+                    }
                 }
                 xSemaphoreGive(h->lock);
             } else {
@@ -1203,11 +1293,15 @@ esp_err_t net_iface_stop(net_iface_handle_t h)
 }
 
 /*
- * Wait until the interface is ready, has failed, or has stopped.
- * The flags are not cleared by the wait. If the interface is already ready,
+ * Wait until the interface reaches the state this start asked for, has failed,
+ * or has stopped.
+ * With auto-connect on, or after connect(), that state is ready. With
+ * auto-connect off and no connect() yet, it is started: the driver is up and
+ * the caller can configure it.
+ * The flags are not cleared by the wait. If the target flag is already set,
  * this returns immediately. Two tasks can wait on the same interface and both
  * wake up.
- * Ready is reported before failed, and failed before stopped.
+ * Ready or started is reported before failed, and failed before stopped.
  * The interface lock is not held during the wait.
  * If the time runs out, the interface keeps trying in the background.
  */
@@ -1233,10 +1327,11 @@ esp_err_t net_iface_wait(net_iface_handle_t h, uint32_t timeout_ms)
     TickType_t ticks = (timeout_ms == UINT32_MAX) ? portMAX_DELAY : pdMS_TO_TICKS(timeout_ms);
     /* pdFALSE, pdFALSE: do not clear the flags, and wake on any one of them. */
     EventBits_t bits = xEventGroupWaitBits(h->state_events,
-                                           NET_IFACE_BIT_READY | NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STOPPED,
+                                           NET_IFACE_BIT_READY | NET_IFACE_BIT_STARTED |
+                                           NET_IFACE_BIT_FAILED | NET_IFACE_BIT_STOPPED,
                                            pdFALSE, pdFALSE, ticks);
-    if ((bits & NET_IFACE_BIT_READY) != 0) {
-        /* Ready wins when a failure flag is also set. */
+    if ((bits & (NET_IFACE_BIT_READY | NET_IFACE_BIT_STARTED)) != 0) {
+        /* Ready, or started with auto-connect off, wins when a failure flag is also set. */
         return ESP_OK;
     }
     if ((bits & NET_IFACE_BIT_FAILED) != 0) {

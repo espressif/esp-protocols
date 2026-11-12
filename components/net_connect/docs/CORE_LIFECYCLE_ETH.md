@@ -239,7 +239,7 @@ sequenceDiagram
     IDF->>EventLoop: 4. Post ETHERNET_EVENT_DISCONNECTED
     EventLoop->>Eth: on_eth_event(ETHERNET_EVENT_DISCONNECTED)
     Eth->>Core: net_iface_notify_lost_ip()
-    Core->>Core: Clear READY and IPV4 bits, state = CONNECTING
+    Core->>Core: Clear READY, IPV4, and IPV6 bits, state = CONNECTING
     Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
     EventLoop-->>Core: Queued
     Core-->>Eth: Return from net_iface_notify_lost_ip()
@@ -250,7 +250,7 @@ sequenceDiagram
     Note over App,EventLoop: Flow 6b - DHCP lease lost (READY -> CONNECTING)
     IDF->>EventLoop: 5. Post IP_EVENT_ETH_LOST_IP
     EventLoop->>Core: on_global_ip_event()
-    Core->>Core: net_iface_notify_lost_ip() -> clear READY and IPV4 bits, state = CONNECTING
+    Core->>Core: net_iface_notify_lost_ip() -> clear READY, IPV4, and IPV6 bits, state = CONNECTING
     Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
     EventLoop-->>Core: Queued
     Core-->>EventLoop: Return from on_global_ip_event()
@@ -398,8 +398,9 @@ static esp_err_t eth_ops_connect(net_iface_handle_t self)
    - ESP-IDF's netif glue handler starts the DHCP client on `s_eth_netif`.
    - `on_eth_event()` (`eth_connect.c`, lines 33–51) calls `net_iface_notify_connected(self)`.
    - `net_iface_notify_connected()` moves `CONNECTING` → `CONNECTED`, resets `retry_num = 0`, calls `esp_netif_create_ip6_linklocal()` when IPv6 is enabled, and posts `NET_IFACE_EVENT_CONNECTED`.
-2. **IP acquired.** When DHCP succeeds, `IP_EVENT_ETH_GOT_IP` runs `on_global_ip_event()` (`net_iface.c`, lines 661–694):
+2. **IP acquired.** When DHCP succeeds, `IP_EVENT_ETH_GOT_IP` runs `on_global_ip_event()` (`net_iface.c`):
    - Matches `event->esp_netif` to the Ethernet handle via `find_iface_by_netif()`.
+   - If IPv6 is required and `NET_IFACE_BIT_IPV6` is clear, restores that bit from a preferred address still on the netif (`esp_netif_get_all_ip6()`).
    - Sets `NET_IFACE_BIT_IPV4` (and `IP_EVENT_GOT_IP6` sets `NET_IFACE_BIT_IPV6` when a preferred IPv6 address arrives).
    - Once `is_ready_satisfied_locked()` passes, `net_iface_notify_ready()` transitions `CONNECTED` → `READY`, sets `NET_IFACE_BIT_READY`, pulses `s_global_wait_events`, and posts `NET_IFACE_EVENT_READY`.
 
@@ -409,8 +410,8 @@ static esp_err_t eth_ops_connect(net_iface_handle_t self)
 
 Unlike Wi-Fi STA, Ethernet does not have a retry counter or a `FAILED` transition on link drop—the PHY hardware continuously monitors the physical link while started:
 
-- **Cable unplugged (`ETHERNET_EVENT_DISCONNECTED`):** `on_eth_event()` (`eth_connect.c`, lines 44–47) calls `net_iface_notify_lost_ip(self)`. That moves `READY` or `CONNECTED` back to `CONNECTING`, clears `NET_IFACE_BIT_READY` and `NET_IFACE_BIT_IPV4`, and posts `NET_IFACE_EVENT_LOST_IP`. Because the PHY stays started, plugging the cable back in raises `ETHERNET_EVENT_CONNECTED` and recovers automatically to `CONNECTED` → `READY`.
-- **DHCP lease lost (`IP_EVENT_ETH_LOST_IP`):** `on_global_ip_event()` also calls `net_iface_notify_lost_ip()`, moving the handle back to `CONNECTING` until a new address arrives.
+- **Cable unplugged (`ETHERNET_EVENT_DISCONNECTED`):** `on_eth_event()` (`eth_connect.c`, lines 44–47) calls `net_iface_notify_lost_ip(self)`. That moves `READY` or `CONNECTED` back to `CONNECTING`, clears `NET_IFACE_BIT_READY`, `NET_IFACE_BIT_IPV4`, and `NET_IFACE_BIT_IPV6`, and posts `NET_IFACE_EVENT_LOST_IP`. Because the PHY stays started, plugging the cable back in raises `ETHERNET_EVENT_CONNECTED`. The handle becomes `READY` only after the addresses it requires are valid again, including a new preferred IPv6 address when IPv6 is enabled. The stale `IPV6` bit cannot skip that wait.
+- **DHCP lease lost (`IP_EVENT_ETH_LOST_IP`):** `on_global_ip_event()` also calls `net_iface_notify_lost_ip()`, moving the handle back to `CONNECTING` until a new address arrives. If the link stayed up and a preferred IPv6 address is still on the netif, the next `IP_EVENT_ETH_GOT_IP` restores `NET_IFACE_BIT_IPV6` from that address.
 
 ---
 
