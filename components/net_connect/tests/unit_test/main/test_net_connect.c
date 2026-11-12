@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include "net_connect.h"
+#include "net_connect_private.h"
 #include "net_iface_priv.h"
 #include "esp_event.h"
 #include "esp_netif.h"
@@ -17,6 +18,9 @@
 #include "test_utils.h"
 #include "unity_fixture.h"
 #include "memory_checks.h"
+#if CONFIG_NET_CONNECT_THREAD
+#include "esp_openthread_types.h"
+#endif
 
 #define TEST_NETIF_DESC_STA "net_connect_netif_sta"
 #define TEST_NETIF_DESC_ETH "net_connect_netif_eth"
@@ -85,6 +89,32 @@ static esp_err_t test_register_handler(void)
 
 static void test_clear_deadlock_handler(void);
 
+/* Netif used by the live-IPv6 readiness test. Torn down here so a failed assert cannot leak it. */
+static esp_netif_t *s_live_ip6_netif = NULL;
+static bool s_live_ip6_netif_up = false;
+
+static esp_err_t dummy_netif_transmit(void *driver_handle, void *buffer, size_t len)
+{
+    (void)driver_handle;
+    (void)buffer;
+    (void)len;
+    return ESP_OK;
+}
+
+static void destroy_live_ip6_netif(void)
+{
+    if (s_live_ip6_netif == NULL) {
+        return;
+    }
+    if (s_live_ip6_netif_up) {
+        esp_netif_action_disconnected(s_live_ip6_netif, NULL, 0, NULL);
+        esp_netif_action_stop(s_live_ip6_netif, NULL, 0, NULL);
+        s_live_ip6_netif_up = false;
+    }
+    esp_netif_destroy(s_live_ip6_netif);
+    s_live_ip6_netif = NULL;
+}
+
 static void test_iface_cleanup(void)
 {
     test_clear_deadlock_handler();
@@ -106,6 +136,7 @@ static void test_iface_cleanup(void)
         }
         net_iface_deinit(h);
     }
+    destroy_live_ip6_netif();
     test_unregister_handler();
 }
 
@@ -761,6 +792,69 @@ static const net_iface_ops_t s_stay_connecting_ops = {
     .connect = stay_connecting_connect,
     .disconnect = fake_disconnect,
 };
+
+static esp_err_t delayed_started_only_start(net_iface_handle_t self)
+{
+    vTaskDelay(pdMS_TO_TICKS(40));
+    net_iface_notify_started(self, test_netif_sta);
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_delayed_started_ops = {
+    .name = "delay_started",
+    .start = delayed_started_only_start,
+    .stop = fake_stop,
+    .connect = stay_connecting_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief With auto-connect off, wait() returns ESP_OK when the driver reaches STARTED.
+ *
+ * A later connect() waits for READY again. After disconnect the started bit stays clear,
+ * so wait() times out even though the driver is still up.
+ */
+TEST(net_connect, net_iface_wait_returns_ok_on_started_when_auto_connect_disabled)
+{
+    net_iface_config_t cfg = { 0 };
+    cfg.type = NET_IFACE_TYPE_WIFI_STA;
+    cfg.desc = TEST_NETIF_DESC_STA;
+    cfg.auto_connect_on_start = false;
+    cfg.ip.use_dhcp = true;
+
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(net_iface_init_with_ops(&cfg, &s_delayed_started_ops, &h));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_STARTED);
+
+    /* The bit stays set, so a second wait returns without sleeping. */
+    TickType_t t0 = xTaskGetTickCount();
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - t0) * portTICK_PERIOD_MS;
+    TEST_ASSERT_LESS_THAN_UINT32(50, elapsed_ms);
+
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_STARTED);
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 50));
+
+    net_iface_notify_ready(h);
+    TEST_ESP_OK(net_iface_wait(h, 200));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    TEST_ESP_OK(net_iface_disconnect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_STARTED);
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 50));
+
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
 
 /**
  * @brief A timeout does not cancel a connection that is still in progress.
@@ -1458,6 +1552,329 @@ TEST(net_connect, net_iface_stale_ip_event_after_stop_is_ignored)
     s_test_handle = NULL;
 }
 
+/**
+ * @brief A queued GOT_IP after disconnect or failure does not mark the interface ready.
+ */
+TEST(net_connect, net_iface_stale_ip_event_in_started_or_failed_is_ignored)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_fake_iface(&h, false));
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    TEST_ESP_OK(net_iface_disconnect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    test_reset_events();
+
+    ip_event_got_ip_t stale_ip = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &stale_ip, sizeof(stale_ip), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV4);
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 20));
+    TEST_ASSERT_EQUAL(0, s_event_count);
+
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+    net_iface_notify_failed(h, ESP_FAIL);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    test_reset_events();
+
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &stale_ip, sizeof(stale_ip), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(30));
+
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_FAILED, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV4);
+    TEST_ASSERT_EQUAL(ESP_FAIL, net_iface_wait(h, 20));
+    TEST_ASSERT_EQUAL(0, s_event_count);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief Lost IP clears the IPv6 readiness bit; a new IPv4 lease alone must not
+ *        mark the interface READY while IPv6 is required.
+ */
+TEST(net_connect, net_iface_lost_ip_clears_ipv6_bit_and_ipv4_alone_is_not_ready)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_fake_iface(&h, true));
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    ip_event_got_ip_t event = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    /* IPv4 arrived but IPv6 is still missing: not READY yet. */
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV4);
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV6);
+
+    /* A preferred (link-local) IPv6 address completes readiness. */
+    ip_event_got_ip6_t event6 = {
+        .esp_netif = test_netif_sta,
+    };
+    TEST_ESP_OK(esp_netif_str_to_ip6("fe80::1", &event6.ip6_info.ip));
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_GOT_IP6, &event6, sizeof(event6), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    /* Lost IP must clear READY, IPV4, and IPV6 together. */
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_LOST_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) &
+                      (NET_IFACE_BIT_READY | NET_IFACE_BIT_IPV4 | NET_IFACE_BIT_IPV6));
+
+    /* IPv4 returns but the netif has no valid IPv6 address: still not READY. */
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+
+    /* A fresh preferred IPv6 event finishes the job. */
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_GOT_IP6, &event6, sizeof(event6), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+static esp_err_t live_ip6_start(net_iface_handle_t self)
+{
+    net_iface_notify_started(self, s_live_ip6_netif);
+    return ESP_OK;
+}
+
+static const net_iface_ops_t s_live_ip6_ops = {
+    .name = "live_ip6",
+    .start = live_ip6_start,
+    .stop = fake_stop,
+    .connect = fake_connect,
+    .disconnect = fake_disconnect,
+};
+
+/**
+ * @brief When the link stays up across a lost IPv4 lease, a new IPv4 lease
+ *        restores the IPv6 readiness bit from the still-valid address on the netif.
+ */
+TEST(net_connect, net_iface_ipv6_readiness_restored_from_live_netif_on_got_ip)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+
+    /*
+     * A netif with no DHCP client. esp_netif_action_connected() on a DHCP STA
+     * netif starts the IPv4-lost timer, and destroying the netif does not cancel
+     * that timer. This netif only needs to be up so IPv6 addresses can be read back.
+     */
+    esp_netif_inherent_config_t base = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
+    base.if_key = "WIFI_STA_TEST_LIVE_IP6";
+    base.if_desc = "net_connect_netif_live_ip6";
+    base.flags = (esp_netif_flags_t)(base.flags & ~(esp_netif_flags_t)ESP_NETIF_DHCP_CLIENT);
+    esp_netif_config_t cfg = {
+        .base = &base,
+        .driver = NULL,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
+    };
+    s_live_ip6_netif = esp_netif_new(&cfg);
+    TEST_ASSERT_NOT_NULL(s_live_ip6_netif);
+
+    esp_netif_driver_ifconfig_t driver_cfg = {
+        .handle = s_live_ip6_netif,
+        .transmit = dummy_netif_transmit,
+    };
+    TEST_ESP_OK(esp_netif_set_driver_config(s_live_ip6_netif, &driver_cfg));
+    esp_netif_action_start(s_live_ip6_netif, NULL, 0, NULL);
+    esp_netif_action_connected(s_live_ip6_netif, NULL, 0, NULL);
+    s_live_ip6_netif_up = true;
+
+    net_iface_config_t iface_cfg = { 0 };
+    iface_cfg.type = NET_IFACE_TYPE_WIFI_STA;
+    iface_cfg.desc = "net_connect_netif_live_ip6";
+    iface_cfg.ip.use_dhcp = true;
+    iface_cfg.ip.enable_ipv6 = true;
+    TEST_ESP_OK(net_iface_init_with_ops(&iface_cfg, &s_live_ip6_ops, &h));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTED, net_iface_get_state(h));
+
+    /* Install a preferred link-local IPv6 address immediately (no DAD wait). */
+    esp_ip6_addr_t ll6 = { 0 };
+    TEST_ESP_OK(esp_netif_str_to_ip6("fe80::1", &ll6));
+    TEST_ESP_OK(esp_netif_add_ip6_address(s_live_ip6_netif, ll6, true));
+
+    /*
+     * net_iface_notify_connected() also created a link-local address that is
+     * running duplicate-address detection. Wait until it is valid, so no late
+     * IP_EVENT_GOT_IP6 can arrive after LOST_IP and set the bit on its own.
+     */
+    esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];
+    int valid_addrs = 0;
+    for (int i = 0; i < 30 && valid_addrs < 2; ++i) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        valid_addrs = esp_netif_get_all_ip6(s_live_ip6_netif, ip6);
+    }
+    TEST_ASSERT_GREATER_OR_EQUAL(2, valid_addrs);
+
+    ip_event_got_ip_t event = {
+        .esp_netif = s_live_ip6_netif,
+    };
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_LOST_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) &
+                      (NET_IFACE_BIT_READY | NET_IFACE_BIT_IPV4 | NET_IFACE_BIT_IPV6));
+
+    /* New IPv4 lease, no new IP_EVENT_GOT_IP6. The refresh must restore the bit. */
+    TEST_ESP_OK(esp_event_post(IP_EVENT, IP_EVENT_STA_GOT_IP, &event, sizeof(event), pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+/**
+ * @brief Losing readiness on a Thread handle clears the attach bit and leaves the IP bits alone.
+ */
+TEST(net_connect, net_iface_thread_lost_ip_clears_ot_attached_only)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_THREAD, TEST_NETIF_DESC_THREAD, &s_fake_thread_ops, 0));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+
+    xEventGroupSetBits(h->state_events,
+                       NET_IFACE_BIT_OT_ATTACHED | NET_IFACE_BIT_IPV4 | NET_IFACE_BIT_IPV6);
+    net_iface_notify_ready(h);
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+    TEST_ESP_OK(net_iface_wait(h, 50));
+
+    net_iface_notify_lost_ip(h);
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) &
+                      (NET_IFACE_BIT_READY | NET_IFACE_BIT_OT_ATTACHED));
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV4);
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_IPV6);
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 20));
+
+    const net_iface_event_id_t expected[] = {
+        NET_IFACE_EVENT_STARTED,
+        NET_IFACE_EVENT_READY,
+        NET_IFACE_EVENT_LOST_IP,
+    };
+    expect_iface_events(h, expected, 3);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+
+#if CONFIG_NET_CONNECT_THREAD
+/**
+ * @brief Attach, detach, and reattach follow OPENTHREAD_EVENT on the default event loop.
+ *
+ * A detach that arrives before the node is ready, or after an intentional disconnect,
+ * does not move the handle.
+ */
+TEST(net_connect, net_iface_ot_event_drives_ready_detach_and_reattach)
+{
+    net_iface_handle_t h = NULL;
+    TEST_ESP_OK(test_register_handler());
+    TEST_ESP_OK(open_ops_iface(&h, NET_IFACE_TYPE_THREAD, TEST_NETIF_DESC_THREAD, &s_fake_thread_ops, 0));
+    s_test_handle = h;
+
+    TEST_ESP_OK(net_iface_start(h));
+    wait_for_startup_done(h);
+    TEST_ESP_OK(net_iface_connect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+
+    /* Detach during the first attach is not a loss. The node was never ready. */
+    TEST_ESP_OK(esp_event_post(OPENTHREAD_EVENT, OPENTHREAD_EVENT_DETACHED, NULL, 0, pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    const net_iface_event_id_t started_only[] = {
+        NET_IFACE_EVENT_STARTED,
+    };
+    expect_iface_events(h, started_only, 1);
+
+    TEST_ESP_OK(esp_event_post(OPENTHREAD_EVENT, OPENTHREAD_EVENT_ATTACHED, NULL, 0, pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_READY);
+    TEST_ASSERT_NOT_EQUAL(0, xEventGroupGetBits(h->state_events) & NET_IFACE_BIT_OT_ATTACHED);
+
+    TEST_ESP_OK(esp_event_post(OPENTHREAD_EVENT, OPENTHREAD_EVENT_DETACHED, NULL, 0, pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_CONNECTING, net_iface_get_state(h));
+    TEST_ASSERT_EQUAL(0, xEventGroupGetBits(h->state_events) &
+                      (NET_IFACE_BIT_READY | NET_IFACE_BIT_OT_ATTACHED));
+    TEST_ASSERT_EQUAL(ESP_ERR_TIMEOUT, net_iface_wait(h, 20));
+
+    TEST_ESP_OK(esp_event_post(OPENTHREAD_EVENT, OPENTHREAD_EVENT_ATTACHED, NULL, 0, pdMS_TO_TICKS(100)));
+    TEST_ESP_OK(net_iface_wait(h, 500));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_READY, net_iface_get_state(h));
+
+    TEST_ESP_OK(net_iface_disconnect(h));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+    /* A detach left in the queue after disconnect must not pull the handle back to connecting. */
+    TEST_ESP_OK(esp_event_post(OPENTHREAD_EVENT, OPENTHREAD_EVENT_DETACHED, NULL, 0, pdMS_TO_TICKS(100)));
+    vTaskDelay(pdMS_TO_TICKS(20));
+    TEST_ASSERT_EQUAL(NET_IFACE_STATE_STARTED, net_iface_get_state(h));
+
+    const net_iface_event_id_t expected[] = {
+        NET_IFACE_EVENT_STARTED,
+        NET_IFACE_EVENT_READY,
+        NET_IFACE_EVENT_LOST_IP,
+        NET_IFACE_EVENT_READY,
+        NET_IFACE_EVENT_DISCONNECTED,
+    };
+    expect_iface_events(h, expected, 5);
+
+    test_unregister_handler();
+    TEST_ESP_OK(net_iface_stop(h));
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+}
+#endif
+
 TEST_GROUP_RUNNER(net_connect)
 {
     RUN_TEST_CASE(net_connect, net_get_netif_from_desc_lookup);
@@ -1473,6 +1890,7 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_eth_thread_ppp_create_and_deinit);
     RUN_TEST_CASE(net_connect, net_iface_wait_immediate_on_ready_and_failed);
     RUN_TEST_CASE(net_connect, net_iface_wait_boundary_race_no_lost_wakeup);
+    RUN_TEST_CASE(net_connect, net_iface_wait_returns_ok_on_started_when_auto_connect_disabled);
     RUN_TEST_CASE(net_connect, net_iface_wait_timeout_leaves_connection_running);
     RUN_TEST_CASE(net_connect, net_iface_wait_all_shared_budget_and_fail_fast);
     RUN_TEST_CASE(net_connect, net_iface_wait_any_first_ready_and_all_failed);
@@ -1482,6 +1900,13 @@ TEST_GROUP_RUNNER(net_connect)
     RUN_TEST_CASE(net_connect, net_iface_restart_after_failed_start_succeeds);
     RUN_TEST_CASE(net_connect, net_iface_four_interfaces_concurrent_events_and_waiters);
     RUN_TEST_CASE(net_connect, net_iface_stale_ip_event_after_stop_is_ignored);
+    RUN_TEST_CASE(net_connect, net_iface_stale_ip_event_in_started_or_failed_is_ignored);
+    RUN_TEST_CASE(net_connect, net_iface_lost_ip_clears_ipv6_bit_and_ipv4_alone_is_not_ready);
+    RUN_TEST_CASE(net_connect, net_iface_ipv6_readiness_restored_from_live_netif_on_got_ip);
+    RUN_TEST_CASE(net_connect, net_iface_thread_lost_ip_clears_ot_attached_only);
+#if CONFIG_NET_CONNECT_THREAD
+    RUN_TEST_CASE(net_connect, net_iface_ot_event_drives_ready_detach_and_reattach);
+#endif
 }
 
 void app_main(void)

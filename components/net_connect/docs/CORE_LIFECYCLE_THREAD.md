@@ -3,7 +3,7 @@
 This is the end-to-end path for **Flows 1–7 and Flow 10** in [IMPLEMENTATION_FLOWS.md](./IMPLEMENTATION_FLOWS.md), using OpenThread (`thread_connect.c`) as the concrete driver. The same core (`net_iface.c`) is shared by Wi-Fi STA, Ethernet, and PPP. OpenThread differs in two important ways:
 
 1. It spawns a long-lived worker task (`ot_task_worker` / `"ot_br_main"`) that owns the OpenThread stack, netif glue, and `esp_openthread_launch_mainloop()`.
-2. Readiness is satisfied by `OPENTHREAD_EVENT_ATTACHED` (`NET_IFACE_BIT_OT_ATTACHED`) rather than `IP_EVENT_*_GOT_IP`.
+2. Readiness is satisfied by `OPENTHREAD_EVENT_ATTACHED` (`NET_IFACE_BIT_OT_ATTACHED`) rather than `IP_EVENT_*_GOT_IP`. `OPENTHREAD_EVENT_DETACHED` moves the handle back to `CONNECTING` until the node attaches again.
 
 Sources:
 
@@ -128,7 +128,7 @@ sequenceDiagram
 
 ### Flow 7: disconnect, stop, and destroy
 
-`net_iface_disconnect()` disables Thread participation (`otThreadSetEnabled(instance, false)`) while leaving `ot_task_worker` running in its main loop. `net_iface_stop()` disables Thread and IPv6, calls `esp_openthread_mainloop_exit()`, and waits on `s_ot_stop_sem` for `ot_task_worker` to deinitialize the netif, glue, OpenThread stack, and `eventfd` on its own task before deleting itself.
+`net_iface_disconnect()` disables Thread participation (`otThreadSetEnabled(instance, false)`) while leaving `ot_task_worker` running in its main loop. `net_iface_stop()` takes `self->lock`, sets `s_ot_stop_requested`, and, when `s_ot_initialized` is set, disables Thread and IPv6 and calls `esp_openthread_mainloop_exit()`. It then waits on `s_ot_stop_sem` in 50 ms steps for up to 5 seconds, sending the exit again if the worker is still inside the main loop. `ot_task_worker` deinitializes the netif, glue, OpenThread stack, and `eventfd` on its own task before deleting itself.
 
 ```mermaid
 sequenceDiagram
@@ -163,12 +163,11 @@ sequenceDiagram
     Core->>Thread: ops->stop() (thread_ops_stop)
     Thread->>EventLoop: Unregister (OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER) -> on_thread_dns_server
     EventLoop-->>Thread: Return ESP_OK
-    Thread->>Thread: s_ot_stop_requested = true
-    Thread->>IDF: Acquire OT lock, otThreadSetEnabled(false), otIp6SetEnabled(false), release OT lock
-    IDF-->>Thread: Return
-    Thread->>IDF: esp_openthread_mainloop_exit()
+    Thread->>Thread: Take self->lock, s_ot_stop_requested = true
+    Thread->>IDF: If s_ot_initialized: disable Thread and IPv6, esp_openthread_mainloop_exit()
     IDF-->>Worker: Unblock esp_openthread_launch_mainloop()
-    Note over App,Thread: App task waits on s_ot_stop_sem (up to 5 s)
+    Thread->>Thread: Give self->lock
+    Note over App,Thread: App task waits on s_ot_stop_sem in 50 ms steps (up to 5 s) and re-sends the exit while s_ot_initialized is set
     Worker->>IDF: esp_openthread_netif_glue_deinit(), esp_netif_destroy(s_openthread_netif)
     IDF-->>Worker: Return
     Worker->>IDF: esp_openthread_deinit(), esp_vfs_eventfd_unregister()
@@ -254,11 +253,12 @@ sequenceDiagram
     Note over App,Worker: 5a. App calls net_iface_stop() before Worker reaches launch_mainloop()
     App->>Core: net_iface_stop()
     Core->>Thread: ops->stop() (thread_ops_stop)
-    Thread->>Thread: s_ot_stop_requested = true
-    Note over App,Thread: App task waits on s_ot_stop_sem (up to 5 s)
+    Thread->>Thread: Take self->lock, s_ot_stop_requested = true, give self->lock
+    Note over App,Thread: App task waits on s_ot_stop_sem in 50 ms steps (up to 5 s)
 
-    Note over Worker,IDF: 5b. Worker sees s_ot_stop_requested == true, skips mainloop, and cleans up
-    Worker->>Worker: Check s_ot_stop_requested == true -> skip esp_openthread_launch_mainloop()
+    Note over Worker,IDF: 5b. Worker re-checks s_ot_stop_requested under self->lock, skips the mainloop, and cleans up
+    Worker->>Worker: Under self->lock, s_ot_stop_requested is true -> skip esp_openthread_launch_mainloop()
+    Worker->>Worker: Under self->lock, clear s_ot_initialized and disable Thread and IPv6
     Worker->>IDF: thread_release_netif(), esp_openthread_deinit(), thread_release_eventfd()
     IDF-->>Worker: Return
     Worker->>Thread: ot_signal_task_exited() (wakes App task on s_ot_stop_sem)
@@ -278,7 +278,7 @@ sequenceDiagram
 
 ## The objects the driver keeps
 
-OpenThread fills the ops table in `thread_connect.c` (lines 348–356):
+OpenThread fills the ops table in `thread_connect.c` (lines 418–426):
 
 ```c
 const net_iface_ops_t g_net_iface_thread_ops = {
@@ -292,12 +292,13 @@ const net_iface_ops_t g_net_iface_thread_ops = {
 };
 ```
 
-Module-level state in `thread_connect.c` (lines 39–50):
+Module-level state in `thread_connect.c` (lines 41–54):
 
 ```c
 static TaskHandle_t s_ot_task_handle = NULL;
 static SemaphoreHandle_t s_ot_stop_sem = NULL;
-static volatile bool s_ot_stop_requested = false;
+static bool s_ot_stop_requested = false;
+static bool s_ot_initialized = false;
 static volatile bool s_ot_task_published = false;
 static esp_netif_t *s_openthread_netif = NULL;
 static bool s_eventfd_owned = false;
@@ -306,6 +307,8 @@ static bool s_glue_attached = false;
 
 - `s_ot_task_handle` tracks the `"ot_br_main"` task running `ot_task_worker`.
 - `s_ot_stop_sem` is a binary semaphore signaled by `ot_signal_task_exited()` right before `ot_task_worker` calls `vTaskDelete(NULL)`.
+- `s_ot_stop_requested` is protected by `self->lock`. `thread_ops_stop()` sets it so the worker skips the main loop, or leaves it if the loop is already running.
+- `s_ot_initialized` is protected by `self->lock`. It is true after CLI setup succeeds and false again before `esp_openthread_deinit()`. `connect()`, `disconnect()`, and `stop()` touch the OpenThread lock and `esp_openthread_mainloop_exit()` only while it is set.
 - `s_ot_task_published` guards against a fast exit where `ot_task_worker` finishes before `xTaskCreate()` in `thread_ops_start()` has written `s_ot_task_handle`.
 - `s_eventfd_owned` records whether `thread_ops_start()` registered `eventfd` (`ESP_OK`) or whether the application had already registered it (`ESP_ERR_INVALID_STATE`), so `thread_release_eventfd()` only unregisters what this driver installed.
 
@@ -313,7 +316,7 @@ static bool s_glue_attached = false;
 
 ## Flow 1: Create the handle
 
-Public call: `net_thread_create()` in `thread_connect.c` (lines 358–394):
+Public call: `net_thread_create()` in `thread_connect.c` (lines 428–463):
 
 1. Builds `net_iface_config_t`:
    - `type = NET_IFACE_TYPE_THREAD`
@@ -330,25 +333,27 @@ Public call: `net_thread_create()` in `thread_connect.c` (lines 358–394):
 
 ## Flow 2: `net_iface_start()`, `thread_ops_start()`, and `ot_task_worker`
 
-`net_iface_start()` spawns `iface_startup_task`, which calls `thread_ops_start()` (`thread_connect.c`, lines 225–277):
+`net_iface_start()` spawns `iface_startup_task`, which calls `thread_ops_start()` (`thread_connect.c`, lines 261–316):
 
 1. Rejects a second start if `s_ot_task_handle != NULL` (`ESP_ERR_INVALID_STATE`).
-2. Creates `s_ot_stop_sem` (or clears any stale token with `xSemaphoreTake(s_ot_stop_sem, 0)`), and resets `s_ot_stop_requested = false` and `s_ot_task_published = false`.
+2. Creates `s_ot_stop_sem` (or clears any stale token with `xSemaphoreTake(s_ot_stop_sem, 0)`). Under `self->lock`, it resets `s_ot_stop_requested = false` and `s_ot_initialized = false`, then sets `s_ot_task_published = false`.
 3. Registers `eventfd` with `esp_vfs_eventfd_register(&eventfd_config)` (`max_fds = 4`).
 4. Registers `(OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER)` → `on_thread_dns_server`.
 5. Spawns `ot_task_worker` (`"ot_br_main"`, priority 5) and sets `s_ot_task_published = true`.
 
-Note that `thread_ops_start()` returns `ESP_OK` as soon as `ot_task_worker` is created; `net_iface_notify_started()` is called inside `ot_task_worker` once the OpenThread stack and netif glue are initialized. Because `iface_startup_task` may see `state == STARTING` when `thread_ops_start()` returns, `ot_task_worker` also checks `auto_connect_on_start` after calling `net_iface_notify_started()`. Calling `net_iface_connect()` only when `net_iface_get_state(self) == NET_IFACE_STATE_STARTED` prevents a double connect if both tasks race (`thread_connect.c`, lines 196–203).
+Note that `thread_ops_start()` returns `ESP_OK` as soon as `ot_task_worker` is created; `net_iface_notify_started()` is called inside `ot_task_worker` once the OpenThread stack and netif glue are initialized. Because `iface_startup_task` may see `state == STARTING` when `thread_ops_start()` returns, `ot_task_worker` also checks `auto_connect_on_start` after calling `net_iface_notify_started()`. Calling `net_iface_connect()` only when `net_iface_get_state(self) == NET_IFACE_STATE_STARTED` prevents a double connect if both tasks race (`thread_connect.c`, lines 209–216).
 
-Inside `ot_task_worker()` (`thread_connect.c`, lines 130–222):
+Inside `ot_task_worker()` (`thread_connect.c`, lines 135–258):
 
 1. Creates `s_openthread_netif` with `ESP_NETIF_INHERENT_DEFAULT_OPENTHREAD()` and `g_esp_netif_netstack_default_openthread`.
 2. Calls `esp_openthread_init(&config)`.
 3. Attaches the netif glue via `esp_openthread_netif_glue_init(&config)` and `esp_netif_attach()`.
 4. Under `esp_openthread_lock_acquire()`, configures logging and initializes the OpenThread CLI (`esp_openthread_cli_init()`, `esp_openthread_cli_create_task()`).
-5. Calls `net_iface_notify_started(self, s_openthread_netif)` (`STARTING` → `STARTED`).
-6. If `auto_connect_on_start` is true and the state is still `STARTED`, calls `net_iface_connect(self)` → `thread_ops_connect()` (`thread_connect.c`, lines 280–291), which acquires the OpenThread lock, reads active operational dataset TLVs (`otDatasetGetActiveTlvs`), and calls `esp_openthread_auto_start()`.
-7. If `!s_ot_stop_requested`, enters `esp_openthread_launch_mainloop()`, blocking there for the lifetime of the Thread session.
+5. Under `self->lock`, if `s_ot_stop_requested` is clear, sets `s_ot_initialized` and continues. A stop that arrived during setup skips notify, connect, and the main loop, then still runs the teardown below.
+6. Calls `net_iface_notify_started(self, s_openthread_netif)` (`STARTING` → `STARTED`).
+7. If `auto_connect_on_start` is true and the state is still `STARTED`, calls `net_iface_connect(self)` → `thread_ops_connect()` (`thread_connect.c`, lines 319–332). That function takes `self->lock`, returns `ESP_ERR_INVALID_STATE` unless `s_ot_initialized` is set and stop has not been requested, then acquires the OpenThread lock, reads active operational dataset TLVs (`otDatasetGetActiveTlvs`), and calls `esp_openthread_auto_start()`.
+8. Re-checks `s_ot_stop_requested` under `self->lock`. If it is still clear, enters `esp_openthread_launch_mainloop()` and blocks there for the lifetime of the Thread session.
+9. Before teardown, under `self->lock`, clears `s_ot_initialized` and disables Thread and IPv6 when the stack was initialized. Then releases the netif, calls `esp_openthread_deinit()`, and releases `eventfd`.
 
 ---
 
@@ -357,7 +362,7 @@ Inside `ot_task_worker()` (`thread_connect.c`, lines 130–222):
 Unlike Wi-Fi, Ethernet, and PPP, OpenThread does not use `net_iface_notify_connected()` or `IP_EVENT_GOT_IP6` to become `READY`:
 
 1. When the node attaches to the Thread partition, ESP-IDF OpenThread posts `OPENTHREAD_EVENT_ATTACHED` on the default event loop.
-2. `on_global_ot_event()` (`net_iface.c`, lines 702–714) looks up the Thread handle with `net_iface_get_by_type(NET_IFACE_TYPE_THREAD)` and calls `set_readiness_bit(..., NET_IFACE_BIT_OT_ATTACHED)`.
+2. `on_global_ot_event()` (`net_iface.c`, lines 760–775) looks up the Thread handle with `net_iface_get_by_type(NET_IFACE_TYPE_THREAD)` and calls `set_readiness_bit(..., NET_IFACE_BIT_OT_ATTACHED)`.
 3. `is_ready_satisfied_locked()` (`net_iface.c`, lines 363–366) checks only `NET_IFACE_BIT_OT_ATTACHED` for `NET_IFACE_TYPE_THREAD`:
 
 ```c
@@ -375,14 +380,46 @@ static bool is_ready_satisfied_locked(net_iface_handle_t h)
 
 ---
 
+## Mesh detach and reattach
+
+When the node leaves the mesh while the OpenThread stack stays enabled, ESP-IDF posts `OPENTHREAD_EVENT_DETACHED`. The stack keeps searching for a parent, so the handle goes back to `CONNECTING` and can become `READY` again on the next attach. No new `net_iface_connect()` is required.
+
+1. `on_global_ot_event()` receives `OPENTHREAD_EVENT_DETACHED` and calls `net_iface_notify_lost_ip()` on the Thread handle.
+2. From `READY` or `CONNECTED`, `net_iface_notify_lost_ip()` moves the state to `CONNECTING`, clears `NET_IFACE_BIT_READY` and `NET_IFACE_BIT_OT_ATTACHED` (it does not clear `NET_IFACE_BIT_IPV4` or `NET_IFACE_BIT_IPV6` on a Thread handle), and posts `NET_IFACE_EVENT_LOST_IP`. `net_iface_wait()` then blocks until the node attaches again.
+3. A later `OPENTHREAD_EVENT_ATTACHED` sets `NET_IFACE_BIT_OT_ATTACHED` and `net_iface_notify_ready()` posts `NET_IFACE_EVENT_READY` again.
+4. A detach that arrives while the handle is still `CONNECTING` (the first attach has not finished), or after `net_iface_disconnect()` / `net_iface_stop()` has already left `READY`, is ignored. Intentional disconnect calls `otThreadSetEnabled(instance, false)`, which moves the role to disabled. ESP-IDF does not post `OPENTHREAD_EVENT_DETACHED` for that transition.
+
+```mermaid
+sequenceDiagram
+    participant IDF as ESP-IDF OpenThread
+    participant EventLoop as Default Event Loop
+    participant Core as net_iface Core
+
+    Note over IDF,Core: READY, node loses the mesh
+    IDF->>EventLoop: Post OPENTHREAD_EVENT_DETACHED
+    EventLoop->>Core: on_global_ot_event(OPENTHREAD_EVENT_DETACHED)
+    Core->>Core: net_iface_notify_lost_ip() -> clear READY and OT_ATTACHED, state = CONNECTING
+    Core->>EventLoop: Post NET_IFACE_EVENT_LOST_IP
+    EventLoop-->>Core: Queued
+
+    Note over IDF,Core: OpenThread reattaches on its own
+    IDF->>EventLoop: Post OPENTHREAD_EVENT_ATTACHED
+    EventLoop->>Core: on_global_ot_event(OPENTHREAD_EVENT_ATTACHED)
+    Core->>Core: set OT_ATTACHED, net_iface_notify_ready() -> state = READY
+    Core->>EventLoop: Post NET_IFACE_EVENT_READY
+    EventLoop-->>Core: Queued
+```
+
+---
+
 ## Flow 7: Disconnect, cooperative stop, and destroy
 
-- **Leave the Thread network only (`net_iface_disconnect`):** `thread_ops_disconnect()` (`thread_connect.c`, lines 294–309) acquires the OpenThread lock and calls `otThreadSetEnabled(instance, false)`. `net_iface_notify_disconnected()` moves the handle back to `STARTED` and clears `NET_IFACE_BITS_LIVENESS`. `ot_task_worker` remains inside `esp_openthread_launch_mainloop()`, so a later `net_iface_connect()` can rejoin with `thread_auto_start_locked()`.
-- **Stop the OpenThread stack (`net_iface_stop`):** `thread_ops_stop()` (`thread_connect.c`, lines 315–345) never calls `vTaskDelete()` on `ot_task_worker` from outside, because OpenThread holds internal state and locks that must be released on the worker thread:
+- **Leave the Thread network only (`net_iface_disconnect`):** `thread_ops_disconnect()` (`thread_connect.c`, lines 335–355) takes `self->lock` and returns immediately when `s_ot_initialized` is clear. Otherwise it acquires the OpenThread lock and calls `otThreadSetEnabled(instance, false)`. `net_iface_notify_disconnected()` moves the handle back to `STARTED` and clears `NET_IFACE_BITS_LIVENESS`. `ot_task_worker` remains inside `esp_openthread_launch_mainloop()`, so a later `net_iface_connect()` can rejoin with `thread_auto_start_locked()`.
+- **Stop the OpenThread stack (`net_iface_stop`):** `thread_ops_stop()` (`thread_connect.c`, lines 361–415) never calls `vTaskDelete()` on `ot_task_worker` from outside, because OpenThread holds internal state and locks that must be released on the worker thread. `self->lock` is the outer lock; the OpenThread lock is taken only while `self->lock` is held.
   1. Unregisters `on_thread_dns_server`.
-  2. Sets `s_ot_stop_requested = true`.
-  3. If the OpenThread instance exists, acquires the OpenThread lock, calls `otThreadSetEnabled(instance, false)` and `otIp6SetEnabled(instance, false)`, releases the lock, and calls `esp_openthread_mainloop_exit()`.
-  4. Waits up to 5000 ms on `s_ot_stop_sem`.
-  5. `ot_task_worker` returns from `esp_openthread_launch_mainloop()`, tears down its resources in reverse order (`thread_release_netif()` → `esp_openthread_deinit()` → `thread_release_eventfd()`), gives `s_ot_stop_sem` via `ot_signal_task_exited()`, and deletes itself.
+  2. Under `self->lock`, sets `s_ot_stop_requested = true`.
+  3. If `s_ot_initialized` is set, acquires the OpenThread lock, calls `otThreadSetEnabled(instance, false)` and `otIp6SetEnabled(instance, false)`, releases the OpenThread lock, and calls `esp_openthread_mainloop_exit()`.
+  4. Releases `self->lock`, then waits on `s_ot_stop_sem` in 50 ms steps for up to 5000 ms. After a step times out, it takes `self->lock` again and calls `esp_openthread_mainloop_exit()` while `s_ot_initialized` is still set, so an exit posted in the gap before `esp_openthread_launch_mainloop()` is sent again once the loop is running.
+  5. `ot_task_worker` returns from `esp_openthread_launch_mainloop()` (or skips it when `s_ot_stop_requested` was already set). Under `self->lock` it clears `s_ot_initialized` and disables Thread and IPv6, then tears down its resources in reverse order (`thread_release_netif()` → `esp_openthread_deinit()` → `thread_release_eventfd()`), gives `s_ot_stop_sem` via `ot_signal_task_exited()`, and deletes itself.
   6. `thread_ops_stop()` deletes `s_ot_stop_sem`, and `net_iface_notify_stopped()` transitions the handle to `INIT`.
 - **Free the handle (`net_iface_deinit`):** Unlinks the handle in `INIT`, unregisters the shared `NET_IFACE_EVENT`, `IP_EVENT`, and `OPENTHREAD_EVENT` handlers when the registry becomes empty, and frees the handle.

@@ -36,10 +36,15 @@
 
 static const char *TAG = "net_connect_thread";
 
+#define OT_STOP_TIMEOUT_MS       5000
+#define OT_STOP_POLL_INTERVAL_MS 50
+
 static TaskHandle_t s_ot_task_handle = NULL;
 static SemaphoreHandle_t s_ot_stop_sem = NULL;
-/* Set by stop() so the worker skips the main loop if it has not entered yet. */
-static volatile bool s_ot_stop_requested = false;
+/* Protected by self->lock. Set by stop() so the worker skips or leaves the main loop. */
+static bool s_ot_stop_requested = false;
+/* Protected by self->lock. True while the OpenThread stack is ready for lock/API/exit calls. */
+static bool s_ot_initialized = false;
 /*
  * xTaskCreate() can run the new task before it stores the handle.
  * The worker waits for this before it clears that handle.
@@ -191,24 +196,55 @@ static void ot_task_worker(void *arg)
     esp_openthread_cli_create_task();
     esp_openthread_lock_release();
 
-    net_iface_notify_started(self, s_openthread_netif);
+    xSemaphoreTake(self->lock, portMAX_DELAY);
+    bool run_mainloop = !s_ot_stop_requested;
+    if (run_mainloop) {
+        s_ot_initialized = true;
+    }
+    xSemaphoreGive(self->lock);
 
-    /*
-     * The startup task may also call connect if it already sees STARTED.
-     * Calling connect only from STARTED keeps that from running twice.
-     */
-    if (self != NULL && self->cfg.auto_connect_on_start &&
-            net_iface_get_state(self) == NET_IFACE_STATE_STARTED) {
-        net_iface_connect(self);
+    if (run_mainloop) {
+        net_iface_notify_started(self, s_openthread_netif);
+
+        /*
+         * The startup task may also call connect if it already sees STARTED.
+         * Calling connect only from STARTED keeps that from running twice.
+         */
+        if (self != NULL && self->cfg.auto_connect_on_start &&
+                net_iface_get_state(self) == NET_IFACE_STATE_STARTED) {
+            net_iface_connect(self);
+        }
+
+        /*
+         * Re-check under self->lock in case stop() arrived during
+         * notify_started() or connect().
+         */
+        xSemaphoreTake(self->lock, portMAX_DELAY);
+        run_mainloop = !s_ot_stop_requested;
+        xSemaphoreGive(self->lock);
+
+        if (run_mainloop) {
+            esp_openthread_launch_mainloop();
+        }
     }
 
     /*
-     * stop() may have arrived before the main loop started. Skipping the loop
-     * still runs the cleanup below, so the stack is not left allocated.
+     * Mark the stack no longer initialized under self->lock before deinit so
+     * stop(), connect(), and disconnect() cannot touch the OpenThread lock or
+     * instance while esp_openthread_deinit() tears them down.
      */
-    if (!s_ot_stop_requested) {
-        esp_openthread_launch_mainloop();
+    xSemaphoreTake(self->lock, portMAX_DELAY);
+    if (s_ot_initialized) {
+        s_ot_initialized = false;
+        otInstance *instance = esp_openthread_get_instance();
+        if (instance != NULL) {
+            esp_openthread_lock_acquire(portMAX_DELAY);
+            (void)otThreadSetEnabled(instance, false);
+            (void)otIp6SetEnabled(instance, false);
+            esp_openthread_lock_release();
+        }
     }
+    xSemaphoreGive(self->lock);
 
     /*
      * Clean up on this task, in the reverse order of initialization.
@@ -237,7 +273,10 @@ static esp_err_t thread_ops_start(net_iface_handle_t self)
         /* Drop a signal left by a task that already exited. */
         (void)xSemaphoreTake(s_ot_stop_sem, 0);
     }
+    xSemaphoreTake(self->lock, portMAX_DELAY);
     s_ot_stop_requested = false;
+    s_ot_initialized = false;
+    xSemaphoreGive(self->lock);
     s_ot_task_published = false;
 
     /* netif, ot task queue, radio driver, and border router can each use one fd. */
@@ -279,29 +318,36 @@ static esp_err_t thread_ops_start(net_iface_handle_t self)
 /* Join the Thread network. Returns as soon as auto-start has been requested. */
 static esp_err_t thread_ops_connect(net_iface_handle_t self)
 {
-    (void)self;
-    if (esp_openthread_get_instance() == NULL) {
+    xSemaphoreTake(self->lock, portMAX_DELAY);
+    if (!s_ot_initialized || s_ot_stop_requested) {
+        xSemaphoreGive(self->lock);
         return ESP_ERR_INVALID_STATE;
     }
 
     esp_openthread_lock_acquire(portMAX_DELAY);
     esp_err_t err = thread_auto_start_locked();
     esp_openthread_lock_release();
+    xSemaphoreGive(self->lock);
     return err;
 }
 
 /* Leave the Thread network. The OpenThread task keeps running. */
 static esp_err_t thread_ops_disconnect(net_iface_handle_t self)
 {
-    (void)self;
-    otInstance *instance = esp_openthread_get_instance();
-    if (instance == NULL) {
+    xSemaphoreTake(self->lock, portMAX_DELAY);
+    if (!s_ot_initialized) {
+        xSemaphoreGive(self->lock);
         return ESP_OK;
     }
 
-    esp_openthread_lock_acquire(portMAX_DELAY);
-    otError error = otThreadSetEnabled(instance, false);
-    esp_openthread_lock_release();
+    otInstance *instance = esp_openthread_get_instance();
+    otError error = OT_ERROR_NONE;
+    if (instance != NULL) {
+        esp_openthread_lock_acquire(portMAX_DELAY);
+        error = otThreadSetEnabled(instance, false);
+        esp_openthread_lock_release();
+    }
+    xSemaphoreGive(self->lock);
     if (error != OT_ERROR_NONE) {
         ESP_LOGW(TAG, "otThreadSetEnabled(false) returned %d", (int)error);
     }
@@ -314,21 +360,45 @@ static esp_err_t thread_ops_disconnect(net_iface_handle_t self)
  */
 static esp_err_t thread_ops_stop(net_iface_handle_t self)
 {
-    (void)self;
     esp_event_handler_unregister(OPENTHREAD_EVENT, OPENTHREAD_EVENT_SET_DNS_SERVER,
                                  on_thread_dns_server);
     bool task_exited = true;
     if (s_ot_stop_sem != NULL) {
+        xSemaphoreTake(self->lock, portMAX_DELAY);
         s_ot_stop_requested = true;
-        otInstance *instance = esp_openthread_get_instance();
-        if (instance != NULL) {
-            esp_openthread_lock_acquire(portMAX_DELAY);
-            (void)otThreadSetEnabled(instance, false);
-            (void)otIp6SetEnabled(instance, false);
-            esp_openthread_lock_release();
+        if (s_ot_initialized) {
+            otInstance *instance = esp_openthread_get_instance();
+            if (instance != NULL) {
+                esp_openthread_lock_acquire(portMAX_DELAY);
+                (void)otThreadSetEnabled(instance, false);
+                (void)otIp6SetEnabled(instance, false);
+                esp_openthread_lock_release();
+            }
             (void)esp_openthread_mainloop_exit();
         }
-        if (xSemaphoreTake(s_ot_stop_sem, pdMS_TO_TICKS(5000)) == pdTRUE) {
+        xSemaphoreGive(self->lock);
+
+        const TickType_t step_ticks = pdMS_TO_TICKS(OT_STOP_POLL_INTERVAL_MS);
+        const TickType_t max_ticks = pdMS_TO_TICKS(OT_STOP_TIMEOUT_MS);
+        bool signaled = false;
+
+        for (TickType_t waited = 0; waited < max_ticks; waited += step_ticks) {
+            if (xSemaphoreTake(s_ot_stop_sem, step_ticks) == pdTRUE) {
+                signaled = true;
+                break;
+            }
+            /*
+             * If the worker entered esp_openthread_launch_mainloop() right as
+             * stop() ran, re-send the exit request now that the loop is active.
+             */
+            xSemaphoreTake(self->lock, portMAX_DELAY);
+            if (s_ot_initialized) {
+                (void)esp_openthread_mainloop_exit();
+            }
+            xSemaphoreGive(self->lock);
+        }
+
+        if (signaled) {
             vSemaphoreDelete(s_ot_stop_sem);
             s_ot_stop_sem = NULL;
         } else {

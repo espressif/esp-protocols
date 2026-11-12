@@ -180,8 +180,8 @@ sequenceDiagram
 
 1. `net_iface_start()` returns while the state is still `STARTING`.
 2. The startup task runs `ops->start()`. The driver calls `net_iface_notify_started()`.
-3. The interface stops in `STARTED` and posts `NET_IFACE_EVENT_STARTED`. The startup task does not call `net_iface_connect()`.
-4. `net_iface_connect()` is allowed only from `STARTED` or `FAILED`. A connect call made while the state is still `STARTING` returns `ESP_ERR_INVALID_STATE`. Wait for `NET_IFACE_EVENT_STARTED`, or check `net_iface_get_state()`, before connecting.
+3. The interface stops in `STARTED` and posts `NET_IFACE_EVENT_STARTED`. The startup task does not call `net_iface_connect()`. When it exits it sets `NET_IFACE_BIT_STARTED`, so `net_iface_wait()` returns `ESP_OK`. OpenThread reports started from its own worker after that task has already exited; `net_iface_notify_started()` sets the same bit in that case.
+4. `net_iface_connect()` is allowed only from `STARTED` or `FAILED`. A connect call made while the state is still `STARTING` returns `ESP_ERR_INVALID_STATE`. Wait for `NET_IFACE_EVENT_STARTED`, `net_iface_wait()`, or check `net_iface_get_state()`, before connecting. `net_iface_connect()` clears `NET_IFACE_BIT_STARTED`, so a later `net_iface_wait()` blocks until `READY`.
 5. `net_iface_connect()` moves the state to `CONNECTING`, clears the old `READY` and `FAILED` flags, and calls `ops->connect()`.
 6. Link-up and address assignment then follow Case 1.
 
@@ -251,18 +251,18 @@ Once an interface is `READY`, two kinds of trouble can happen while the driver s
 
 ```mermaid
 flowchart LR
-    READY[READY] -->|Address lost<br/>net_iface_notify_lost_ip| CONNECTING["CONNECTING<br/>READY and IPV4 flags cleared<br/>Link is still up"]
+    READY[READY] -->|Address lost or Thread detach<br/>net_iface_notify_lost_ip| CONNECTING["CONNECTING<br/>IP: READY, IPV4, and IPV6 cleared<br/>Thread: READY and OT_ATTACHED cleared<br/>Driver is still up"]
     CONNECTING -->|New address arrives| READY
 
     READY -->|Link dropped or net_iface_disconnect| STARTED["STARTED<br/>Ready, failed, and address flags cleared<br/>Driver stays running"]
     STARTED -->|net_iface_connect| CONNECTING
 ```
 
-1. **Address lost (`net_iface_notify_lost_ip`):**
-   - The link is still up, but the IPv4 address is gone.
+1. **Address lost, or Thread left the mesh (`net_iface_notify_lost_ip`):**
+   - For Wi-Fi, Ethernet, and PPP the link is still up, but the IPv4 address is gone. For Thread, the node detached and OpenThread is still trying to rejoin.
    - This is accepted from `READY` or `CONNECTED`.
-   - The manager clears the `READY` and `IPV4` flags, moves the state to `CONNECTING`, and posts `NET_IFACE_EVENT_LOST_IP`.
-   - When a new address arrives, the interface can become `READY` again.
+   - On an IP interface the manager clears the `READY`, `IPV4`, and `IPV6` flags. On a Thread interface it clears `READY` and `OT_ATTACHED` and leaves the IP flags alone. Either way the state moves to `CONNECTING` and `NET_IFACE_EVENT_LOST_IP` is posted.
+   - When a new IPv4 address arrives, the manager looks at the netif. A preferred IPv6 address that is still there sets `IPV6` again, because lwIP does not post another `IP_EVENT_GOT_IP6` for an address that never went away. The interface becomes `READY` only when every required address bit is set. Thread becomes `READY` again when `OPENTHREAD_EVENT_ATTACHED` arrives.
 2. **Link dropped or manual disconnect (`net_iface_notify_disconnected` / `net_iface_disconnect`):**
    - The connection itself is gone.
    - The manager clears `READY`, `FAILED`, `STOPPED`, and the address and attachment flags.
@@ -275,10 +275,10 @@ flowchart LR
 
 `net_iface_wait()` lets a task wait for one interface:
 
-- **Wait before ready:** The task sleeps until `READY`, `FAILED`, or `STOPPED` is set, or the time runs out.
-- **Wait after ready:** The flags stay set after the wait returns. A later `net_iface_wait()` on an interface that is already `READY` returns `ESP_OK` at once.
+- **Wait before the target state:** The task sleeps until `READY`, `STARTED`, `FAILED`, or `STOPPED` is set, or the time runs out. `STARTED` is set only when `auto_connect_on_start` is false and `net_iface_start()` finishes in `STARTED` without a later `net_iface_connect()`. After `net_iface_connect()`, or when auto-connect is on, the wait is for `READY`.
+- **Wait after the target state:** The flags stay set after the wait returns. A later `net_iface_wait()` on an interface that is already `READY`, or already `STARTED` with auto-connect off and no connect in progress, returns `ESP_OK` at once. `net_iface_disconnect()` clears `STARTED`, so a wait after disconnect times out until the next connect reaches `READY`.
 - **Several waiters:** Two or more tasks can wait on the same interface. They all wake up and see the same result.
-- **Which flag wins:** If more than one flag is set, the check order is `READY`, then `FAILED`, then `STOPPED`.
+- **Which flag wins:** If more than one flag is set, `READY` or `STARTED` is reported before `FAILED`, and `FAILED` before `STOPPED`.
 - **Timeout:** If none of those flags is set in time, the call returns `ESP_ERR_TIMEOUT`. The interface keeps trying in the background.
 - **No time limit:** `timeout_ms` of `UINT32_MAX` waits until the interface is ready, has failed, or has stopped.
 - **Nothing to wait for:** If `start()` has never been called, the call returns `ESP_ERR_INVALID_STATE`.

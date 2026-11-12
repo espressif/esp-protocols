@@ -323,7 +323,7 @@ Drivers (`wifi_connect.c`, `eth_connect.c`, `thread_connect.c`, `ppp_connect.c`)
    - **What it does:** Moves the state to `READY`, clears `FAILED` and `STOPPED`, sets `NET_IFACE_BIT_READY`, pulses `s_global_wait_events`, and posts `NET_IFACE_EVENT_READY`.
    - **Capabilities:** Wakes both single-handle waiters (`net_iface_wait`) and multi-handle waiters (`wait_all` / `wait_any`).
 5. **`net_iface_notify_lost_ip(h)`**
-   - **What it does:** Moves `READY` or `CONNECTED` back to `CONNECTING`, clears `READY` and `IPV4` bits, and posts `NET_IFACE_EVENT_LOST_IP`.
+   - **What it does:** Moves `READY` or `CONNECTED` back to `CONNECTING` and posts `NET_IFACE_EVENT_LOST_IP`. Wi-Fi, Ethernet, and PPP clear `READY`, `IPV4`, and `IPV6`. Thread clears `READY` and `OT_ATTACHED`. On the next `IP_EVENT_*_GOT_IP`, a cleared `IPV6` bit is restored when `esp_netif_get_all_ip6()` still shows an address of `NET_CONNECT_PREFERRED_IPV6_TYPE`. The next `OPENTHREAD_EVENT_ATTACHED` sets `OT_ATTACHED` again.
    - **Capabilities:** Marks the interface no longer ready without pulsing group waiters or stopping the driver.
 6. **`net_iface_notify_disconnected(h)`**
    - **What it does:** Moves the state back to `STARTED`, clears all liveness bits, and posts `NET_IFACE_EVENT_DISCONNECTED`.
@@ -487,7 +487,7 @@ Called by `net_iface.c` in lifecycle order:
    - **Capabilities:** Tracks whether `eventfd` was registered by this driver (`s_eventfd_owned`) so it will not unregister an `eventfd` owned by the application, and isolates the blocking OpenThread main loop in its own dedicated task.
 2. **`thread_ops_connect(self)`**
    - **What it does:** Acquires the OpenThread lock, reads the active operational dataset TLVs (`otDatasetGetActiveTlvs`), and calls `esp_openthread_auto_start()`.
-   - **Capabilities:** Uses the stored active dataset if one exists in NVS, or falls back to the default Kconfig dataset when none is stored; readiness is then signaled when `OPENTHREAD_EVENT_ATTACHED` arrives.
+   - **Capabilities:** Uses the stored active dataset if one exists in NVS, or falls back to the default Kconfig dataset when none is stored. Readiness is signaled when `OPENTHREAD_EVENT_ATTACHED` arrives. `OPENTHREAD_EVENT_DETACHED` moves the handle back to `CONNECTING` until the next attach.
 3. **`thread_ops_disconnect(self)`**
    - **What it does:** Acquires the OpenThread lock and calls `otThreadSetEnabled(instance, false)`.
    - **Capabilities:** Leaves the Thread mesh while keeping `ot_task_worker`, the OpenThread instance, and `s_openthread_netif` running in `STARTED`.
