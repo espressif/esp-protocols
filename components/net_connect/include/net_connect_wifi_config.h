@@ -9,63 +9,13 @@
 #include "esp_err.h"
 #include "sdkconfig.h"
 #include <stdbool.h>
+#include "net_iface.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #if CONFIG_NET_CONNECT_WIFI
-
-/* Forward declaration for interface handle */
-typedef void* net_iface_handle_t;
-
-/* ============================================================
- *                Default Configuration Macros
- * ============================================================ */
-
-/* General network configuration defaults */
-#define NET_CONNECT_DEFAULT_USE_DHCP        true
-#define NET_CONNECT_DEFAULT_ENABLE_IPV6     false
-
-/* WiFi-specific defaults */
-#define NET_CONNECT_WIFI_DEFAULT_MAX_RETRY      5
-#define NET_CONNECT_WIFI_DEFAULT_ROUTE_PRIO     128
-
-/**
- * @brief  IP configuration (reusable for any interface, supports IPv4 and IPv6)
- */
-typedef struct {
-    /* ===== IPv4 Configuration ===== */
-    bool use_dhcp;                // true = use DHCP, false = use static IPv4
-    char ip[16];                  // IPv4 address (if use_dhcp = false)
-    char netmask[16];             // Subnet mask
-    char gateway[16];             // Gateway address
-    char dns_main[16];            // Primary DNS server (IPv4)
-    char dns_backup[16];          // Secondary DNS server (IPv4)
-    char dns_fallback[16];        // Fallback DNS server (IPv4)
-
-    /* ===== IPv6 Configuration ===== */
-    bool enable_ipv6;             // true = enable IPv6 on this interface
-    int ipv6_mode;                // 0 = SLAAC, 1 = Manual, 2 = DHCPv6
-    char ipv6_addr[40];           // Static IPv6 address (if ipv6_mode = Manual)
-    char ipv6_gateway[40];        // IPv6 gateway address
-    char ipv6_dns_main[40];       // Primary DNS server (IPv6)
-    char ipv6_dns_backup[40];     // Secondary DNS server (IPv6)
-} net_ip_config_t;
-
-/**
- * @brief Wi-Fi Station (STA) configuration
- */
-typedef struct {
-    char ssid[32];
-    char password[64];
-    int scan_method;            // Active or Passive scan
-    int sort_method;            // Sort by signal or by security
-    int threshold_rssi;         // Minimum RSSI threshold for connection
-    int auth_mode_threshold;    // Weakest acceptable authentication type
-    int max_retry;              // Maximum retry attempts before giving up
-    net_ip_config_t ip;         // IP settings for STA (DHCP or static)
-} net_wifi_sta_config_t;
 
 /**
  * @brief Configure Wi-Fi Station (STA) interface.

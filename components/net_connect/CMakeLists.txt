@@ -9,6 +9,7 @@ endif()
 
 set(srcs "stdin_out.c"
          "connect.c"
+         "net_iface.c"
          "wifi_connect.c")
 
 if(CONFIG_NET_CONNECT_PROVIDE_WIFI_CONSOLE_CMD)
