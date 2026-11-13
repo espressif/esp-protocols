@@ -76,6 +76,7 @@ autobahn-testsuite/
 └── testee/                      # ESP32 client application
     ├── sdkconfig.defaults       # Default config
     ├── sdkconfig.ci.*           # CI configurations
+    ├── sdkconfig.perf.defaults  # Throughput settings for cases 9.*
     └── main/                    # Source code
 ```
 
@@ -85,8 +86,42 @@ autobahn-testsuite/
 - `sdkconfig.ci.linux`: CI configuration for running the testee on a Linux host (host-based testing), with adjusted stack sizes and lock timeouts.
 - `sdkconfig.ci.target.plain_tcp`: CI configuration for ESP32 target using Ethernet (IP101 PHY) and IPv6, without TLS.
 
+- `sdkconfig.perf.defaults`: fragment for the performance cases (larger TCP windows/buffers, more WiFi RX buffers, AMPDU, 240 MHz CPU). Apply it on top of the normal defaults.
+
 ### Fuzzing Server
 Edit `config/fuzzingserver.json` to include/exclude cases (e.g., exclude performance/compression tests).
+`config/fuzzingserver-perf.json` runs only the performance cases (9.*).
+
+## 🏎️ Performance cases (9.*)
+
+The performance cases send messages of up to 16 MB. The testee reassembles messages up to 65537 bytes
+and echoes larger ones chunk by chunk as they arrive, so they also run on targets with little RAM (e.g. ESP32-S2).
+A case is abandoned only after 60 s without received data frames, and the pytest
+monitor fails only after 1200 s without serial output (hard cap 4 h).
+
+Example for ESP32-S2 (WiFi credentials in `testee/sdkconfig.defaults`; if you have no such file, use
+`SDKCONFIG_DEFAULTS="sdkconfig.perf.defaults"` and set WiFi in menuconfig):
+
+```bash
+cd components/esp_websocket_client/tests/autobahn-testsuite
+docker run -d --name ws-fuzzing-server --platform linux/amd64 -p 9001:9001 -p 8080:8080 \
+       -v "$PWD/config:/config" -v "$PWD/reports:/reports" \
+       crossbario/autobahn-testsuite:latest wstest -m fuzzingserver -s /config/fuzzingserver-perf.json
+
+cd testee
+idf.py -B build_perf -D SDKCONFIG=build_perf/sdkconfig -D IDF_TARGET=esp32s2 \
+       -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.perf.defaults" build
+idf.py -B build_perf -D SDKCONFIG=build_perf/sdkconfig -p /dev/ttyUSB0 flash
+cd ..
+
+# --uri only if CONFIG_WEBSOCKET_URI_FROM_STDIN is enabled
+pytest pytest_autobahn.py --target esp32s2 --port /dev/ttyUSB0 --baud 115200 \
+       --app-path testee --build-dir build_perf --skip-autoflash y --uri ws://<HOST_IP>:9001
+```
+
+Expect a run time of roughly 20–60 minutes, depending on the WiFi link. The ESP32-S2 numbers are meant for
+spotting regressions between runs on the same setup, not for comparing chips. Stop the server with
+`docker rm -f ws-fuzzing-server`.
 
 ## 📊 Test Categories
 
@@ -99,7 +134,7 @@ Edit `config/fuzzingserver.json` to include/exclude cases (e.g., exclude perform
 | 5.* Fragmentation | ~20 | 2m | ✅ Yes | Large messages |
 | 6.* UTF-8 | ~150 | 10m | ⚠️ Optional | strict validation often skipped |
 | 7.* Close | ~35 | 3m | ✅ Yes | Clean disconnect |
-| 9.* Performance | ~30 | 60m+ | ⚠️ Optional | Often excluded (resource intensive) |
+| 9.* Performance | ~54 | 20-60m | ⚠️ Optional | Separate run, see "Performance cases (9.*)" |
 | 10.* Misc | ~10 | 2m | ✅ Yes | Edge cases |
 | 12-13.* Compression | ~200 | 30m | ❌ No | Typically not implemented |
 
