@@ -22,3 +22,10 @@ The values bellow were extracted from the client example (./examples/client/main
 
 #### When configuring a WebSocket client, ensure that you have enough heap space to handle the desired number of concurrent client connections.
 #### SSL/TLS configurations may require additional memory overhead, depending on the certificate size and cryptographic settings.
+
+## Linux Target
+
+The component also builds for the ESP-IDF `linux` target (the host). There, lws uses
+the host's sockets instead of lwip, so it needs `CONFIG_LWIP_ENABLE=n`. That is
+ESP-IDF's default on `linux`, and the build stops with an error if lwip is enabled.
+See [examples/linux](examples/linux).

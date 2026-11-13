@@ -13,8 +13,9 @@ jobs:
     name: Libwebsockets build
     strategy:
       matrix:
-        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
+        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "release-v6.1", "latest"]
         test: [ { app: example, path: "examples/client" }]
+    continue-on-error: ${{ matrix.idf_ver == 'latest' }}
     runs-on: ubuntu-22.04
     container: espressif/idf:${{ matrix.idf_ver }}
     env:
@@ -41,6 +42,32 @@ jobs:
           path: ${{ env.TEST_DIR }}/artifacts.zip
           if-no-files-found: error
 
+  build_lws_linux:
+    if: contains(github.event.pull_request.labels.*.name, 'lws') || github.event_name == 'push'
+    name: Libwebsockets linux target
+    strategy:
+      matrix:
+        idf_ver: ["release-v5.5", "release-v6.0", "release-v6.1", "latest"]
+    continue-on-error: ${{ matrix.idf_ver == 'latest' }}
+    runs-on: ubuntu-22.04
+    container: espressif/idf:${{ matrix.idf_ver }}
+    env:
+      TEST_DIR: components/libwebsockets/examples/linux
+    steps:
+      - name: Checkout esp-protocols
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build and run the linux example with IDF-${{ matrix.idf_ver }}
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+          cd ${TEST_DIR}
+          rm -rf sdkconfig build
+          idf.py --preview -D SDKCONFIG_DEFAULTS=sdkconfig.ci.linux set-target linux
+          idf.py build
+          ./build/lws_linux.elf
+
   run-target-lws:
     # Skip running on forks since it won't have access to secrets
     if: |
@@ -51,9 +78,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0"]
+        idf_ver: ["release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "release-v6.1", "latest"]
         idf_target: ["esp32"]
         test: [ { app: example, path: "examples/client" }]
+    continue-on-error: ${{ matrix.idf_ver == 'latest' }}
     runs-on:
       - self-hosted
       - ESP32-ETHERNET-KIT
