@@ -138,6 +138,16 @@ menu "Net Connect Configuration"
             default y
             help
                 When enabled, net_connect() fails if Ethernet does not become ready.
+
+        config NET_CONNECT_ETHERNET_AUTO_CONNECT
+            bool "Automatically connect Ethernet on start"
+            default y
+            help
+                When enabled, net_eth_create() with NULL params starts the PHY and
+                begins connecting automatically from net_iface_start(). Disable to
+                leave the interface STARTED until net_iface_connect() is called.
+                A non-NULL net_eth_params_t overrides this per handle via its
+                auto_connect_on_start field.
     endif
 
     config NET_CONNECT_DISABLE_ETHERNET_CONFIG
