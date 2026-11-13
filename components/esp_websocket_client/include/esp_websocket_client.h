@@ -242,6 +242,51 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client);
 esp_err_t esp_websocket_client_stop(esp_websocket_client_handle_t client);
 
 /**
+ * @brief      Request the client task to stop, without waiting for it
+ *
+ * This is the non-blocking half of esp_websocket_client_stop(): it flags the
+ * client task to exit (and wakes it early if it is idling between reconnect
+ * attempts), then returns immediately. The task still finishes any blocking
+ * call it is currently inside (transport connect, read poll) before it
+ * notices the request. Pair with esp_websocket_client_wait_stopped() to
+ * bound the join, and call esp_websocket_client_destroy() only once the
+ * client is stopped.
+ *
+ * This allows an application tearing down several clients to request all
+ * stops first so the task exits overlap, then wait for each against a single
+ * deadline — instead of serializing the full teardown time of every client
+ * as back-to-back esp_websocket_client_stop() calls would.
+ *
+ *  Notes:
+ *  - Safe to call when the client is already stopped (returns ESP_OK)
+ *  - Cannot be called from the websocket event handler
+ *
+ * @param[in]  client  The client
+ *
+ * @return     esp_err_t
+ */
+esp_err_t esp_websocket_client_request_stop(esp_websocket_client_handle_t client);
+
+/**
+ * @brief      Wait, bounded, for the client task to have stopped
+ *
+ *  Notes:
+ *  - Passing portMAX_DELAY reproduces the unbounded wait of
+ *    esp_websocket_client_stop()
+ *
+ * @param[in]  client   The client
+ * @param[in]  timeout  Maximum number of ticks to wait for the client task
+ *                      to reach its stopped state
+ *
+ * @return
+ *     - true when the client task is stopped; esp_websocket_client_destroy()
+ *       will then complete without blocking on the task
+ *     - false on timeout: the client task is still winding down — do not
+ *       destroy the client yet (destroy would block unboundedly), retry later
+ */
+bool esp_websocket_client_wait_stopped(esp_websocket_client_handle_t client, TickType_t timeout);
+
+/**
  * @brief      Destroy the WebSocket connection and free all resources.
  *             This function must be the last function to call for an session.
  *             It is the opposite of the esp_websocket_client_init function and must be called with the same handle as input that a esp_websocket_client_init call returned.
