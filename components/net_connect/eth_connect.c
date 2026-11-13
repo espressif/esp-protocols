@@ -190,7 +190,11 @@ esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out
 #else
     cfg.required = false;
 #endif
+#if CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT
     cfg.auto_connect_on_start = true;
+#else
+    cfg.auto_connect_on_start = false;
+#endif
     cfg.ip.use_dhcp = true;
 #if CONFIG_NET_CONNECT_IPV6
     cfg.ip.enable_ipv6 = true;

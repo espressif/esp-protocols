@@ -434,7 +434,7 @@ esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out
 - **Arguments:**
   - `params`: Optional Ethernet parameters (`route_prio`, `required`, `auto_connect_on_start`, `ip`), or `NULL` for Kconfig defaults.
   - `out_handle`: Output pointer receiving the new Ethernet handle.
-- **What it does:** Fills `net_iface_config_t` with Ethernet defaults (`route_prio = 64`, `auto_connect_on_start = true`, DHCP on), applies `params`, and calls `net_iface_init_with_ops(&cfg, &g_net_iface_eth_ops, out_handle)`.
+- **What it does:** Fills `net_iface_config_t` with Ethernet defaults (`route_prio = 64`, `auto_connect_on_start` from `CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT` (default y), DHCP on), applies `params`, and calls `net_iface_init_with_ops(&cfg, &g_net_iface_eth_ops, out_handle)`.
 - **Capabilities:**
   - Creates the Ethernet handle in `INIT` state without touching the MAC, PHY, or SPI/RMII bus.
   - Allows overriding route priority, `required` flag, `auto_connect_on_start`, and IPv4/IPv6 settings per handle.

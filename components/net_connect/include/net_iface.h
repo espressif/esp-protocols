@@ -376,6 +376,8 @@ esp_err_t net_wifi_sta_create(const net_wifi_sta_params_t *params, net_iface_han
  * @brief Create an Ethernet handle.
  *
  * Pass NULL for @p params to use the Kconfig defaults.
+ * When @p params is NULL, auto-connect on start follows
+ * CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT (default enabled).
  * The PHY is not started. Call net_iface_start() next.
  * When Ethernet is turned off in Kconfig, this returns ESP_ERR_NOT_SUPPORTED.
  *

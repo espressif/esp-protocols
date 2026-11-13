@@ -640,6 +640,23 @@ TEST(net_connect, net_eth_thread_ppp_create_and_deinit)
     s_test_handle = h;
     TEST_ASSERT_EQUAL(NET_IFACE_TYPE_ETH, net_iface_get_type(h));
     TEST_ASSERT_EQUAL(NET_IFACE_STATE_INIT, net_iface_get_state(h));
+#if CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT
+    TEST_ASSERT_TRUE(h->cfg.auto_connect_on_start);
+#else
+    TEST_ASSERT_FALSE(h->cfg.auto_connect_on_start);
+#endif
+    TEST_ESP_OK(net_iface_deinit(h));
+    s_test_handle = NULL;
+
+    net_eth_params_t eth_params = {
+        .route_prio = -1,
+        .required = true,
+        .auto_connect_on_start = false,
+    };
+    TEST_ESP_OK(net_eth_create(&eth_params, &h));
+    s_test_handle = h;
+    TEST_ASSERT_FALSE(h->cfg.auto_connect_on_start);
+    TEST_ASSERT_TRUE(h->cfg.required);
     TEST_ESP_OK(net_iface_deinit(h));
     s_test_handle = NULL;
 #else

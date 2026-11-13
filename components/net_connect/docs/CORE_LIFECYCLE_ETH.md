@@ -32,7 +32,7 @@ sequenceDiagram
     rect rgba(56,139,253,0.22)
     Note over App,EventLoop: 1. Create handle (UNINIT -> INIT)
     App->>Eth: net_eth_create()
-    Eth->>Eth: Fill defaults (route_prio = 64, auto_connect_on_start = true), apply params
+    Eth->>Eth: Fill defaults (route_prio = 64, auto_connect_on_start = CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT, default y), apply params
     Eth->>Core: net_iface_init_with_ops(g_net_iface_eth_ops)
     Core->>Core: Allocate handle, state = INIT (ops->init is NULL)
     opt Event loop exists and global handlers not registered yet
@@ -353,7 +353,7 @@ esp_err_t net_eth_create(const net_eth_params_t *params, net_iface_handle_t *out
    - `desc = NET_CONNECT_NETIF_DESC_ETH` (`"net_connect_netif_eth"`)
    - `route_prio = NET_CONNECT_ETH_DEFAULT_ROUTE_PRIO` (64)
    - `required` from `CONFIG_NET_CONNECT_ETHERNET_REQUIRED`
-   - `auto_connect_on_start = true`
+   - `auto_connect_on_start` from `CONFIG_NET_CONNECT_ETHERNET_AUTO_CONNECT` (default y)
    - `ip.use_dhcp = true`, and `ip.enable_ipv6` from `CONFIG_NET_CONNECT_IPV6`
 2. A non-NULL `net_eth_params_t` overrides `route_prio`, `required`, `auto_connect_on_start`, and `ip`.
 3. Calls `net_iface_init_with_ops(&cfg, &g_net_iface_eth_ops, out_handle)` to allocate the handle in `NET_IFACE_STATE_INIT`, prepend it to `s_iface_list`, and call `try_register_global_handlers()`.
