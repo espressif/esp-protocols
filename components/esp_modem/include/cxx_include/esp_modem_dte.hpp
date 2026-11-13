@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <utility>
 #include <cstddef>
@@ -216,7 +217,7 @@ private:
     void handle_error(terminal_error err);                  /*!< Performs internal error handling */
     [[nodiscard]] bool setup_cmux();                        /*!< Internal setup of CMUX mode */
     [[nodiscard]] bool exit_cmux();                         /*!< Exit of CMUX mode and cleanup  */
-    void exit_cmux_internal();                              /*!< Cleanup CMUX */
+    void exit_cmux_internal(const std::shared_ptr<CMux> &cmux); /*!< Cleanup CMUX */
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     /**
@@ -247,7 +248,7 @@ private:
 
     Lock internal_lock{};                                   /*!< Locks DTE operations */
     unique_buffer buffer;                                   /*!< DTE buffer */
-    std::shared_ptr<CMux> cmux_term;                        /*!< Primary terminal for this DTE */
+    std::atomic<std::shared_ptr<CMux>> cmux_term;           /*!< Primary terminal for this DTE */
     CMuxConfig cmux_config;                                 /*!< Physical DLCI mapping for CMUX terminals */
     std::shared_ptr<Terminal> primary_term;                 /*!< Reference to the primary terminal (mostly for sending commands) */
     std::shared_ptr<Terminal> secondary_term;               /*!< Secondary terminal for this DTE */
