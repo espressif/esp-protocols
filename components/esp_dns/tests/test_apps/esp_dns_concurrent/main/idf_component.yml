@@ -1,0 +1,7 @@
+dependencies:
+  idf:
+    version: ">=5.4.3"
+  espressif/net_connect: "^0.1.1"
+  esp_dns:
+    version: "*"
+    override_path: '../../../../'
