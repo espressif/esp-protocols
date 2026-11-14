@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <fcntl.h>
+#include <stdbool.h>
 #include <string.h>
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
@@ -44,6 +45,7 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
     in_port_t port;         // port in network byte order
 #if CONFIG_LWIP_IPV6
     u32_t scope_id = 0;
+    bool link_local = false;
 #endif
 
     switch (addr->sa_family) {
@@ -59,6 +61,9 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
         ip = &sin6p->sin6_addr;
         port = sin6p->sin6_port;
         scope_id = sin6p->sin6_scope_id;
+        ip6_addr_t ip6;     // IN6_IS_ADDR_LINKLOCAL() and IN6_IS_ADDR_MC_LINKLOCAL() are not in older lwIP
+        inet6_addr_to_ip6addr(&ip6, &sin6p->sin6_addr);
+        link_local = ip6_addr_islinklocal(&ip6) || ip6_addr_ismulticast_linklocal(&ip6);
         break;
     }
 #endif
@@ -75,11 +80,13 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
             return EOVERFLOW;  // Error if address couldn't be converted
         }
 #if CONFIG_LWIP_IPV6
-        // Append the scope like glibc does: the interface name (e.g. fe80::1%en1), else its index
+        // Append the scope like glibc does: the interface name for a link-local address (e.g. fe80::1%en1),
+        // else, or if there is no such interface, the index (e.g. 2001:db8::1%2). See gni_host_inet_numeric() in
+        // https://sourceware.org/git/?p=glibc.git;a=blob;f=nss/getnameinfo.c;hb=glibc-2.44#l344
         if (scope_id != 0) {
             const size_t len = strlen(host);
             struct scope_name scope = { .index = scope_id };
-            const int written = esp_netif_tcpip_exec(scope_name_unsafe, &scope) == ESP_OK
+            const int written = link_local && esp_netif_tcpip_exec(scope_name_unsafe, &scope) == ESP_OK
                                 ? snprintf(host + len, hostlen - len, "%%%s", scope.name)
                                 : snprintf(host + len, hostlen - len, "%%%u", (unsigned)scope_id);
             if (written < 0 || (size_t)written >= hostlen - len) {
