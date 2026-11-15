@@ -115,6 +115,23 @@ private:
             on_read(nullptr, len);
         }
     }
+    // A reader may take less than what is buffered per notification (CMUX
+    // reads the rest of one frame at a time), and the driver reports each
+    // received chunk only once: notify until the ring buffer is empty or
+    // the reader stops taking data.
+    void notify_buffered()
+    {
+        size_t len = 0;
+        uart_get_buffered_data_len(uart.port, &len);
+        while (len) {
+            const size_t before = len;
+            notify_read(len);
+            uart_get_buffered_data_len(uart.port, &len);
+            if (len >= before) {
+                break;
+            }
+        }
+    }
     void notify_error(terminal_error err)
     {
         Scoped<Lock> l(cb_lock);
@@ -153,7 +170,6 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 void UartTerminal::task()
 {
     uart_event_t event;
-    size_t len;
     signal.set(TASK_INIT);
     signal.wait_any(TASK_START | TASK_STOP, portMAX_DELAY);
     if (signal.is_any(TASK_STOP)) {
@@ -163,10 +179,7 @@ void UartTerminal::task()
         if (get_event(event, 100)) {
             switch (event.type) {
             case UART_DATA:
-                uart_get_buffered_data_len(uart.port, &len);
-                if (len) {
-                    notify_read(len);
-                }
+                notify_buffered();
                 break;
             case UART_FIFO_OVF:
                 ESP_LOGW(TAG, "HW FIFO Overflow");
@@ -195,10 +208,7 @@ void UartTerminal::task()
                 break;
             }
         } else {
-            uart_get_buffered_data_len(uart.port, &len);
-            if (len) {
-                notify_read(len);
-            }
+            notify_buffered();
         }
     }
 }
