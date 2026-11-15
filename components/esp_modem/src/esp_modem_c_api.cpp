@@ -689,7 +689,7 @@ extern "C" esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce_wrap,
         dce_wrap->dte->set_enhanced_urc_cb(nullptr);
         return ESP_OK;
     }
-    dce_wrap->dte->set_enhanced_urc_cb([urc_cb](const DTE::UrcBufferInfo &info) {
+    dce_wrap->dte->set_enhanced_urc_cb([urc_cb](const DTE::UrcBufferInfo & info) {
         const esp_modem_urc_buffer_info_t c_info = {
             .buffer_start = info.buffer_start,
             .buffer_total_size = info.buffer_total_size,
