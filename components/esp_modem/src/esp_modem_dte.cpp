@@ -138,6 +138,12 @@ void DTE::set_command_callbacks()
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
             // (will post next fragments to the parser, since we might be just missing a last token or OK
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+            // This fragment is not kept, so the next one is a buffer of its own:
+            // offsets into this one must not be applied to it.
+            buffer_state.last_urc_processed = 0;
+            buffer_state.last_urc_seen = 0;
+#endif
             return false;
 #endif
         }
