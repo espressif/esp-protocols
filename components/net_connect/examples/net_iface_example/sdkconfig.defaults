@@ -1,0 +1,3 @@
+# Both interfaces. Part 1 uses Wi-Fi. Part 2 starts Ethernet and Wi-Fi together.
+CONFIG_NET_CONNECT_WIFI=y
+CONFIG_NET_CONNECT_ETHERNET=y

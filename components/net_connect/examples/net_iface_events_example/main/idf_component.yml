@@ -1,0 +1,6 @@
+dependencies:
+  idf:
+    version: ">=5.0"
+  net_connect:
+    version: "*"
+    override_path: '../../../'
