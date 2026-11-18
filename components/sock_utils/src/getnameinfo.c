@@ -80,9 +80,7 @@ int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
             return EOVERFLOW;  // Error if address couldn't be converted
         }
 #if CONFIG_LWIP_IPV6
-        // Append the scope like glibc does: the interface name for a link-local address (e.g. fe80::1%en1),
-        // else, or if there is no such interface, the index (e.g. 2001:db8::1%2). See gni_host_inet_numeric() in
-        // https://sourceware.org/git/?p=glibc.git;a=blob;f=nss/getnameinfo.c;hb=glibc-2.44#l344
+// Like glibc: %ifname for link-local (e.g. fe80::1%en1), else %index if scope_id != 0
         if (scope_id != 0) {
             const size_t len = strlen(host);
             struct scope_name scope = { .index = scope_id };
