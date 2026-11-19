@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.9.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.9.0)
+
+### Features
+
+- add PSRAM allocation options ([25129502](https://github.com/espressif/esp-protocols/commit/25129502))
+
+### Bug Fixes
+
+- wait for the whole hexdump line in the target pytest ([77cbeca2](https://github.com/espressif/esp-protocols/commit/77cbeca2))
+- convert the TX lock timeout from ms to ticks ([bbd75359](https://github.com/espressif/esp-protocols/commit/bbd75359))
+- stop reading frame after abort from DATA handler ([1f9249ed](https://github.com/espressif/esp-protocols/commit/1f9249ed))
+- free cfg->host before reassignment to prevent memory leak ([d3c20d39](https://github.com/espressif/esp-protocols/commit/d3c20d39))
+
 ## [1.8.0](https://github.com/espressif/esp-protocols/commits/websocket-v1.8.0)
 
 ### Features
