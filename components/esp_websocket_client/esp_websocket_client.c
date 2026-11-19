@@ -1151,8 +1151,8 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         xSemaphoreGiveRecursive(client->lock);
 
         // Now acquire tx_lock with timeout (consistent with PING/CLOSE handling)
-        if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-            ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for PONG", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
+        if (xSemaphoreTakeRecursive(client->tx_lock, pdMS_TO_TICKS(WEBSOCKET_TX_LOCK_TIMEOUT_MS)) != pdPASS) {
+            ESP_LOGE(TAG, "Could not lock ws-client within %d ms timeout for PONG", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
             xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before returning
             esp_websocket_free_buf(client, false);
             return ESP_FAIL;
@@ -1320,8 +1320,8 @@ static void esp_websocket_client_task(void *pv)
                     xSemaphoreGiveRecursive(client->lock);
 
                     // Now acquire tx_lock with timeout (consistent with PONG handling)
-                    if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-                        ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for PING", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
+                    if (xSemaphoreTakeRecursive(client->tx_lock, pdMS_TO_TICKS(WEBSOCKET_TX_LOCK_TIMEOUT_MS)) != pdPASS) {
+                        ESP_LOGE(TAG, "Could not lock ws-client within %d ms timeout for PING", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
                         xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before break
                         break;
                     }
@@ -1373,8 +1373,8 @@ static void esp_websocket_client_task(void *pv)
                 xSemaphoreGiveRecursive(client->lock);
 
                 // Now acquire tx_lock with timeout (consistent with PONG/PING handling)
-                if (xSemaphoreTakeRecursive(client->tx_lock, WEBSOCKET_TX_LOCK_TIMEOUT_MS) != pdPASS) {
-                    ESP_LOGE(TAG, "Could not lock ws-client within %d timeout for CLOSE", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
+                if (xSemaphoreTakeRecursive(client->tx_lock, pdMS_TO_TICKS(WEBSOCKET_TX_LOCK_TIMEOUT_MS)) != pdPASS) {
+                    ESP_LOGE(TAG, "Could not lock ws-client within %d ms timeout for CLOSE", WEBSOCKET_TX_LOCK_TIMEOUT_MS);
                     xSemaphoreTakeRecursive(client->lock, portMAX_DELAY);  // Re-acquire client->lock before break
                     break;
                 }
