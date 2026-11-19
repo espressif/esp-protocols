@@ -8,6 +8,7 @@
 
 #include "sdkconfig.h"
 #include "esp_err.h"
+#include "net_iface.h"
 #if !CONFIG_IDF_TARGET_LINUX
 #include "esp_netif.h"
 #endif // !CONFIG_IDF_TARGET_LINUX
@@ -81,7 +82,11 @@ extern "C" {
 
 #if !CONFIG_IDF_TARGET_LINUX
 /**
- * @brief Configure Wi-Fi or Ethernet, connect, wait for IP
+ * @brief Start every enabled interface, then wait for the required ones.
+ *
+ * Optional interfaces that are not configured, or that fail, are logged and
+ * left running when they can. A required interface that does not become ready
+ * stops the others and returns ESP_FAIL.
  *
  * This all-in-one helper function is used in protocols examples to
  * reduce the amount of boilerplate in the example.

@@ -1,0 +1,2 @@
+# Wi-Fi only. Both parts drive one station through NET_IFACE_EVENT.
+CONFIG_NET_CONNECT_WIFI=y
