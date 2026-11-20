@@ -248,6 +248,7 @@ static void service_task(void *pvParameters)
             // Clean up stale records, or process updates from rx events.
             mdns_priv_cache_remove_expired_records(esp_timer_get_time());
             mdns_priv_cache_process_sync();
+            mdns_priv_browse_retry_due(esp_timer_get_time());
 #endif /* CONFIG_MDNS_ENABLE_BROWSE */
             MDNS_SERVICE_UNLOCK();
         } else {

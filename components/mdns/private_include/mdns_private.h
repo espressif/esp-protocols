@@ -359,6 +359,8 @@ typedef struct mdns_browse_s {
     struct mdns_browse_s *next;
 
     mdns_browse_state_t state;
+    int64_t retry_due_us;  /*!< Zero when not scheduled to send query */
+    uint8_t retry_rounds;
     mdns_browse_notify_t notifier;
 
     char *service;

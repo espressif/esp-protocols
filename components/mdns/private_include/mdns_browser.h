@@ -56,6 +56,11 @@ mdns_browse_t *mdns_priv_browse_find_consumer(mdns_name_t *name, uint16_t type, 
 void mdns_priv_browse_send_by_ip_protocol(mdns_if_t mdns_if, mdns_ip_protocol_t ip_protocol);
 
 /**
+ * @brief Update query retry due time for all browse items.
+ */
+void mdns_priv_browse_retry_due(int64_t now_us);
+
+/**
  * @brief Perform action from mdns service queue
  *
  * @note Called by `free_action()` and `execute_action()` in mdns_service.c
