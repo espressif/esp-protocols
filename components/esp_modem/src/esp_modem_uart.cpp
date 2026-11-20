@@ -9,7 +9,6 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "driver/uart.h"
-#include "uart_compat.h"
 #include "esp_modem_config.h"
 #include "exception_stub.hpp"
 #include "cxx_include/esp_modem_dte.hpp"
@@ -227,7 +226,7 @@ int UartTerminal::write(uint8_t *data, size_t len)
 #if CONFIG_ESP_MODEM_ADD_DEBUG_LOGS
     ESP_LOG_BUFFER_HEXDUMP("uart-tx", data, len, ESP_LOG_DEBUG);
 #endif
-    return uart_write_bytes_compat(uart.port, data, len);
+    return uart_write_bytes(uart.port, data, len);
 }
 
 } // namespace esp_modem
