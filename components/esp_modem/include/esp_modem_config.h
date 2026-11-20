@@ -84,11 +84,7 @@ struct esp_modem_dte_config {
     };
 };
 
-#if ESP_IDF_VERSION_MAJOR >= 5
 #define ESP_MODEM_DEFAULT_UART_CLK      UART_SCLK_DEFAULT
-#else
-#define ESP_MODEM_DEFAULT_UART_CLK      UART_SCLK_APB
-#endif
 
 /**
  * @brief ESP Modem DTE Default Configuration

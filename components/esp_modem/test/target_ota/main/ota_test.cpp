@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2023 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2023-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -56,9 +56,7 @@ public:
 
     void remove_mqtt()
     {
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 1, 0)
         esp_mqtt_client_unregister_event(mqtt, MQTT_EVENT_ANY, on_event);
-#endif
         mqtt = nullptr;
     }
 
@@ -274,13 +272,11 @@ extern "C" void app_main(void)
 
 
     esp_modem::SignalGroup ota_done{};
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 2, 0)
-    // now stop the LCP keepalive before performing OTA
+    // Stop LCP keepalive before performing OTA
     esp_netif_ppp_config_t cfg;
     ESP_ERROR_CHECK(esp_netif_ppp_get_params(esp_netif, &cfg));
     cfg.ppp_lcp_echo_disabled = true;
     ESP_ERROR_CHECK(esp_netif_ppp_set_params(esp_netif, &cfg));
-#endif
 
     // Run the OTA in a separate task to keep sending commands to the modem at the same time
     xTaskCreate(ota_task, "ota_task", 8192, &ota_done, 5, nullptr);

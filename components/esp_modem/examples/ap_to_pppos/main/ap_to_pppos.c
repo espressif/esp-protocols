@@ -12,17 +12,14 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
-#include "esp_idf_version.h"
 #include "nvs_flash.h"
 #include "lwip/netif.h"
 #include "lwip/lwip_napt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "network_dce.h"
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "esp_mac.h"
 #include "dhcpserver/dhcpserver.h"
-#endif
 
 #define EXAMPLE_ESP_WIFI_SSID      CONFIG_ESP_WIFI_SSID
 #define EXAMPLE_ESP_WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
