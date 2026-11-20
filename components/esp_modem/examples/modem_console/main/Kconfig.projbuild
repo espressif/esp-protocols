@@ -26,6 +26,13 @@ menu "Example Configuration"
             help
                 SHINY is a GSM/GPRS module.
                 It supports SHINY.
+        config EXAMPLE_MODEM_DEVICE_NETWORK
+            depends on EXAMPLE_SERIAL_CONFIG_UART
+            bool "NetworkDCE (pppd)"
+            help
+                Dummy modem with no AT commands. Connect the UART to a Linux host
+                running pppd (and optionally radvd for IPv6). Use console set_mode
+                PPP/CMD to start and stop the PPP session.
         config EXAMPLE_MODEM_DEVICE_SIM800
             depends on EXAMPLE_SERIAL_CONFIG_UART
             bool "SIM800"
