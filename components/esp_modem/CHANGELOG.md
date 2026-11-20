@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.2.0](https://github.com/espressif/esp-protocols/commits/modem-v2.2.0)
+
+### Features
+
+- Add support for DTE-Tx hooks ([e6014f6a](https://github.com/espressif/esp-protocols/commit/e6014f6a), [#1019](https://github.com/espressif/esp-protocols/issues/1019))
+- Require C++20 for modem lib impl ([3b3fd635](https://github.com/espressif/esp-protocols/commit/3b3fd635))
+- allow custom CMUX DLCI mapping ([f276e243](https://github.com/espressif/esp-protocols/commit/f276e243))
+
+### Bug Fixes
+
+- Avoid null CMUX dereference in DTE::recover ([69194e46](https://github.com/espressif/esp-protocols/commit/69194e46))
+- Clear stale IPv6 on PPP reconnecti ([c4b3e8ff](https://github.com/espressif/esp-protocols/commit/c4b3e8ff))
+- correct CMUX and PPP test setup ([2f87d649](https://github.com/espressif/esp-protocols/commit/2f87d649))
+- Make resource types non-copyable to avoid double free ([002de966](https://github.com/espressif/esp-protocols/commit/002de966))
+- Add asserts and params error checks on create path ([5a435de4](https://github.com/espressif/esp-protocols/commit/5a435de4))
+
+### Updated
+
+- chore(modem): Drop obsolete pre-IDF-5.2 version guards ([c34a524c](https://github.com/espressif/esp-protocols/commit/c34a524c))
+- chore(modem): Raise minimum IDF version to 5.2 ([9d3260e8](https://github.com/espressif/esp-protocols/commit/9d3260e8))
+
 ## [2.1.0](https://github.com/espressif/esp-protocols/commits/modem-v2.1.0)
 
 ### Features
