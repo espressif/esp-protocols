@@ -102,6 +102,7 @@ const static int CLOSE_FRAME_SENT_BIT = BIT1;   // Indicates that a close frame 
 // and we are waiting for the server to continue with clean close
 const static int REQUESTED_STOP_BIT = BIT2;     // Indicates that a client stop has been requested
 const static int WAKEUP_BIT = BIT3;             // Wakes the reconnect wait early (e.g. on timeout change)
+const static int CLOSE_REQUESTED_BIT = BIT4;    // Indicates that close() started; the CLOSE frame may not be written yet
 
 ESP_EVENT_DEFINE_BASE(WEBSOCKET_EVENTS);
 
@@ -182,7 +183,7 @@ struct esp_websocket_client {
     ws_transport_opcodes_t      last_opcode;
     int                         payload_len;
     int                         payload_offset;
-    int                         close_status_code;  /*!< Status code from the last received CLOSE frame (0 = none / client-initiated) */
+    int                         close_status_code;  /*!< Status code from the last received CLOSE frame (0 = none / client-initiated, 1006 = connection dropped during close) */
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
 };
@@ -291,6 +292,18 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     if (client->state == WEBSOCKET_STATE_CLOSING || client->state == WEBSOCKET_STATE_UNKNOW ||
             client->state == WEBSOCKET_STATE_WAIT_TIMEOUT) {
         ESP_LOGW(TAG, "Connection already closing/closed, skipping abort");
+        goto cleanup;
+    }
+
+    // The close handshake was started (close() called, or the transport failed the connection on
+    // an invalid CLOSE frame) and the connection broke. Finish it as a close, not a network error:
+    // report 1006 (RFC 6455 §7.1.5) and let the CLOSING state send WEBSOCKET_EVENT_CLOSED.
+    if (client->state == WEBSOCKET_STATE_CONNECTED &&
+            ((xEventGroupGetBits(client->status_bits) & (CLOSE_FRAME_SENT_BIT | CLOSE_REQUESTED_BIT)) ||
+             client->last_opcode == WS_TRANSPORT_OPCODES_CLOSE)) {
+        client->close_status_code = 1006;
+        client->state = WEBSOCKET_STATE_CLOSING;
+        xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
         goto cleanup;
     }
 
@@ -1111,6 +1124,9 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
         rlen = esp_transport_read(client->transport, client->rx_buffer, client->buffer_size, client->config->network_timeout_ms);
         if (rlen < 0) {
             esp_websocket_free_buf(client, false);
+            // CLOSE here means the transport failed the connection on an invalid CLOSE frame.
+            // Set it before the ERROR event: a handler may call send(), and its abort must see it.
+            client->last_opcode = esp_transport_ws_get_read_opcode(client->transport);
             esp_tls_error_handle_t error_handle = esp_transport_get_error_handle(client->transport);
             if (error_handle) {
                 const char *error_name = esp_err_to_name(error_handle->last_error);
@@ -1218,7 +1234,7 @@ static void esp_websocket_client_task(void *pv)
     }
 
     client->state = WEBSOCKET_STATE_INIT;
-    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | CLOSE_REQUESTED_BIT);
     esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_BEGIN, NULL, 0);
     int read_select = 0;
     while (client->run) {
@@ -1289,7 +1305,7 @@ static void esp_websocket_client_task(void *pv)
             client->close_status_code = 0;
 
             // Clear CLOSE_FRAME_SENT_BIT to allow PINGs to be sent after reconnect
-            xEventGroupClearBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
+            xEventGroupClearBits(client->status_bits, CLOSE_FRAME_SENT_BIT | CLOSE_REQUESTED_BIT);
             esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CONNECTED, NULL, 0);
 
             // Check if there is data pending to be read (e.g. piggybacked with handshake)
@@ -1464,7 +1480,7 @@ static void esp_websocket_client_task(void *pv)
                 esp_websocket_client_dispatch_event(client, WEBSOCKET_EVENT_CLOSED, NULL, 0);
                 client->reconnect_tick_ms = _tick_get_ms();
                 ESP_LOGI(TAG, "Reconnect after %d ms", client->wait_timeout_ms);
-                xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT);
+                xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | CLOSE_REQUESTED_BIT);
                 xSemaphoreGiveRecursive(client->lock);
             } else {
                 client->run = false;
@@ -1511,7 +1527,7 @@ esp_err_t esp_websocket_client_start(esp_websocket_client_handle_t client)
         }
     }
 
-    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | REQUESTED_STOP_BIT | WAKEUP_BIT);
+    xEventGroupClearBits(client->status_bits, STOPPED_BIT | CLOSE_FRAME_SENT_BIT | CLOSE_REQUESTED_BIT | REQUESTED_STOP_BIT | WAKEUP_BIT);
 
     client->task_handle = NULL;
     BaseType_t res;
@@ -1591,6 +1607,14 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
         return ESP_FAIL;
     }
 
+    if (!esp_websocket_client_is_connected(client)) {
+        ESP_LOGE(TAG, "Websocket client is not connected");
+        return ESP_FAIL;
+    }
+
+    // Set before sending, so that a failed send or a connection drop right after it finishes the close
+    // as WEBSOCKET_EVENT_CLOSED (1006) in abort_connection instead of reconnecting.
+    xEventGroupSetBits(client->status_bits, CLOSE_REQUESTED_BIT);
     int close_ret;
     if (send_body) {
         close_ret = esp_websocket_client_send_close(client, code, data, len + 2, portMAX_DELAY); // len + 2 -> always sending the code
@@ -1599,11 +1623,18 @@ static esp_err_t esp_websocket_client_close_with_optional_body(esp_websocket_cli
     }
 
     if (close_ret < 0) {
-        return ESP_FAIL;
+        // CLOSING: the task finishes the close (our failed send aborted it, or the server's CLOSE arrived).
+        // UNKNOW: the task already stopped. Otherwise nothing was written (CONNECTED), or the connection
+        // dropped before close() started and the client is reconnecting (WAIT_TIMEOUT/INIT): no STOPPED_BIT.
+        int state = client->state;
+        if (state != WEBSOCKET_STATE_CLOSING && state != WEBSOCKET_STATE_UNKNOW) {
+            xEventGroupClearBits(client->status_bits, CLOSE_REQUESTED_BIT);
+            return ESP_FAIL;
+        }
+    } else {
+        // Set closing bit to prevent from sending PING frames while connected
+        xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
     }
-
-    // Set closing bit to prevent from sending PING frames while connected
-    xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
 
     // When auto_reconnect and close_reconnect are both enabled, the task thread owns the
     // close handshake and will reconnect autonomously. Return immediately; do not wait for
