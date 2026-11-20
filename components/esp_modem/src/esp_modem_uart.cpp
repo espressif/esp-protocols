@@ -68,6 +68,11 @@ public:
         }
         signal.clear(TASK_START);   // make the processing loop exit
         signal.set(TASK_STOP);      // release the task if it never started
+        // The processing loop blocks on the event queue; hand it one event so it
+        // re-reads the flags and leaves without a periodic poll.
+        uart_event_t wake = {};
+        wake.type = UART_EVENT_MAX;
+        xQueueSend(event_queue, &wake, 0);
         // Block until the task confirms it has left the processing loop: no read/error callback
         // is in flight, and it is not blocked in the UART driver, so it is safe to delete.
         if (!signal.wait_any(TASK_STOPPED, stop_timeout_ms)) {
@@ -100,9 +105,9 @@ private:
     }
 
     void task();
-    bool get_event(uart_event_t &event, uint32_t time_ms)
+    bool get_event(uart_event_t &event, TickType_t ticks)
     {
-        return xQueueReceive(event_queue, &event, pdMS_TO_TICKS(time_ms));
+        return xQueueReceive(event_queue, &event, ticks);
     }
 
     // Invoke the read/error callbacks under cb_lock so they cannot be reassigned or cleared
@@ -113,6 +118,23 @@ private:
         Scoped<Lock> l(cb_lock);
         if (on_read) {
             on_read(nullptr, len);
+        }
+    }
+    // A reader may take less than what is buffered per notification (CMUX
+    // reads the rest of one frame at a time), and the driver reports each
+    // received chunk only once: notify until the ring buffer is empty or
+    // the reader stops taking data.
+    void notify_buffered()
+    {
+        size_t len = 0;
+        uart_get_buffered_data_len(uart.port, &len);
+        while (len) {
+            const size_t before = len;
+            notify_read(len);
+            uart_get_buffered_data_len(uart.port, &len);
+            if (len >= before) {
+                break;
+            }
         }
     }
     void notify_error(terminal_error err)
@@ -153,20 +175,18 @@ std::unique_ptr<Terminal> create_uart_terminal(const esp_modem_dte_config *confi
 void UartTerminal::task()
 {
     uart_event_t event;
-    size_t len;
     signal.set(TASK_INIT);
     signal.wait_any(TASK_START | TASK_STOP, portMAX_DELAY);
     if (signal.is_any(TASK_STOP)) {
         return; // exits to the static method where the task gets deleted
     }
     while (signal.is_any(TASK_START)) {
-        if (get_event(event, 100)) {
+        // Block until the driver reports an event; stop() enqueues one. A
+        // timed poll here would wake a light-sleeping host for nothing.
+        if (get_event(event, portMAX_DELAY)) {
             switch (event.type) {
             case UART_DATA:
-                uart_get_buffered_data_len(uart.port, &len);
-                if (len) {
-                    notify_read(len);
-                }
+                notify_buffered();
                 break;
             case UART_FIFO_OVF:
                 ESP_LOGW(TAG, "HW FIFO Overflow");
@@ -190,15 +210,15 @@ void UartTerminal::task()
                 ESP_LOGE(TAG, "Frame Error");
                 notify_error(terminal_error::UNEXPECTED_CONTROL_FLOW);
                 break;
+            case UART_EVENT_MAX:
+                // Wake-up from stop(): the loop condition decides.
+                break;
             default:
                 ESP_LOGW(TAG, "unknown uart event type: %d", event.type);
                 break;
             }
         } else {
-            uart_get_buffered_data_len(uart.port, &len);
-            if (len) {
-                notify_read(len);
-            }
+            notify_buffered();
         }
     }
 }
