@@ -427,7 +427,8 @@ static void dbg_printf_result(mdns_result_t *r_t)
 
 void mdns_debug_printf_browse_result(mdns_result_t *r_t, mdns_browse_t *b_t)
 {
-    dbg_printf("----------------sync browse %s.%s result---------------\n", b_t->service, b_t->proto);
+    dbg_printf("----------------sync browse %s%s%s result---------------\n",
+               b_t->service ? b_t->service : b_t->instance, b_t->proto ? "." : "", b_t->proto ? b_t->proto : "");
     dbg_printf("browse pointer: %p\n", b_t);
     dbg_printf_result(r_t);
     mdns_dbg_flush();
