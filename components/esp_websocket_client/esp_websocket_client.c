@@ -182,7 +182,7 @@ struct esp_websocket_client {
     ws_transport_opcodes_t      last_opcode;
     int                         payload_len;
     int                         payload_offset;
-    int                         close_status_code;  /*!< Status code from the last received CLOSE frame (0 = none / client-initiated) */
+    int                         close_status_code;  /*!< Status code from the last received CLOSE frame (0 = none / client-initiated, 1006 = connection dropped during close) */
     esp_transport_keep_alive_t  keep_alive_cfg;
     struct ifreq                *if_name;
 };
@@ -291,6 +291,18 @@ static esp_err_t esp_websocket_client_abort_connection(esp_websocket_client_hand
     if (client->state == WEBSOCKET_STATE_CLOSING || client->state == WEBSOCKET_STATE_UNKNOW ||
             client->state == WEBSOCKET_STATE_WAIT_TIMEOUT) {
         ESP_LOGW(TAG, "Connection already closing/closed, skipping abort");
+        goto cleanup;
+    }
+
+    // The close handshake was started (close() called, or the transport failed the connection on
+    // an invalid CLOSE frame) and the connection broke. Finish it as a close, not a network error:
+    // report 1006 (RFC 6455 §7.1.5) and let the CLOSING state send WEBSOCKET_EVENT_CLOSED.
+    if (client->state == WEBSOCKET_STATE_CONNECTED &&
+            ((CLOSE_FRAME_SENT_BIT & xEventGroupGetBits(client->status_bits)) ||
+             client->last_opcode == WS_TRANSPORT_OPCODES_CLOSE)) {
+        client->close_status_code = 1006;
+        client->state = WEBSOCKET_STATE_CLOSING;
+        xEventGroupSetBits(client->status_bits, CLOSE_FRAME_SENT_BIT);
         goto cleanup;
     }
 
@@ -1120,6 +1132,8 @@ static esp_err_t esp_websocket_client_recv(esp_websocket_client_handle_t client)
             } else {
                 esp_websocket_client_error(client, "esp_transport_read() failed with %d, errno=%d", rlen, errno);
             }
+            // CLOSE here means the transport failed the connection on an invalid CLOSE frame
+            client->last_opcode = esp_transport_ws_get_read_opcode(client->transport);
             return ESP_FAIL;
         }
         client->payload_len = esp_transport_ws_get_read_payload_len(client->transport);
