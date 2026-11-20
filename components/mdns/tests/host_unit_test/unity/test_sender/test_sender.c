@@ -1,14 +1,19 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 
+#include <string.h>
+
 #include "unity.h"
 #include "unity_main.h"
 #include "mock_mdns_pcb.h"
+#include "mdns.h"
+#include "mdns_private.h"
 #include "mdns_send.h"
 #include "mdns_mem_caps_test.h"
+#include "mdns_networking_test.h"
 
 void setup_cmock(void)
 {
@@ -17,6 +22,21 @@ void setup_cmock(void)
     mdns_priv_pcb_send_bye_service_CMockIgnore();
     mdns_priv_pcb_check_probing_services_CMockIgnore();
     mdns_priv_pcb_is_after_probing_IgnoreAndReturn(true);
+}
+
+static bool packet_contains_dns_label(const uint8_t *packet, size_t len, const char *label)
+{
+    const size_t label_len = strlen(label);
+    if (label_len == 0 || label_len > 63 || len < (label_len + 1)) {
+        return false;
+    }
+
+    for (size_t i = 0; i + label_len < len; i++) {
+        if (packet[i] == (uint8_t)label_len && memcmp(&packet[i + 1], label, label_len) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void test_dispatch_tx_packet(void)
@@ -45,14 +65,48 @@ static void test_cleanup_tx_action_of_scheduled_packet(void)
     TEST_ASSERT_EQUAL_size_t(baseline, mdns_mem_get_allocation_counts());
 }
 
+/*
+ * Subtype goodbye with instance_name == NULL (find-first-service) must use the
+ * resolved default instance in the PTR FQDN, same as other send paths.
+ */
+static void test_subtype_bye_resolves_null_instance(void)
+{
+    const char *service = "_byetest";
+    const char *proto = "_tcp";
+    const char *subtype = "gone";
+    const char *default_instance = "test2";
+
+    mdns_service_remove_all();
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_add(NULL, service, proto, 80, NULL, 0));
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_subtype_add_for_host(NULL, service, proto, NULL, subtype));
+
+    mdns_test_tx_capture_clear();
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_service_subtype_remove_for_host(NULL, service, proto, NULL, subtype));
+
+    TEST_ASSERT_GREATER_THAN_size_t(0, mdns_test_tx_capture_count());
+    TEST_ASSERT_GREATER_THAN_size_t(MDNS_HEAD_LEN, mdns_test_tx_capture_len());
+
+    const uint8_t *pkt = mdns_test_tx_capture_data();
+    const size_t pkt_len = mdns_test_tx_capture_len();
+    const uint16_t answers = ((uint16_t)pkt[MDNS_HEAD_ANSWERS_OFFSET] << 8) | pkt[MDNS_HEAD_ANSWERS_OFFSET + 1];
+
+    TEST_ASSERT_EQUAL_UINT16(1, answers);
+    TEST_ASSERT_TRUE(packet_contains_dns_label(pkt, pkt_len, subtype));
+    TEST_ASSERT_TRUE(packet_contains_dns_label(pkt, pkt_len, "_sub"));
+    TEST_ASSERT_TRUE(packet_contains_dns_label(pkt, pkt_len, default_instance));
+    TEST_ASSERT_TRUE(packet_contains_dns_label(pkt, pkt_len, service));
+    TEST_ASSERT_TRUE(packet_contains_dns_label(pkt, pkt_len, proto));
+
+    mdns_service_remove_all();
+}
+
 void run_unity_tests(void)
 {
     UNITY_BEGIN();
 
-    // Run hostname queries test
     RUN_TEST(test_dispatch_tx_packet);
     RUN_TEST(test_cleanup_tx_action_of_scheduled_packet);
-
+    RUN_TEST(test_subtype_bye_resolves_null_instance);
 
     UNITY_END();
 }

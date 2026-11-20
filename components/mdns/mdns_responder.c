@@ -1369,7 +1369,7 @@ esp_err_t mdns_service_subtype_remove_for_host(const char *instance_name, const 
     ESP_GOTO_ON_FALSE(remove_subtypes->subtype, ESP_ERR_NO_MEM, out_of_mem, TAG, "Out of memory");
     remove_subtypes->next = NULL;
 
-    mdns_priv_send_bye_subtype(s, instance_name, remove_subtypes);
+    mdns_priv_send_bye_subtype(s, remove_subtypes);
     free_subtype(remove_subtypes);
 err:
     mdns_priv_service_unlock();
@@ -1515,7 +1515,7 @@ esp_err_t mdns_service_subtype_update_multiple_items_for_host(const char *instan
     mdns_subtype_t *goodbye_subtype = service_find_subtype_needed_sendbye(s->service, subtype, num_items);
 
     if (goodbye_subtype) {
-        mdns_priv_send_bye_subtype(s, instance_name, goodbye_subtype);
+        mdns_priv_send_bye_subtype(s, goodbye_subtype);
     }
 
     free_subtype(goodbye_subtype);
