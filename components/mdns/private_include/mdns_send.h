@@ -46,7 +46,7 @@ void mdns_priv_dispatch_tx_packet(mdns_tx_packet_t *p);
 /**
  * @brief Send a goodbye message for a service subtype
  */
-void mdns_priv_send_bye_subtype(mdns_srv_item_t *service, const char *instance_name, mdns_subtype_t *remove_subtypes);
+void mdns_priv_send_bye_subtype(mdns_srv_item_t *service, mdns_subtype_t *remove_subtypes);
 
 /**
  * @brief Append host list information to service records
