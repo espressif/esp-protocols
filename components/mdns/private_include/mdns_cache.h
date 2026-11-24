@@ -13,6 +13,14 @@ extern "C" {
 #endif
 
 /**
+ * @brief Append fresh known answers for a service/subtype PTR question on the packet's interface and IP protocol.
+ * @param now_us Current monotonic time from esp_timer_get_time().
+ * @note The packet owns the answer nodes but borrows their names from the cache. Build, send and free the packet
+ *       synchronously under the service lock; do not queue it. Allocation failure leaves already appended answers intact.
+ */
+void mdns_priv_cache_append_known_ptrs(mdns_tx_packet_t *packet, const mdns_search_once_t *search, int64_t now_us);
+
+/**
  * @brief Check if a host has a service by hostname, esp_netif, ip_protocol, service, and proto.
  *
  * @param hostname      The hostname to check.

@@ -89,8 +89,7 @@ static void browse_send(mdns_browse_t *browse, mdns_if_t interface, mdns_ip_prot
     search.subtype = browse->subtype;
     search.type = MDNS_TYPE_PTR;
     search.unicast = false;
-    search.result = NULL;
-    search.next = NULL;
+    search.use_cached_known_answers = true;
     mdns_priv_query_send(&search, interface, ip_protocol);
 }
 

@@ -11,6 +11,7 @@
 #include "mdns_browser.h"
 #include "mdns_cache.h"
 #include "mdns_mem_caps.h"
+#include "mdns_netif.h"
 #include "mdns_querier.h"
 #include "mdns_utils.h"
 
@@ -117,6 +118,56 @@ static void expiry_schedule(mdns_cache_record_mask_t record_mask, mdns_cache_ent
     node->next = *link;
     *link = node;
     node->queued = true;
+}
+
+void mdns_priv_cache_append_known_ptrs(mdns_tx_packet_t *packet, const mdns_search_once_t *search, int64_t now_us)
+{
+    if (!packet || !search || search->type != MDNS_TYPE_PTR || !s_expiry ||
+            !mdns_utils_str_null_or_empty(search->instance) || mdns_utils_str_null_or_empty(search->service) ||
+            mdns_utils_str_null_or_empty(search->proto)) {
+        return;
+    }
+    const esp_netif_t *netif = mdns_priv_get_esp_netif(packet->tcpip_if);
+    if (!netif) {
+        return;
+    }
+
+    const bool has_subtype = !mdns_utils_str_null_or_empty(search->subtype);
+    const mdns_cache_record_type_t type = has_subtype ? MDNS_CACHE_RECORD_SUBTYPE : MDNS_CACHE_RECORD_PTR;
+    mdns_out_answer_t **tail = &packet->known_answers;
+    while (*tail) {
+        tail = &(*tail)->next;
+    }
+    for (const mdns_cache_expiry_t *node = s_expiry; node; node = node->next) {
+        if (node->record_mask != type || !node->queued || node->expires_at_us <= now_us ||
+                node->entry->esp_netif != netif || node->entry->ip_protocol != packet->ip_protocol) {
+            continue;
+        }
+        const mdns_service_cache_t *service = node->service;
+        if (!mdns_utils_str_case_equal(service->service, search->service) || !mdns_utils_str_case_equal(service->proto, search->proto) ||
+                (has_subtype ? !mdns_utils_str_case_equal(node->subtype->subtype, search->subtype) : !service->ptr_present)) {
+            continue;
+        }
+        const uint32_t original_ttl = has_subtype ? node->subtype->ttl : service->ptr_ttl;
+        const int64_t remaining = (node->expires_at_us - now_us) / MDNS_US_PER_SEC;
+        if (!original_ttl || remaining * 2 < original_ttl) {
+            continue;
+        }
+
+        mdns_out_answer_t *answer = mdns_mem_calloc(1, sizeof(*answer));
+        if (!answer) {
+            HOOK_MALLOC_FAILED;
+            return;
+        }
+        answer->type = MDNS_TYPE_PTR;
+        answer->custom_instance = service->instance_name;
+        answer->custom_service = service->service;
+        answer->custom_proto = service->proto;
+        answer->custom_subtype = has_subtype ? node->subtype->subtype : NULL;
+        answer->known_ttl = (uint32_t)remaining;
+        *tail = answer;
+        tail = &answer->next;
+    }
 }
 
 static bool update_ttl(uint32_t *cached_ttl, uint32_t ttl)
