@@ -73,20 +73,38 @@ TEST_CASE("esp_getnameinfo() for IPv6", "[sock_utils]")
     char too_short[8];
     CHECK(esp_getnameinfo((struct sockaddr *)&sock_addr, sizeof(sock_addr), too_short, sizeof(too_short), NULL, 0, NI_NUMERICHOST) != 0);
 
-    // A scoped (link-local) address gets the interface name appended, like glibc, or the index if there is no such interface
-    REQUIRE(inet_pton(AF_INET6, "fe80::1", &sock_addr.sin6_addr) == 1);
+    // Like glibc, a scoped link-local address gets the interface name appended, any other scoped address the index
     esp_netif_t *esp_netif = create_test_netif("station_name6", 4);   // 1.2.3.4
     REQUIRE(esp_netif != NULL);
     char if_name[8] = { };
     const esp_err_t name_result = esp_netif_get_netif_impl_name(esp_netif, if_name);
-    sock_addr.sin6_scope_id = (uint32_t)esp_netif_get_netif_impl_index(esp_netif);
-    const int named_result = esp_getnameinfo((struct sockaddr *)&sock_addr, sizeof(sock_addr), buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
-    std::string named_host = buffer;
+    const uint32_t if_index = (uint32_t)esp_netif_get_netif_impl_index(esp_netif);
+    const struct {
+        const char *address;
+        std::string expected;
+    } scoped[] = {
+        { "fe80::1", "fe80::1%" + std::string(if_name) },                   // link-local
+        { "ff02::1", "ff02::1%" + std::string(if_name) },                   // link-local multicast
+        { "2001:db8::1", "2001:db8::1%" + std::to_string(if_index) },     // global
+        { "ff05::1", "ff05::1%" + std::to_string(if_index) },             // site-local multicast
+    };
+    std::string results[sizeof(scoped) / sizeof(scoped[0])];
+    int result_codes[sizeof(scoped) / sizeof(scoped[0])];
+    sock_addr.sin6_scope_id = if_index;
+    for (size_t i = 0; i < sizeof(scoped) / sizeof(scoped[0]); ++i) {
+        REQUIRE(inet_pton(AF_INET6, scoped[i].address, &sock_addr.sin6_addr) == 1);
+        result_codes[i] = esp_getnameinfo((struct sockaddr *)&sock_addr, sizeof(sock_addr), buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST);
+        results[i] = buffer;
+    }
     esp_netif_destroy(esp_netif);
     REQUIRE(name_result == ESP_OK);
-    CHECK(named_result == 0);
-    CHECK(strcasecmp(("fe80::1%" + std::string(if_name)).c_str(), named_host.c_str()) == 0);
+    for (size_t i = 0; i < sizeof(scoped) / sizeof(scoped[0]); ++i) {
+        CAPTURE(scoped[i].address);
+        CHECK(result_codes[i] == 0);
+        CHECK(strcasecmp(scoped[i].expected.c_str(), results[i].c_str()) == 0);
+    }
 
+    REQUIRE(inet_pton(AF_INET6, "fe80::1", &sock_addr.sin6_addr) == 1);
     sock_addr.sin6_scope_id = 200;  // no such interface
     CHECK(esp_getnameinfo((struct sockaddr *)&sock_addr, sizeof(sock_addr), buffer, sizeof(buffer), NULL, 0, NI_NUMERICHOST) == 0);
     CHECK(strcasecmp("fe80::1%200", buffer) == 0);
