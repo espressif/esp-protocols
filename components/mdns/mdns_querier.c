@@ -7,6 +7,9 @@
 #include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_querier.h"
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+#include "mdns_cache.h"
+#endif
 #include "mdns_mem_caps.h"
 #include "mdns_utils.h"
 #include "mdns_send.h"
@@ -398,6 +401,12 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
 
     queueToEnd(mdns_out_question_t, packet->questions, q);
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    if (search->use_cached_known_answers && search->type == MDNS_TYPE_PTR) {
+        mdns_priv_cache_append_known_ptrs(packet, search, esp_timer_get_time());
+        return packet;
+    }
+#endif
     if (search->type == MDNS_TYPE_PTR) {
         r = search->result;
         while (r) {

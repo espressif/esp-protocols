@@ -302,6 +302,8 @@ typedef struct mdns_out_answer_s {
     const char *custom_instance;
     const char *custom_service;
     const char *custom_proto;
+    const char *custom_subtype;
+    uint32_t known_ttl;  /*!< Remaining TTL for a cached answer */
 } mdns_out_answer_t;
 
 typedef struct mdns_tx_packet_s {
@@ -315,6 +317,7 @@ typedef struct mdns_tx_packet_s {
     uint8_t distributed;
     mdns_out_question_t *questions;
     mdns_out_answer_t *answers;
+    mdns_out_answer_t *known_answers;  /*!< Browse answers borrowing names from the cache during dispatch */
     mdns_out_answer_t *servers;
     mdns_out_answer_t *additional;
     bool queued;
@@ -346,6 +349,7 @@ typedef struct mdns_search_once_s {
     SemaphoreHandle_t done_semaphore;
     uint16_t type;
     bool unicast;
+    bool use_cached_known_answers;
     uint8_t max_results;
     uint8_t num_results;
     char *instance;
@@ -359,6 +363,8 @@ typedef struct mdns_browse_s {
     struct mdns_browse_s *next;
 
     mdns_browse_state_t state;
+    int64_t retry_due_us;  /*!< Zero when not scheduled to send query */
+    uint8_t retry_rounds;
     mdns_browse_notify_t notifier;
 
     char *service;

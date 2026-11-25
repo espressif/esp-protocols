@@ -202,6 +202,7 @@ void mdns_priv_free_tx_packet(mdns_tx_packet_t *packet)
         q = next;
     }
     queueFree(mdns_out_answer_t, packet->answers);
+    queueFree(mdns_out_answer_t, packet->known_answers);
     queueFree(mdns_out_answer_t, packet->servers);
     queueFree(mdns_out_answer_t, packet->additional);
     mdns_mem_free(packet);
@@ -1344,6 +1345,61 @@ static uint8_t append_answer(uint8_t *packet, uint16_t *index, mdns_out_answer_t
     return 0;
 }
 
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+static bool append_known_ptr(uint8_t *packet, uint16_t *index, const mdns_out_answer_t *a)
+{
+    // Commit the cursor only for a complete RR: a full packet is sent and this RR retried.
+    uint16_t pos = *index;
+    if (a->custom_subtype && (!append_string(packet, &pos, a->custom_subtype) ||
+                              !append_string(packet, &pos, MDNS_SUB_STR))) {
+        return false;
+    }
+    uint16_t service_offset = pos;
+    if (!append_string(packet, &pos, a->custom_service) ||
+            !append_string(packet, &pos, a->custom_proto) ||
+            !append_string(packet, &pos, MDNS_UTILS_DEFAULT_DOMAIN) ||
+            !mdns_utils_append_u8(packet, &pos, 0) ||
+            !append_type(packet, &pos, MDNS_ANSWER_PTR, false, a->known_ttl)) {
+        return false;
+    }
+    uint16_t rdata = pos;
+    if (!append_string(packet, &pos, a->custom_instance) ||
+            !mdns_utils_append_u16(packet, &pos, MDNS_NAME_REF | service_offset)) {
+        return false;
+    }
+    set_u16(packet, rdata - 2, pos - rdata);
+    *index = pos;
+    return true;
+}
+
+static void dispatch_known_answers(mdns_tx_packet_t *p, uint8_t *packet, uint16_t index)
+{
+    const mdns_out_answer_t *a = p->known_answers;
+    do {
+        uint16_t count = 0;
+        while (a) {
+            if (append_known_ptr(packet, &index, a)) {
+                count++;
+            } else if (index != MDNS_HEAD_LEN) {
+                break;
+            }
+            // A record too large even for an empty packet cannot be sent.
+            a = a->next;
+        }
+        set_u16(packet, MDNS_HEAD_ANSWERS_OFFSET, count);
+        set_u16(packet, MDNS_HEAD_FLAGS_OFFSET, p->flags | (a ? MDNS_FLAGS_DISTRIBUTED : 0));
+        DBG_TX_PACKET(p, packet, index);
+        mdns_priv_if_write(p->tcpip_if, p->ip_protocol, &p->dst, p->port, packet, index);
+        if (a) {
+            // RFC 6762 section 7.2: only the first datagram contains the question.
+            memset(packet, 0, MDNS_HEAD_LEN);
+            set_u16(packet, MDNS_HEAD_ID_OFFSET, p->id);
+            index = MDNS_HEAD_LEN;
+        }
+    } while (a);
+}
+#endif
+
 /**
  * @brief  sends a packet
  *
@@ -1370,6 +1426,12 @@ void mdns_priv_dispatch_tx_packet(mdns_tx_packet_t *p)
         q = q->next;
     }
     set_u16(packet, MDNS_HEAD_QUESTIONS_OFFSET, count);
+#ifdef CONFIG_MDNS_ENABLE_BROWSE
+    if (p->known_answers) {
+        dispatch_known_answers(p, packet, index);
+        return;
+    }
+#endif
 
     count = 0;
     a = p->answers;
