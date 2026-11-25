@@ -13,18 +13,19 @@ extern "C" {
 #endif
 
 /**
- * @brief Check if a host has a service by hostname, esp_netif, ip_protocol, service, and proto.
+ * @brief Check if a host cache contains a matching service instance.
  *
  * @param hostname      The hostname to check.
  * @param esp_netif     Pointer to the esp_netif to check.
  * @param ip_protocol   IP protocol to check.
+ * @param instance      Instance name, or NULL/empty to match any instance.
  * @param service       The service name to check.
  * @param proto         The protocol to check.
  *
  * @return true if the host has the service, false otherwise.
  */
 bool mdns_priv_cache_host_has_service(const char *hostname, const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
-                                      const char *service, const char *proto);
+                                      const char *instance, const char *service, const char *proto);
 
 /**
  * @brief Find the subtype node in a service cache by subtype name.
@@ -143,7 +144,7 @@ mdns_cache_update_result_t mdns_priv_cache_update_addr(const esp_netif_t *esp_ne
  * @note When an A/AAAA record is updated (added, removed, or updated),
  *       all services under this cache entry will be marked to-sync for browses.
  *
- * @note Used by browses in case ADDR records come before SRV record.
+ * @note Used by service browses and PTR record browses in case ADDR records come before SRV record.
  */
 mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_t *esp_netif, mdns_ip_protocol_t ip_protocol,
                                                                 const char *hostname, const esp_ip_addr_t *addr, uint32_t ttl);
@@ -154,7 +155,8 @@ mdns_cache_update_result_t mdns_priv_cache_update_existing_addr(const esp_netif_
  * @param now_us The current time in microseconds from esp_timer_get_time().
  *
  * @note This function is called in mDNS service task while holding service lock.
- *       PTR expiration notifies browses immediately, other records are marked to-sync for browses.
+ *       Record expiration notifies matching record browses immediately,
+ *       records other than PTR are marked to-sync for service browses.
  */
 void mdns_priv_cache_remove_expired_records(int64_t now_us);
 
@@ -175,15 +177,20 @@ void mdns_priv_cache_trim_unsubscribed_records(int64_t now_us);
 void mdns_priv_cache_clear(void);
 
 /**
- * @brief Convert a service cache to a mdns_result_t.
+ * @brief Project cached records into a temporary mdns_result_t.
  *
  * @param entry       Pointer to the cache entry.
- * @param service     Pointer to the service cache.
+ * @param service     Service cache, or NULL for address-only projections.
+ * @param subtype     Subtype item; required when projecting MDNS_CACHE_RECORD_SUBTYPE.
+ * @param projection_records Mask of cache records to be projected in result.
+ * @param removed_records    Mask of cache records whose TTL will be set to 0.
  * @param out_result  Pointer to the output mdns_result_t.
- * @return ESP_OK on success, ESP_ERR_NO_MEM on allocation failure.
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG for inconsistent parameters,
+ *         or ESP_ERR_NO_MEM on allocation failure.
  */
-esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
-                                            mdns_result_t **out_result);
+esp_err_t mdns_priv_cache_to_result(const mdns_cache_entry_t *entry, const mdns_service_cache_t *service,
+                                    const mdns_cache_subtype_t *subtype, mdns_cache_record_mask_t projection_records,
+                                    mdns_cache_record_mask_t removed_records, mdns_result_t **out_result);
 
 /**
  * @brief Process all pending synchronization cache entries.
@@ -194,11 +201,9 @@ esp_err_t mdns_priv_service_cache_to_result(const mdns_cache_entry_t *entry, con
 void mdns_priv_cache_process_sync(void);
 
 /**
- * @brief Replay all currently visible cache services to a newly registered browse.
- *
- * @return true if successfully notified, false otherwise
+ * @brief Replay matching cached service records or address lists to the specified notifier on a browse.
  */
-bool mdns_priv_cache_notify_browse(mdns_browse_t *browse);
+esp_err_t mdns_priv_cache_notify_browse(mdns_browse_t *browse, const mdns_browse_notifier_t *notifier);
 #ifdef __cplusplus
 }
 #endif

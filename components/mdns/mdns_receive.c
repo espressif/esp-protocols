@@ -1254,7 +1254,12 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_has_cache_consumer) {
-                    rx_staged_ip_add(&staged_ips, name->host, &ip6, ttl);
+                    if (mdns_priv_browse_has_hostname(name->host, MDNS_BROWSE_TYPE_RECORD_AAAA)) {
+                        (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
+                                                          name->host, &ip6, ttl);
+                    } else {
+                        rx_staged_ip_add(&staged_ips, name->host, &ip6, ttl);
+                    }
                 }
 #endif
                 if (search_result) {
@@ -1317,7 +1322,12 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 memcpy(&(ip.u_addr.ip4.addr), data_ptr, 4);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_has_cache_consumer) {
-                    rx_staged_ip_add(&staged_ips, name->host, &ip, ttl);
+                    if (mdns_priv_browse_has_hostname(name->host, MDNS_BROWSE_TYPE_RECORD_A)) {
+                        (void)mdns_priv_cache_update_addr(mdns_priv_get_esp_netif(packet->tcpip_if), packet->ip_protocol,
+                                                          name->host, &ip, ttl);
+                    } else {
+                        rx_staged_ip_add(&staged_ips, name->host, &ip, ttl);
+                    }
                 }
 #endif
                 if (search_result) {

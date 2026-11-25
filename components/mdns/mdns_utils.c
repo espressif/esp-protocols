@@ -250,6 +250,7 @@ mdns_ip_addr_t *mdns_utils_copy_address_list(const mdns_ip_addr_t *address_list)
             return NULL;
         }
         addr->addr = address_list->addr;
+        addr->ttl = address_list->ttl;
         addr->next = NULL;
         if (head == NULL) {
             head = addr;
