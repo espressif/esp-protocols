@@ -203,7 +203,14 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
     buffer_state.command_start_offset = buffer_state.total_processed;
 #endif
     command_cb.set(got_line, separator);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
     primary_term->write((uint8_t *)command.c_str(), command.length());
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
     command_cb.wait_for_line(time_ms);
     command_cb.set(nullptr);
     // The reader task owns the accumulated buffer while it runs process_line()
@@ -230,22 +237,23 @@ command_result DTE::command(const std::string &cmd, got_line_cb got_line, uint32
 
 bool DTE::exit_cmux()
 {
-    if (!cmux_term) {
+    auto cmux = cmux_term.load();
+    if (!cmux) {
         return false;
     }
-    const bool success = cmux_term->deinit();
-    exit_cmux_internal();
-    cmux_term.reset();
+    const bool success = cmux->deinit();
+    exit_cmux_internal(cmux);
+    cmux_term.store(nullptr);
     return success;
 }
 
-void DTE::exit_cmux_internal()
+void DTE::exit_cmux_internal(const std::shared_ptr<CMux> &cmux)
 {
-    if (!cmux_term) {
+    if (!cmux) {
         return;
     }
 
-    auto ejected = cmux_term->detach();
+    auto ejected = cmux->detach();
     // return the ejected terminal and buffer back to this DTE
     primary_term = std::move(ejected.first);
     buffer = std::move(ejected.second);
@@ -255,35 +263,34 @@ void DTE::exit_cmux_internal()
 
 bool DTE::setup_cmux()
 {
-    if (cmux_term) {
+    if (cmux_term.load()) {
         ESP_LOGE("esp_modem_dte", "Cannot setup_cmux(), cmux_term already exists");
         return false;
     }
-    cmux_term = std::make_shared<CMux>(primary_term, std::move(buffer), cmux_config);
-    if (cmux_term == nullptr) {
+    auto cmux = std::make_shared<CMux>(primary_term, std::move(buffer), cmux_config);
+    if (cmux == nullptr) {
         return false;
     }
 
-    if (!cmux_term->init()) {
-        exit_cmux_internal();
-        cmux_term = nullptr;
+    if (!cmux->init()) {
+        exit_cmux_internal(cmux);
         return false;
     }
 
-    primary_term   = std::make_unique<CMuxInstance>(cmux_term, 0);
-    secondary_term = std::make_unique<CMuxInstance>(cmux_term, 1);
+    primary_term   = std::make_unique<CMuxInstance>(cmux, 0);
+    secondary_term = std::make_unique<CMuxInstance>(cmux, 1);
     if (primary_term == nullptr || secondary_term == nullptr) {
-        exit_cmux_internal();
-        cmux_term = nullptr;
+        exit_cmux_internal(cmux);
         return false;
     }
     set_command_callbacks();
+    cmux_term.store(cmux);
     return true;
 }
 
 bool DTE::set_cmux_config(const CMuxConfig &config)
 {
-    if (cmux_term || !CMux::is_config_valid(config)) {
+    if (cmux_term.load() || !CMux::is_config_valid(config)) {
         return false;
     }
     cmux_config = config;
@@ -397,20 +404,58 @@ int DTE::read(uint8_t **d, size_t len)
     return actual_len;
 }
 
+std::shared_ptr<const DTE::TransmitHooks> DTE::load_transmit_hooks()
+{
+    return transmit_hooks_.load(std::memory_order_acquire);
+}
+
+void DTE::set_transmit_hooks(transmit_hook_t before_tx, transmit_hook_t after_tx)
+{
+    std::shared_ptr<const TransmitHooks> p;
+    if (before_tx || after_tx) {
+        p = std::make_shared<TransmitHooks>(std::move(before_tx), std::move(after_tx));
+    }
+    transmit_hooks_.store(std::move(p), std::memory_order_release);
+}
+
 int DTE::write(uint8_t *data, size_t len)
 {
-    return secondary_term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = secondary_term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::send(uint8_t *data, size_t len, int term_id)
 {
     Terminal *term = term_id == 0 ? primary_term.get() : secondary_term.get();
-    return term->write(data, len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = term->write(data, len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 int DTE::write(DTE_Command command)
 {
-    return primary_term->write(command.data, command.len);
+    auto hooks = load_transmit_hooks();
+    if (hooks && hooks->before) {
+        hooks->before();
+    }
+    auto ret = primary_term->write(command.data, command.len);
+    if (hooks && hooks->after) {
+        hooks->after();
+    }
+    return ret;
 }
 
 void DTE::on_read(got_line_cb on_read_cb)
@@ -504,10 +549,9 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
 
 bool DTE::recover()
 {
-    if (mode == modem_mode::CMUX_MODE || mode == modem_mode::CMUX_MANUAL_MODE || mode == modem_mode::DUAL_MODE) {
-        return cmux_term->recover();
-    }
-    return false;
+    // Keep CMUX alive for the call; also handles dual-mode DTE where cmux_term is null.
+    auto cmux = cmux_term.load();
+    return cmux && cmux->recover();
 }
 
 void DTE::handle_error(terminal_error err)

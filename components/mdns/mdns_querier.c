@@ -34,6 +34,7 @@ void mdns_priv_query_results_free(mdns_result_t *results)
         mdns_mem_free((char *)(r->instance_name));
         mdns_mem_free((char *)(r->service_type));
         mdns_mem_free((char *)(r->proto));
+        mdns_mem_free((char *)(r->subtype));
 
         for (size_t i = 0; i < r->txt_count; i++) {
             mdns_mem_free((char *)(r->txt[i].key));
@@ -346,6 +347,7 @@ static mdns_tx_packet_t *create_search_packet(mdns_search_once_t *search, mdns_i
     q->service = search->service;
     q->proto = search->proto;
     q->domain = MDNS_UTILS_DEFAULT_DOMAIN;
+    q->subtype = search->subtype;
     q->own_dynamic_memory = false;
 
     // Multi-label service names (e.g. "_services._dns-sd") need splitting into

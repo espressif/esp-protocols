@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 #include <string.h>
+#include <strings.h>
 #include "sdkconfig.h"
 #include "mdns_private.h"
 #include "mdns_mem_caps.h"
@@ -304,4 +305,14 @@ void mdns_utils_free_txt_linked_list(mdns_txt_linked_item_t *txt)
         mdns_mem_free(txt);
         txt = next;
     }
+}
+
+bool mdns_utils_str_case_equal(const char *a, const char *b)
+{
+    return !mdns_utils_str_null_or_empty(a) && !mdns_utils_str_null_or_empty(b) && strcasecmp(a, b) == 0;
+}
+
+bool mdns_utils_str_case_equal_nullable(const char *a, const char *b)
+{
+    return (mdns_utils_str_null_or_empty(a) && mdns_utils_str_null_or_empty(b)) || mdns_utils_str_case_equal(a, b);
 }

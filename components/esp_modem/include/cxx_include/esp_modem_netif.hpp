@@ -74,6 +74,10 @@ private:
 
     static void on_ppp_changed(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
+    static void on_ppp_lost_ip(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+
+    static void netif_down(esp_netif_t *netif);
+
     std::shared_ptr<DTE> ppp_dte;
     struct ppp_netif_driver driver {};
     SignalGroup signal;

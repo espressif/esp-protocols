@@ -236,6 +236,29 @@ esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce,
 #endif
 
 /**
+ * @brief Transmit hook callback type
+ * @param user_ctx Opaque context pointer registered with esp_modem_set_transmit_hooks()
+ */
+typedef void (*esp_modem_transmit_hook_t)(void *user_ctx);
+
+/**
+ * @brief Register hooks that fire around every DTE write operation
+ *
+ * Allows toggling a GPIO (DTR, sleep pin, etc.) before and after UART writes,
+ * covering both application-initiated AT commands and internal PPP traffic.
+ *
+ * @param dce       Modem DCE handle
+ * @param before_tx Called just before bytes are sent (NULL to clear)
+ * @param after_tx  Called just after bytes are sent (NULL to clear)
+ * @param user_ctx  Opaque pointer forwarded to both hooks
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if dce is invalid
+ */
+esp_err_t esp_modem_set_transmit_hooks(esp_modem_dce_t *dce,
+                                       esp_modem_transmit_hook_t before_tx,
+                                       esp_modem_transmit_hook_t after_tx,
+                                       void *user_ctx);
+
+/**
  * @brief Writes raw bytes to the modem's command channel
  *
  * The C API otherwise carries only NUL-terminated command strings. A

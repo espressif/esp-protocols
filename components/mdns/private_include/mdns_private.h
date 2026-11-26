@@ -190,7 +190,7 @@ typedef struct {
     char proto[MDNS_NAME_BUF_LEN];
     char domain[MDNS_NAME_BUF_LEN];
     uint8_t parts;
-    uint8_t sub;
+    uint8_t sub; // 0: no subtype, 1: subtype
     bool    invalid;
 } mdns_name_t;
 
@@ -282,6 +282,7 @@ typedef struct mdns_out_question_s {
     const char *service;
     const char *proto;
     const char *domain;
+    const char *subtype;
     bool own_dynamic_memory;
 } mdns_out_question_t;
 
@@ -350,6 +351,7 @@ typedef struct mdns_search_once_s {
     char *instance;
     char *service;
     char *proto;
+    char *subtype;
     mdns_result_t *result;
 } mdns_search_once_t;
 
@@ -361,7 +363,7 @@ typedef struct mdns_browse_s {
 
     char *service;
     char *proto;
-    mdns_result_t *result;
+    char *subtype;
 } mdns_browse_t;
 
 typedef struct {
@@ -405,10 +407,13 @@ typedef enum {
 typedef uint8_t mdns_cache_consumer_mask_t;
 
 typedef enum {
-    MDNS_CACHE_RECORD_PTR       = (1U << 0),
-    MDNS_CACHE_RECORD_SRV       = (1U << 1),
-    MDNS_CACHE_RECORD_TXT       = (1U << 2),
-    MDNS_CACHE_RECORD_ADDR      = (1U << 3)
+    // Browse update flags
+    MDNS_CACHE_RECORD_PTR           = (1U << 0), /*!< Normal PTR record updated, only notify no-subtype browses. */
+    MDNS_CACHE_RECORD_SUBTYPE       = (1U << 1), /*!< PTR record with subtype updated, only notify browse with identical subtype. */
+    // Resolver update flags
+    MDNS_CACHE_RECORD_SRV           = (1U << 2),
+    MDNS_CACHE_RECORD_TXT           = (1U << 3),
+    MDNS_CACHE_RECORD_ADDR          = (1U << 4),
 } mdns_cache_record_type_t;
 
 typedef uint8_t mdns_cache_record_mask_t;
@@ -424,8 +429,19 @@ typedef struct mdns_cache_expiry_s {
     struct mdns_cache_entry_s *entry;
     struct mdns_service_cache_s *service;
     struct mdns_cache_addr_s *addr;
+    struct mdns_cache_subtype_s *subtype;
     int64_t expires_at_us;  /*!< record absolute expiration time in microseconds */
 } mdns_cache_expiry_t;
+
+/**
+ * @brief   mDNS cache PTR subtype structure
+ */
+typedef struct mdns_cache_subtype_s {
+    char *subtype;
+    uint32_t ttl;
+    bool pending_sync; /*!< true if the subtype needs sync notification */
+    struct mdns_cache_subtype_s *next;
+} mdns_cache_subtype_t;
 
 /**
  * @brief   mDNS cache ADDR list structure
@@ -437,7 +453,7 @@ typedef struct mdns_cache_addr_s {
 } mdns_cache_addr_t;
 
 /**
- * @brief   mDNS cache service structure, contains PTR, SRV and TXT records
+ * @brief   mDNS cache service structure, contains PTR (with subtype list), SRV and TXT records
  */
 typedef struct mdns_service_cache_s {
     char *instance_name;
@@ -446,6 +462,8 @@ typedef struct mdns_service_cache_s {
     // PTR
     bool ptr_present;   /*!< true if PTR record is present */
     uint32_t ptr_ttl;
+    // Subtype list
+    mdns_cache_subtype_t *subtype_list;
     // SRV
     bool srv_present;   /*!< true if SRV record is present */
     uint16_t priority;
