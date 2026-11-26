@@ -212,11 +212,12 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         hooks->after();
     }
     command_cb.wait_for_line(time_ms);
-    command_cb.set(nullptr);
     // The reader task owns the accumulated buffer while it runs process_line()
     // under line_lock (it may be growing the inflatable buffer right now).
-    // Reset the buffer only when it is not inside that callback.
+    // Detach the command and reset the buffer in one critical section, so the
+    // reader cannot add bytes between the two. The lock is recursive.
     Scoped<Lock> receive_lock(command_cb.line_lock);
+    command_cb.set(nullptr);
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Track command end
     buffer_state.command_waiting = false;
