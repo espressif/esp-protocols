@@ -210,8 +210,8 @@ typedef struct {
 
 typedef enum {
     ESP_MODEM_URC_CONSUME_NONE,      /*!< Leave the buffer to the active command */
-    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size leading bytes */
-    ESP_MODEM_URC_CONSUME_ALL,       /*!< Consume the whole buffer */
+    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size leading bytes, the active command sees the rest */
+    ESP_MODEM_URC_CONSUME_ALL,       /*!< Consume the whole buffer, including any command reply in it */
 } esp_modem_urc_consume_result_t;
 
 typedef struct {
@@ -225,6 +225,11 @@ typedef struct {
  * C entry for DTE::set_enhanced_urc_cb(). The callback decides how much of
  * the command buffer it consumed; returning ESP_MODEM_URC_CONSUME_NONE while
  * a command is active leaves the reply to that command. Pass NULL to detach.
+ *
+ * While is_command_active is set, the buffer may hold the reply of that
+ * command next to the URC. ESP_MODEM_URC_CONSUME_ALL discards it as well and
+ * the command then times out: consume only complete URC lines with
+ * ESP_MODEM_URC_CONSUME_PARTIAL, or return ESP_MODEM_URC_CONSUME_NONE.
  *
  * @param dce Modem DCE handle
  * @param urc_cb Callback receiving the buffer state and returning the consumption

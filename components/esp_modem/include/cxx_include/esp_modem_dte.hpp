@@ -152,8 +152,8 @@ public:
 
     enum class UrcConsumeResult {
         CONSUME_NONE,           // Don't consume anything, continue waiting
-        CONSUME_PARTIAL,        // Consume only part of the buffer
-        CONSUME_ALL             // Consume entire buffer
+        CONSUME_PARTIAL,        // Consume only part of the buffer, the active command sees the rest
+        CONSUME_ALL             // Consume entire buffer, including any command reply in it
     };
 
     struct UrcConsumeInfo {

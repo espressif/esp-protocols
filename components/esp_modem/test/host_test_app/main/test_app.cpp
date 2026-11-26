@@ -180,6 +180,11 @@ TEST_CASE("Enhanced URC via socket", "[esp_modem][urc]")
         CHECK(urc_state.urc_lines == 1);
     }
 
+    SECTION("URC and command response in one read") {
+        CHECK(dce->command("AT+URCTEST2\r", wait_for_ok, 5000) == command_result::OK);
+        CHECK(urc_state.urc_lines == 1);
+    }
+
     SECTION("CONSUME_ALL resets buffer offset") {
         CHECK(dce->command("AT+URCTEST1\r", wait_for_ok, 5000) == command_result::OK);
         CHECK(urc_state.saw_discard_urc);

@@ -510,10 +510,16 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
                 break;
             }
             dte->buffer_state.last_urc_processed += consume_info.consume_size;
-            // Adjust data pointers for command processing
+            // Hide the consumed bytes from command processing. What follows
+            // them and has not been searched yet stays new data, so a reply
+            // that arrived in the same read as the URC is still found.
             data += consume_info.consume_size;
-            consumed = (consumed + len) - consume_info.consume_size;
-            len = 0;
+            if (consume_info.consume_size <= consumed) {
+                consumed -= consume_info.consume_size;
+            } else {
+                len = (consumed + len) - consume_info.consume_size;
+                consumed = 0;
+            }
             break;
 
         case UrcConsumeResult::CONSUME_ALL:
