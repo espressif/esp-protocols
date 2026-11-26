@@ -210,13 +210,13 @@ typedef struct {
 
 typedef enum {
     ESP_MODEM_URC_CONSUME_NONE,      /*!< Leave the buffer to the active command */
-    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size leading bytes, the active command sees the rest */
+    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size more bytes, the active command sees the rest */
     ESP_MODEM_URC_CONSUME_ALL,       /*!< Consume the whole buffer, including any command reply in it */
 } esp_modem_urc_consume_result_t;
 
 typedef struct {
     esp_modem_urc_consume_result_t result;
-    size_t consume_size;             /*!< Bytes to consume for CONSUME_PARTIAL */
+    size_t consume_size;             /*!< Bytes to consume for CONSUME_PARTIAL, counted from processed_offset */
 } esp_modem_urc_consume_info_t;
 
 /**

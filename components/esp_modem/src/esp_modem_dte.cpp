@@ -488,6 +488,9 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Call enhanced URC handler if registered
     if (enhanced_urc_handler && dte) {
+        if (dte->buffer_state.last_urc_processed > consumed + len) {
+            dte->buffer_state.last_urc_processed = 0;   // a buffer that shrank was reset
+        }
         // Create buffer info for enhanced URC handler
         UrcBufferInfo buffer_info = dte->create_urc_info(data, consumed, len);
         // The next callback reports only bytes added after this one
@@ -503,23 +506,14 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
             break;
 
         case UrcConsumeResult::CONSUME_PARTIAL:
-            // Consume only specified amount
-            if (consume_info.consume_size > consumed + len) {
+            // Consume the specified amount of what earlier callbacks left
+            if (consume_info.consume_size > consumed + len - dte->buffer_state.last_urc_processed) {
                 ESP_LOGE("esp_modem_dte", "URC consume_size %zu exceeds buffer %zu, treating as CONSUME_NONE",
-                         (size_t)consume_info.consume_size, (size_t)(consumed + len));
+                         (size_t)consume_info.consume_size,
+                         (size_t)(consumed + len - dte->buffer_state.last_urc_processed));
                 break;
             }
             dte->buffer_state.last_urc_processed += consume_info.consume_size;
-            // Hide the consumed bytes from command processing. What follows
-            // them and has not been searched yet stays new data, so a reply
-            // that arrived in the same read as the URC is still found.
-            data += consume_info.consume_size;
-            if (consume_info.consume_size <= consumed) {
-                consumed -= consume_info.consume_size;
-            } else {
-                len = (consumed + len) - consume_info.consume_size;
-                consumed = 0;
-            }
             break;
 
         case UrcConsumeResult::CONSUME_ALL:
@@ -527,6 +521,19 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
             dte->buffer_state.last_urc_processed = 0;
             dte->buffer_state.last_urc_seen = 0;
             return true;  // Signal buffer consumption
+        }
+
+        // Hide everything the callbacks consumed, now or on an earlier read,
+        // from command processing. What follows it and has not been searched
+        // yet stays new data, so a reply that arrived in the same read as the
+        // URC is still found.
+        size_t hidden = dte->buffer_state.last_urc_processed;
+        data += hidden;
+        if (hidden <= consumed) {
+            consumed -= hidden;
+        } else {
+            len = (consumed + len) - hidden;
+            consumed = 0;
         }
     }
 

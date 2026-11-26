@@ -158,7 +158,7 @@ public:
 
     struct UrcConsumeInfo {
         UrcConsumeResult result;
-        size_t consume_size;    // How many bytes to consume (0 = none, SIZE_MAX = all)
+        size_t consume_size;    // Bytes to consume for CONSUME_PARTIAL, counted from processed_offset
     };
 
     typedef std::function<UrcConsumeInfo(const UrcBufferInfo &)> enhanced_urc_cb;
