@@ -88,12 +88,13 @@ int esp_dns_cleanup_tcp(esp_dns_handle_t handle)
  *
  * @param handle DNS handle
  * @param name Hostname to resolve
- * @param addr Pointer to store the resolved IP address
+ * @param addr Pointer to store the resolved IP address(es)
+ * @param addr_cnt Number of address slots in addr (must be > 0)
  * @param rrtype DNS record type
  *
  * @return ERR_OK on success, error code on failure
  */
-err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t rrtype)
+err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t *addr, u8_t addr_cnt, u8_t rrtype)
 {
     int err = ERR_OK;
     esp_transport_handle_t transport = NULL;
@@ -102,8 +103,10 @@ err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t
     size_t query_size;
     int timeout_ms;
     int tcp_port;
+    response_buffer_t response_buffer;
+    u8_t max_ips = esp_dns_clamp_addr_cnt(addr_cnt);
 
-    if (addr == NULL) {
+    if (addr == NULL || max_ips == 0) {
         return ERR_ARG;
     }
 
@@ -111,13 +114,13 @@ err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t
     timeout_ms = handle->config.timeout_ms ? : ESP_DNS_DEFAULT_TIMEOUT_MS;
     tcp_port = handle->config.port ? : ESP_DNS_DEFAULT_TCP_PORT;
 
-    /* Clear the response buffer to ensure no residual data remains */
-    memset(&handle->response_buffer, 0, sizeof(response_buffer_t));
+    /* Keep response state local to this lookup so concurrent queries do not collide. */
+    memset(&response_buffer, 0, sizeof(response_buffer_t));
 
     /* Create DNS query in wire format, leaving 2 bytes at start for length prefix as required by RFC 7858 */
     memset(tcp_buffer, 0, ESP_DNS_BUFFER_SIZE);
     query_size = esp_dns_create_query((uint8_t *)(tcp_buffer + 2), sizeof(tcp_buffer) - 2,
-                                      name, rrtype, &handle->response_buffer.dns_response.id);
+                                      name, rrtype, &response_buffer.dns_response.id);
     if (query_size == -1) {
         ESP_LOGE(TAG, "Error: Hostname too big");
         return ERR_MEM;
@@ -165,16 +168,17 @@ err_t dns_resolve_tcp(const esp_dns_handle_t handle, const char *name, ip_addr_t
         }
 
         /* Skip the 2-byte length field that prepends DNS messages as required by RFC 7858 */
-        handle->response_buffer.buffer = tcp_buffer + 2;
-        handle->response_buffer.length = len - 2;
+        response_buffer.buffer = tcp_buffer + 2;
+        response_buffer.length = len - 2;
 
         /* Parse the DNS response */
-        esp_dns_parse_response((uint8_t *)handle->response_buffer.buffer,
-                               handle->response_buffer.length,
-                               &handle->response_buffer.dns_response);
+        esp_dns_parse_response((uint8_t *)response_buffer.buffer,
+                               response_buffer.length,
+                               &response_buffer.dns_response,
+                               max_ips);
 
         /* Extract IP addresses from DNS response */
-        err = esp_dns_extract_ip_addresses_from_response(&handle->response_buffer.dns_response, addr);
+        err = esp_dns_get_ips_from_response(&response_buffer.dns_response, addr, max_ips);
         if (err != ERR_OK) {
             ESP_LOGE(TAG, "Failed to extract IP address from DNS response");
             goto cleanup;
