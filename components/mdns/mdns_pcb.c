@@ -88,6 +88,7 @@ void mdns_priv_pcb_announce(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, 
  */
 bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if)
 {
+#if MDNS_MAX_INTERFACES > 1
     mdns_if_t ifaces[MDNS_MAX_INTERFACES] = {tcpip_if, mdns_priv_netif_get_other_interface(tcpip_if) };
     if (ifaces[1] == MDNS_MAX_INTERFACES) {
         return false;
@@ -101,6 +102,7 @@ bool mdns_priv_pcb_check_for_duplicates(mdns_if_t tcpip_if)
             }
         }
     }
+#endif
     return false;
 }
 
