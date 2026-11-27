@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
@@ -58,6 +58,11 @@ esp_err_t esp_netif_get_ip6_linklocal(esp_netif_t *esp_netif, esp_ip6_addr_t *if
     if_ip6->addr[2] = 0x0000;
     if_ip6->addr[3] = 0x0001;
     return ESP_OK;
+}
+
+int esp_netif_get_netif_impl_index(esp_netif_t *esp_netif)
+{
+    return esp_netif ? 2 : -1;
 }
 
 uint32_t esp_random(void)
