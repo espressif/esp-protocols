@@ -5,8 +5,10 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
+#include "create_test_packet.h"
 #include "mdns.h"
 #include "mdns_browser.h"
 #include "mdns_cache.h"
@@ -14,6 +16,7 @@
 #include "mdns_private.h"
 #include "mock_mdns_pcb.h"
 #include "unity.h"
+#include "unity_main.h"
 
 #define INSTANCE    "cached-service"
 #define SERVICE     "_cachetest"
@@ -22,6 +25,11 @@
 #define PORT        8080
 #define TTL         120
 #define SUBTYPE     "alpha"
+
+// init_responder() advertises OWN_INSTANCE._http._tcp
+#define ADVERTISED_SERVICE  "_http"
+#define OWN_INSTANCE        "inst1"
+#define PEER_INSTANCE       "peer-service"
 
 #define TXT_VAL     "value"
 #define TXT_VAL_LEN 5
@@ -39,6 +47,8 @@ static size_t s_notify_calls;
 static uint32_t s_last_ttl;
 static size_t s_subtype_calls;
 static uint32_t s_subtype_ttl;
+static size_t s_ptr_calls;
+static char s_ptr_instance[MDNS_NAME_BUF_LEN];
 
 static esp_netif_t *test_netif(void)
 {
@@ -79,6 +89,13 @@ static void subtype_callback(mdns_result_t *result)
     TEST_ASSERT_EQUAL_STRING(SUBTYPE, result->subtype);
     s_subtype_calls++;
     s_subtype_ttl = result->ttl;
+}
+
+static void ptr_callback(mdns_result_t *result)
+{
+    TEST_ASSERT_NOT_NULL(result);
+    s_ptr_calls++;
+    snprintf(s_ptr_instance, sizeof(s_ptr_instance), "%s", result->instance_name ? result->instance_name : "");
 }
 
 static void unexpected_callback(mdns_result_t *result)
@@ -132,6 +149,8 @@ void mdns_test_set_up(void)
     s_last_ttl = 0;
     s_subtype_calls = 0;
     s_subtype_ttl = 0;
+    s_ptr_calls = 0;
+    s_ptr_instance[0] = '\0';
 }
 
 void mdns_test_tear_down(void)
@@ -299,6 +318,48 @@ static void test_browse_subtype_update_filtering(void)
     TEST_ASSERT_EQUAL_UINT32(TTL + 2, s_subtype_ttl);
 }
 
+/*
+ * The answers in a query are the querier's known answers. They must not update the browse cache,
+ * even for a service type that the device advertises itself.
+ */
+static void test_browse_ignores_known_answers_in_queries(void)
+{
+    TEST_ASSERT_NOT_NULL(mdns_browse_new(ADVERTISED_SERVICE, PROTO, ptr_callback));
+
+    uint8_t own_ptr_data[MDNS_NAME_BUF_LEN];
+    size_t own_ptr_data_len = encode_dns_name(own_ptr_data, OWN_INSTANCE "." ADVERTISED_SERVICE "." PROTO ".local");
+    uint8_t peer_ptr_data[MDNS_NAME_BUF_LEN];
+    size_t peer_ptr_data_len = encode_dns_name(peer_ptr_data, PEER_INSTANCE "." ADVERTISED_SERVICE "." PROTO ".local");
+
+    mdns_test_query_t queries[] = {
+        { ADVERTISED_SERVICE "." PROTO ".local", MDNS_TYPE_PTR, 1 },
+    };
+    mdns_test_answer_t known_answers[] = {
+        { ADVERTISED_SERVICE "." PROTO ".local", MDNS_TYPE_PTR, 1, TTL, own_ptr_data_len, own_ptr_data },
+        { ADVERTISED_SERVICE "." PROTO ".local", MDNS_TYPE_PTR, 1, TTL, peer_ptr_data_len, peer_ptr_data },
+    };
+
+    size_t packet_len;
+    uint8_t *packet = create_mdns_test_packet(queries, 1, known_answers, 2, NULL, 0, &packet_len);
+    TEST_ASSERT_NOT_NULL(packet);
+    // create_mdns_test_packet() sets the response flags in a packet with answers, so clear them
+    packet[2] = 0;
+    packet[3] = 0;
+    send_packet(true, false, packet, packet_len);
+    free(packet);
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(0, s_ptr_calls);
+
+    // The same PTR record of the peer in a response is reported
+    packet = create_mdns_test_packet(NULL, 0, &known_answers[1], 1, NULL, 0, &packet_len);
+    TEST_ASSERT_NOT_NULL(packet);
+    send_packet(true, false, packet, packet_len);
+    free(packet);
+    mdns_priv_cache_process_sync();
+    TEST_ASSERT_EQUAL_size_t(1, s_ptr_calls);
+    TEST_ASSERT_EQUAL_STRING(PEER_INSTANCE, s_ptr_instance);
+}
+
 void run_unity_tests(void)
 {
     UNITY_BEGIN();
@@ -307,5 +368,6 @@ void run_unity_tests(void)
     RUN_TEST(test_browse_matches_service_and_requires_ptr);
     RUN_TEST(test_browse_goodbye_and_rediscovery);
     RUN_TEST(test_browse_subtype_update_filtering);
+    RUN_TEST(test_browse_ignores_known_answers_in_queries);
     UNITY_END();
 }

@@ -974,7 +974,8 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
             }
 
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
-            if (type == MDNS_TYPE_PTR || (!ours && !discovery)) {
+            // Only responses update the browse cache: the answers in a query are the querier's known answers
+            if ((header.flags & MDNS_FLAGS_QUERY_REPSONSE) && (type == MDNS_TYPE_PTR || (!ours && !discovery))) {
                 browse_result = mdns_priv_browse_find_consumer(name, type, packet->tcpip_if, packet->ip_protocol);
                 if (browse_result) {
                     packet_has_cache_consumer = true;
