@@ -457,7 +457,10 @@ esp_err_t mdns_unregister_netif(esp_netif_t *esp_netif)
     mdns_priv_service_lock();
     for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
         if (!s_esp_netifs[i].predefined && s_esp_netifs[i].netif == esp_netif) {
-            s_esp_netifs[i].netif = NULL;
+            // Disable the slot's PCBs, so that a netif registered in this slot later starts from
+            // an uninitialized interface. This also clears the slot.
+            mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V6);
+            mdns_priv_pcb_disable(i, MDNS_IP_PROTOCOL_V4);
             err = ESP_OK;
             break;
         }

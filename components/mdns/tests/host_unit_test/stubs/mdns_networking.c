@@ -1,29 +1,52 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 #include "mdns_networking.h"
 #include "mdns_mem_caps.h"
 #include "mdns_service.h"
+#include "mdns_networking_test.h"
 
 struct pbuf  {
     void *payload;
     size_t len;
 };
 
+static bool s_track_ready;
+static bool s_ready[MDNS_MAX_INTERFACES][MDNS_IP_PROTOCOL_MAX];
+static size_t s_init_count[MDNS_MAX_INTERFACES][MDNS_IP_PROTOCOL_MAX];
+
+void mdns_test_networking_track_ready(bool track)
+{
+    s_track_ready = track;
+    memset(s_ready, 0, sizeof(s_ready));
+    memset(s_init_count, 0, sizeof(s_init_count));
+}
+
+size_t mdns_test_networking_init_count(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
+{
+    return s_init_count[tcpip_if][ip_protocol];
+}
+
 bool mdns_priv_if_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
+    if (s_track_ready) {
+        return s_ready[tcpip_if][ip_protocol];
+    }
     return true; // Default to ready for testing
 }
 
 esp_err_t mdns_priv_if_init(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
+    s_ready[tcpip_if][ip_protocol] = true;
+    s_init_count[tcpip_if][ip_protocol]++;
     return ESP_OK;
 }
 
 esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
+    s_ready[tcpip_if][ip_protocol] = false;
     return ESP_OK;
 }
 

@@ -15,6 +15,10 @@
 #include "mdns_cache.h"
 #include "mdns_mem_caps.h"
 #include "mdns_mem_caps_test.h"
+#include "mdns_netif.h"
+#include "mdns_networking.h"
+#include "mdns_networking_test.h"
+#include "mdns_pcb.h"
 #include "mdns_private.h"
 #include "mdns_test_clock.h"
 #include "mock_mdns_browser.h"
@@ -83,12 +87,28 @@ typedef struct {
 static cache_observer_t s_observer;
 // Provide mock `esp_netif_t` pointers
 static uint8_t s_netif_storage_a;
+static uint8_t s_netif_storage_b;
 
 // ----------------- Helper functions -----------------
 
 static esp_netif_t *test_netif_a(void)
 {
     return (esp_netif_t *)&s_netif_storage_a;
+}
+
+static esp_netif_t *test_netif_b(void)
+{
+    return (esp_netif_t *)&s_netif_storage_b;
+}
+
+static mdns_if_t find_netif_slot(esp_netif_t *esp_netif)
+{
+    for (mdns_if_t i = 0; i < MDNS_MAX_INTERFACES; ++i) {
+        if (mdns_priv_get_esp_netif(i) == esp_netif) {
+            return i;
+        }
+    }
+    return MDNS_MAX_INTERFACES;
 }
 
 static void reset_observer(void)
@@ -390,6 +410,7 @@ void mdns_test_set_up(void)
 void mdns_test_tear_down(void)
 {
     mdns_priv_cache_clear();
+    mdns_test_networking_track_ready(false);
 }
 
 void setup_cmock(void)
@@ -972,6 +993,39 @@ static void test_cache_subtype_add_repeat_update_remove(void)
     assert_memory(baseline);
 }
 
+static void test_unregister_netif_resets_interface(void)
+{
+    mdns_test_networking_track_ready(true);
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_register_netif(test_netif_a()));
+    mdns_if_t slot = find_netif_slot(test_netif_a());
+    TEST_ASSERT_LESS_THAN(MDNS_MAX_INTERFACES, slot);
+    mdns_priv_pcb_enable(slot, MDNS_IP_PROTOCOL_V4);
+    mdns_priv_pcb_enable(slot, MDNS_IP_PROTOCOL_V6);
+    TEST_ASSERT_TRUE(mdns_priv_if_ready(slot, MDNS_IP_PROTOCOL_V4));
+    TEST_ASSERT_TRUE(mdns_priv_if_ready(slot, MDNS_IP_PROTOCOL_V6));
+
+    // Unregistering the netif disables the interface of its slot.
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_unregister_netif(test_netif_a()));
+    TEST_ASSERT_FALSE(mdns_priv_if_ready(slot, MDNS_IP_PROTOCOL_V4));
+    TEST_ASSERT_FALSE(mdns_priv_if_ready(slot, MDNS_IP_PROTOCOL_V6));
+    // The slot holds no probe state now. Probes that the responder started before this test are
+    // gone, so measure the allocations from here.
+    size_t baseline = mdns_mem_get_allocation_counts();
+
+    // A netif registered in the same slot initializes the interface again when it is enabled.
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_register_netif(test_netif_b()));
+    TEST_ASSERT_EQUAL(slot, find_netif_slot(test_netif_b()));
+    mdns_priv_pcb_enable(slot, MDNS_IP_PROTOCOL_V4);
+    mdns_priv_pcb_enable(slot, MDNS_IP_PROTOCOL_V6);
+    TEST_ASSERT_EQUAL_size_t(2, mdns_test_networking_init_count(slot, MDNS_IP_PROTOCOL_V4));
+    TEST_ASSERT_EQUAL_size_t(2, mdns_test_networking_init_count(slot, MDNS_IP_PROTOCOL_V6));
+
+    TEST_ASSERT_EQUAL(ESP_OK, mdns_unregister_netif(test_netif_b()));
+    TEST_ASSERT_EQUAL(MDNS_MAX_INTERFACES, find_netif_slot(test_netif_b()));
+    assert_memory(baseline);
+}
+
 void run_unity_tests(void)
 {
     UNITY_BEGIN();
@@ -983,5 +1037,6 @@ void run_unity_tests(void)
     RUN_TEST(test_cache_service_record_goodbyes);
     RUN_TEST(test_cache_expiry_extend_and_notify);
     RUN_TEST(test_cache_subtype_add_repeat_update_remove);
+    RUN_TEST(test_unregister_netif_resets_interface);
     UNITY_END();
 }
