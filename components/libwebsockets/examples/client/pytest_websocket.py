@@ -176,25 +176,15 @@ def test_examples_protocol_websocket(dut):
         dut.expect('Received=' + 32 * 'a' + 32 * 'b')
         print('\nFragmented data received\n')
 
-    # Extract the hexdump portion of the log line
-    def parse_hexdump(line):
-        match = re.search(r'\(.*\) Received binary data: ([0-9A-Fa-f ]+)', line)
-        if match:
-            hexdump = match.group(1).strip().replace(' ', '')
-            # Convert the hexdump string to a bytearray
-            return bytearray.fromhex(hexdump)
-        return bytearray()
-
-    # Capture the binary log output from the DUT
+    # Capture the binary log output from the DUT. The pattern ends at the line
+    # break, so expect() waits for the whole hexdump line to arrive.
     def test_fragmented_binary_msg(dut):
-        match = dut.expect(r'\(.*\) Received binary data: .*')
+        match = dut.expect(r'\(\d+\) Received binary data: ((?:[0-9A-Fa-f]{2} ?)+)(?:\x1b\[[0-9;]*m)?\r*\n')
         if match:
-            line = match.group(0).strip()
-            if isinstance(line, bytes):
-                line = line.decode('utf-8')
-
-            # Parse the hexdump from the log line
-            received_data = parse_hexdump(line)
+            hexdump = match.group(1)
+            if isinstance(hexdump, bytes):
+                hexdump = hexdump.decode('utf-8')
+            received_data = bytearray.fromhex(hexdump.replace(' ', ''))
 
             # Create the expected bytearray with the specified pattern
             expected_data = bytearray([0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
