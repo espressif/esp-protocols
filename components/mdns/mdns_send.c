@@ -1550,7 +1550,7 @@ void mdns_priv_send_bye(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, mdns
 /**
  * @brief  Send bye for particular subtypes
  */
-void mdns_priv_send_bye_subtype(mdns_srv_item_t *service, const char *instance_name, mdns_subtype_t *remove_subtypes)
+void mdns_priv_send_bye_subtype(mdns_srv_item_t *service, mdns_subtype_t *remove_subtypes)
 {
     uint8_t i, j;
     for (i = 0; i < MDNS_MAX_INTERFACES; i++) {
@@ -1581,7 +1581,9 @@ void mdns_priv_send_bye_subtype(mdns_srv_item_t *service, const char *instance_n
                     if (a->type == MDNS_TYPE_PTR && a->service) {
                         const mdns_subtype_t *current_subtype = remove_subtypes;
                         while (current_subtype) {
-                            count += (append_subtype_ptr_record(pkt, &index, instance_name, current_subtype->subtype, a->service->service, a->service->proto, a->flush, a->bye) > 0);
+                            count += (append_subtype_ptr_record(pkt, &index, mdns_utils_get_service_instance_name(a->service),
+                                                                current_subtype->subtype, a->service->service, a->service->proto,
+                                                                a->flush, a->bye) > 0);
                             current_subtype = current_subtype->next;
                         }
                     }

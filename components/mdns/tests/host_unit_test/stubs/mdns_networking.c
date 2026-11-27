@@ -1,16 +1,44 @@
 /*
- * SPDX-FileCopyrightText: 2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2025-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <string.h>
 #include "mdns_networking.h"
 #include "mdns_mem_caps.h"
+#include "mdns_networking_test.h"
 #include "mdns_service.h"
 
 struct pbuf  {
     void *payload;
     size_t len;
 };
+
+static uint8_t s_tx_capture[MDNS_MAX_PACKET_SIZE];
+static size_t s_tx_capture_len;
+static size_t s_tx_capture_count;
+
+void mdns_test_tx_capture_clear(void)
+{
+    s_tx_capture_len = 0;
+    s_tx_capture_count = 0;
+    memset(s_tx_capture, 0, sizeof(s_tx_capture));
+}
+
+const uint8_t *mdns_test_tx_capture_data(void)
+{
+    return s_tx_capture;
+}
+
+size_t mdns_test_tx_capture_len(void)
+{
+    return s_tx_capture_len;
+}
+
+size_t mdns_test_tx_capture_count(void)
+{
+    return s_tx_capture_count;
+}
 
 bool mdns_priv_if_ready(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol)
 {
@@ -29,6 +57,11 @@ esp_err_t mdns_priv_if_deinit(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol
 
 size_t mdns_priv_if_write(mdns_if_t tcpip_if, mdns_ip_protocol_t ip_protocol, const esp_ip_addr_t *ip, uint16_t port, uint8_t *data, size_t len)
 {
+    if (data != NULL && len > 0 && len <= sizeof(s_tx_capture)) {
+        memcpy(s_tx_capture, data, len);
+        s_tx_capture_len = len;
+        s_tx_capture_count++;
+    }
     return len; // Return the input length as if all data was sent successfully
 }
 
