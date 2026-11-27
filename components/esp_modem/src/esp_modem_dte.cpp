@@ -87,6 +87,21 @@ void DTE::set_command_callbacks()
 {
     primary_term->set_read_cb([this](uint8_t *data, size_t len) {
         Scoped<Lock> l(command_cb.line_lock);
+        // process_line() returning true ends the accumulated buffer: forget it
+        // here, so that bytes arriving before DTE::command() returns (a late
+        // data report, the next URC) start a new buffer instead of being
+        // accounted against the finished one.
+        auto finished = [this]() {
+            buffer.consumed = 0;
+#ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
+            inflatable.deflate();
+#endif
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+            buffer_state.last_urc_processed = 0;
+            buffer_state.last_urc_seen = 0;
+#endif
+            return true;
+        };
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
         // Update buffer state when new data arrives
         update_buffer_state(len);
@@ -107,7 +122,7 @@ void DTE::set_command_callbacks()
                 data = inflatable.begin();
             }
             if (command_cb.process_line(data, inflatable.consumed, len, this)) {
-                return true;
+                return finished();
             }
             // at this point we're sure that the data processing hasn't finished,
             // and we have to grow the inflatable buffer (if enabled) or give up
@@ -119,10 +134,16 @@ void DTE::set_command_callbacks()
             return false;
 #else
             if (command_cb.process_line(data, 0, len, this)) {
-                return true;
+                return finished();
             }
             // cannot inflate and the processing hasn't finishes in the first iteration, but continue
             // (will post next fragments to the parser, since we might be just missing a last token or OK
+#ifdef CONFIG_ESP_MODEM_URC_HANDLER
+            // This fragment is not kept, so the next one is a buffer of its own:
+            // offsets into this one must not be applied to it.
+            buffer_state.last_urc_processed = 0;
+            buffer_state.last_urc_seen = 0;
+#endif
             return false;
 #endif
         }
@@ -132,7 +153,7 @@ void DTE::set_command_callbacks()
             data = buffer.get();
             len = primary_term->read(data + buffer.consumed, buffer.size - buffer.consumed);
             if (command_cb.process_line(data, buffer.consumed, len, this)) {
-                return true;
+                return finished();
             }
             buffer.consumed += len;
             return false;
@@ -148,7 +169,7 @@ void DTE::set_command_callbacks()
         }
         len = primary_term->read(inflatable.current(), len);
         if (command_cb.process_line(inflatable.begin(), inflatable.consumed, len, this)) {
-            return true;
+            return finished();
         }
         inflatable.consumed += len;
         return false;
@@ -191,11 +212,17 @@ command_result DTE::command(const std::string &command, got_line_cb got_line, ui
         hooks->after();
     }
     command_cb.wait_for_line(time_ms);
+    // The reader task owns the accumulated buffer while it runs process_line()
+    // under line_lock (it may be growing the inflatable buffer right now).
+    // Detach the command and reset the buffer in one critical section, so the
+    // reader cannot add bytes between the two. The lock is recursive.
+    Scoped<Lock> receive_lock(command_cb.line_lock);
     command_cb.set(nullptr);
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Track command end
     buffer_state.command_waiting = false;
     buffer_state.last_urc_processed = 0;
+    buffer_state.last_urc_seen = 0;
 #endif
     buffer.consumed = 0;
 #ifdef CONFIG_ESP_MODEM_USE_INFLATABLE_BUFFER_IF_NEEDED
@@ -461,8 +488,13 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
     // Call enhanced URC handler if registered
     if (enhanced_urc_handler && dte) {
+        if (dte->buffer_state.last_urc_processed > consumed + len) {
+            dte->buffer_state.last_urc_processed = 0;   // a buffer that shrank was reset
+        }
         // Create buffer info for enhanced URC handler
         UrcBufferInfo buffer_info = dte->create_urc_info(data, consumed, len);
+        // The next callback reports only bytes added after this one
+        dte->buffer_state.last_urc_seen = consumed + len;
 
         // Call enhanced URC handler
         UrcConsumeInfo consume_info = enhanced_urc_handler(buffer_info);
@@ -474,23 +506,34 @@ bool DTE::command_cb::process_line(uint8_t *data, size_t consumed, size_t len, D
             break;
 
         case UrcConsumeResult::CONSUME_PARTIAL:
-            // Consume only specified amount
-            if (consume_info.consume_size > consumed + len) {
+            // Consume the specified amount of what earlier callbacks left
+            if (consume_info.consume_size > consumed + len - dte->buffer_state.last_urc_processed) {
                 ESP_LOGE("esp_modem_dte", "URC consume_size %zu exceeds buffer %zu, treating as CONSUME_NONE",
-                         (size_t)consume_info.consume_size, (size_t)(consumed + len));
+                         (size_t)consume_info.consume_size,
+                         (size_t)(consumed + len - dte->buffer_state.last_urc_processed));
                 break;
             }
             dte->buffer_state.last_urc_processed += consume_info.consume_size;
-            // Adjust data pointers for command processing
-            data += consume_info.consume_size;
-            consumed = (consumed + len) - consume_info.consume_size;
-            len = 0;
             break;
 
         case UrcConsumeResult::CONSUME_ALL:
             // Consume entire buffer
             dte->buffer_state.last_urc_processed = 0;
+            dte->buffer_state.last_urc_seen = 0;
             return true;  // Signal buffer consumption
+        }
+
+        // Hide everything the callbacks consumed, now or on an earlier read,
+        // from command processing. What follows it and has not been searched
+        // yet stays new data, so a reply that arrived in the same read as the
+        // URC is still found.
+        size_t hidden = dte->buffer_state.last_urc_processed;
+        data += hidden;
+        if (hidden <= consumed) {
+            consumed -= hidden;
+        } else {
+            len = (consumed + len) - hidden;
+            consumed = 0;
         }
     }
 
@@ -566,8 +609,11 @@ DTE::UrcBufferInfo DTE::create_urc_info(uint8_t* data, size_t consumed, size_t l
         .buffer_start = data,
         .buffer_total_size = consumed + len,
         .processed_offset = buffer_state.last_urc_processed,
-        .new_data_size = (consumed + len) - buffer_state.last_urc_processed,
-        .new_data_start = data + buffer_state.last_urc_processed,
+        // Delta since the previous callback: a buffer that shrank was reset
+        .new_data_size = (consumed + len) - (buffer_state.last_urc_seen <= consumed + len
+                                             ? buffer_state.last_urc_seen : 0),
+        .new_data_start = data + (buffer_state.last_urc_seen <= consumed + len
+                                  ? buffer_state.last_urc_seen : 0),
         .is_command_active = buffer_state.command_waiting
     };
 }

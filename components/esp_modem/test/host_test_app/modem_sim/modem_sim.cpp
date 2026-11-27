@@ -137,6 +137,33 @@ static void send_urc_discard_response(int fd, const std::string &cmd)
     write(fd, ok.c_str(), ok.size());
 }
 
+static void send_urc_with_reply_response(int fd, const std::string &cmd)
+{
+    // The URC and the command reply reach the DTE in one read
+    const std::string response = "+URCTEST: event\r\nOK\r\n";
+
+    print_escaped("modem_sim: rx ", cmd);
+    print_escaped("modem_sim: tx ", response);
+    fflush(stdout);
+    write(fd, response.c_str(), response.size());
+}
+
+static void send_two_urcs_response(int fd, const std::string &cmd)
+{
+    // The second URC is consumed on a later read than the first
+    const std::string first = "+URCTEST: first\r\n";
+    const std::string rest = "+URCTEST: second-and-longer\r\nOK\r\n";
+
+    print_escaped("modem_sim: rx ", cmd);
+    print_escaped("modem_sim: tx (phase1) ", first);
+    fflush(stdout);
+    write(fd, first.c_str(), first.size());
+    usleep(5000);
+    print_escaped("modem_sim: tx (phase2) ", rest);
+    fflush(stdout);
+    write(fd, rest.c_str(), rest.size());
+}
+
 static void handle_client(int client_fd)
 {
     char buf[1024];
@@ -199,6 +226,16 @@ static void handle_client(int client_fd)
 
             if (cmd.find("AT+URCTEST1\r") != std::string::npos) {
                 send_urc_discard_response(client_fd, cmd);
+                continue;
+            }
+
+            if (cmd.find("AT+URCTEST2\r") != std::string::npos) {
+                send_urc_with_reply_response(client_fd, cmd);
+                continue;
+            }
+
+            if (cmd.find("AT+URCTEST3\r") != std::string::npos) {
+                send_two_urcs_response(client_fd, cmd);
                 continue;
             }
 

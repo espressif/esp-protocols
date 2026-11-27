@@ -566,6 +566,19 @@ extern "C" esp_err_t esp_modem_config_edrx(esp_modem_dce_t *dce_wrap, int mode, 
     return command_response_to_esp_err(dce_wrap->dce->config_edrx(mode, access_technology, std::string(edrx_value)));
 }
 
+extern "C" esp_err_t esp_modem_write(esp_modem_dce_t *dce_wrap, const uint8_t *data, size_t len)
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr || (data == nullptr && len > 0)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    /* The payload belongs on the command terminal, where DTE::command()
+     * writes: in CMUX mode that is the command DLCI, while the raw
+     * DTE::write(data, len) targets the secondary (data/PPP) terminal. */
+    const std::string payload(reinterpret_cast<const char *>(data), len);
+    const int written = dce_wrap->dte->write(esp_modem::DTE_Command(payload));
+    return written == static_cast<int>(len) ? ESP_OK : ESP_FAIL;
+}
+
 extern "C" esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce_wrap, const esp_modem_PdpContext_t *pdp_context)
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr || pdp_context == nullptr) {
@@ -643,6 +656,7 @@ extern "C" esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce_wrap, const char *ap
 }
 
 #ifdef CONFIG_ESP_MODEM_URC_HANDLER
+
 extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got_line_fn)(uint8_t *data, size_t len))
 {
     if (dce_wrap == nullptr || dce_wrap->dce == nullptr) {
@@ -661,6 +675,42 @@ extern "C" esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce_wrap, esp_err_t(*got
         default:
             return command_result::TIMEOUT;
         }
+    });
+    return ESP_OK;
+}
+
+extern "C" esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce_wrap,
+                                                esp_modem_urc_consume_info_t (*urc_cb)(const esp_modem_urc_buffer_info_t *info))
+{
+    if (dce_wrap == nullptr || dce_wrap->dte == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (urc_cb == nullptr) {
+        dce_wrap->dte->set_enhanced_urc_cb(nullptr);
+        return ESP_OK;
+    }
+    dce_wrap->dte->set_enhanced_urc_cb([urc_cb](const DTE::UrcBufferInfo & info) {
+        const esp_modem_urc_buffer_info_t c_info = {
+            .buffer_start = info.buffer_start,
+            .buffer_total_size = info.buffer_total_size,
+            .processed_offset = info.processed_offset,
+            .new_data_size = info.new_data_size,
+            .new_data_start = info.new_data_start,
+            .is_command_active = info.is_command_active,
+        };
+        const esp_modem_urc_consume_info_t consume = urc_cb(&c_info);
+        DTE::UrcConsumeInfo result = { DTE::UrcConsumeResult::CONSUME_NONE, 0 };
+        switch (consume.result) {
+        case ESP_MODEM_URC_CONSUME_PARTIAL:
+            result = { DTE::UrcConsumeResult::CONSUME_PARTIAL, consume.consume_size };
+            break;
+        case ESP_MODEM_URC_CONSUME_ALL:
+            result = { DTE::UrcConsumeResult::CONSUME_ALL, SIZE_MAX };
+            break;
+        default:
+            break;
+        }
+        return result;
     });
     return ESP_OK;
 }

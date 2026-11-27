@@ -180,6 +180,22 @@ TEST_CASE("Enhanced URC via socket", "[esp_modem][urc]")
         CHECK(urc_state.urc_lines == 1);
     }
 
+    SECTION("URC and command response in one read") {
+        CHECK(dce->command("AT+URCTEST2\r", wait_for_ok, 5000) == command_result::OK);
+        CHECK(urc_state.urc_lines == 1);
+    }
+
+    SECTION("Command sees only what the URCs left") {
+        std::string reply;
+        auto capture = [&reply](uint8_t *data, size_t len) {
+            reply.assign(reinterpret_cast<char *>(data), len);
+            return wait_for_ok(data, len);
+        };
+        CHECK(dce->command("AT+URCTEST3\r", capture, 5000) == command_result::OK);
+        CHECK(urc_state.urc_lines == 2);
+        CHECK(reply == "OK\r\n");
+    }
+
     SECTION("CONSUME_ALL resets buffer offset") {
         CHECK(dce->command("AT+URCTEST1\r", wait_for_ok, 5000) == command_result::OK);
         CHECK(urc_state.saw_discard_urc);

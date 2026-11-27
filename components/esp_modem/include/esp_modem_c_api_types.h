@@ -192,6 +192,52 @@ esp_err_t esp_modem_set_apn(esp_modem_dce_t *dce, const char *apn);
  * @return ESP_OK on success, ESP_FAIL on failure
  */
 esp_err_t esp_modem_set_urc(esp_modem_dce_t *dce, esp_err_t(*got_line_cb)(uint8_t *data, size_t len));
+
+/**
+ * @brief Command-channel buffer state handed to an enhanced URC callback
+ *
+ * Mirrors DTE::UrcBufferInfo for C callers. The callback runs before the
+ * active command's own parser sees the same bytes.
+ */
+typedef struct {
+    const uint8_t *buffer_start;     /*!< Start of the accumulated command buffer */
+    size_t buffer_total_size;        /*!< Bytes currently in the buffer */
+    size_t processed_offset;         /*!< Bytes already consumed by earlier callbacks */
+    size_t new_data_size;            /*!< Bytes added since the previous callback */
+    const uint8_t *new_data_start;   /*!< Start of those bytes */
+    bool is_command_active;          /*!< A command is waiting for its reply */
+} esp_modem_urc_buffer_info_t;
+
+typedef enum {
+    ESP_MODEM_URC_CONSUME_NONE,      /*!< Leave the buffer to the active command */
+    ESP_MODEM_URC_CONSUME_PARTIAL,   /*!< Consume consume_size more bytes, the active command sees the rest */
+    ESP_MODEM_URC_CONSUME_ALL,       /*!< Consume the whole buffer, including any command reply in it */
+} esp_modem_urc_consume_result_t;
+
+typedef struct {
+    esp_modem_urc_consume_result_t result;
+    size_t consume_size;             /*!< Bytes to consume for CONSUME_PARTIAL, counted from processed_offset */
+} esp_modem_urc_consume_info_t;
+
+/**
+ * @brief Set the enhanced URC callback with buffer consumption control
+ *
+ * C entry for DTE::set_enhanced_urc_cb(). The callback decides how much of
+ * the command buffer it consumed; returning ESP_MODEM_URC_CONSUME_NONE while
+ * a command is active leaves the reply to that command. Pass NULL to detach.
+ *
+ * While is_command_active is set, the buffer may hold the reply of that
+ * command next to the URC. ESP_MODEM_URC_CONSUME_ALL discards it as well and
+ * the command then times out: consume only complete URC lines with
+ * ESP_MODEM_URC_CONSUME_PARTIAL, or return ESP_MODEM_URC_CONSUME_NONE.
+ *
+ * @param dce Modem DCE handle
+ * @param urc_cb Callback receiving the buffer state and returning the consumption
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG on a bad handle
+ */
+esp_err_t esp_modem_set_enhanced_urc(esp_modem_dce_t *dce,
+                                     esp_modem_urc_consume_info_t (*urc_cb)(const esp_modem_urc_buffer_info_t *info));
+
 #endif
 
 /**
@@ -216,6 +262,22 @@ esp_err_t esp_modem_set_transmit_hooks(esp_modem_dce_t *dce,
                                        esp_modem_transmit_hook_t before_tx,
                                        esp_modem_transmit_hook_t after_tx,
                                        void *user_ctx);
+
+/**
+ * @brief Writes raw bytes to the modem's command channel
+ *
+ * The C API otherwise carries only NUL-terminated command strings. A
+ * prompt-driven upload, such as the payload after AT+CCHSEND's '>', needs
+ * arbitrary bytes. The DCE must be in command mode (or CMUX manual command
+ * mode); the caller sequences the prompt and the final result through
+ * esp_modem_command().
+ *
+ * @param dce Modem DCE handle
+ * @param data Bytes to write
+ * @param len Number of bytes
+ * @return ESP_OK when every byte was accepted by the DTE, ESP_FAIL otherwise
+ */
+esp_err_t esp_modem_write(esp_modem_dce_t *dce, const uint8_t *data, size_t len);
 
 esp_err_t esp_modem_sqn_gm02s_connect(esp_modem_dce_t *dce, const esp_modem_PdpContext_t *pdp_context);
 
