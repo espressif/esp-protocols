@@ -481,6 +481,21 @@ static int check_aaaa_collision(esp_ip6_addr_t *ip, mdns_if_t tcpip_if)
     }
     return 0;//same
 }
+
+/**
+ * @brief  Get the zone of a received IPv6 address
+ *
+ * A link-local address (fe80::/10) gets the index of the receiving interface.
+ * Other addresses get no zone (0).
+ */
+static uint8_t get_ip6_zone(const uint8_t *addr, mdns_if_t tcpip_if)
+{
+    if (addr[0] != 0xfe || (addr[1] & 0xc0) != 0x80) {
+        return 0;
+    }
+    int index = esp_netif_get_netif_impl_index(mdns_priv_get_esp_netif(tcpip_if));
+    return (index > 0 && index <= UINT8_MAX) ? (uint8_t)index : 0;
+}
 #endif /* CONFIG_LWIP_IPV6 */
 
 /**
@@ -1249,9 +1264,9 @@ static void mdns_parse_packet(mdns_rx_packet_t *packet)
                 if (data_len < MDNS_ANSWER_AAAA_SIZE) {
                     continue; // malformed AAAA record, RDATA smaller than an IPv6 address
                 }
-                esp_ip_addr_t ip6;
-                ip6.type = ESP_IPADDR_TYPE_V6;
+                esp_ip_addr_t ip6 = { .type = ESP_IPADDR_TYPE_V6 };
                 memcpy(ip6.u_addr.ip6.addr, data_ptr, MDNS_ANSWER_AAAA_SIZE);
+                ip6.u_addr.ip6.zone = get_ip6_zone(data_ptr, packet->tcpip_if);
 #ifdef CONFIG_MDNS_ENABLE_BROWSE
                 if (packet_has_cache_consumer) {
                     rx_staged_ip_add(&staged_ips, name->host, &ip6, ttl);

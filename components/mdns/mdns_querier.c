@@ -769,6 +769,7 @@ mdns_ip_addr_t *mdns_priv_result_addr_create_ip(esp_ip_addr_t *ip)
     a->addr.type = ip->type;
     if (ip->type == ESP_IPADDR_TYPE_V6) {
         memcpy(a->addr.u_addr.ip6.addr, ip->u_addr.ip6.addr, 16);
+        a->addr.u_addr.ip6.zone = ip->u_addr.ip6.zone;
     } else {
         a->addr.u_addr.ip4.addr = ip->u_addr.ip4.addr;
     }
