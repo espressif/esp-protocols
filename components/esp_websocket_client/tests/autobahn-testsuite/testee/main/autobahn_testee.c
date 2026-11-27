@@ -25,7 +25,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "esp_heap_caps.h"
 #include "nvs_flash.h"
 #include "esp_wifi.h"
 #endif
@@ -67,101 +66,31 @@ static bool test_running = false;
 // Global to store total case count fetched from server
 static int g_total_cases = 0;
 
-#if CONFIG_IDF_TARGET_LINUX
-#define MAX_FRAGMENTED_PAYLOAD (16 * 1024 * 1024)  // 16MB for Linux performance tests
-#else
-#define MAX_FRAGMENTED_PAYLOAD 65537  // 64KB+1 for embedded targets (case 1.1.6)
-#endif
+/* Messages are echoed chunk by chunk as they arrive instead of being reassembled, so memory use
+ * does not depend on message size (a 64 KB reassembly buffer does not fit reliably on ESP32-S2).
+ * True while the first chunk of a message has been echoed without FIN and its end is still pending. */
+static bool s_echo_in_progress = false;
+/* True while the remaining chunks of a frame that started inside a fragmented message are skipped */
+static bool s_skip_frame = false;
 
-typedef struct {
-    uint8_t *buffer;
-    size_t   capacity;
-    size_t   expected_len;
-    size_t   received;
-    uint8_t  opcode;
-    bool     active;
-} ws_accumulator_t;
+/* Chunks are echoed while the peer is still sending the rest of the message, so the socket can stay
+ * backed up for hundreds of milliseconds on a busy WiFi link, regardless of the chunk size. */
+#define ECHO_SEND_TIMEOUT_MS 2000
 
-static ws_accumulator_t s_accumulator = {0};
-static uint8_t *s_accum_buffer = NULL;  // Pre-allocated buffer for fragmented frames
-
-static void ws_accumulator_reset(void)
+static int echo_send(esp_websocket_client_handle_t client, uint8_t opcode, bool fin,
+                     const char *payload, int len, TickType_t timeout)
 {
-    // Reset state but keep buffer allocated for reuse
-    s_accumulator.buffer       = s_accum_buffer;
-    s_accumulator.expected_len = 0;
-    s_accumulator.received     = 0;
-    s_accumulator.opcode       = 0;
-    s_accumulator.active       = false;
-}
-
-static void ws_accumulator_cleanup(void)
-{
-    if (s_accum_buffer) {
-        free(s_accum_buffer);
-        s_accum_buffer = NULL;
-        ESP_LOGD(TAG, "Freed accumulator buffer");
+    if (fin) {
+        return esp_websocket_client_send_with_opcode(client, opcode, (const uint8_t *)payload, len, timeout);
     }
-    ws_accumulator_reset();
-    s_accumulator.capacity = 0;
-}
-
-static esp_err_t ws_accumulator_prepare(size_t total_len, uint8_t opcode)
-{
-    if (total_len == 0) {
-        return ESP_OK;
+    switch (opcode) {
+    case WS_TRANSPORT_OPCODES_TEXT:
+        return esp_websocket_client_send_text_partial(client, payload, len, timeout);
+    case WS_TRANSPORT_OPCODES_BINARY:
+        return esp_websocket_client_send_bin_partial(client, payload, len, timeout);
+    default:
+        return esp_websocket_client_send_cont_msg(client, payload, len, timeout);
     }
-
-    if (total_len > MAX_FRAGMENTED_PAYLOAD) {
-        ESP_LOGE(TAG, "Payload too large (%zu > %d)", total_len, MAX_FRAGMENTED_PAYLOAD);
-        return ESP_ERR_INVALID_SIZE;
-    }
-
-    /* Allocate buffer on-demand when first fragmented frame is detected.
-     * Allocate only what we need for the current message to avoid permanently
-     * holding a 64KB buffer on constrained targets like ESP32-S2.
-     */
-    if (!s_accum_buffer) {
-        size_t free_heap = esp_get_free_heap_size();
-#if CONFIG_IDF_TARGET_LINUX
-        size_t largest_free = free_heap;
-#else
-        size_t largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT);
-#endif
-        ESP_LOGD(TAG, "Attempting accumulator alloc: need=%zu, free=%zu, largest_block=%zu",
-                 total_len, free_heap, largest_free);
-
-        s_accum_buffer = (uint8_t *)malloc(total_len);
-        if (!s_accum_buffer) {
-            ESP_LOGE(TAG, "Accumulator alloc failed (%zu bytes) - Free heap: %zu, largest block: %zu",
-                     total_len, free_heap, largest_free);
-#if !CONFIG_IDF_TARGET_LINUX
-            ESP_LOGE(TAG, "ESP32-S2 may be low on RAM. Consider reducing BUFFER_SIZE (currently %d) and/or enabling SPIRAM",
-                     BUFFER_SIZE);
-#endif
-            return ESP_ERR_NO_MEM;
-        }
-        s_accumulator.capacity = total_len;
-        ESP_LOGD(TAG, "Allocated accumulator buffer: %zu bytes (Free heap: %lu)",
-                 total_len, esp_get_free_heap_size());
-    } else if (total_len > s_accumulator.capacity) {
-        ESP_LOGD(TAG, "Reallocating accumulator buffer: old=%zu new=%zu", s_accumulator.capacity, total_len);
-        uint8_t *new_ptr = (uint8_t *)realloc(s_accum_buffer, total_len);
-        if (!new_ptr) {
-            ESP_LOGE(TAG, "Accumulator realloc failed (%zu bytes)", total_len);
-            return ESP_ERR_NO_MEM;
-        }
-        s_accum_buffer = new_ptr;
-        s_accumulator.capacity = total_len;
-    }
-
-    s_accumulator.buffer       = s_accum_buffer;
-    // s_accumulator.capacity is managed above
-    s_accumulator.expected_len = total_len;
-    s_accumulator.received     = 0;
-    s_accumulator.opcode       = opcode;
-    s_accumulator.active       = true;
-    return ESP_OK;
 }
 
 /* ------------------------------------------------------------
@@ -179,12 +108,15 @@ static void websocket_event_handler(void *handler_args,
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "Connected");
         test_running = true;
+        s_echo_in_progress = false;
+        s_skip_frame = false;
         break;
 
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "Disconnected");
         test_running = false;
-        ws_accumulator_reset();
+        s_echo_in_progress = false;
+        s_skip_frame = false;
         /* Do not signal test_done here: ERROR/DISCONNECTED can fire while the
          * client task still holds its lock mid-abort. Wait for FINISH so stop/destroy
          * does not race the task teardown (hangs on Linux host). */
@@ -197,7 +129,6 @@ static void websocket_event_handler(void *handler_args,
         // Safety check: if not connected, don't process data
         if (!test_running || !esp_websocket_client_is_connected(client)) {
             ESP_LOGW(TAG, "Received data but not connected, ignoring");
-            ws_accumulator_reset();
             break;
         }
 
@@ -209,22 +140,11 @@ static void websocket_event_handler(void *handler_args,
             break;
         }
 
-        /* ---- Determine opcode to echo ---- */
-        uint8_t send_opcode = 0;
-        if (data->op_code == 0x1) {
-            send_opcode = WS_TRANSPORT_OPCODES_TEXT;
-        } else if (data->op_code == 0x2) {
-            send_opcode = WS_TRANSPORT_OPCODES_BINARY;
-        } else if (data->op_code == 0x0) {
-            send_opcode = WS_TRANSPORT_OPCODES_CONT;
-        } else {
+        if (data->op_code != WS_TRANSPORT_OPCODES_CONT && data->op_code != WS_TRANSPORT_OPCODES_TEXT &&
+                data->op_code != WS_TRANSPORT_OPCODES_BINARY) {
             ESP_LOGW(TAG, "Unsupported opcode 0x%02X - skip", data->op_code);
             break;
         }
-
-        /* Note: send_with_opcode always sets FIN bit, which is correct for these
-         * simple test cases (all have FIN=1). For fragmented messages, we'd need
-         * send_with_exact_opcode, but it's not public. */
 
         // Safety check: validate data pointer before processing
         if (!data->data_ptr && data->data_len > 0) {
@@ -232,96 +152,38 @@ static void websocket_event_handler(void *handler_args,
             break;
         }
 
-        const uint8_t *payload = (const uint8_t *)data->data_ptr;
-        size_t len = data->data_len;
-        bool used_accumulator = false;
-
-        // Check if this is a fragmented message (either WebSocket fragmentation or TCP-level fragmentation)
-        // The WebSocket layer reads large frames in chunks and dispatches multiple events:
-        // - payload_len = total frame size (set on all chunks)
-        // - payload_offset = current offset (0, buffer_size, 2*buffer_size, ...)
-        // - data_len = current chunk size
-        // - fin = 1 only on the last frame of a fragmented message
-        size_t total_len = data->payload_len ? data->payload_len : data->data_len;
-        bool fragmented = (data->payload_len > 0 && data->payload_len > data->data_len) ||
-                          (data->payload_offset > 0) || (data->fin == 0) || s_accumulator.active;
-
-        ESP_LOGD(TAG, "Fragmentation check: offset=%d payload_len=%d data_len=%d total_len=%zu fragmented=%d",
-                 data->payload_offset, data->payload_len, data->data_len, total_len, fragmented);
-
-        if (fragmented && total_len > 0) {
-            if (!s_accumulator.active) {
-                if (send_opcode == WS_TRANSPORT_OPCODES_CONT) {
-                    ESP_LOGW(TAG, "Continuation frame without active accumulator, skipping");
-                    ws_accumulator_reset();
-                    break;
-                }
-                size_t initial_len = (data->fin == 0) ? data->data_len : total_len;
-                if (ws_accumulator_prepare(initial_len, send_opcode) != ESP_OK) {
-                    ESP_LOGE(TAG, "Cannot allocate buffer for fragmented frame len=%zu", initial_len);
-                    break;
-                }
-                if (data->fin == 0) {
-                    // Unknown total length for a fragmented message; grow as needed.
-                    s_accumulator.expected_len = 0;
-                }
-            }
-
-            size_t required_len = s_accumulator.received + data->data_len;
-            if (required_len > MAX_FRAGMENTED_PAYLOAD) {
-                ESP_LOGE(TAG, "Payload too large (%zu > %d)", required_len, MAX_FRAGMENTED_PAYLOAD);
-                ws_accumulator_reset();
-                break;
-            }
-            if (required_len > s_accumulator.capacity) {
-                uint8_t *new_ptr = (uint8_t *)realloc(s_accum_buffer, required_len);
-                if (!new_ptr) {
-                    ESP_LOGE(TAG, "Accumulator realloc failed (%zu bytes)", required_len);
-                    ws_accumulator_reset();
-                    break;
-                }
-                s_accum_buffer = new_ptr;
-                s_accumulator.buffer = s_accum_buffer;
-                s_accumulator.capacity = required_len;
-            }
-
-            if (!s_accumulator.buffer) {
-                ESP_LOGE(TAG, "Accumulator buffer NULL while processing fragments");
-                ws_accumulator_reset();
-                break;
-            }
-
-            if (s_accumulator.expected_len > 0 && required_len > s_accumulator.expected_len) {
-                ESP_LOGE(TAG, "Data exceeds expected length: received=%zu chunk=%d expected=%zu",
-                         s_accumulator.received, data->data_len, s_accumulator.expected_len);
-                ws_accumulator_reset();
-                break;
-            }
-
-            memcpy(s_accumulator.buffer + s_accumulator.received, data->data_ptr, data->data_len);
-            s_accumulator.received = required_len;
-
-            bool end_of_frame = (data->payload_len == 0) ||
-                                ((size_t)data->payload_offset + data->data_len >= (size_t)data->payload_len);
-            if (!(data->fin == 1 && end_of_frame)) {
-                // wait for more fragments
-                ESP_LOGD(TAG, "Waiting for more fragments: received=%zu fin=%d end_of_frame=%d",
-                         s_accumulator.received, data->fin, end_of_frame);
-                break;
-            }
-
-            // Completed full message
-            payload     = s_accumulator.buffer;
-            len         = s_accumulator.received;
-            send_opcode = s_accumulator.opcode;
-            s_accumulator.active = false;
-            used_accumulator = true;
+        /* A frame larger than the receive buffer is delivered as several events with an advancing
+         * payload_offset, so a message starts at offset 0 of a TEXT/BINARY frame and ends with the
+         * last chunk of a FIN frame. */
+        bool end_of_frame = data->payload_offset + data->data_len >= data->payload_len;
+        bool first = data->op_code != WS_TRANSPORT_OPCODES_CONT && data->payload_offset == 0;
+        bool last = data->fin && end_of_frame;
+        if (s_skip_frame) {
+            s_skip_frame = !end_of_frame;
+            break;
         }
+        if (!first && !s_echo_in_progress) {
+            ESP_LOGW(TAG, "Continuation without an echoed message start, skipping");
+            break;
+        }
+        /* RFC 6455 5.4: a new data frame inside a fragmented message is a protocol error (case 5.18).
+         * The client library does not fail the connection for it, and close() cannot be called from
+         * this handler, so only avoid echoing an invalid frame sequence back by skipping every chunk
+         * of the offending frame. */
+        if (first && s_echo_in_progress) {
+            ESP_LOGW(TAG, "New message (opcode 0x%02X) while a fragmented message is in progress, skipping",
+                     data->op_code);
+            s_skip_frame = !end_of_frame;
+            break;
+        }
+        uint8_t send_opcode = first ? data->op_code : WS_TRANSPORT_OPCODES_CONT;
+        const char *payload = data->data_ptr;
+        size_t len = data->data_len;
+        s_echo_in_progress = !last;
 
         // Check connection before attempting to send
         if (!esp_websocket_client_is_connected(client)) {
             ESP_LOGW(TAG, "Connection lost before echo, skipping");
-            ws_accumulator_reset();
             break;
         }
 
@@ -330,49 +192,9 @@ static void websocket_event_handler(void *handler_args,
         const TickType_t backoff[] = {1, 1, 1, 2, 4, 8};  // Shorter backoff for faster retry
         int64_t start = esp_timer_get_time();
 
-        /* Send echo immediately - use timeout scaled by frame size for large frames */
-        /* For large messages (>16KB), the send function fragments into multiple chunks */
-        /* Each chunk needs sufficient timeout, so scale timeout per chunk, not total message */
         while (sent < 0 && esp_websocket_client_is_connected(client)) {
-            /* For zero-length payload, pass NULL pointer (API handles this correctly) */
-            /* Calculate timeout per chunk: large messages are fragmented, each chunk needs time */
-#if CONFIG_IDF_TARGET_LINUX
-            int send_timeout_ms = 5;  // Default 5ms for small frames
-            if (len > 1024) {
-                send_timeout_ms = 500;  // 500ms per chunk for large messages
-            } else {
-                send_timeout_ms = (len / 256) + 10;
-                if (send_timeout_ms > 100) {
-                    send_timeout_ms = 100;
-                }
-            }
-            TickType_t send_timeout = pdMS_TO_TICKS(send_timeout_ms);
-            ESP_LOGD(TAG, "Sending echo: opcode=0x%02X len=%zu timeout=%dms",
-                     send_opcode, len, send_timeout_ms);
-#else
-            TickType_t send_timeout = pdMS_TO_TICKS(5);  // Default 5ms for small frames
-            if (len > 1024) {
-                // For large messages, use a per-chunk timeout that accounts for network delays
-                // Since messages are fragmented into ~16KB chunks, each chunk needs sufficient time
-                // Use a fixed generous timeout per chunk for large messages (500ms per chunk)
-                // For 65535 bytes = 4 chunks, total time could be up to 2 seconds
-                send_timeout = pdMS_TO_TICKS(500);  // 500ms per chunk for large messages
-            } else {
-                // Small messages: scale timeout based on size
-                send_timeout = pdMS_TO_TICKS((len / 256) + 10);
-                if (send_timeout > pdMS_TO_TICKS(100)) {
-                    send_timeout = pdMS_TO_TICKS(100);
-                }
-            }
-
-            ESP_LOGD(TAG, "Sending echo: opcode=0x%02X len=%zu timeout=%lums",
-                     send_opcode, len, (unsigned long)(send_timeout * portTICK_PERIOD_MS));
-#endif
-
-            sent = esp_websocket_client_send_with_opcode(
-                       client, send_opcode,
-                       (len > 0) ? payload : NULL, len,
-                       send_timeout);
+            sent = echo_send(client, send_opcode, last, (len > 0) ? payload : NULL, len,
+                             pdMS_TO_TICKS(ECHO_SEND_TIMEOUT_MS));
 
             if (sent >= 0) {
                 ESP_LOGD(TAG, "Echo sent successfully: %d bytes", sent);
@@ -380,7 +202,7 @@ static void websocket_event_handler(void *handler_args,
             }
             ESP_LOGW(TAG,
                      "echo send retry: opcode=0x%02X len=%zu fin=%d attempt=%d sent=%d",
-                     send_opcode, len, data->fin, attempt + 1, sent);
+                     send_opcode, len, last, attempt + 1, sent);
             if (attempt < (int)(sizeof(backoff) / sizeof(backoff[0]))) {
 #if CONFIG_IDF_TARGET_LINUX
                 usleep(backoff[attempt++] * 1000);  // Convert ticks to microseconds
@@ -397,19 +219,13 @@ static void websocket_event_handler(void *handler_args,
         }
 
         int64_t dt = esp_timer_get_time() - start;
-        if (sent >= 0) {
+        // A failed write aborts the connection and may return a short count (even 0) instead of -1
+        if (sent == (int)len) {
             ESP_LOGI(TAG, "Echo success: opcode=0x%02X len=%d fin=%d in %lldus",
-                     data->op_code, sent, data->fin, (long long)dt);
+                     send_opcode, sent, last, (long long)dt);
         } else {
             ESP_LOGE(TAG, "Echo failed: opcode=0x%02X len=%d fin=%d",
-                     data->op_code, (int)len, data->fin);
-        }
-
-        /* If we allocated an accumulator buffer for this message, free it now to
-         * avoid holding large buffers across test cases (helps ESP32-S2).
-         */
-        if (used_accumulator) {
-            ws_accumulator_cleanup();
+                     send_opcode, (int)len, last);
         }
         break;
     }
@@ -417,14 +233,16 @@ static void websocket_event_handler(void *handler_args,
     case WEBSOCKET_EVENT_ERROR:
         ESP_LOGW(TAG, "WebSocket error event");
         test_running = false;
-        ws_accumulator_reset();  // Reset accumulator on error
+        s_echo_in_progress = false;
+        s_skip_frame = false;
         /* Same as DISCONNECTED: wait for FINISH before tearing down the client. */
         break;
 
     case WEBSOCKET_EVENT_FINISH:
         ESP_LOGI(TAG, "WebSocket finish event");
         test_running = false;
-        ws_accumulator_reset();  // Reset accumulator on finish
+        s_echo_in_progress = false;
+        s_skip_frame = false;
 #if CONFIG_IDF_TARGET_LINUX
         if (test_done_sem) {
             sem_post(test_done_sem);
@@ -509,18 +327,9 @@ static void get_case_count(void)
 }
 
 /* ------------------------------------------------------------ */
-static esp_err_t run_test_case(int case_num)
+/* Runs one connection to the Autobahn server until the server closes it (or 60 s pass) */
+static esp_err_t run_client(const char *uri)
 {
-    char uri[512];  // Increased to accommodate full URI + path
-    int ret = snprintf(uri, sizeof(uri),
-                       "%s/runCase?case=%d&agent=esp_websocket_client",
-                       AUTOBAHN_SERVER_URI, case_num);
-    if (ret < 0 || ret >= (int)sizeof(uri)) {
-        ESP_LOGE(TAG, "URI too long: %s/runCase?case=%d&agent=esp_websocket_client", AUTOBAHN_SERVER_URI, case_num);
-        return ESP_ERR_INVALID_ARG;
-    }
-    ESP_LOGI(TAG, "Running case %d: %s", case_num, uri);
-
     esp_websocket_client_config_t cfg = {
         .uri = uri,
         .buffer_size = BUFFER_SIZE,
@@ -603,6 +412,20 @@ static esp_err_t run_test_case(int case_num)
     return ESP_OK;
 }
 
+static esp_err_t run_test_case(int case_num)
+{
+    char uri[512];  // Increased to accommodate full URI + path
+    int ret = snprintf(uri, sizeof(uri),
+                       "%s/runCase?case=%d&agent=esp_websocket_client",
+                       AUTOBAHN_SERVER_URI, case_num);
+    if (ret < 0 || ret >= (int)sizeof(uri)) {
+        ESP_LOGE(TAG, "URI too long: %s/runCase?case=%d&agent=esp_websocket_client", AUTOBAHN_SERVER_URI, case_num);
+        return ESP_ERR_INVALID_ARG;
+    }
+    ESP_LOGI(TAG, "Running case %d: %s", case_num, uri);
+    return run_client(uri);
+}
+
 /* ------------------------------------------------------------ */
 static void update_reports(void)
 {
@@ -614,26 +437,11 @@ static void update_reports(void)
         ESP_LOGE(TAG, "URI too long: %s/updateReports?agent=esp_websocket_client", AUTOBAHN_SERVER_URI);
         return;
     }
-    esp_websocket_client_config_t cfg = { .uri = uri };
-    esp_websocket_client_handle_t client = esp_websocket_client_init(&cfg);
-    if (!client) {
-        ESP_LOGE(TAG, "Failed to initialize WebSocket client for update_reports");
-        return;
+    // The server writes the reports, then closes the connection; the echo handler only sees that CLOSE
+    ESP_LOGI(TAG, "Updating reports: %s", uri);
+    if (run_client(uri) == ESP_OK) {
+        ESP_LOGI(TAG, "Reports updated");
     }
-    esp_err_t start_ret = esp_websocket_client_start(client);
-    if (start_ret != ESP_OK) {
-        ESP_LOGE(TAG, "esp_websocket_client_start() failed for update_reports: err=0x%x", start_ret);
-        esp_websocket_client_destroy(client);
-        return;
-    }
-#if CONFIG_IDF_TARGET_LINUX
-    usleep(3000 * 1000);  // 3 seconds
-#else
-    vTaskDelay(pdMS_TO_TICKS(3000));
-#endif
-    esp_websocket_client_stop(client);
-    esp_websocket_client_destroy(client);
-    ESP_LOGI(TAG, "Reports updated");
 }
 
 /* ------------------------------------------------------------ */
@@ -673,8 +481,6 @@ static void websocket_app_start(void)
     }
     update_reports();
 
-    // Free accumulator buffer after all tests
-    ws_accumulator_cleanup();
     ESP_LOGI(TAG, "All tests completed.");
 }
 

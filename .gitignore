@@ -60,6 +60,9 @@ tools/test_idf_monitor/outputs
 
 TEST_LOGS
 
+# Autobahn fuzzing-server output (recreated on each run)
+components/esp_websocket_client/tests/autobahn-testsuite/reports/
+
 # gcov coverage reports
 *.gcda
 *.gcno

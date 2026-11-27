@@ -103,6 +103,9 @@ def parse_test_results(reports_dir):
         try:
             with open(json_file, 'r') as f:
                 data = json.load(f)
+                # index.json and other non-case files have no test id
+                if 'id' not in data:
+                    continue
                 results.append({
                     'id': data.get('id', 'unknown'),
                     'behavior': data.get('behavior', 'UNKNOWN'),
@@ -150,6 +153,12 @@ def generate_summary(results):
     }
 
 
+def rate(count, stats):
+    """Percentage of graded cases; INFORMATIONAL cases have spec-undefined outcomes and are excluded"""
+    graded = sum(stats.values()) - stats.get('INFORMATIONAL', 0)
+    return (count / graded * 100) if graded > 0 else 0
+
+
 def calculate_grade(pass_rate):
     """Calculate letter grade based on pass rate"""
     if pass_rate >= 90:
@@ -187,8 +196,8 @@ def print_summary_table(summary):
     informational = by_behavior.get('INFORMATIONAL', 0)
     unimplemented = by_behavior.get('UNIMPLEMENTED', 0)
 
-    pass_rate = (passed / total * 100) if total > 0 else 0
-    fail_rate = (failed / total * 100) if total > 0 else 0
+    pass_rate = rate(passed, by_behavior)
+    fail_rate = rate(failed, by_behavior)
 
     grade, grade_color = calculate_grade(pass_rate)
 
@@ -252,8 +261,8 @@ def print_category_breakdown(summary):
     by_category = summary['by_category']
 
     # Header
-    print(f"{'Category':<25} {'Total':>7} {'Pass':>7} {'Fail':>7} {'Rate':>8} {'Critical':>10} {'Grade':>7}")
-    print(f"{'-'*25} {'-'*7} {'-'*7} {'-'*7} {'-'*8} {'-'*10} {'-'*7}")
+    print(f"{'Category':<25} {'Total':>7} {'Pass':>7} {'Fail':>7} {'Info':>7} {'Rate':>8} {'Critical':>10} {'Grade':>7}")
+    print(f"{'-'*25} {'-'*7} {'-'*7} {'-'*7} {'-'*7} {'-'*8} {'-'*10} {'-'*7}")
 
     # Sort categories numerically
     sorted_categories = sorted(by_category.keys(), key=lambda x: int(x) if x.isdigit() else 999)
@@ -265,7 +274,8 @@ def print_category_breakdown(summary):
         total = sum(cat_stats.values())
         passed = cat_stats.get('OK', 0)
         failed = cat_stats.get('FAILED', 0)
-        pass_rate = (passed / total * 100) if total > 0 else 0
+        informational = cat_stats.get('INFORMATIONAL', 0)
+        pass_rate = rate(passed, cat_stats)
 
         grade, grade_color = calculate_grade(pass_rate)
 
@@ -281,7 +291,7 @@ def print_category_breakdown(summary):
         else:
             rate_color = Colors.RED
 
-        print(f"{cat_name:<25} {total:>7} {passed:>7} {failed:>7} "
+        print(f"{cat_name:<25} {total:>7} {passed:>7} {failed:>7} {informational:>7} "
               f"{rate_color}{pass_rate:>7.1f}%{Colors.END} {critical:>10} "
               f"{grade_color}{grade:>7}{Colors.END}")
 
@@ -331,9 +341,7 @@ def print_recommendations(summary):
             continue
 
         cat_stats = by_category[cat_num]
-        total = sum(cat_stats.values())
-        passed = cat_stats.get('OK', 0)
-        pass_rate = (passed / total * 100) if total > 0 else 0
+        pass_rate = rate(cat_stats.get('OK', 0), cat_stats)
 
         if pass_rate < 70:
             critical_issues.append(
@@ -355,9 +363,7 @@ def print_recommendations(summary):
     # UTF-8 check
     if '6' in by_category:
         cat_stats = by_category['6']
-        total = sum(cat_stats.values())
-        passed = cat_stats.get('OK', 0)
-        pass_rate = (passed / total * 100) if total > 0 else 0
+        pass_rate = rate(cat_stats.get('OK', 0), cat_stats)
 
         if pass_rate < 50:
             print(
@@ -392,7 +398,7 @@ def generate_markdown_summary(summary, results):
     informational = by_behavior.get('INFORMATIONAL', 0)
     unimplemented = by_behavior.get('UNIMPLEMENTED', 0)
 
-    pass_rate = (passed / total * 100) if total > 0 else 0
+    pass_rate = rate(passed, by_behavior)
     grade, _ = calculate_grade(pass_rate)
 
     # Determine status emoji and color
@@ -411,7 +417,7 @@ def generate_markdown_summary(summary, results):
 |--------|-------|
 | **Total Tests** | {total} |
 | **✅ Passed** | {passed} ({pass_rate:.1f}%) |
-| **❌ Failed** | {failed} ({(failed/total*100) if total > 0 else 0:.1f}%) |
+| **❌ Failed** | {failed} ({rate(failed, by_behavior):.1f}%) |
 """
 
     if non_strict > 0:
@@ -427,14 +433,14 @@ def generate_markdown_summary(summary, results):
 
 ### Progress Bar
 
-<progress value="{passed}" max="{total}"></progress> {pass_rate:.1f}%
+<progress value="{passed}" max="{total - informational}"></progress> {pass_rate:.1f}%
 
 ---
 
 ## Results by Category
 
-| Category | Name | Total | Passed | Failed | Pass Rate | Critical |
-|----------|------|-------|--------|--------|-----------|----------|
+| Category | Name | Total | Passed | Failed | Info | Pass Rate | Critical |
+|----------|------|-------|--------|--------|------|-----------|----------|
 """
 
     sorted_categories = sorted(by_category.keys(), key=lambda x: int(x) if x.isdigit() else 999)
@@ -445,12 +451,14 @@ def generate_markdown_summary(summary, results):
         total_cat = sum(cat_stats.values())
         passed_cat = cat_stats.get('OK', 0)
         failed_cat = cat_stats.get('FAILED', 0)
-        pass_rate_cat = (passed_cat / total_cat * 100) if total_cat > 0 else 0
+        info_cat = cat_stats.get('INFORMATIONAL', 0)
+        pass_rate_cat = rate(passed_cat, cat_stats)
 
         critical_mark = "✅ Yes" if cat_info['critical'] else "⚪ No"
         pass_mark = "✅" if pass_rate_cat >= 70 else "⚠️" if pass_rate_cat >= 50 else "❌"
 
-        md += f"| **{cat_num}.** | {cat_info['name']} | {total_cat} | {passed_cat} | {failed_cat} | {pass_mark} {pass_rate_cat:.1f}% | {critical_mark} |\n"
+        md += (f"| **{cat_num}.** | {cat_info['name']} | {total_cat} | {passed_cat} | {failed_cat} | {info_cat} | "
+               f"{pass_mark} {pass_rate_cat:.1f}% | {critical_mark} |\n")
 
     # Failed tests section
     failed_tests = [r for r in results if r['behavior'] == 'FAILED']
@@ -482,9 +490,7 @@ def generate_markdown_summary(summary, results):
             continue
 
         cat_stats = by_category[cat_num]
-        total_cat = sum(cat_stats.values())
-        passed_cat = cat_stats.get('OK', 0)
-        pass_rate_cat = (passed_cat / total_cat * 100) if total_cat > 0 else 0
+        pass_rate_cat = rate(cat_stats.get('OK', 0), cat_stats)
 
         if pass_rate_cat < 70:
             critical_issues.append({
@@ -519,8 +525,8 @@ def generate_html_summary(summary, results, output_file):
     passed = summary['by_behavior'].get('OK', 0)
     failed = summary['by_behavior'].get('FAILED', 0)
 
-    pass_rate = (passed / total * 100) if total > 0 else 0
-    fail_rate = (failed / total * 100) if total > 0 else 0
+    pass_rate = rate(passed, summary['by_behavior'])
+    fail_rate = rate(failed, summary['by_behavior'])
     grade, _ = calculate_grade(pass_rate)
 
     html = f"""<!DOCTYPE html>
@@ -604,6 +610,7 @@ def generate_html_summary(summary, results, output_file):
                     <th>Total</th>
                     <th>Passed</th>
                     <th>Failed</th>
+                    <th>Info</th>
                     <th>Pass Rate</th>
                     <th>Critical</th>
                 </tr>
@@ -620,7 +627,8 @@ def generate_html_summary(summary, results, output_file):
         total = sum(cat_stats.values())
         passed = cat_stats.get('OK', 0)
         failed = cat_stats.get('FAILED', 0)
-        pass_rate = (passed / total * 100) if total > 0 else 0
+        informational = cat_stats.get('INFORMATIONAL', 0)
+        pass_rate = rate(passed, cat_stats)
 
         html += f"""
                 <tr>
@@ -629,6 +637,7 @@ def generate_html_summary(summary, results, output_file):
                     <td>{total}</td>
                     <td class="pass">{passed}</td>
                     <td class="fail">{failed}</td>
+                    <td>{informational}</td>
                     <td>
                         <span class="{'pass' if pass_rate >= 70 else 'fail'}">{pass_rate:.1f}%</span>
                     </td>
